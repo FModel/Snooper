@@ -15,7 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Core\Containers\Textures\" />
+      <Folder Include="Core\Services\" />
     </ItemGroup>
 
 </Project>

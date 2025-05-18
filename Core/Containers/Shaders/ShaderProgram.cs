@@ -3,25 +3,19 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Shaders;
 
-public class ShaderProgram(string vertex, string fragment, string? geometry = null) : IHandle
+public class ShaderProgram(string vertex, string fragment, string? geometry = null) : Object
 {
-    public int Handle { get; private set; }
+    public override GetPName PName { get => GetPName.CurrentProgram; }
 
-    private readonly List<int> _shaderHandles = new();
-    private readonly Dictionary<string, int> _uniformsLocation = new ();
+    private readonly List<int> _shaderHandles = [];
+    private readonly Dictionary<string, int> _uniformsLocation = [];
 
-    public void Generate()
+    public override void Generate()
     {
         Handle = GL.CreateProgram();
         _shaderHandles.Add(CompileShader(ShaderType.VertexShader, vertex));
         _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, fragment));
         if (!string.IsNullOrEmpty(geometry)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, geometry));
-    }
-
-    public void Generate(string name)
-    {
-        Generate();
-        GL.ObjectLabel(ObjectLabelIdentifier.Program, Handle, name.Length, name);
     }
 
     public void Link()
@@ -119,7 +113,7 @@ public class ShaderProgram(string vertex, string fragment, string? geometry = nu
         return handle;
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         GL.DeleteProgram(Handle);
     }

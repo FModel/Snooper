@@ -54,7 +54,7 @@ public partial class App : Application
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
+    private static extern bool EnumDisplaySettings(string? deviceName, int modeNum, ref DEVMODE devMode);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct DEVMODE

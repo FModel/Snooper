@@ -1,21 +1,14 @@
 ﻿using OpenTK.Graphics.OpenGL4;
-using Snooper.Core.Containers.Buffers;
 
 namespace Snooper.Core.Containers;
 
-public class VertexArray(/*ArrayBuffer vertices, ElementArrayBuffer indices*/) : IHandle, IBind
+public class VertexArray : Object, IBind
 {
-    public int Handle { get; private set; }
+    public override GetPName PName { get => GetPName.VertexArray; }
 
-    public void Generate()
+    public override void Generate()
     {
         Handle = GL.GenVertexArray();
-    }
-
-    public void Generate(string name)
-    {
-        Generate();
-        GL.ObjectLabel(ObjectLabelIdentifier.VertexArray, Handle, name.Length, name);
     }
 
     public void Bind()
@@ -28,9 +21,7 @@ public class VertexArray(/*ArrayBuffer vertices, ElementArrayBuffer indices*/) :
         GL.BindVertexArray(0);
     }
 
-    public bool IsBound() => GL.GetInteger(GetPName.VertexArray) == Handle;
-
-    public void Dispose()
+    public override void Dispose()
     {
         GL.DeleteVertexArray(Handle);
     }

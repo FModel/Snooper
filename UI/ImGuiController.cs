@@ -7,6 +7,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Shaders;
+using Snooper.Core.Containers.Textures;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
 namespace Snooper.UI;
@@ -15,17 +16,17 @@ public class ImGuiController : IController
 {
     private bool _frameBegun;
     private Vector2 _size;
-    private int _fontTexture;
 
+    private readonly Texture2D _fontTexture;
     private readonly VertexArray _vertexArray;
     private readonly ArrayBuffer<ImDrawVert> _vertexBuffer;
     private readonly ElementArrayBuffer<ushort> _indexBuffer;
-
     private readonly ShaderProgram _shader;
 
     public ImGuiController()
     {
         ImGui.SetCurrentContext(ImGui.CreateContext());
+
         var io = ImGui.GetIO();
         io.Fonts.AddFontDefault();
         io.Fonts.Build();
@@ -38,11 +39,12 @@ public class ImGuiController : IController
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.BackendRendererUserData = 0;
 
+        _fontTexture = new Texture2D();
         _vertexArray = new VertexArray();
         _vertexBuffer = new ArrayBuffer<ImDrawVert>(500);
         _indexBuffer = new ElementArrayBuffer<ushort>(1000);
-
-        _shader = new ShaderProgram(@"#version 330 core
+        _shader = new ShaderProgram(
+@"#version 330 core
 
 uniform mat4 projection_matrix;
 
@@ -58,7 +60,8 @@ void main()
     gl_Position = projection_matrix * vec4(in_position, 0, 1);
     color = in_color;
     texCoord = in_texCoord;
-}", @"#version 330 core
+}",
+@"#version 330 core
 
 uniform sampler2D in_fontTexture;
 
@@ -94,11 +97,10 @@ void main()
         _shader.Generate();
         _shader.Link();
 
-        var stride = Marshal.SizeOf<ImDrawVert>();
+        var stride = _vertexBuffer.Stride;
         GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
         GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, stride, 8);
         GL.VertexAttribPointer(2, 4, VertexAttribPointerType.UnsignedByte, true, stride, 16);
-
         GL.EnableVertexAttribArray(0);
         GL.EnableVertexAttribArray(1);
         GL.EnableVertexAttribArray(2);
@@ -123,7 +125,7 @@ void main()
         ImGui.NewFrame();
     }
 
-    private readonly Queue<char> _pressedChars = new();
+    private readonly Queue<char> _pressedChars = [];
     public void TextInput(char c)
     {
         _pressedChars.Enqueue(c);
@@ -247,34 +249,29 @@ void main()
             _indexBuffer.SetSubData(cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
             CheckForErrors($"Data Idx {i}");
 
-            for (int cmd_i = 0; cmd_i < cmd.CmdBuffer.Size; cmd_i++)
+            for (var j = 0; j < cmd.CmdBuffer.Size; j++)
             {
-                var pcmd = cmd.CmdBuffer[cmd_i];
-                if (pcmd.UserCallback != IntPtr.Zero)
+                var pcmd = cmd.CmdBuffer[j];
+                if (pcmd.UserCallback != IntPtr.Zero) throw new NotImplementedException();
+
+                GL.ActiveTexture(TextureUnit.Texture0);
+                GL.BindTexture(TextureTarget.Texture2D, (int)pcmd.TextureId);
+                CheckForErrors("Texture");
+
+                // We do _windowHeight - (int)clip.W instead of (int)clip.Y because gl has flipped Y when it comes to these coordinates
+                var clip = pcmd.ClipRect;
+                GL.Scissor((int)clip.X, (int)(_size.Y - clip.W), (int)(clip.Z - clip.X), (int)(clip.W - clip.Y));
+                CheckForErrors("Scissor");
+
+                if (io.BackendFlags.HasFlag(ImGuiBackendFlags.RendererHasVtxOffset))
                 {
-                    throw new NotImplementedException();
+                    GL.DrawElementsBaseVertex(PrimitiveType.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (IntPtr)(pcmd.IdxOffset * sizeof(ushort)), unchecked((int)pcmd.VtxOffset));
                 }
                 else
                 {
-                    GL.ActiveTexture(TextureUnit.Texture0);
-                    GL.BindTexture(TextureTarget.Texture2D, (int)pcmd.TextureId);
-                    CheckForErrors("Texture");
-
-                    // We do _windowHeight - (int)clip.W instead of (int)clip.Y because gl has flipped Y when it comes to these coordinates
-                    var clip = pcmd.ClipRect;
-                    GL.Scissor((int)clip.X, (int)(_size.Y - clip.W), (int)(clip.Z - clip.X), (int)(clip.W - clip.Y));
-                    CheckForErrors("Scissor");
-
-                    if ((io.BackendFlags & ImGuiBackendFlags.RendererHasVtxOffset) != 0)
-                    {
-                        GL.DrawElementsBaseVertex(PrimitiveType.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (IntPtr)(pcmd.IdxOffset * sizeof(ushort)), unchecked((int)pcmd.VtxOffset));
-                    }
-                    else
-                    {
-                        GL.DrawElements(BeginMode.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (int)pcmd.IdxOffset * sizeof(ushort));
-                    }
-                    CheckForErrors("Draw");
+                    GL.DrawElements(BeginMode.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (int)pcmd.IdxOffset * sizeof(ushort));
                 }
+                CheckForErrors("Draw");
             }
         }
 
@@ -296,40 +293,36 @@ void main()
         if (prevScissorTestEnabled) GL.Enable(EnableCap.ScissorTest); else GL.Disable(EnableCap.ScissorTest);
     }
 
-    public void RecreateFontDeviceTexture()
+    private void RecreateFontDeviceTexture()
     {
-        ImGuiIOPtr io = ImGui.GetIO();
-        io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
+        var io = ImGui.GetIO();
+        io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out _);
 
-        int mips = (int)Math.Floor(Math.Log(Math.Max(width, height), 2));
+        var mips = (int) Math.Floor(Math.Log(Math.Max(width, height), 2));
 
-        int prevActiveTexture = GL.GetInteger(GetPName.ActiveTexture);
+        var prevActiveTexture = GL.GetInteger(GetPName.ActiveTexture);
+        var prevTexture2D = GL.GetInteger(GetPName.TextureBinding2D);
+
         GL.ActiveTexture(TextureUnit.Texture0);
-        int prevTexture2D = GL.GetInteger(GetPName.TextureBinding2D);
+        _fontTexture.Generate();
+        _fontTexture.Bind();
 
-        _fontTexture = GL.GenTexture();
-        GL.BindTexture(TextureTarget.Texture2D, _fontTexture);
         GL.TexStorage2D(TextureTarget2d.Texture2D, mips, SizedInternalFormat.Rgba8, width, height);
-        // LabelObject(ObjectLabelIdentifier.Texture, _fontTexture, "ImGui Text Atlas");
-
         GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, width, height, PixelFormat.Bgra, PixelType.UnsignedByte, pixels);
 
         GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
 
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
-
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, mips - 1);
-
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, mips - 1);
 
         // Restore state
         GL.BindTexture(TextureTarget.Texture2D, prevTexture2D);
         GL.ActiveTexture((TextureUnit)prevActiveTexture);
 
-        io.Fonts.SetTexID((IntPtr)_fontTexture);
-
+        io.Fonts.SetTexID(_fontTexture.Handle);
         io.Fonts.ClearTexData();
     }
 
@@ -345,16 +338,16 @@ void main()
 
     private ImGuiKey TranslateKey(Keys key)
     {
-        if (key >= Keys.D0 && key <= Keys.D9)
+        if (key is >= Keys.D0 and <= Keys.D9)
             return key - Keys.D0 + ImGuiKey._0;
 
-        if (key >= Keys.A && key <= Keys.Z)
+        if (key is >= Keys.A and <= Keys.Z)
             return key - Keys.A + ImGuiKey.A;
 
-        if (key >= Keys.KeyPad0 && key <= Keys.KeyPad9)
+        if (key is >= Keys.KeyPad0 and <= Keys.KeyPad9)
             return key - Keys.KeyPad0 + ImGuiKey.Keypad0;
 
-        if (key >= Keys.F1 && key <= Keys.F24)
+        if (key is >= Keys.F1 and <= Keys.F24)
             return key - Keys.F1 + ImGuiKey.F24;
 
         return key switch
