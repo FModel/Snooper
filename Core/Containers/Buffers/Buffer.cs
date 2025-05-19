@@ -3,10 +3,13 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Buffers;
 
-public abstract class Buffer<T>(int size, BufferTarget target, BufferUsageHint usageHint) : Object, IBind where T : unmanaged
+public abstract class Buffer<T>(int size, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind where T : unmanaged
 {
-    private int _size = size;
-    public readonly int Stride = Marshal.SizeOf<T>();
+    public int Size { get; private set; } = size;
+    public int Stride { get; } = Marshal.SizeOf<T>();
+
+    protected BufferTarget Target { get; } = target;
+    protected BufferUsageHint UsageHint { get; } = usageHint;
 
     public override void Generate()
     {
@@ -15,37 +18,36 @@ public abstract class Buffer<T>(int size, BufferTarget target, BufferUsageHint u
 
     public void Bind()
     {
-        GL.BindBuffer(target, Handle);
-    }
-
-    public void Unbind()
-    {
-        GL.BindBuffer(target, 0);
+        GL.BindBuffer(Target, Handle);
     }
 
     public void ResizeIfNeeded(int newSize, double factor = 1.5)
     {
-        if (newSize <= _size) return;
-        Resize((int) Math.Max(_size * factor, newSize));
+        if (newSize <= Size) return;
+        Resize((int) Math.Max(Size * factor, newSize));
     }
 
     public void Resize(int newSize)
     {
-        _size = newSize;
+        Size = newSize;
         SetData();
     }
 
     public void SetData() => SetData(IntPtr.Zero);
-    public void SetData(IntPtr data) => SetData(data, _size);
+    public void SetData(IntPtr data) => SetData(data, Size);
     public void SetData(IntPtr data, int count)
     {
-        if (!CanExecute()) throw new Exception("trying to set data on a buffer that is not yet bound");
         GL.BufferData(target, count * Stride, data, usageHint);
+    }
+
+    public void SetData(T[] data)
+    {
+        ResizeIfNeeded(data.Length);
+        GL.BufferData(target, Size * Stride, data, usageHint);
     }
 
     public void SetSubData(int count, nint data)
     {
-        if (!CanExecute()) throw new Exception("trying to set sub data on a buffer that is not yet bound");
         GL.BufferSubData(target, 0, count * Stride, data);
     }
 

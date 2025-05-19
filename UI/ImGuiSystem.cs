@@ -1,29 +1,28 @@
 ﻿using System.Numerics;
-using System.Runtime.InteropServices;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Core.Containers.Shaders;
-using Snooper.Core.Containers.Textures;
+using Snooper.Core.Containers.Programs;
+using Snooper.UI.Containers.Textures;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
 namespace Snooper.UI;
 
-public class ImGuiController : IController
+public class ImGuiSystem
 {
     private bool _frameBegun;
     private Vector2 _size;
 
-    private readonly Texture2D _fontTexture;
+    private readonly ImGuiFontTexture _fontTexture;
     private readonly VertexArray _vertexArray;
     private readonly ArrayBuffer<ImDrawVert> _vertexBuffer;
     private readonly ElementArrayBuffer<ushort> _indexBuffer;
     private readonly ShaderProgram _shader;
 
-    public ImGuiController()
+    public ImGuiSystem()
     {
         ImGui.SetCurrentContext(ImGui.CreateContext());
 
@@ -39,7 +38,7 @@ public class ImGuiController : IController
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.BackendRendererUserData = 0;
 
-        _fontTexture = new Texture2D();
+        _fontTexture = new ImGuiFontTexture();
         _vertexArray = new VertexArray();
         _vertexBuffer = new ArrayBuffer<ImDrawVert>(500);
         _indexBuffer = new ElementArrayBuffer<ushort>(1000);
@@ -76,7 +75,7 @@ void main()
 }");
     }
 
-    public void Load()
+    public void Generate()
     {
         int prevVao = GL.GetInteger(GetPName.VertexArrayBinding);
         int prevArrayBuffer = GL.GetInteger(GetPName.ArrayBufferBinding);
@@ -92,7 +91,7 @@ void main()
         _indexBuffer.Bind();
         _indexBuffer.SetData();
 
-        RecreateFontDeviceTexture();
+        _fontTexture.Generate();
 
         _shader.Generate();
         _shader.Link();
@@ -291,39 +290,6 @@ void main()
         if (prevDepthTestEnabled) GL.Enable(EnableCap.DepthTest); else GL.Disable(EnableCap.DepthTest);
         if (prevCullFaceEnabled) GL.Enable(EnableCap.CullFace); else GL.Disable(EnableCap.CullFace);
         if (prevScissorTestEnabled) GL.Enable(EnableCap.ScissorTest); else GL.Disable(EnableCap.ScissorTest);
-    }
-
-    private void RecreateFontDeviceTexture()
-    {
-        var io = ImGui.GetIO();
-        io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out _);
-
-        var mips = (int) Math.Floor(Math.Log(Math.Max(width, height), 2));
-
-        var prevActiveTexture = GL.GetInteger(GetPName.ActiveTexture);
-        var prevTexture2D = GL.GetInteger(GetPName.TextureBinding2D);
-
-        GL.ActiveTexture(TextureUnit.Texture0);
-        _fontTexture.Generate();
-        _fontTexture.Bind();
-
-        GL.TexStorage2D(TextureTarget2d.Texture2D, mips, SizedInternalFormat.Rgba8, width, height);
-        GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, 0, width, height, PixelFormat.Bgra, PixelType.UnsignedByte, pixels);
-
-        GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
-
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, mips - 1);
-
-        // Restore state
-        GL.BindTexture(TextureTarget.Texture2D, prevTexture2D);
-        GL.ActiveTexture((TextureUnit)prevActiveTexture);
-
-        io.Fonts.SetTexID(_fontTexture.Handle);
-        io.Fonts.ClearTexData();
     }
 
     private void CheckForErrors(string title)

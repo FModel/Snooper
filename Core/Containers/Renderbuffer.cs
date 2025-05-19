@@ -2,20 +2,20 @@
 
 namespace Snooper.Core.Containers;
 
-public sealed class VertexArray : HandledObject, IBind
+public class Renderbuffer : HandledObject, IBind
 {
     public override void Generate()
     {
-        Handle = GL.GenVertexArray();
+        Handle = GL.GenRenderbuffer();
     }
 
     public void Bind()
     {
-        GL.BindVertexArray(Handle);
+        GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, Handle);
     }
 
     public override void Dispose()
     {
-        GL.DeleteVertexArray(Handle);
+        GL.DeleteRenderbuffer(Handle);
     }
 }

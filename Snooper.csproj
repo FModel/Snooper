@@ -14,8 +14,4 @@
       <PackageReference Include="OpenTK" Version="4.9.4" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Core\Services\" />
-    </ItemGroup>
-
 </Project>

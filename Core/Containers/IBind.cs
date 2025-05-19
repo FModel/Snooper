@@ -3,5 +3,4 @@
 public interface IBind
 {
     public void Bind();
-    public void Unbind();
 }

@@ -2,22 +2,35 @@
 
 namespace Snooper.Core.Containers.Textures;
 
-public abstract class Texture(TextureTarget target) : Object, IBind
+public abstract class Texture(TextureTarget target) : HandledObject, IBind
 {
+    protected int Width { get; }
+    protected int Height { get; }
+    protected TextureTarget Target { get; } = target;
+
+    protected Texture(int width, int height, TextureTarget target) : this(target)
+    {
+        Width = width;
+        Height = height;
+    }
+
     public override void Generate()
     {
         Handle = GL.GenTexture();
     }
 
-    public void Bind()
+    public void Bind(TextureUnit unit)
     {
-        GL.BindTexture(target, Handle);
+        GL.ActiveTexture(unit);
+        Bind();
     }
 
-    public void Unbind()
+    public void Bind()
     {
-        GL.BindTexture(target, 0);
+        GL.BindTexture(Target, Handle);
     }
+
+    public IntPtr GetPointer() => Handle;
 
     public override void Dispose()
     {

@@ -1,33 +1,30 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 
-namespace Snooper.Core.Containers.Shaders;
+namespace Snooper.Core.Containers.Programs;
 
-public class ShaderProgram(string vertex, string fragment, string? geometry = null) : Object
+public sealed class ShaderProgram(string vertex, string fragment, string? geometry = null) : Program
 {
-    public override GetPName PName { get => GetPName.CurrentProgram; }
-
     private readonly List<int> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
 
     public override void Generate()
     {
-        Handle = GL.CreateProgram();
+        base.Generate();
+
         _shaderHandles.Add(CompileShader(ShaderType.VertexShader, vertex));
         _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, fragment));
         if (!string.IsNullOrEmpty(geometry)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, geometry));
     }
 
-    public void Link()
+    public override void Link()
     {
-        foreach (var shaderHandle in _shaderHandles) GL.AttachShader(Handle, shaderHandle);
-
-        GL.LinkProgram(Handle);
-        GL.GetProgram(Handle, GetProgramParameterName.LinkStatus, out var status);
-        if (status == 0)
+        foreach (var shaderHandle in _shaderHandles)
         {
-            throw new Exception($"ShaderProgram failed to link with error: {GL.GetProgramInfoLog(Handle)}");
+            GL.AttachShader(Handle, shaderHandle);
         }
+
+        base.Link();
 
         // program is self-contained
         foreach (var shaderHandle in _shaderHandles)
@@ -35,11 +32,6 @@ public class ShaderProgram(string vertex, string fragment, string? geometry = nu
             GL.DetachShader(Handle, shaderHandle);
             GL.DeleteShader(shaderHandle);
         }
-    }
-
-    public void Use()
-    {
-        GL.UseProgram(Handle);
     }
 
     public void SetUniform(string name, int value)
@@ -111,10 +103,5 @@ public class ShaderProgram(string vertex, string fragment, string? geometry = nu
         }
 
         return handle;
-    }
-
-    public override void Dispose()
-    {
-        GL.DeleteProgram(Handle);
     }
 }
