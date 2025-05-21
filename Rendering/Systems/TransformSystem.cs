@@ -1,5 +1,6 @@
 ﻿using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
@@ -18,7 +19,7 @@ public sealed class TransformSystem : ActorSystem<TransformComponent>
         }
     }
 
-    public override void Render()
+    public override void Render(CameraComponent camera)
     {
 
     }

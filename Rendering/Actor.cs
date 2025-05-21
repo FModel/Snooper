@@ -7,8 +7,12 @@ namespace Snooper.Rendering;
 
 public class Actor
 {
-    public Actor()
+    public string Name { get; }
+
+    public Actor(string name)
     {
+        Name = name;
+
         Components = new ActorComponentCollection(this);
         Children = [];
 

@@ -1,4 +1,5 @@
 ﻿using Snooper.Rendering;
+using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
 
@@ -9,7 +10,7 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 
     public abstract void Load();
     public abstract void Update(float delta);
-    public abstract void Render();
+    public abstract void Render(CameraComponent camera);
 
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
     public bool Accepts(Type type) => ComponentType?.IsAssignableFrom(type) ?? false;

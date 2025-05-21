@@ -2,6 +2,7 @@
 using System.Collections.Specialized;
 using System.Reflection;
 using Snooper.Rendering;
+using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
 
@@ -21,9 +22,9 @@ public abstract class ActorManager : IGameSystem
         _registeredFactories.Add(typeof(T), factory);
     }
 
-    public Collection<ActorSystem> Systems { get; } = [];
+    protected Collection<ActorSystem> Systems { get; } = [];
 
-    public void Load()
+    public virtual void Load()
     {
         foreach (var system in Systems)
         {
@@ -31,7 +32,7 @@ public abstract class ActorManager : IGameSystem
         }
     }
 
-    public void Update(float delta)
+    public virtual void Update(float delta)
     {
         foreach (var system in Systems)
         {
@@ -39,15 +40,15 @@ public abstract class ActorManager : IGameSystem
         }
     }
 
-    public void Render()
+    public virtual void Render(CameraComponent camera)
     {
         foreach (var system in Systems)
         {
-            system.Render();
+            system.Render(camera);
         }
     }
 
-    internal void AddRoot(Actor actor)
+    protected void AddRoot(Actor actor)
     {
         if (actor.Parent != null)
         {
@@ -57,7 +58,7 @@ public abstract class ActorManager : IGameSystem
         AddInternal(actor);
     }
 
-    internal void AddInternal(Actor actor)
+    private void AddInternal(Actor actor)
     {
         if (_actors.Contains(actor)) return;
         if (actor.ActorManager != null)
@@ -82,12 +83,12 @@ public abstract class ActorManager : IGameSystem
         actor.Components.CollectionChanged += OnComponentsCollectionChanged;
     }
 
-    internal void RemoveRoot(Actor actor)
+    protected void RemoveRoot(Actor actor)
     {
         RemoveInternal(actor);
     }
 
-    internal void RemoveInternal(Actor actor)
+    private void RemoveInternal(Actor actor)
     {
         if (!_actors.Remove(actor)) return;
 

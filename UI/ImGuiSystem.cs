@@ -75,7 +75,7 @@ void main()
 }");
     }
 
-    public void Generate()
+    public void Load()
     {
         int prevVao = GL.GetInteger(GetPName.VertexArrayBinding);
         int prevArrayBuffer = GL.GetInteger(GetPName.ArrayBufferBinding);

@@ -18,7 +18,7 @@ public sealed class CameraSystem : ActorSystem<CameraComponent>
         }
     }
 
-    public override void Render()
+    public override void Render(CameraComponent camera)
     {
 
     }

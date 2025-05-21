@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Numerics;
+﻿using System.Numerics;
 using Snooper.Core;
 using Snooper.Rendering.Systems;
 

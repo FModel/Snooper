@@ -37,12 +37,12 @@ public sealed class CameraComponent : ActorComponent
         ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
     }
 
-    public void Modify(KeyboardState keyboard, float time)
+    public void Update(KeyboardState keyboard, float time)
     {
         if (!keyboard.IsAnyKeyDown || Actor is null) return;
 
         var multiplier = keyboard.IsKeyDown(Keys.LeftShift) ? 2f : 1f;
-        var moveSpeed = multiplier * time;
+        var moveSpeed = MovementSpeed * multiplier * time;
         var forward = Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, Actor.Transform.Rotation));
         var right = Vector3.Normalize(Vector3.Transform(Vector3.UnitX, Actor.Transform.Rotation));
 

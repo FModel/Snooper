@@ -2,8 +2,6 @@
 using System.Windows;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using Snooper.Core.Systems;
-using Snooper.Rendering.Systems;
 
 namespace Snooper;
 
@@ -36,11 +34,6 @@ public partial class App : Application
             StartFocused = false,
             Title = "Snooper"
         };
-
-        ActorManager.RegisterSystemFactory<TransformSystem>();
-        ActorManager.RegisterSystemFactory<CameraSystem>();
-        ActorManager.RegisterSystemFactory<PrimitiveSystem>();
-        // ActorManager.RegisterSystemFactory((services) => new RenderSystem(services));
 
         var window = new MainWindow(gwSettings, nwSettings);
         window.Run();

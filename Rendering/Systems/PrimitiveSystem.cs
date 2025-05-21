@@ -1,9 +1,7 @@
-﻿using OpenTK.Graphics.OpenGL4;
-using Snooper.Core.Containers;
-using Snooper.Core.Containers.Buffers;
-using Snooper.Core.Containers.Programs;
+﻿using Snooper.Core.Containers.Programs;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
@@ -47,14 +45,11 @@ void main()
 
     }
 
-    public override void Render()
+    public override void Render(CameraComponent camera)
     {
-        if (ActorManager is SceneSystem { CurrentCamera: { } camera })
-        {
-            _shader.Use();
-            _shader.SetUniform("view", camera.ViewMatrix);
-            _shader.SetUniform("projection", camera.ProjectionMatrix);
-        }
+        _shader.Use();
+        _shader.SetUniform("view", camera.ViewMatrix);
+        _shader.SetUniform("projection", camera.ProjectionMatrix);
 
         foreach (var component in Components)
         {
