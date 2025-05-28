@@ -2,7 +2,7 @@
 
 namespace Snooper.Core.Containers.Textures;
 
-public abstract class Texture(TextureTarget target) : HandledObject, IBind
+public abstract class Texture(TextureTarget target) : HandledObject, IBind, IResizable
 {
     protected int Width { get; private set; }
     protected int Height { get; private set; }

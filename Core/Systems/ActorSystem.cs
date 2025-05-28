@@ -13,7 +13,7 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
     public abstract void Render(CameraComponent camera);
 
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
-    public bool Accepts(Type type) => ComponentType?.IsAssignableFrom(type) ?? false;
+    public virtual bool Accepts(Type type) => ComponentType?.IsAssignableFrom(type) ?? false;
 
     public void Dispose()
     {

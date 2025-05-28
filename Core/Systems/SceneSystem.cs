@@ -54,7 +54,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
         foreach (var pair in Pairs)
         {
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, pair.Framebuffer);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
             Render(pair.Camera);
         }

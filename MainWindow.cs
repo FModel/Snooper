@@ -10,7 +10,6 @@ using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
-using Plane = Snooper.Rendering.Primitives.Plane;
 
 namespace Snooper;
 
@@ -24,6 +23,7 @@ public partial class MainWindow : GameWindow
         ActorManager.RegisterSystemFactory<TransformSystem>();
         ActorManager.RegisterSystemFactory<CameraSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
+        ActorManager.RegisterSystemFactory<RenderSystem>();
 
         _sceneSystem = new SceneSystem(this);
 
@@ -33,24 +33,24 @@ public partial class MainWindow : GameWindow
         var root = new Actor("Root");
 
         var camera1 = new Actor("Camera 1");
-        camera1.Transform.Position += Vector3.UnitZ * 2;
+        camera1.Transform.Position -= Vector3.UnitZ * 2;
         camera1.Components.Add(new CameraComponent());
         root.Children.Add(camera1);
 
         var camera2 = new Actor("Camera 2");
-        camera2.Transform.Position += Vector3.UnitZ * 2;
+        camera2.Transform.Position -= Vector3.UnitZ * 2;
         camera2.Transform.Position += Vector3.UnitY * .5f;
         camera2.Components.Add(new CameraComponent());
+        camera2.Components.Add(new PrimitiveComponent(new Triangle()));
         root.Children.Add(camera2);
 
-        var triangle = new Actor("Triangle");
-        triangle.Transform.Position += Vector3.UnitX;
-        triangle.Components.Add(new PrimitiveComponent(new Triangle()));
-        root.Children.Add(triangle);
-
-        var plane = new Actor("Plane");
-        plane.Transform.Position -= Vector3.UnitX;
-        plane.Components.Add(new PrimitiveComponent(new Plane()));
+        // var triangle = new Actor("Triangle");
+        // triangle.Transform.Position += Vector3.UnitX;
+        // triangle.Components.Add(new PrimitiveComponent(new Triangle()));
+        // root.Children.Add(triangle);
+        
+        var plane = new Actor("SM 1");
+        plane.Components.Add(new StaticMeshComponent());
         root.Children.Add(plane);
 
         _sceneSystem.RootActor = root;
@@ -62,7 +62,8 @@ public partial class MainWindow : GameWindow
 
         // GL.Enable(EnableCap.Blend);
         // GL.Enable(EnableCap.CullFace);
-        // GL.Enable(EnableCap.DepthTest);
+        GL.Enable(EnableCap.DepthTest);
+        GL.DepthFunc(DepthFunction.Less);
         // GL.Enable(EnableCap.Multisample);
         // GL.Enable(EnableCap.VertexProgramPointSize);
         // GL.StencilOp(StencilOp.Keep, StencilOp.Replace, StencilOp.Replace);
@@ -96,7 +97,7 @@ public partial class MainWindow : GameWindow
 
         GL.ClearColor(OpenTK.Mathematics.Color4.Black);
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-        GL.Clear(ClearBufferMask.ColorBufferBit);
+        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         foreach (var pair in _sceneSystem.Pairs)

@@ -21,12 +21,11 @@ public sealed class CameraComponent : ActorComponent
     public void Update()
     {
         if (Actor is null) return;
-
         Matrix4x4.Decompose(Actor.Transform.WorldMatrix, out _, out Quaternion rotation, out Vector3 translation);
 
         var forwardVector = Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation));
         var upVector = Vector3.Normalize(Vector3.Transform(Vector3.UnitY, rotation));
-        ViewMatrix = Matrix4x4.CreateLookAt(translation, translation + forwardVector, upVector);
+        ViewMatrix = Matrix4x4.CreateLookAtLeftHanded(translation, translation + forwardVector, upVector);
 
         ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(
             FieldOfView * (float)(Math.PI / 180.0f),
@@ -40,11 +39,12 @@ public sealed class CameraComponent : ActorComponent
     public void Update(KeyboardState keyboard, float time)
     {
         if (!keyboard.IsAnyKeyDown || Actor is null) return;
+        Matrix4x4.Decompose(ViewMatrix, out _, out Quaternion rotation, out _);
 
         var multiplier = keyboard.IsKeyDown(Keys.LeftShift) ? 2f : 1f;
         var moveSpeed = MovementSpeed * multiplier * time;
-        var forward = Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, Actor.Transform.Rotation));
-        var right = Vector3.Normalize(Vector3.Transform(Vector3.UnitX, Actor.Transform.Rotation));
+        var forward = Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation));
+        var right = Vector3.Normalize(Vector3.Transform(Vector3.UnitX, rotation));
 
         if (keyboard.IsKeyDown(Keys.W))
         {

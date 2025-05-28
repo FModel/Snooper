@@ -11,7 +11,7 @@ using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
 namespace Snooper.UI;
 
-public class ImGuiSystem
+public class ImGuiSystem : IResizable
 {
     private bool _frameBegun;
     private Vector2 _size;
@@ -130,9 +130,9 @@ void main()
         _pressedChars.Enqueue(c);
     }
 
-    public void Resize(int width, int height)
+    public void Resize(int newWidth, int newHeight)
     {
-        _size = new Vector2(width, height);
+        _size = new Vector2(newWidth, newHeight);
     }
 
     private void UpdateIo(GameWindow wnd, float delta)
