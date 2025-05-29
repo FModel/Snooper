@@ -22,11 +22,11 @@ public abstract class ActorManager : IGameSystem
         _registeredFactories.Add(typeof(T), factory);
     }
 
-    protected Collection<ActorSystem> Systems { get; } = [];
+    public SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
-        foreach (var system in Systems)
+        foreach (var system in Systems.Values)
         {
             system.Load();
         }
@@ -34,7 +34,7 @@ public abstract class ActorManager : IGameSystem
 
     public virtual void Update(float delta)
     {
-        foreach (var system in Systems)
+        foreach (var system in Systems.Values)
         {
             system.Update(delta);
         }
@@ -42,7 +42,7 @@ public abstract class ActorManager : IGameSystem
 
     public virtual void Render(CameraComponent camera)
     {
-        foreach (var system in Systems)
+        foreach (var system in Systems.Values)
         {
             system.Render(camera);
         }
@@ -129,7 +129,7 @@ public abstract class ActorManager : IGameSystem
             }
 
             systemsForComponent = [];
-            foreach (var system in Systems)
+            foreach (var system in Systems.Values)
             {
                 if (system.Accepts(componentType))
                 {
@@ -158,7 +158,7 @@ public abstract class ActorManager : IGameSystem
                     var system = factory();
                     system.ActorManager = this;
 
-                    Systems.Add(system);
+                    Systems.Add(system.Order, system);
                     return;
                 }
 
@@ -210,9 +210,10 @@ public abstract class ActorManager : IGameSystem
 
     public void Dispose()
     {
-        foreach (var system in Systems)
+        foreach (var system in Systems.Values)
         {
             system.Dispose();
         }
+        Systems.Clear();
     }
 }

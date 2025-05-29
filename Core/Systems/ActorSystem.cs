@@ -7,6 +7,7 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 {
     public Type? ComponentType { get; } = componentType;
     public ActorManager? ActorManager { get; internal set; }
+    public abstract uint Order { get; protected set; }
 
     public abstract void Load();
     public abstract void Update(float delta);

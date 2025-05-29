@@ -1,13 +1,15 @@
-﻿namespace Snooper.Rendering.Primitives;
+﻿using System.Numerics;
+
+namespace Snooper.Rendering.Primitives;
 
 public struct Sphere : IPrimitiveData
 {
-    public float[] Vertices { get; }
+    public Vector3[] Vertices { get; }
     public uint[] Indices { get; }
 
     public Sphere(int sectors = 36, int stacks = 18, float radius = 1.0f)
     {
-        List<float> vertices = [];
+        List<Vector3> vertices = [];
         List<uint> indices = [];
 
         float sectorStep = 2 * (float)Math.PI / sectors;
@@ -26,9 +28,7 @@ public struct Sphere : IPrimitiveData
 
                 x = xy * (float)Math.Cos(sectorAngle);
                 y = xy * (float)Math.Sin(sectorAngle);
-                vertices.Add(x);
-                vertices.Add(y);
-                vertices.Add(z);
+                vertices.Add(new Vector3(x, y, z));
             }
         }
 

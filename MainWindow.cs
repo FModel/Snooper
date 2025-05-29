@@ -68,7 +68,6 @@ public partial class MainWindow : GameWindow
     {
         base.OnLoad();
 
-        // GL.Enable(EnableCap.CullFace);
         GL.Enable(EnableCap.DepthTest);
         GL.DepthFunc(DepthFunction.Less);
         // GL.Enable(EnableCap.Multisample);
@@ -151,14 +150,21 @@ public partial class MainWindow : GameWindow
             ImGui.Text($"Current camera: {camera.Actor?.Name}");
             ImGui.Separator();
 
-            ImGui.Separator();
-
             ImGui.Text($"Position: {camera.Actor.Transform.Position}");
             ImGui.Text($"Rotation: {camera.Actor.Transform.Rotation}");
             ImGui.Text($"Scale: {camera.Actor.Transform.Scale}");
             ImGui.Text($"Aspect Ratio: {camera.AspectRatio}");
-            ImGui.SliderFloat("Near Plane Distance", ref camera.NearPlaneDistance, 0.01f, 100.0f);
-            ImGui.SliderFloat("Far Plane Distance", ref camera.FarPlaneDistance, 0.01f, 1000.0f);
+            ImGui.DragFloat("Near Plane Distance", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
+            ImGui.DragFloat("Far Plane Distance", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
+        }
+        ImGui.End();
+
+        if (ImGui.Begin("Systems Order"))
+        {
+            foreach (var system in _sceneSystem.Systems)
+            {
+                ImGui.Text($"- {system.Value.GetType().Name} (Priority: {system.Key})");
+            }
         }
         ImGui.End();
 

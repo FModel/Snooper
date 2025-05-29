@@ -15,8 +15,8 @@ public sealed class CameraComponent : ActorComponent
     public CameraType Mode = CameraType.FlyCamera;
     public float MovementSpeed = 1f;
     public float FieldOfView = 60.0f;
-    public float FarPlaneDistance = 50.0f;
-    public float NearPlaneDistance = 0.1f;
+    public float FarPlaneDistance = 25.0f;
+    public float NearPlaneDistance = 0.05f;
     public float AspectRatio = 16.0f / 9.0f;
 
     public void Update()
@@ -30,7 +30,7 @@ public sealed class CameraComponent : ActorComponent
             Vector3.Transform(Vector3.UnitY, rotation));
 
         ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(
-            FieldOfView * (float)(Math.PI / 180.0f),
+            MathF.PI / 180.0f * FieldOfView,
             AspectRatio,
             NearPlaneDistance,
             FarPlaneDistance);

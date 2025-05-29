@@ -6,9 +6,7 @@ public class CameraActor : Actor
 {
     public CameraActor(string name) : base(name)
     {
-        Transform.Scale *= 0.25f;
-
-        var cameraComponent = new CameraComponent();
+        var cameraComponent = new CameraComponent { FarPlaneDistance = 3.0f };
         Components.Add(cameraComponent);
         Components.Add(new CameraFrustumComponent(cameraComponent));
     }

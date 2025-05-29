@@ -1,26 +1,30 @@
-﻿using Snooper.Core;
+﻿using System.Numerics;
+using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Camera;
 
 [DefaultActorSystem(typeof(CameraFrustumSystem))]
-public class CameraFrustumComponent(CameraComponent camera) : PrimitiveComponent(new Geometry(camera))
+public class CameraFrustumComponent(CameraComponent cameraComponent) : PrimitiveComponent(new Geometry(cameraComponent))
 {
+    // protected override PolygonMode PolygonMode { get => PolygonMode.Line; }
+
     private struct Geometry : IPrimitiveData
     {
-        public float[] Vertices { get; }
+        public Vector3[] Vertices { get; }
         public uint[] Indices { get; }
 
-        public Geometry(CameraComponent camera)
+        public Geometry(CameraComponent cameraComponent)
         {
-            var frustumLength = camera.FarPlaneDistance;
+            var frustumLength = cameraComponent.FarPlaneDistance - cameraComponent.NearPlaneDistance;
 
-            var aspect = camera.AspectRatio;
-            var nearPlaneWidth = camera.NearPlaneDistance * aspect;
-            var nearPlaneHeight = camera.NearPlaneDistance;
-            var farPlaneWidth = camera.FarPlaneDistance * aspect;
-            var farPlaneHeight = camera.FarPlaneDistance;
+            var aspect = cameraComponent.AspectRatio;
+            var nearPlaneWidth = cameraComponent.NearPlaneDistance * aspect;
+            var nearPlaneHeight = cameraComponent.NearPlaneDistance;
+            var farPlaneWidth = cameraComponent.FarPlaneDistance * aspect;
+            var farPlaneHeight = cameraComponent.FarPlaneDistance;
 
             // Calculate half dimensions for near and far planes
             float nearHalfWidth = nearPlaneWidth / 2.0f;
@@ -30,17 +34,15 @@ public class CameraFrustumComponent(CameraComponent camera) : PrimitiveComponent
 
             Vertices =
             [
-                // Near plane vertices
-                -nearHalfWidth, nearHalfHeight, 0.0f, // Top-left
-                nearHalfWidth, nearHalfHeight, 0.0f, // Top-right
-                nearHalfWidth, -nearHalfHeight, 0.0f, // Bottom-right
-                -nearHalfWidth, -nearHalfHeight, 0.0f, // Bottom-left
+                new Vector3(-nearHalfWidth, nearHalfHeight, 0.0f), // Top-left near
+                new Vector3(nearHalfWidth, nearHalfHeight, 0.0f), // Top-right near
+                new Vector3(nearHalfWidth, -nearHalfHeight, 0.0f), // Bottom-right near
+                new Vector3(-nearHalfWidth, -nearHalfHeight, 0.0f), // Bottom-left near
 
-                // Far plane vertices
-                -farHalfWidth, farHalfHeight, frustumLength, // Top-left
-                farHalfWidth, farHalfHeight, frustumLength, // Top-right
-                farHalfWidth, -farHalfHeight, frustumLength, // Bottom-right
-                -farHalfWidth, -farHalfHeight, frustumLength // Bottom-left
+                new Vector3(-farHalfWidth, farHalfHeight, frustumLength), // Top-left far
+                new Vector3(farHalfWidth, farHalfHeight, frustumLength), // Top-right far
+                new Vector3(farHalfWidth, -farHalfHeight, frustumLength), // Bottom-right far
+                new Vector3(-farHalfWidth, -farHalfHeight, frustumLength) // Bottom-left far
             ];
 
             Indices =
@@ -73,34 +75,33 @@ public class CameraFrustumComponent(CameraComponent camera) : PrimitiveComponent
         }
     }
 
-    public void Update()
+    public override void Update()
     {
-        var frustumLength = camera.FarPlaneDistance;
+        var frustumLength = cameraComponent.FarPlaneDistance - cameraComponent.NearPlaneDistance;
 
-        var aspect = camera.AspectRatio;
-        var nearPlaneWidth = camera.NearPlaneDistance * aspect;
-        var nearPlaneHeight = camera.NearPlaneDistance;
-        var farPlaneWidth = camera.FarPlaneDistance * aspect;
-        var farPlaneHeight = camera.FarPlaneDistance;
+        var aspect = cameraComponent.AspectRatio;
+        var nearPlaneWidth = cameraComponent.NearPlaneDistance * aspect;
+        var nearPlaneHeight = cameraComponent.NearPlaneDistance;
+        var farPlaneWidth = cameraComponent.FarPlaneDistance * aspect;
+        var farPlaneHeight = cameraComponent.FarPlaneDistance;
 
+        // Calculate half dimensions for near and far planes
         float nearHalfWidth = nearPlaneWidth / 2.0f;
         float nearHalfHeight = nearPlaneHeight / 2.0f;
         float farHalfWidth = farPlaneWidth / 2.0f;
         float farHalfHeight = farPlaneHeight / 2.0f;
 
-        float[] vertices =
+        Vector3[] vertices =
         [
-            // Near plane vertices
-            -nearHalfWidth, nearHalfHeight, 0.0f, // Top-left
-            nearHalfWidth, nearHalfHeight, 0.0f, // Top-right
-            nearHalfWidth, -nearHalfHeight, 0.0f, // Bottom-right
-            -nearHalfWidth, -nearHalfHeight, 0.0f, // Bottom-left
+            new Vector3(-nearHalfWidth, nearHalfHeight, 0.0f), // Top-left near
+            new Vector3(nearHalfWidth, nearHalfHeight, 0.0f), // Top-right near
+            new Vector3(nearHalfWidth, -nearHalfHeight, 0.0f), // Bottom-right near
+            new Vector3(-nearHalfWidth, -nearHalfHeight, 0.0f), // Bottom-left near
 
-            // Far plane vertices
-            -farHalfWidth, farHalfHeight, frustumLength, // Top-left
-            farHalfWidth, farHalfHeight, frustumLength, // Top-right
-            farHalfWidth, -farHalfHeight, frustumLength, // Bottom-right
-            -farHalfWidth, -farHalfHeight, frustumLength // Bottom-left
+            new Vector3(-farHalfWidth, farHalfHeight, frustumLength), // Top-left far
+            new Vector3(farHalfWidth, farHalfHeight, frustumLength), // Top-right far
+            new Vector3(farHalfWidth, -farHalfHeight, frustumLength), // Bottom-right far
+            new Vector3(-farHalfWidth, -farHalfHeight, frustumLength) // Bottom-left far
         ];
 
         VBO.Bind();

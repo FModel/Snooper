@@ -5,6 +5,8 @@ namespace Snooper.Rendering.Systems;
 
 public sealed class CameraSystem : ActorSystem<CameraComponent>
 {
+    public override uint Order { get; protected set; } = 10;
+
     public override void Load()
     {
 

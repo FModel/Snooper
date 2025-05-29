@@ -1,4 +1,5 @@
-﻿using Snooper.Core;
+﻿using System.Numerics;
+using Snooper.Core;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -9,12 +10,12 @@ public class GridComponent() : PrimitiveComponent(new Geometry())
 {
     private readonly struct Geometry() : IPrimitiveData
     {
-        public float[] Vertices { get; } =
+        public Vector3[] Vertices { get; } =
         [
-            1.0f,  1.0f, 0.0f,
-            1.0f, -1.0f, 0.0f,
-            -1.0f, -1.0f, 0.0f,
-            -1.0f,  1.0f, 0.0f
+            new(1.0f, 1.0f, 0.0f),
+            new(1.0f, -1.0f, 0.0f),
+            new(-1.0f, -1.0f, 0.0f),
+            new(-1.0f, 1.0f, 0.0f)
         ];
 
         public uint[] Indices { get; } =

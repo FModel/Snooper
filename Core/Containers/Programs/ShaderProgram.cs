@@ -5,6 +5,10 @@ namespace Snooper.Core.Containers.Programs;
 
 public sealed class ShaderProgram(string vertex, string fragment, string? geometry = null) : Program
 {
+    public string VertexShaderCode { get; set; } = vertex;
+    public string FragmentShaderCode { get; set; } = fragment;
+    public string? GeometryShaderCode { get; set; } = geometry;
+
     private readonly List<int> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
 
@@ -12,9 +16,9 @@ public sealed class ShaderProgram(string vertex, string fragment, string? geomet
     {
         base.Generate();
 
-        _shaderHandles.Add(CompileShader(ShaderType.VertexShader, vertex));
-        _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, fragment));
-        if (!string.IsNullOrEmpty(geometry)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, geometry));
+        _shaderHandles.Add(CompileShader(ShaderType.VertexShader, VertexShaderCode));
+        _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, FragmentShaderCode));
+        if (!string.IsNullOrEmpty(GeometryShaderCode)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, GeometryShaderCode));
     }
 
     public override void Link()
