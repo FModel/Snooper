@@ -7,8 +7,28 @@ namespace Snooper.Rendering.Systems;
 
 public abstract class PrimitiveSystem<TComponent> : ActorSystem<TComponent> where TComponent : PrimitiveComponent
 {
-    protected abstract ShaderProgram Shader { get; }
-    
+    protected virtual ShaderProgram Shader { get; } = new(@"
+#version 330 core
+layout (location = 0) in vec3 aPos;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+void main()
+{
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+}
+", @"
+#version 330 core
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+}
+");
+
     public override void Load()
     {
         Shader.Generate();
@@ -41,27 +61,4 @@ public abstract class PrimitiveSystem<TComponent> : ActorSystem<TComponent> wher
     public override bool Accepts(Type type) => type == ComponentType;
 }
 
-public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>
-{
-    protected override ShaderProgram Shader { get; } = new(@"
-#version 330 core
-layout (location = 0) in vec3 aPos;
-
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-
-void main()
-{
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
-}
-", @"
-#version 330 core
-out vec4 FragColor;
-
-void main()
-{
-    FragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-}
-");
-}
+public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>;

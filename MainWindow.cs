@@ -5,6 +5,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Snooper.Core.Systems;
 using Snooper.Rendering;
+using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Primitives;
@@ -22,36 +23,43 @@ public partial class MainWindow : GameWindow
     {
         ActorManager.RegisterSystemFactory<TransformSystem>();
         ActorManager.RegisterSystemFactory<CameraSystem>();
+        ActorManager.RegisterSystemFactory<CameraFrustumSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
         ActorManager.RegisterSystemFactory<RenderSystem>();
+        ActorManager.RegisterSystemFactory<GridSystem>();
 
         _sceneSystem = new SceneSystem(this);
 
         _imguiSystem = new ImGuiSystem();
         _imguiSystem.Resize(ClientSize.X, ClientSize.Y);
 
-        var root = new Actor("Root");
+        var root = new Actor("Scene");
+
+        var grid = new Actor("Grid");
+        grid.Components.Add(new GridComponent());
+        root.Children.Add(grid);
 
         var camera1 = new Actor("Camera 1");
         camera1.Transform.Position -= Vector3.UnitZ * 2;
+        camera1.Transform.Position += Vector3.UnitY;
+        camera1.Transform.Position -= Vector3.UnitX;
         camera1.Components.Add(new CameraComponent());
         root.Children.Add(camera1);
 
-        var camera2 = new Actor("Camera 2");
+        var camera2 = new CameraActor("Camera 2");
         camera2.Transform.Position -= Vector3.UnitZ * 2;
-        camera2.Transform.Position += Vector3.UnitY * .5f;
-        camera2.Components.Add(new CameraComponent());
-        camera2.Components.Add(new PrimitiveComponent(new Triangle()));
+        camera2.Transform.Position += Vector3.UnitY;
+        camera2.Transform.Position += Vector3.UnitX;
         root.Children.Add(camera2);
 
-        // var triangle = new Actor("Triangle");
-        // triangle.Transform.Position += Vector3.UnitX;
-        // triangle.Components.Add(new PrimitiveComponent(new Triangle()));
-        // root.Children.Add(triangle);
-        
         var plane = new Actor("SM 1");
         plane.Components.Add(new StaticMeshComponent());
         root.Children.Add(plane);
+
+        var sphere = new Actor("Sphere");
+        sphere.Transform.Position -= Vector3.UnitX * 2;
+        sphere.Components.Add(new StaticMeshComponent(new Sphere(36)));
+        root.Children.Add(sphere);
 
         _sceneSystem.RootActor = root;
     }
@@ -60,14 +68,14 @@ public partial class MainWindow : GameWindow
     {
         base.OnLoad();
 
-        // GL.Enable(EnableCap.Blend);
         // GL.Enable(EnableCap.CullFace);
         GL.Enable(EnableCap.DepthTest);
         GL.DepthFunc(DepthFunction.Less);
         // GL.Enable(EnableCap.Multisample);
         // GL.Enable(EnableCap.VertexProgramPointSize);
         // GL.StencilOp(StencilOp.Keep, StencilOp.Replace, StencilOp.Replace);
-        // GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+        GL.Enable(EnableCap.Blend);
+        GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 #if DEBUG
         GL.DebugMessageCallback(_debugMessageDelegate, IntPtr.Zero);
         GL.Enable(EnableCap.DebugOutput);
@@ -114,7 +122,21 @@ public partial class MainWindow : GameWindow
                 pair.Camera.AspectRatio = size.X / size.Y;
                 ImGui.Image(pair.Framebuffer.GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
 
+                if (ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))
+                {
+                    CursorState = CursorState.Grabbed;
+                }
+                if (CursorState == CursorState.Grabbed)
+                {
+                    if (ImGui.IsMouseDragging(ImGuiMouseButton.Left)) _sceneSystem.CurrentCamera?.Update(ImGui.GetIO().MouseDelta);
+                    if (ImGui.IsMouseReleased(ImGuiMouseButton.Left)) CursorState = CursorState.Normal;
+                }
+
                 const float margin = 7.5f;
+                var framerate = ImGui.GetIO().Framerate;
+                ImGui.SetCursorPos(size with { X = margin });
+                ImGui.Text($"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms)");
+
                 const string label = "Previewed content may differ from final version saved or used in-game.";
                 ImGui.SetCursorPos(size with { X = size.X - ImGui.CalcTextSize(label).X - margin });
                 ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 0.50f), label);
@@ -122,6 +144,23 @@ public partial class MainWindow : GameWindow
             ImGui.End();
         }
         ImGui.PopStyleVar();
+
+        var camera = _sceneSystem.CurrentCamera;
+        if (camera != null && ImGui.Begin("Controls"))
+        {
+            ImGui.Text($"Current camera: {camera.Actor?.Name}");
+            ImGui.Separator();
+
+            ImGui.Separator();
+
+            ImGui.Text($"Position: {camera.Actor.Transform.Position}");
+            ImGui.Text($"Rotation: {camera.Actor.Transform.Rotation}");
+            ImGui.Text($"Scale: {camera.Actor.Transform.Scale}");
+            ImGui.Text($"Aspect Ratio: {camera.AspectRatio}");
+            ImGui.SliderFloat("Near Plane Distance", ref camera.NearPlaneDistance, 0.01f, 100.0f);
+            ImGui.SliderFloat("Far Plane Distance", ref camera.FarPlaneDistance, 0.01f, 1000.0f);
+        }
+        ImGui.End();
 
         _imguiSystem.Render();
 

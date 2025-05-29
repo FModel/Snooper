@@ -10,7 +10,7 @@ public struct Plane() : IPrimitiveData
         -0.5f,  0.5f, 0.0f
     ];
 
-    public ushort[] Indices { get; } =
+    public uint[] Indices { get; } =
     [
         0, 1, 3,
         1, 2, 3

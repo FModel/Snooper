@@ -10,30 +10,33 @@ namespace Snooper.Rendering.Components;
 [DefaultActorSystem(typeof(PrimitiveSystem))]
 public class PrimitiveComponent(IPrimitiveData primitive) : ActorComponent
 {
-    private readonly VertexArray _vertexArray = new();
-    private readonly ArrayBuffer<float> _vertexBuffer = new(0, BufferUsageHint.StaticDraw);
-    private readonly ElementArrayBuffer<ushort> _indexBuffer = new(0, BufferUsageHint.StaticDraw);
+    protected readonly VertexArray VAO = new();
+    protected readonly ArrayBuffer<float> VBO = new(0, BufferUsageHint.StaticDraw);
+    protected readonly ElementArrayBuffer<uint> EBO = new(0, BufferUsageHint.StaticDraw);
 
     public void Generate()
     {
-        _vertexArray.Generate();
-        _vertexArray.Bind();
+        VAO.Generate();
+        VAO.Bind();
 
-        _vertexBuffer.Generate();
-        _vertexBuffer.Bind();
-        _vertexBuffer.SetData(primitive.Vertices);
+        VBO.Generate();
+        VBO.Bind();
+        VBO.SetData(primitive.Vertices);
 
-        _indexBuffer.Generate();
-        _indexBuffer.Bind();
-        _indexBuffer.SetData(primitive.Indices);
+        EBO.Generate();
+        EBO.Bind();
+        EBO.SetData(primitive.Indices);
 
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * _vertexBuffer.Stride, 0);
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * VBO.Stride, 0);
         GL.EnableVertexAttribArray(0);
     }
 
     public void Render()
     {
-        _vertexArray.Bind();
-        GL.DrawElements(PrimitiveType.Triangles, _indexBuffer.Size, DrawElementsType.UnsignedShort, 0);
+        VAO.Bind();
+        VBO.Bind();
+        EBO.Bind();
+
+        GL.DrawElements(PrimitiveType.Triangles, EBO.Size, DrawElementsType.UnsignedInt, 0);
     }
 }

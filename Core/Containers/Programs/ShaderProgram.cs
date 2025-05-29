@@ -77,6 +77,8 @@ public sealed class ShaderProgram(string vertex, string fragment, string? geomet
 
     private int GetUniformLocation(string name)
     {
+        VerifyCurrent();
+
         if (!_uniformsLocation.TryGetValue(name, out int location))
         {
             location = GL.GetUniformLocation(Handle, name);

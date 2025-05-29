@@ -3,5 +3,5 @@
 public interface IPrimitiveData
 {
     public float[] Vertices { get; }
-    public ushort[] Indices { get; }
+    public uint[] Indices { get; }
 }

@@ -24,6 +24,12 @@ public class Program : HandledObject
         GL.UseProgram(Handle);
     }
 
+    protected void VerifyCurrent()
+    {
+        if (Handle != GL.GetInteger(GetPName.CurrentProgram))
+            throw new Exception("program is not current");
+    }
+
     public override void Dispose()
     {
         GL.DeleteProgram(Handle);
