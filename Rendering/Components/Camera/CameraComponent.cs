@@ -19,6 +19,8 @@ public sealed class CameraComponent : ActorComponent
     public float NearPlaneDistance = 0.05f;
     public float AspectRatio = 16.0f / 9.0f;
 
+    public float FieldOfViewRadians => MathF.PI / 180.0f * FieldOfView;
+
     public void Update()
     {
         if (Actor is null) return;
@@ -30,7 +32,7 @@ public sealed class CameraComponent : ActorComponent
             Vector3.Transform(Vector3.UnitY, rotation));
 
         ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(
-            MathF.PI / 180.0f * FieldOfView,
+            FieldOfViewRadians,
             AspectRatio,
             NearPlaneDistance,
             FarPlaneDistance);
@@ -85,5 +87,27 @@ public sealed class CameraComponent : ActorComponent
         var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, mouseDelta.Y * sensitivity);
 
         Actor.Transform.Rotation = Quaternion.Normalize(yawRotation * Actor.Transform.Rotation * pitchRotation);
+    }
+
+    public Plane[] GetLocalFrustumPlanes() => GetFrustumPlanes(ProjectionMatrix);
+    public Plane[] GetWorldFrustumPlanes() => GetFrustumPlanes(ViewProjectionMatrix);
+
+    private Plane[] GetFrustumPlanes(Matrix4x4 matrix)
+    {
+        var planes = new Plane[6];
+
+        planes[0] = new Plane(matrix.M14 + matrix.M11, matrix.M24 + matrix.M21, matrix.M34 + matrix.M31, matrix.M44 + matrix.M41); // Near
+        planes[1] = new Plane(matrix.M14 - matrix.M11, matrix.M24 - matrix.M21, matrix.M34 - matrix.M31, matrix.M44 - matrix.M41); // Far
+        planes[2] = new Plane(matrix.M14 + matrix.M12, matrix.M24 + matrix.M22, matrix.M34 + matrix.M32, matrix.M44 + matrix.M42); // Left
+        planes[3] = new Plane(matrix.M14 - matrix.M12, matrix.M24 - matrix.M22, matrix.M34 - matrix.M32, matrix.M44 - matrix.M42); // Right
+        planes[4] = new Plane(matrix.M14 + matrix.M13, matrix.M24 + matrix.M23, matrix.M34 + matrix.M33, matrix.M44 + matrix.M43); // Bottom
+        planes[5] = new Plane(matrix.M14 - matrix.M13, matrix.M24 - matrix.M23, matrix.M34 - matrix.M33, matrix.M44 - matrix.M43); // Top
+
+        for (int i = 0; i < planes.Length; i++)
+        {
+            planes[i] = Plane.Normalize(planes[i]);
+        }
+
+        return planes;
     }
 }

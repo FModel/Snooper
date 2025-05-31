@@ -1,5 +1,12 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
+using CUE4Parse.Encryption.Aes;
+using CUE4Parse.FileProvider;
+using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using CUE4Parse.UE4.Assets.Exports.Texture;
+using CUE4Parse.UE4.Objects.Core.Misc;
+using CUE4Parse.UE4.Versions;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 
@@ -36,6 +43,15 @@ public partial class App : Application
         };
 
         var window = new MainWindow(gwSettings, nwSettings);
+
+        var version = new VersionContainer(EGame.GAME_Valorant, ETexturePlatform.DesktopMobile);
+        var provider = new DefaultFileProvider("D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks", SearchOption.TopDirectoryOnly, version);
+        provider.Initialize();
+        provider.SubmitKey(new FGuid(), new FAesKey("0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6"));
+        provider.PostMount();
+
+        var mesh = provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Cable/S0/CharSelect/Models/CS_Cable_S0_Skelmesh.CS_Cable_S0_Skelmesh");
+        window.Load(mesh);
         window.Run();
     }
 

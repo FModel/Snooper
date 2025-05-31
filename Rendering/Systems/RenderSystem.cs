@@ -1,5 +1,9 @@
-﻿using Snooper.Core.Containers.Programs;
+﻿using System.Numerics;
+using Snooper.Core.Containers.Programs;
+using Snooper.Core.Systems;
+using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
@@ -19,11 +23,37 @@ void main()
 }
 ", @"
 #version 330 core
+
+uniform vec3 color;
+
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    FragColor = vec4(color, 1.0f);
 }
 ");
+
+    public override void Render(CameraComponent camera)
+    {
+        Shader.Use();
+        Shader.SetUniform("view", camera.ViewMatrix);
+        Shader.SetUniform("projection", camera.ProjectionMatrix);
+
+        foreach (var component in Components)
+        {
+            if (camera.Actor is CameraActor)
+            {
+                var color = new Vector3(0.0f, 1.0f, 0.0f);
+                if (!component.IsInFrustum(camera))
+                {
+                    color = new Vector3(1.0f, 0.0f, 0.0f);
+                }
+                Shader.SetUniform("color", color);
+            }
+
+            Shader.SetUniform("model", component.Actor.Transform.WorldMatrix);
+            component.Render();
+        }
+    }
 }

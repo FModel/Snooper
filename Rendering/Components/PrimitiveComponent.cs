@@ -15,7 +15,7 @@ public class PrimitiveComponent(IPrimitiveData primitive) : ActorComponent
     protected readonly ArrayBuffer<Vector3> VBO = new(0, BufferUsageHint.StaticDraw);
     protected readonly ElementArrayBuffer<uint> EBO = new(0, BufferUsageHint.StaticDraw);
 
-    protected virtual PolygonMode PolygonMode { get; } = PolygonMode.Fill;
+    protected virtual PolygonMode PolygonMode { get; init; } = PolygonMode.Fill;
 
     public void Generate()
     {

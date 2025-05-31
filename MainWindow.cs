@@ -1,4 +1,7 @@
 ﻿using System.Numerics;
+using CUE4Parse_Conversion.Meshes;
+using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
@@ -52,16 +55,37 @@ public partial class MainWindow : GameWindow
         camera2.Transform.Position += Vector3.UnitX;
         root.Children.Add(camera2);
 
-        var plane = new Actor("SM 1");
-        plane.Components.Add(new StaticMeshComponent());
-        root.Children.Add(plane);
+        // var plane = new Actor("Plane");
+        // plane.Components.Add(new StaticMeshComponent());
+        // root.Children.Add(plane);
 
-        var sphere = new Actor("Sphere");
-        sphere.Transform.Position -= Vector3.UnitX * 2;
-        sphere.Components.Add(new StaticMeshComponent(new Sphere(36)));
-        root.Children.Add(sphere);
+        // var sphere = new Actor("Sphere");
+        // sphere.Transform.Position -= Vector3.UnitX * 2;
+        // sphere.Components.Add(new StaticMeshComponent(new Sphere(36)));
+        // root.Children.Add(sphere);
 
         _sceneSystem.RootActor = root;
+    }
+
+    public void Load(UStaticMesh mesh)
+    {
+        if (mesh.TryConvert(out var primitiveData))
+        {
+            var actor = new Actor(mesh.Name);
+            actor.Components.Add(new StaticMeshComponent(primitiveData));
+            _sceneSystem.RootActor.Children.Add(actor);
+        }
+    }
+
+    public void Load(USkeletalMesh mesh)
+    {
+        if (mesh.TryConvert(out var primitiveData))
+        {
+            var actor = new Actor(mesh.Name);
+            actor.Components.Add(new StaticMeshComponent(primitiveData));
+            actor.Components.Add(new StaticMeshComponent(primitiveData.BoundingBox));
+            _sceneSystem.RootActor.Children.Add(actor);
+        }
     }
 
     protected override void OnLoad()
