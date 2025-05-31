@@ -1,14 +1,15 @@
-﻿using System.Numerics;
-using Snooper.Core.Containers.Programs;
-using Snooper.Core.Systems;
-using Snooper.Rendering.Actors;
+﻿using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Culling;
 
 namespace Snooper.Rendering.Systems;
 
-public class RenderSystem : PrimitiveSystem<StaticMeshComponent>
+public class RenderSystem : PrimitiveSystem<CullingComponent>
 {
+    public override uint Order { get => 21; }
+    protected override bool AllowDerivation { get => true; }
+
     protected override ShaderProgram Shader { get; } = new(@"
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -42,18 +43,37 @@ void main()
 
         foreach (var component in Components)
         {
-            if (camera.Actor is CameraActor)
+            // TODO: do this OnUpdateFrame instead
+            if (camera.FrustumCullingEnabled)
             {
-                var color = new Vector3(0.0f, 1.0f, 0.0f);
-                if (!component.IsInFrustum(camera))
-                {
-                    color = new Vector3(1.0f, 0.0f, 0.0f);
-                }
-                Shader.SetUniform("color", color);
+                component.Update(camera);
             }
 
+            Shader.SetUniform("color", component.DebugColor);
             Shader.SetUniform("model", component.Actor.Transform.WorldMatrix);
             component.Render();
         }
     }
+
+    protected override void OnActorComponentAdded(CullingComponent component)
+    {
+        base.OnActorComponentAdded(component);
+
+        if (component is BoxCullingComponent box && _debugComponents.TryAdd(component, new DebugComponent(box)))
+        {
+            component.Actor?.Components.Add(_debugComponents[component]);
+        }
+    }
+
+    protected override void OnActorComponentRemoved(CullingComponent component)
+    {
+        base.OnActorComponentRemoved(component);
+
+        if (_debugComponents.Remove(component, out var debugComponent))
+        {
+            component.Actor?.Components.Remove(debugComponent);
+        }
+    }
+
+    private readonly Dictionary<CullingComponent, DebugComponent> _debugComponents = [];
 }

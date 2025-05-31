@@ -1,19 +1,14 @@
 ﻿using System.Numerics;
-using OpenTK.Graphics.OpenGL4;
-using Snooper.Core;
 using Snooper.Rendering.Primitives;
-using Snooper.Rendering.Systems;
+using Plane = System.Numerics.Plane;
 
 namespace Snooper.Rendering.Components.Camera;
 
-[DefaultActorSystem(typeof(CameraFrustumSystem))]
-public class CameraFrustumComponent(CameraComponent cameraComponent) : PrimitiveComponent(new Geometry())
+public class CameraFrustumComponent(CameraComponent cameraComponent) : DebugComponent(new Geometry())
 {
-    protected override PolygonMode PolygonMode { get => PolygonMode.Line; }
-
     private struct Geometry() : IPrimitiveData
     {
-        public Vector3[] Vertices { get; } = new Vector3[6 * 4];
+        public Vector3[] Vertices { get; } = new Vector3[8];
         public uint[] Indices { get; } =
         [
             0, 1, 2, 0, 2, 3, // Near plane
@@ -27,9 +22,8 @@ public class CameraFrustumComponent(CameraComponent cameraComponent) : Primitive
 
     public override void Update()
     {
-        // var vertices = CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes());
-        // VBO.Bind();
-        // VBO.SetData(vertices);
+        VBO.Bind();
+        VBO.SetData(CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes()));
     }
 
     private Vector3[] CalculateFrustumVertices(Plane[] frustumPlanes)

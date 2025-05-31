@@ -12,6 +12,8 @@ public sealed class CameraComponent : ActorComponent
     public Matrix4x4 ProjectionMatrix = Matrix4x4.Identity;
     public Matrix4x4 ViewProjectionMatrix = Matrix4x4.Identity;
 
+    public bool FrustumCullingEnabled = false;
+
     public CameraType Mode = CameraType.FlyCamera;
     public float MovementSpeed = 1f;
     public float FieldOfView = 60.0f;

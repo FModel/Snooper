@@ -14,6 +14,7 @@ using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
+using Plane = Snooper.Rendering.Primitives.Plane;
 
 namespace Snooper;
 
@@ -24,12 +25,12 @@ public partial class MainWindow : GameWindow
 
     public MainWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings)
     {
+        ActorManager.RegisterSystemFactory<GridSystem>();
         ActorManager.RegisterSystemFactory<TransformSystem>();
         ActorManager.RegisterSystemFactory<CameraSystem>();
-        ActorManager.RegisterSystemFactory<CameraFrustumSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
         ActorManager.RegisterSystemFactory<RenderSystem>();
-        ActorManager.RegisterSystemFactory<GridSystem>();
+        ActorManager.RegisterSystemFactory<DebugSystem>();
 
         _sceneSystem = new SceneSystem(this);
 
@@ -55,36 +56,37 @@ public partial class MainWindow : GameWindow
         camera2.Transform.Position += Vector3.UnitX;
         root.Children.Add(camera2);
 
-        // var plane = new Actor("Plane");
-        // plane.Components.Add(new StaticMeshComponent());
-        // root.Children.Add(plane);
+        var plane = new Actor("Plane");
+        plane.Components.Add(new PrimitiveComponent(new Plane(-Vector3.UnitY, 2.5f)));
+        root.Children.Add(plane);
 
-        // var sphere = new Actor("Sphere");
-        // sphere.Transform.Position -= Vector3.UnitX * 2;
-        // sphere.Components.Add(new StaticMeshComponent(new Sphere(36)));
-        // root.Children.Add(sphere);
+        var sphere = new Actor("Sphere");
+        sphere.Transform.Position -= Vector3.UnitX * 2;
+        sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
+        root.Children.Add(sphere);
 
         _sceneSystem.RootActor = root;
     }
 
-    public void Load(UStaticMesh mesh)
+    public void Insert(UStaticMesh mesh)
     {
         if (mesh.TryConvert(out var primitiveData))
         {
             var actor = new Actor(mesh.Name);
+            actor.Transform.Position += Vector3.UnitX;
             actor.Components.Add(new StaticMeshComponent(primitiveData));
-            _sceneSystem.RootActor.Children.Add(actor);
+            _sceneSystem.RootActor?.Children.Add(actor);
         }
     }
 
-    public void Load(USkeletalMesh mesh)
+    public void Insert(USkeletalMesh mesh)
     {
         if (mesh.TryConvert(out var primitiveData))
         {
             var actor = new Actor(mesh.Name);
-            actor.Components.Add(new StaticMeshComponent(primitiveData));
-            actor.Components.Add(new StaticMeshComponent(primitiveData.BoundingBox));
-            _sceneSystem.RootActor.Children.Add(actor);
+            actor.Transform.Position -= Vector3.UnitX;
+            actor.Components.Add(new SkeletalMeshComponent(primitiveData));
+            _sceneSystem.RootActor?.Children.Add(actor);
         }
     }
 

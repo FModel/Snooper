@@ -5,14 +5,14 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components;
 
-public class StaticMeshComponent(CStaticMesh staticMesh) : MeshComponent(new Geometry(staticMesh.LODs[0]), staticMesh.BoundingBox)
+public class SkeletalMeshComponent(CSkeletalMesh skeletalMesh) : MeshComponent(new Geometry(skeletalMesh.LODs[0]), skeletalMesh.BoundingBox)
 {
     private readonly struct Geometry : IPrimitiveData
     {
         public Vector3[] Vertices { get; }
         public uint[] Indices { get; }
 
-        public Geometry(CStaticMeshLod lod)
+        public Geometry(CSkelMeshLod lod)
         {
             Vertices = lod.Verts.Select(x => new Vector3(x.Position.X, x.Position.Z, x.Position.Y) * Settings.GlobalScale).ToArray();
 

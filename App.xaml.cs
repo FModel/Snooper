@@ -4,6 +4,7 @@ using System.Windows;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Versions;
@@ -50,8 +51,8 @@ public partial class App : Application
         provider.SubmitKey(new FGuid(), new FAesKey("0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6"));
         provider.PostMount();
 
-        var mesh = provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Cable/S0/CharSelect/Models/CS_Cable_S0_Skelmesh.CS_Cable_S0_Skelmesh");
-        window.Load(mesh);
+        window.Insert(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Cable/S0/CharSelect/Models/CS_Cable_S0_Skelmesh.CS_Cable_S0_Skelmesh"));
+        window.Insert(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Cone.Cone"));
         window.Run();
     }
 

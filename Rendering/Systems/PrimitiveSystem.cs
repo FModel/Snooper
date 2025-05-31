@@ -7,7 +7,8 @@ namespace Snooper.Rendering.Systems;
 
 public abstract class PrimitiveSystem<TComponent> : ActorSystem<TComponent> where TComponent : PrimitiveComponent
 {
-    public override uint Order { get; protected set; } = 20;
+    public override uint Order { get => 20; }
+    protected override bool AllowDerivation { get => false; }
 
     protected virtual ShaderProgram Shader { get; } = new(@"
 #version 330 core
@@ -27,7 +28,7 @@ out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
 }
 ");
 
@@ -62,26 +63,6 @@ void main()
             component.Render();
         }
     }
-
-    public override bool Accepts(Type type) => type == ComponentType;
 }
 
 public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>;
-
-public class CameraFrustumSystem : PrimitiveSystem<CameraFrustumComponent>
-{
-    public override uint Order { get; protected set; } = 100;
-
-    public override void Load()
-    {
-        Shader.FragmentShaderCode = @"#version 330 core
-out vec4 FragColor;
-
-void main()
-{
-    FragColor = vec4(0.0f, 0.0f, 1.0f, 0.5f);
-}";
-
-        base.Load();
-    }
-}

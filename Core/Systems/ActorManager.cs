@@ -69,14 +69,14 @@ public abstract class ActorManager : IGameSystem
         actor.ActorManager = this;
         _actors.Add(actor);
 
-        foreach (var component in actor.Components)
+        for (var i = 0; i < actor.Components.Count; i++)
         {
-            AddComponent(component, actor);
+            AddComponent(actor.Components[i], actor);
         }
 
-        foreach (var child in actor.Children)
+        for (var i = 0; i < actor.Children.Count; i++)
         {
-            AddInternal(child);
+            AddInternal(actor.Children[i]);
         }
 
         actor.Children.CollectionChanged += OnChildrenCollectionChanged;
@@ -95,14 +95,14 @@ public abstract class ActorManager : IGameSystem
         actor.Components.CollectionChanged -= OnComponentsCollectionChanged;
         actor.Children.CollectionChanged -= OnChildrenCollectionChanged;
 
-        foreach (var component in actor.Components)
+        for (var i = 0; i < actor.Components.Count; i++)
         {
-            RemoveComponent(component, actor);
+            RemoveComponent(actor.Components[i], actor);
         }
 
-        foreach (var child in actor.Children)
+        for (var i = 0; i < actor.Children.Count; i++)
         {
-            RemoveInternal(child);
+            RemoveInternal(actor.Children[i]);
         }
 
         actor.ActorManager = null;
@@ -150,7 +150,7 @@ public abstract class ActorManager : IGameSystem
         var actorSystemAttributes = componentType.GetCustomAttributes<DefaultActorSystemAttribute>();
         foreach (var actorSystemAttribute in actorSystemAttributes)
         {
-            var addNewSystem = Systems.All(s => s.GetType() != actorSystemAttribute.Type);
+            var addNewSystem = Systems.All(s => s.Value.GetType() != actorSystemAttribute.Type);
             if (addNewSystem)
             {
                 if (_registeredFactories.TryGetValue(actorSystemAttribute.Type, out Func<ActorSystem>? factory))
@@ -165,7 +165,6 @@ public abstract class ActorManager : IGameSystem
                 throw new InvalidOperationException($"{actorSystemAttribute.Type.Name} is not yet registered");
             }
         }
-        throw new InvalidOperationException($"trying to add {componentType.Name} but no ActorSystem attribute exists for it");
     }
 
     private void OnChildrenCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

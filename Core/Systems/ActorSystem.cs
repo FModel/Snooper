@@ -7,14 +7,20 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 {
     public Type? ComponentType { get; } = componentType;
     public ActorManager? ActorManager { get; internal set; }
-    public abstract uint Order { get; protected set; }
+    public abstract uint Order { get; }
 
     public abstract void Load();
     public abstract void Update(float delta);
     public abstract void Render(CameraComponent camera);
 
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
-    public virtual bool Accepts(Type type) => ComponentType?.IsAssignableFrom(type) ?? false;
+
+    protected virtual bool AllowDerivation { get => true; }
+    public bool Accepts(Type type)
+    {
+        if (!AllowDerivation) return ComponentType == type;
+        return ComponentType?.IsAssignableFrom(type) ?? false;
+    }
 
     public void Dispose()
     {

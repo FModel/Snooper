@@ -8,7 +8,7 @@ namespace Snooper.Rendering.Systems;
 
 public class GridSystem : ActorSystem<GridComponent>
 {
-    public override uint Order { get; protected set; } = 1;
+    public override uint Order { get => 1; }
 
     private readonly ShaderProgram _shader = new(@"
 #version 460 core
@@ -94,7 +94,7 @@ float computeLinearDepth(vec3 pos) {
     vec4 clip_space_pos = inVar.proj * inVar.view * vec4(pos.xyz, 1.0);
     float clip_space_depth = (clip_space_pos.z / clip_space_pos.w) * 2.0 - 1.0;
     float linearDepth = (2.0 * inVar.near * inVar.far) / (inVar.far + inVar.near - clip_space_depth * (inVar.far - inVar.near));
-    return linearDepth / inVar.far;
+    return linearDepth / inVar.far / 2.0;
 }
 
 void main() {
