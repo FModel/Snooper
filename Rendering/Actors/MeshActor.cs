@@ -1,6 +1,6 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
-using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Culling;
 
 namespace Snooper.Rendering.Actors;

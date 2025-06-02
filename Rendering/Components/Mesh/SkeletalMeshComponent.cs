@@ -8,7 +8,7 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Primitives;
 
-namespace Snooper.Rendering.Components;
+namespace Snooper.Rendering.Components.Mesh;
 
 public class SkeletalMeshComponent : MeshComponent
 {
