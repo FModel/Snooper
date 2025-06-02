@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Culling;
 
@@ -10,7 +9,7 @@ public class BoxCullingComponent : CullingComponent
     public readonly Vector3 BoxCenter;
     public readonly Vector3 BoxExtents;
 
-    protected BoxCullingComponent(IPrimitiveData primitive, FBox box) : base(primitive)
+    public BoxCullingComponent(FBox box)
     {
         box *= Settings.GlobalScale;
         box.GetCenterAndExtents(out var center, out var extents);
@@ -19,7 +18,7 @@ public class BoxCullingComponent : CullingComponent
         BoxExtents = new Vector3(extents.X, extents.Z, extents.Y);
     }
 
-    public override void Update(CameraComponent cameraComponent)
+    public void Update(CameraComponent cameraComponent)
     {
         var frustum = cameraComponent.GetWorldFrustumPlanes();
         if (frustum.Length != 6)

@@ -40,8 +40,8 @@ public class ImGuiSystem : IResizable
 
         _fontTexture = new ImGuiFontTexture();
         _vertexArray = new VertexArray();
-        _vertexBuffer = new ArrayBuffer<ImDrawVert>(500);
-        _indexBuffer = new ElementArrayBuffer<ushort>(1000);
+        _vertexBuffer = new ArrayBuffer<ImDrawVert>(1000);
+        _indexBuffer = new ElementArrayBuffer<ushort>(1500);
         _shader = new ShaderProgram(
 @"#version 330 core
 
@@ -209,24 +209,12 @@ void main()
             }
         }
 
-        _vertexBuffer.Bind();
-        _indexBuffer.Bind();
-        for (var i = 0; i < drawData.CmdListsCount; i++)
-        {
-            var cmd = drawData.CmdLists[i];
-            _vertexBuffer.ResizeIfNeeded(cmd.VtxBuffer.Size);
-            _indexBuffer.ResizeIfNeeded(cmd.IdxBuffer.Size);
-        }
-
         // Setup orthographic projection matrix into our constant buffer
         var io = ImGui.GetIO();
         _shader.Use();
         _shader.SetUniform("projection_matrix", Matrix4x4.CreateOrthographicOffCenter(0.0f, io.DisplaySize.X, io.DisplaySize.Y, 0.0f, -1.0f, 1.0f));
         _shader.SetUniform("in_fontTexture", 0);
         CheckForErrors("Projection");
-
-        _vertexArray.Bind();
-        CheckForErrors("VAO");
 
         drawData.ScaleClipRects(io.DisplayFramebufferScale);
 
@@ -238,14 +226,17 @@ void main()
         GL.Disable(EnableCap.DepthTest);
 
         // Render command lists
+        _vertexArray.Bind();
+        _vertexBuffer.Bind();
+        _indexBuffer.Bind();
         for (var i = 0; i < drawData.CmdListsCount; i++)
         {
             var cmd = drawData.CmdLists[i];
 
-            _vertexBuffer.SetSubData(cmd.VtxBuffer.Size, cmd.VtxBuffer.Data);
+            _vertexBuffer.Update(cmd.VtxBuffer.Size, cmd.VtxBuffer.Data);
             CheckForErrors($"Data Vert {i}");
 
-            _indexBuffer.SetSubData(cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
+            _indexBuffer.Update(cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
             CheckForErrors($"Data Idx {i}");
 
             for (var j = 0; j < cmd.CmdBuffer.Size; j++)
@@ -273,6 +264,7 @@ void main()
                 CheckForErrors("Draw");
             }
         }
+        CheckForErrors("VAO");
 
         GL.Disable(EnableCap.Blend);
         GL.Disable(EnableCap.ScissorTest);

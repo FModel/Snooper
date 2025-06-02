@@ -51,7 +51,7 @@ public partial class App : Application
         provider.SubmitKey(new FGuid(), new FAesKey("0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6"));
         provider.PostMount();
 
-        window.Insert(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Cable/S0/CharSelect/Models/CS_Cable_S0_Skelmesh.CS_Cable_S0_Skelmesh"));
+        window.Insert(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"));
         window.Insert(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Cone.Cone"));
         window.Run();
     }

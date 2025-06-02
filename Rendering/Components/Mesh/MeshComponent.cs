@@ -1,7 +1,20 @@
-﻿using CUE4Parse.UE4.Objects.Core.Math;
-using Snooper.Rendering.Components.Culling;
+﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Rendering.Primitives;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
-public class MeshComponent(IPrimitiveData primitive, FBox box) : BoxCullingComponent(primitive, box);
+[DefaultActorSystem(typeof(RenderSystem))]
+public class MeshComponent(IPrimitiveData primitive) : PrimitiveComponent(primitive)
+{
+    public int LODIndex { get; protected set; }
+
+    public override void Generate()
+    {
+        VBO.UsageHint = BufferUsageHint.DynamicDraw;
+        EBO.UsageHint = BufferUsageHint.DynamicDraw;
+
+        base.Generate();
+    }
+}

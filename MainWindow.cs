@@ -28,6 +28,7 @@ public partial class MainWindow : GameWindow
         ActorManager.RegisterSystemFactory<GridSystem>();
         ActorManager.RegisterSystemFactory<TransformSystem>();
         ActorManager.RegisterSystemFactory<CameraSystem>();
+        ActorManager.RegisterSystemFactory<CullingSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
         ActorManager.RegisterSystemFactory<RenderSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
@@ -70,22 +71,20 @@ public partial class MainWindow : GameWindow
 
     public void Insert(UStaticMesh mesh)
     {
-        if (mesh.TryConvert(out var primitiveData))
+        // if (mesh.TryConvert(out var primitiveData))
         {
-            var actor = new Actor(mesh.Name);
+            var actor = new MeshActor(mesh);
             actor.Transform.Position += Vector3.UnitX;
-            actor.Components.Add(new StaticMeshComponent(primitiveData));
             _sceneSystem.RootActor?.Children.Add(actor);
         }
     }
 
     public void Insert(USkeletalMesh mesh)
     {
-        if (mesh.TryConvert(out var primitiveData))
+        // if (mesh.TryConvert(out var primitiveData))
         {
-            var actor = new Actor(mesh.Name);
+            var actor = new MeshActor(mesh);
             actor.Transform.Position -= Vector3.UnitX;
-            actor.Components.Add(new SkeletalMeshComponent(primitiveData));
             _sceneSystem.RootActor?.Children.Add(actor);
         }
     }
@@ -126,7 +125,11 @@ public partial class MainWindow : GameWindow
     {
         base.OnRenderFrame(args);
 
+        var query = GL.GenQuery();
+        GL.BeginQuery(QueryTarget.PrimitivesGenerated, query);
         _sceneSystem.Render();
+        GL.EndQuery(QueryTarget.PrimitivesGenerated);
+        GL.GetQueryObject(query, GetQueryObjectParam.QueryResult, out long primitiveCount);
 
         GL.ClearColor(OpenTK.Mathematics.Color4.Black);
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
@@ -158,6 +161,9 @@ public partial class MainWindow : GameWindow
                 }
 
                 const float margin = 7.5f;
+                ImGui.SetCursorPos(new Vector2(margin, margin + ImGui.GetFrameHeight()));
+                ImGui.Text($"Primitives: {primitiveCount}");
+
                 var framerate = ImGui.GetIO().Framerate;
                 ImGui.SetCursorPos(size with { X = margin });
                 ImGui.Text($"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms)");
@@ -171,19 +177,22 @@ public partial class MainWindow : GameWindow
         ImGui.PopStyleVar();
 
         var camera = _sceneSystem.ActiveCamera;
-        if (camera != null && ImGui.Begin("Controls"))
+        if (camera != null)
         {
-            ImGui.Text($"Current camera: {camera.Actor?.Name}");
-            ImGui.Separator();
+            if (ImGui.Begin("Controls"))
+            {
+                ImGui.Text($"Current camera: {camera.Actor?.Name}");
+                ImGui.Separator();
 
-            ImGui.Text($"Position: {camera.Actor.Transform.Position}");
-            ImGui.Text($"Rotation: {camera.Actor.Transform.Rotation}");
-            ImGui.Text($"Scale: {camera.Actor.Transform.Scale}");
-            ImGui.Text($"Aspect Ratio: {camera.AspectRatio}");
-            ImGui.DragFloat("Near Plane Distance", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
-            ImGui.DragFloat("Far Plane Distance", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
+                ImGui.Text($"Position: {camera.Actor.Transform.Position}");
+                ImGui.Text($"Rotation: {camera.Actor.Transform.Rotation}");
+                ImGui.Text($"Scale: {camera.Actor.Transform.Scale}");
+                ImGui.Text($"Aspect Ratio: {camera.AspectRatio}");
+                ImGui.DragFloat("Near Plane Distance", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
+                ImGui.DragFloat("Far Plane Distance", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
+            }
+            ImGui.End();
         }
-        ImGui.End();
 
         if (ImGui.Begin("Systems Order"))
         {
