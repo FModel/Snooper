@@ -1,5 +1,4 @@
-﻿using Snooper.Core.Containers.Programs;
-using Snooper.Rendering.Components;
+﻿using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Culling;
 
@@ -10,49 +9,31 @@ public class RenderSystem : PrimitiveSystem<CullingComponent>
     public override uint Order { get => 21; }
     protected override bool AllowDerivation { get => true; }
 
-    protected override ShaderProgram Shader { get; } = new(@"
-#version 330 core
-layout (location = 0) in vec3 aPos;
-
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-
-void main()
-{
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
-}
-", @"
-#version 330 core
-
-uniform vec3 color;
-
+    public override void Load()
+    {
+        Shader.FragmentShaderCode = @"#version 330 core
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(color, 1.0f);
-}
-");
+    FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+}";
+
+        base.Load();
+    }
 
     public override void Render(CameraComponent camera)
     {
-        Shader.Use();
-        Shader.SetUniform("view", camera.ViewMatrix);
-        Shader.SetUniform("projection", camera.ProjectionMatrix);
-
-        foreach (var component in Components)
+        if (camera.IsActive)
         {
             // TODO: do this OnUpdateFrame instead
-            if (camera.FrustumCullingEnabled)
+            foreach (var component in Components)
             {
                 component.Update(camera);
             }
-
-            Shader.SetUniform("color", component.DebugColor);
-            Shader.SetUniform("model", component.Actor.Transform.WorldMatrix);
-            component.Render();
         }
+
+        base.Render(camera);
     }
 
     protected override void OnActorComponentAdded(CullingComponent component)

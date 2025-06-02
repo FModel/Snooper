@@ -137,7 +137,7 @@ public partial class MainWindow : GameWindow
         {
             if (ImGui.Begin($"Viewport ({pair.Camera.Actor?.Name})"))
             {
-                if (ImGui.IsWindowFocused()) _sceneSystem.CurrentCamera = pair.Camera;
+                if (ImGui.IsWindowFocused()) _sceneSystem.ActiveCamera = pair.Camera;
 
                 var largest = ImGui.GetContentRegionAvail();
                 largest.X -= ImGui.GetScrollX();
@@ -153,7 +153,7 @@ public partial class MainWindow : GameWindow
                 }
                 if (CursorState == CursorState.Grabbed)
                 {
-                    if (ImGui.IsMouseDragging(ImGuiMouseButton.Left)) _sceneSystem.CurrentCamera?.Update(ImGui.GetIO().MouseDelta);
+                    if (ImGui.IsMouseDragging(ImGuiMouseButton.Left)) _sceneSystem.ActiveCamera?.Update(ImGui.GetIO().MouseDelta);
                     if (ImGui.IsMouseReleased(ImGuiMouseButton.Left)) CursorState = CursorState.Normal;
                 }
 
@@ -170,7 +170,7 @@ public partial class MainWindow : GameWindow
         }
         ImGui.PopStyleVar();
 
-        var camera = _sceneSystem.CurrentCamera;
+        var camera = _sceneSystem.ActiveCamera;
         if (camera != null && ImGui.Begin("Controls"))
         {
             ImGui.Text($"Current camera: {camera.Actor?.Name}");

@@ -34,11 +34,11 @@ public class BoxCullingComponent : CullingComponent
             var radius = Vector3.Dot(BoxExtents, Vector3.Abs(plane.Normal));
             if (distance < -radius)
             {
-                IsVisible = false;
+                Actor.IsVisible = false;
                 return;
             }
         }
 
-        IsVisible = true;
+        Actor.IsVisible = true;
     }
 }

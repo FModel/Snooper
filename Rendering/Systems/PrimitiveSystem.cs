@@ -10,17 +10,16 @@ public abstract class PrimitiveSystem<TComponent> : ActorSystem<TComponent> wher
     public override uint Order { get => 20; }
     protected override bool AllowDerivation { get => false; }
 
-    protected virtual ShaderProgram Shader { get; } = new(@"
+    protected ShaderProgram Shader { get; } = new(@"
 #version 330 core
 layout (location = 0) in vec3 aPos;
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 uModelMatrix;
+uniform mat4 uViewProjectionMatrix;
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    gl_Position = uViewProjectionMatrix * uModelMatrix * vec4(aPos, 1.0);
 }
 ", @"
 #version 330 core
@@ -54,12 +53,12 @@ void main()
     public override void Render(CameraComponent camera)
     {
         Shader.Use();
-        Shader.SetUniform("view", camera.ViewMatrix);
-        Shader.SetUniform("projection", camera.ProjectionMatrix);
+        Shader.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
 
         foreach (var component in Components)
         {
-            Shader.SetUniform("model", component.Actor.Transform.WorldMatrix);
+            if (component.Actor is null || !component.Actor.IsVisible) continue;
+            Shader.SetUniform("uModelMatrix", component.GetModelMatrix());
             component.Render();
         }
     }

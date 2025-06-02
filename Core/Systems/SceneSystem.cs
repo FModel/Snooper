@@ -9,7 +9,25 @@ namespace Snooper.Core.Systems;
 public sealed class SceneSystem(GameWindow wnd) : ActorManager
 {
     public List<CameraFramePair> Pairs { get; } = [];
-    public CameraComponent? CurrentCamera { get; set; }
+
+    private CameraComponent? _activeCamera;
+    public CameraComponent? ActiveCamera
+    {
+        get => _activeCamera;
+        set
+        {
+            if (_activeCamera == value)
+                return;
+
+            if (_activeCamera != null)
+                _activeCamera.IsActive = false;
+
+            if (value != null)
+                value.IsActive = true;
+
+            _activeCamera = value;
+        }
+    }
 
     private Actor? _rootActor;
     public Actor? RootActor
@@ -43,7 +61,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
     public override void Update(float delta)
     {
-        CurrentCamera?.Update(wnd.KeyboardState, delta);
+        _activeCamera?.Update(wnd.KeyboardState, delta);
 
         base.Update(delta);
     }

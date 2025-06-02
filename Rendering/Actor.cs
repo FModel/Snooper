@@ -8,10 +8,12 @@ namespace Snooper.Rendering;
 public class Actor
 {
     public string Name { get; }
+    public bool IsVisible { get; internal set; }
 
     public Actor(string name)
     {
         Name = name;
+        IsVisible = true;
 
         Components = new ActorComponentCollection(this);
         Children = [];
