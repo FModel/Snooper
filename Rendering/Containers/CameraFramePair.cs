@@ -2,9 +2,9 @@
 
 namespace Snooper.Rendering.Containers;
 
-public readonly struct CameraFramePair(Framebuffer framebuffer, CameraComponent camera) : IEquatable<CameraFramePair>
+public readonly struct CameraFramePair(MsaaFramebuffer framebuffer, CameraComponent camera) : IEquatable<CameraFramePair>
 {
-    public Framebuffer Framebuffer { get; } = framebuffer;
+    public MsaaFramebuffer Framebuffer { get; } = framebuffer;
     public CameraComponent Camera { get; } = camera;
 
     public bool Equals(CameraFramePair other) => Framebuffer.Equals(other.Framebuffer) && Camera.Equals(other.Camera);

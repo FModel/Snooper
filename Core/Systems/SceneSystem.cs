@@ -75,6 +75,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
             Render(pair.Camera);
+            pair.Framebuffer.RenderPostProcessing();
         }
     }
 
@@ -84,7 +85,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
         if (component is CameraComponent cameraComponent)
         {
-            Pairs.Add(new CameraFramePair(new Framebuffer(1, 1), cameraComponent));
+            Pairs.Add(new CameraFramePair(new MsaaFramebuffer(1, 1), cameraComponent));
         }
     }
 

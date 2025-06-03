@@ -14,6 +14,15 @@ public class Framebuffer : HandledObject, IBind
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, Handle);
     }
 
+    public void CheckStatus()
+    {
+        var status = GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
+        if (status != FramebufferErrorCode.FramebufferComplete)
+        {
+            throw new Exception($"Framebuffer failed to bind with error: {GL.GetProgramInfoLog(Handle)}");
+        }
+    }
+
     public override void Dispose()
     {
         GL.DeleteFramebuffer(Handle);

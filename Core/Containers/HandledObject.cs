@@ -2,7 +2,7 @@
 
 public abstract class HandledObject : IDisposable
 {
-    internal int Handle { get; set; }
+    protected int Handle { get; set; }
 
     public abstract void Generate();
     public abstract void Dispose();

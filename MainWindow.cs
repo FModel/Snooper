@@ -99,7 +99,7 @@ public partial class MainWindow : GameWindow
 
         GL.Enable(EnableCap.DepthTest);
         GL.DepthFunc(DepthFunction.Less);
-        // GL.Enable(EnableCap.Multisample);
+        GL.Enable(EnableCap.Multisample);
         // GL.Enable(EnableCap.VertexProgramPointSize);
         // GL.StencilOp(StencilOp.Keep, StencilOp.Replace, StencilOp.Replace);
         GL.Enable(EnableCap.Blend);

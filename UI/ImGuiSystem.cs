@@ -77,8 +77,10 @@ void main()
 
     public void Load()
     {
-        int prevVao = GL.GetInteger(GetPName.VertexArrayBinding);
-        int prevArrayBuffer = GL.GetInteger(GetPName.ArrayBufferBinding);
+        // save previous state
+        var prevVao = GL.GetInteger(GetPName.VertexArrayBinding);
+        var prevVertices = GL.GetInteger(GetPName.ArrayBufferBinding);
+        var prevIndices = GL.GetInteger(GetPName.ElementArrayBufferBinding);
 
         _vertexArray.Generate();
         _vertexArray.Bind();
@@ -104,9 +106,10 @@ void main()
         _shader.Generate();
         _shader.Link();
 
-        // Reset state
+        // restore previous state
         GL.BindVertexArray(prevVao);
-        GL.BindBuffer(BufferTarget.ArrayBuffer, prevArrayBuffer);
+        GL.BindBuffer(BufferTarget.ArrayBuffer, prevVertices);
+        GL.BindBuffer(BufferTarget.ElementArrayBuffer, prevIndices);
 
         CheckForErrors("End of ImGui setup");
     }

@@ -20,7 +20,7 @@ public class Renderbuffer(int width, int height, RenderbufferStorage storage) : 
         height = newHeight;
 
         Bind();
-        GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, storage, width, height);
+        GL.RenderbufferStorageMultisample(RenderbufferTarget.Renderbuffer, Settings.NumberOfSamples, storage, width, height);
     }
 
     public override void Dispose()
