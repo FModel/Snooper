@@ -28,7 +28,7 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
         if (newSize <= _maxSize) return;
 
         newSize = (int) Math.Max(_maxSize * factor, newSize);
-        Console.WriteLine("Resizing buffer {0} from {1} to {2} (bInitialized ? {3})", Handle, _maxSize, newSize, bInitialized);
+        Console.WriteLine("Resizing buffer {0} from {1} to {2} (initialized ? {3})", Handle, _maxSize, newSize, bInitialized);
         _maxSize = newSize;
 
         if (bInitialized)
@@ -52,7 +52,7 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
     {
         if (bInitialized)
             throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
-        
+
         Size = data.Length;
         if (Size > _maxSize)
         {

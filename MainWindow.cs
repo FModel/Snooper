@@ -151,7 +151,7 @@ public partial class MainWindow : GameWindow
                 largest.Y -= ImGui.GetScrollY();
 
                 var size = new Vector2(largest.X, largest.Y);
-                pair.Camera.AspectRatio = size.X / size.Y;
+                pair.Camera.ViewportSize = size;
                 ImGui.Image(pair.Framebuffer.GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
 
                 if (ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))
@@ -191,7 +191,7 @@ public partial class MainWindow : GameWindow
                 ImGui.Text($"Position: {camera.Actor.Transform.Position}");
                 ImGui.Text($"Rotation: {camera.Actor.Transform.Rotation}");
                 ImGui.Text($"Scale: {camera.Actor.Transform.Scale}");
-                ImGui.Text($"Aspect Ratio: {camera.AspectRatio}");
+                ImGui.Text($"ViewportSize: {camera.ViewportSize}");
                 ImGui.DragFloat("Near Plane Distance", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
                 ImGui.DragFloat("Far Plane Distance", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
             }
@@ -202,7 +202,7 @@ public partial class MainWindow : GameWindow
         {
             foreach (var system in _sceneSystem.Systems)
             {
-                ImGui.Text($"- {system.Value.GetType().Name} (Priority: {system.Key})");
+                ImGui.Text($"- {system.Value.GetType().Name} (Priority: {system.Key}) (Components: x{system.Value.ComponentsCount})");
             }
         }
         ImGui.End();

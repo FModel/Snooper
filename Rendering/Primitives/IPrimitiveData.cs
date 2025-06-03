@@ -2,8 +2,10 @@
 
 namespace Snooper.Rendering.Primitives;
 
-public interface IPrimitiveData
+public interface TPrimitiveData<T> where T : unmanaged
 {
-    public Vector3[] Vertices { get; }
+    public T[] Vertices { get; }
     public uint[] Indices { get; }
 }
+
+public interface IPrimitiveData : TPrimitiveData<Vector3>;

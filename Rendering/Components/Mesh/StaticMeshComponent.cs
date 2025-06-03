@@ -7,55 +7,47 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public class StaticMeshComponent : MeshComponent
 {
-    private readonly UStaticMesh _owner;
-    
-    public StaticMeshComponent(CStaticMesh staticMesh) : base(new Geometry(staticMesh.LODs[0]))
-    {
+    private readonly CStaticMesh _mesh;
 
+    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(new Geometry(mesh.LODs[0]))
+    {
+        _mesh = mesh;
+
+        ScreenSizes = owner.RenderData?.ScreenSize ?? [];
     }
 
-    public StaticMeshComponent(UStaticMesh staticMesh) : base(new Geometry(staticMesh.RenderData?.LODs[0]))
+    protected override IVertexData GetPrimitive(int index)
     {
-        _owner = staticMesh;
-        ScreenSizes = staticMesh.RenderData?.ScreenSize ?? [];
-    }
-    
-    public override IPrimitiveData GetPrimitive(int index) => new Geometry(_owner.RenderData.LODs[LODIndex]);
+        var maxIndex = _mesh.LODs.Count - 1;
+        if (index < 0 || index > maxIndex)
+            index = 0;
 
-    private readonly struct Geometry : IPrimitiveData
+        return new Geometry(_mesh.LODs[index]);
+    }
+
+    private readonly struct Geometry : IVertexData
     {
-        public Vector3[] Vertices { get; }
+        public Vertex[] Vertices { get; }
         public uint[] Indices { get; }
 
         public Geometry(CStaticMeshLod lod)
         {
-            Vertices = lod.Verts.Select(x => new Vector3(x.Position.X, x.Position.Z, x.Position.Y) * Settings.GlobalScale).ToArray();
+            Vertices = new Vertex[lod.Verts.Length];
+            for (var i = 0; i < Vertices.Length; i++)
+            {
+                var vertex = lod.Verts[i];
+                var position = new Vector3(vertex.Position.X, vertex.Position.Z, vertex.Position.Y) * Settings.GlobalScale;
+                var normal = new Vector3(vertex.Normal.X, vertex.Normal.Z, vertex.Normal.Y);
+                var tangent = new Vector3(vertex.Tangent.X, vertex.Tangent.Z, vertex.Tangent.Y);
+                var texCoord = new Vector2(vertex.UV.U, vertex.UV.V);
+
+                Vertices[i] = new Vertex(position, normal, tangent, texCoord);
+            }
 
             Indices = new uint[lod.Indices.Value.Length];
             for (int i = 0; i < Indices.Length; i++)
             {
                 Indices[i] = (uint) lod.Indices.Value[i];
-            }
-        }
-
-        public Geometry(FStaticMeshLODResources lod)
-        {
-            if (lod.PositionVertexBuffer is not null)
-            {
-                Vertices = new Vector3[lod.PositionVertexBuffer.Verts.Length];
-                for (int i = 0; i < Vertices.Length; i++)
-                {
-                    Vertices[i] = new Vector3(lod.PositionVertexBuffer.Verts[i].X, lod.PositionVertexBuffer.Verts[i].Z, lod.PositionVertexBuffer.Verts[i].Y) * Settings.GlobalScale;
-                }
-            }
-
-            if (lod.IndexBuffer is not null)
-            {
-                Indices = new uint[lod.IndexBuffer.Length];
-                for (int i = 0; i < Indices.Length; i++)
-                {
-                    Indices[i] = (uint) lod.IndexBuffer[i];
-                }
             }
         }
     }

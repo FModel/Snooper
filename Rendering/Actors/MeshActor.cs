@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+﻿using CUE4Parse_Conversion.Meshes;
+using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Culling;
@@ -9,27 +10,27 @@ public class MeshActor : Actor
 {
     public MeshActor(UStaticMesh staticMesh) : base(staticMesh.Name)
     {
+        if (!staticMesh.TryConvert(out var mesh))
+            throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
         if (staticMesh.RenderData?.Bounds is null)
             throw new ArgumentException("Static mesh does not have render data or bounds.", nameof(staticMesh));
 
-        BoxCullingComponent = new BoxCullingComponent(staticMesh.RenderData.Bounds.GetBox());
-        SphereCullingComponent = new SphereCullingComponent(staticMesh.RenderData.Bounds);
+        CullingComponent = new BoxCullingComponent(staticMesh.RenderData.Bounds.GetBox());
 
-        Components.Add(new StaticMeshComponent(staticMesh));
-        Components.Add(BoxCullingComponent);
-        Components.Add(SphereCullingComponent);
+        Components.Add(new StaticMeshComponent(staticMesh, mesh));
+        Components.Add(CullingComponent);
     }
 
     public MeshActor(USkeletalMesh skeletalMesh) : base(skeletalMesh.Name)
     {
-        BoxCullingComponent = new BoxCullingComponent(skeletalMesh.ImportedBounds.GetBox());
-        SphereCullingComponent = new SphereCullingComponent(skeletalMesh.ImportedBounds);
+        if (!skeletalMesh.TryConvert(out var mesh))
+            throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
 
-        Components.Add(new SkeletalMeshComponent(skeletalMesh));
-        Components.Add(BoxCullingComponent);
-        Components.Add(SphereCullingComponent);
+        CullingComponent = new BoxCullingComponent(skeletalMesh.ImportedBounds.GetBox());
+
+        Components.Add(new SkeletalMeshComponent(skeletalMesh, mesh));
+        Components.Add(CullingComponent);
     }
 
-    public BoxCullingComponent BoxCullingComponent { get; }
-    public SphereCullingComponent SphereCullingComponent { get; }
+    public CullingComponent CullingComponent { get; }
 }

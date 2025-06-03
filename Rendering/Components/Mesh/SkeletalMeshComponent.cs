@@ -9,57 +9,52 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public class SkeletalMeshComponent : MeshComponent
 {
-    private readonly USkeletalMesh _owner;
+    private readonly CSkeletalMesh _mesh;
 
-    public SkeletalMeshComponent(CSkeletalMesh skeletalMesh) : base(new Geometry(skeletalMesh.LODs.First()))
+    public SkeletalMeshComponent(USkeletalMesh owner, CSkeletalMesh mesh) : base(new Geometry(mesh.LODs.First()))
     {
+        _mesh = mesh;
 
-    }
-
-    public SkeletalMeshComponent(USkeletalMesh skeletalMesh) : base(new Geometry(skeletalMesh.LODModels.First()))
-    {
-        _owner = skeletalMesh;
-        var lodInfo = skeletalMesh.GetOrDefault<FStructFallback[]>("LODInfo", []);
+        var lodInfo = owner.GetOrDefault<FStructFallback[]>("LODInfo", []);
         ScreenSizes = new float[lodInfo.Length];
         for (var i = 0; i < lodInfo.Length; i++)
         {
-            ScreenSizes[i] = 1 - lodInfo[i].Get<TPerPlatformProperty.FPerPlatformFloat>("ScreenSize").Default;
+            ScreenSizes[i] = lodInfo[i].Get<TPerPlatformProperty.FPerPlatformFloat>("ScreenSize").Default;
         }
     }
 
-    public override IPrimitiveData GetPrimitive(int index) => new Geometry(_owner.LODModels[LODIndex]);
-
-    private readonly struct Geometry : IPrimitiveData
+    protected override IVertexData GetPrimitive(int index)
     {
-        public Vector3[] Vertices { get; }
+        var maxIndex = _mesh.LODs.Count - 1;
+        if (index < 0 || index > maxIndex)
+            index = 0;
+
+        return new Geometry(_mesh.LODs[index]);
+    }
+
+    private readonly struct Geometry : IVertexData
+    {
+        public Vertex[] Vertices { get; }
         public uint[] Indices { get; }
 
         public Geometry(CSkelMeshLod lod)
         {
-            Vertices = lod.Verts.Select(x => new Vector3(x.Position.X, x.Position.Z, x.Position.Y) * Settings.GlobalScale).ToArray();
+            Vertices = new Vertex[lod.Verts.Length];
+            for (var i = 0; i < Vertices.Length; i++)
+            {
+                var vertex = lod.Verts[i];
+                var position = new Vector3(vertex.Position.X, vertex.Position.Z, vertex.Position.Y) * Settings.GlobalScale;
+                var normal = new Vector3(vertex.Normal.X, vertex.Normal.Z, vertex.Normal.Y);
+                var tangent = new Vector3(vertex.Tangent.X, vertex.Tangent.Z, vertex.Tangent.Y);
+                var texCoord = new Vector2(vertex.UV.U, vertex.UV.V);
+
+                Vertices[i] = new Vertex(position, normal, tangent, texCoord);
+            }
 
             Indices = new uint[lod.Indices.Value.Length];
             for (int i = 0; i < Indices.Length; i++)
             {
                 Indices[i] = (uint) lod.Indices.Value[i];
-            }
-        }
-
-        public Geometry(FStaticLODModel lod)
-        {
-            Vertices = new Vector3[lod.VertexBufferGPUSkin.GetVertexCount()];
-            for (int i = 0; i < Vertices.Length; i++)
-            {
-                Vertices[i] = new Vector3(lod.VertexBufferGPUSkin.VertsFloat[i].Pos.X, lod.VertexBufferGPUSkin.VertsFloat[i].Pos.Z, lod.VertexBufferGPUSkin.VertsFloat[i].Pos.Y) * Settings.GlobalScale;
-            }
-
-            if (lod.Indices is not null)
-            {
-                Indices = new uint[lod.Indices.Indices16.Length];
-                for (int i = 0; i < Indices.Length; i++)
-                {
-                    Indices[i] = (uint) lod.Indices.Indices16[i];
-                }
             }
         }
     }

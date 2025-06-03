@@ -1,16 +1,18 @@
-﻿using Snooper.Core.Containers.Programs;
+﻿using System.Numerics;
+using Snooper.Core.Containers.Programs;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class PrimitiveSystem<TComponent> : ActorSystem<TComponent> where TComponent : PrimitiveComponent
+public abstract class PrimitiveSystem<TVertex, TComponent> : ActorSystem<TComponent> where TComponent : TPrimitiveComponent<TVertex> where TVertex : unmanaged
 {
     public override uint Order { get => 20; }
     protected override bool AllowDerivation { get => false; }
 
-    protected ShaderProgram Shader { get; } = new(@"
+    protected ShaderProgram Shader { get; } = new(
+"""
 #version 330 core
 layout (location = 0) in vec3 aPos;
 
@@ -21,15 +23,16 @@ void main()
 {
     gl_Position = uViewProjectionMatrix * uModelMatrix * vec4(aPos, 1.0);
 }
-", @"
+""", """
 #version 330 core
+
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+   FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
 }
-");
+""");
 
     public override void Load()
     {
@@ -64,4 +67,4 @@ void main()
     }
 }
 
-public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>;
+public class PrimitiveSystem : PrimitiveSystem<Vector3, PrimitiveComponent>;

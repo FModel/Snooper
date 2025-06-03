@@ -8,14 +8,14 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components;
 
-[DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent(IPrimitiveData primitive) : ActorComponent
+public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : ActorComponent where T : unmanaged
 {
     protected readonly VertexArray VAO = new();
-    protected readonly ArrayBuffer<Vector3> VBO = new(0, BufferUsageHint.StaticDraw);
+    protected readonly ArrayBuffer<T> VBO = new(0, BufferUsageHint.StaticDraw);
     protected readonly ElementArrayBuffer<uint> EBO = new(0, BufferUsageHint.StaticDraw);
 
-    protected virtual PolygonMode PolygonMode { get => PolygonMode.Fill; }
+    protected abstract Action<ArrayBuffer<T>> PointersFactory { get; }
+    protected abstract PolygonMode PolygonMode { get; }
 
     public virtual void Generate()
     {
@@ -30,8 +30,7 @@ public class PrimitiveComponent(IPrimitiveData primitive) : ActorComponent
         EBO.Bind();
         EBO.SetData(primitive.Indices);
 
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, VBO.Stride, 0);
-        GL.EnableVertexAttribArray(0);
+        PointersFactory(VBO);
     }
 
     public virtual void Update()
@@ -41,13 +40,27 @@ public class PrimitiveComponent(IPrimitiveData primitive) : ActorComponent
 
     public virtual void Render()
     {
+        VAO.Bind();
+        VBO.Bind();
+        EBO.Bind();
+
         var polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
         var bDiff = polygonMode != PolygonMode;
         if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode);
 
-        VAO.Bind();
         GL.DrawElements(PrimitiveType.Triangles, EBO.Size, DrawElementsType.UnsignedInt, 0);
 
         if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, polygonMode);
     }
+}
+
+[DefaultActorSystem(typeof(PrimitiveSystem))]
+public class PrimitiveComponent(IPrimitiveData primitive) : TPrimitiveComponent<Vector3>(primitive)
+{
+    protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>
+    {
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, buffer.Stride, 0);
+        GL.EnableVertexAttribArray(0);
+    };
+    protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
 }

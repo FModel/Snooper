@@ -8,6 +8,7 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
     public Type? ComponentType { get; } = componentType;
     public ActorManager? ActorManager { get; internal set; }
     public abstract uint Order { get; }
+    public abstract int ComponentsCount { get; }
 
     public abstract void Load();
     public abstract void Update(float delta);
@@ -30,6 +31,8 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 
 public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)) where TComponent : ActorComponent
 {
+    public override int ComponentsCount { get => Components.Count; }
+
     protected HashSet<TComponent> Components { get; } = [];
 
     public override void ProcessActorComponent(ActorComponent component, Actor actor)

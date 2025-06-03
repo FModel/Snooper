@@ -18,9 +18,10 @@ public sealed class CameraComponent : ActorComponent
     public float FieldOfView = 60.0f;
     public float FarPlaneDistance = 25.0f;
     public float NearPlaneDistance = 0.05f;
-    public float AspectRatio = 16.0f / 9.0f;
+    public Vector2 ViewportSize = new(16, 9);
 
     public float FieldOfViewRadians => MathF.PI / 180.0f * FieldOfView;
+    public float AspectRatio => ViewportSize.X / ViewportSize.Y;
 
     public void Update()
     {
@@ -88,6 +89,16 @@ public sealed class CameraComponent : ActorComponent
         var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, mouseDelta.Y * sensitivity);
 
         Actor.Transform.Rotation = Quaternion.Normalize(yawRotation * Actor.Transform.Rotation * pitchRotation);
+    }
+
+    public Vector2 ProjectToScreen(Vector3 worldPosition)
+    {
+        var clipSpacePosition = Vector4.Transform(new Vector4(worldPosition, 1.0f), ViewProjectionMatrix);
+        var ndcSpacePosition = new Vector3(clipSpacePosition.X, clipSpacePosition.Y, clipSpacePosition.Z) / clipSpacePosition.W;
+
+        return new Vector2(
+            (ndcSpacePosition.X + 1.0f) * 0.5f * AspectRatio,
+            (1.0f - ndcSpacePosition.Y) * 0.5f);
     }
 
     public Plane[] GetLocalFrustumPlanes() => GetFrustumPlanes(ProjectionMatrix);

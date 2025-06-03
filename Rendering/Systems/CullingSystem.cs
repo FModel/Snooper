@@ -25,7 +25,7 @@ public class CullingSystem : ActorSystem<CullingComponent>
         if (!camera.IsActive) return;
 
         // TODO: do this OnUpdateFrame instead
-        foreach (var component in Components.OfType<BoxCullingComponent>())
+        foreach (var component in Components)
         {
             component.Update(camera);
         }
@@ -38,7 +38,6 @@ public class CullingSystem : ActorSystem<CullingComponent>
         var added = component switch
         {
             BoxCullingComponent box => _debugComponents.TryAdd(component, new DebugComponent(box)),
-            SphereCullingComponent sphere => _debugComponents.TryAdd(component, new DebugComponent(sphere)),
             _ => false
         };
 
