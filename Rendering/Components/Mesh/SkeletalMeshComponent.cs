@@ -3,17 +3,13 @@ using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Objects.Engine;
-using Snooper.Core.Systems;
-using Snooper.Rendering.Actors;
-using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Mesh;
 
 public class SkeletalMeshComponent : MeshComponent
 {
-    private readonly float[] _screenSizes;
-    private USkeletalMesh _owner;
+    private readonly USkeletalMesh _owner;
 
     public SkeletalMeshComponent(CSkeletalMesh skeletalMesh) : base(new Geometry(skeletalMesh.LODs.First()))
     {
@@ -24,44 +20,14 @@ public class SkeletalMeshComponent : MeshComponent
     {
         _owner = skeletalMesh;
         var lodInfo = skeletalMesh.GetOrDefault<FStructFallback[]>("LODInfo", []);
-        _screenSizes = new float[lodInfo.Length];
-        for (int i = 0; i < lodInfo.Length; i++)
+        ScreenSizes = new float[lodInfo.Length];
+        for (var i = 0; i < lodInfo.Length; i++)
         {
-            _screenSizes[i] = 1 - lodInfo[i].Get<TPerPlatformProperty.FPerPlatformFloat>("ScreenSize").Default;
+            ScreenSizes[i] = 1 - lodInfo[i].Get<TPerPlatformProperty.FPerPlatformFloat>("ScreenSize").Default;
         }
     }
 
-    public override void Update()
-    {
-        if (Actor is not MeshActor actor || Actor.ActorManager is not SceneSystem { ActiveCamera: {} camera }) return;
-
-        var screenSize = actor.SphereCullingComponent.GetScreenSpaceCoverage(camera);
-
-        var currentLodIndex = LODIndex;
-        for (int i = 0; i < _screenSizes.Length; i++)
-        {
-            if (screenSize >= _screenSizes[i])
-            {
-                currentLodIndex = i;
-                break;
-            }
-        }
-
-        if (currentLodIndex != LODIndex)
-        {
-            Console.WriteLine("Switching LOD from {0} to {1}", LODIndex, currentLodIndex);
-            LODIndex = currentLodIndex;
-
-            var lod = _owner.LODModels[LODIndex];
-            var geometry = new Geometry(lod);
-
-            VBO.Bind();
-            VBO.Update(geometry.Vertices);
-
-            EBO.Bind();
-            EBO.Update(geometry.Indices);
-        }
-    }
+    public override IPrimitiveData GetPrimitive(int index) => new Geometry(_owner.LODModels[LODIndex]);
 
     private readonly struct Geometry : IPrimitiveData
     {

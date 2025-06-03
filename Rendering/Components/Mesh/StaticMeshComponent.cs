@@ -1,13 +1,14 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
-using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Mesh;
 
 public class StaticMeshComponent : MeshComponent
 {
+    private readonly UStaticMesh _owner;
+    
     public StaticMeshComponent(CStaticMesh staticMesh) : base(new Geometry(staticMesh.LODs[0]))
     {
 
@@ -15,8 +16,11 @@ public class StaticMeshComponent : MeshComponent
 
     public StaticMeshComponent(UStaticMesh staticMesh) : base(new Geometry(staticMesh.RenderData?.LODs[0]))
     {
-
+        _owner = staticMesh;
+        ScreenSizes = staticMesh.RenderData?.ScreenSize ?? [];
     }
+    
+    public override IPrimitiveData GetPrimitive(int index) => new Geometry(_owner.RenderData.LODs[LODIndex]);
 
     private readonly struct Geometry : IPrimitiveData
     {

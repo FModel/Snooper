@@ -59,8 +59,8 @@ public class DebugComponent(IPrimitiveData primitive) : PrimitiveComponent(primi
 
         public Geometry(BoxCullingComponent box)
         {
-            var center = box.BoxCenter;
-            var extents = box.BoxExtents;
+            var center = box.Center;
+            var extents = box.Extents;
 
             Vertices =
             [

@@ -6,16 +6,22 @@ namespace Snooper.Rendering.Components.Culling;
 
 public class BoxCullingComponent : CullingComponent
 {
-    public readonly Vector3 BoxCenter;
-    public readonly Vector3 BoxExtents;
+    public readonly Vector3 Center;
+    public readonly Vector3 Extents;
+    
+    public BoxCullingComponent(Vector3 center, Vector3 extents)
+    {
+        Center = center;
+        Extents = extents;
+    }
 
     public BoxCullingComponent(FBox box)
     {
         box *= Settings.GlobalScale;
         box.GetCenterAndExtents(out var center, out var extents);
 
-        BoxCenter = new Vector3(center.X, center.Z, center.Y);
-        BoxExtents = new Vector3(extents.X, extents.Z, extents.Y);
+        Center = new Vector3(center.X, center.Z, center.Y);
+        Extents = new Vector3(extents.X, extents.Z, extents.Y);
     }
 
     public void Update(CameraComponent cameraComponent)
@@ -26,11 +32,11 @@ public class BoxCullingComponent : CullingComponent
             throw new ArgumentException("Frustum must be defined by exactly six planes.");
         }
 
-        var center = Vector3.Transform(BoxCenter, Actor?.Transform.WorldMatrix ?? Matrix4x4.Identity);
+        var center = Vector3.Transform(Center, Actor?.Transform.WorldMatrix ?? Matrix4x4.Identity);
         foreach (var plane in frustum)
         {
             var distance = Vector3.Dot(plane.Normal, center) + plane.D;
-            var radius = Vector3.Dot(BoxExtents, Vector3.Abs(plane.Normal));
+            var radius = Vector3.Dot(Extents, Vector3.Abs(plane.Normal));
             if (distance < -radius)
             {
                 Actor.IsVisible = false;

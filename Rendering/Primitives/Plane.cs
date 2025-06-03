@@ -7,9 +7,9 @@ public readonly struct Plane : IPrimitiveData
     public Vector3[] Vertices { get; }
     public uint[] Indices { get; }
 
-    public Plane(Vector3 normal, float distance)
+    public Plane(Vector3 normal)
     {
-        var plane = new System.Numerics.Plane(normal, distance);
+        var plane = new System.Numerics.Plane(normal, 0);
 
         Vector3 basis1;
         if (normal.X != 0 || normal.Y != 0)

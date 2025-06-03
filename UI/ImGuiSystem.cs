@@ -90,12 +90,7 @@ void main()
         _indexBuffer.Generate();
         _indexBuffer.Bind();
         _indexBuffer.SetData();
-
-        _fontTexture.Generate();
-
-        _shader.Generate();
-        _shader.Link();
-
+        
         var stride = _vertexBuffer.Stride;
         GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
         GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, stride, 8);
@@ -103,6 +98,11 @@ void main()
         GL.EnableVertexAttribArray(0);
         GL.EnableVertexAttribArray(1);
         GL.EnableVertexAttribArray(2);
+
+        _fontTexture.Generate();
+
+        _shader.Generate();
+        _shader.Link();
 
         // Reset state
         GL.BindVertexArray(prevVao);

@@ -11,6 +11,7 @@ using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -58,12 +59,15 @@ public partial class MainWindow : GameWindow
         root.Children.Add(camera2);
 
         var plane = new Actor("Plane");
-        plane.Components.Add(new PrimitiveComponent(new Plane(-Vector3.UnitY, 2.5f)));
+        plane.Transform.Position += Vector3.UnitY * 2.5f;
+        plane.Components.Add(new PrimitiveComponent(new Plane(Vector3.UnitY)));
+        plane.Components.Add(new BoxCullingComponent(Vector3.Zero, new Vector3(1, 0, 1)));
         root.Children.Add(plane);
 
         var sphere = new Actor("Sphere");
         sphere.Transform.Position -= Vector3.UnitX * 2;
         sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
+        sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, new Vector3(0.5f)));
         root.Children.Add(sphere);
 
         _sceneSystem.RootActor = root;
