@@ -6,14 +6,9 @@ namespace Snooper.Rendering.Systems;
 
 public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent>
 {
-    public override uint Order => 21;
+    public override uint Order => 22;
     protected override bool AllowDerivation => true;
-    
-    private readonly ShaderProgram _debug = new("", "");
-
-    public override void Load()
-    {
-        Shader.Vertex =
+    protected override ShaderProgram Shader { get; } = new(
 """
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -32,19 +27,18 @@ out VS_OUT {
 
 void main()
 {
-    vec4 model = uModelMatrix * vec4(aPos, 1.0);
-    gl_Position = uViewProjectionMatrix * model;
+    vec4 worldPos = uModelMatrix * vec4(aPos, 1.0);
+    gl_Position = uViewProjectionMatrix * worldPos;
 
     vec3 T = normalize(vec3(uModelMatrix * vec4(aTangent,   0.0)));
     vec3 N = normalize(vec3(uModelMatrix * vec4(aNormal,    0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
-    vs_out.vWorldPos = model.xyz;
+    vs_out.vWorldPos = worldPos.xyz;
     vs_out.vTexCoords = aTexCoords;
     vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
 }
-""";
-        Shader.Fragment =
+""",
 """
 #version 330 core
 
@@ -69,7 +63,14 @@ void main()
     float brightness = (tFactor + bFactor + nFactor) / 3.0;
     FragColor = vec4(vec3(0.75) * brightness, 1.0);
 }
-""";
+"""
+);
+
+    private readonly ShaderProgram _debug = new("", "");
+
+    public override void Load()
+    {
+        base.Load();
 
         _debug.Vertex = Shader.Vertex;
         _debug.Fragment =
@@ -141,9 +142,6 @@ void main()
     }
 }
 """;
-
-        base.Load();
-
         _debug.Generate();
         _debug.Link();
     }
@@ -156,7 +154,7 @@ void main()
         RenderComponents(Shader);
 
         if (!DebugMode) return;
-        
+
         _debug.Use();
         _debug.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
 

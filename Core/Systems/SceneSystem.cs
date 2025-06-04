@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Desktop;
+using Snooper.Core.Containers;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
@@ -69,14 +70,22 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
     public void Render()
     {
-        GL.ClearColor(OpenTK.Mathematics.Color4.DarkOliveGreen);
+        GL.ClearColor(OpenTK.Mathematics.Color4.Black);
         foreach (var pair in Pairs)
         {
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, pair.Framebuffer);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
             Render(pair.Camera);
-            pair.Framebuffer.RenderPostProcessing();
+
+            if (UseMsaa && pair.Framebuffer is MsaaFramebuffer msaa)
+            {
+                msaa.RenderPostProcessing();
+            }
+            else if (pair.Framebuffer is GeometryBuffer geometryBuffer)
+            {
+                geometryBuffer.RenderLights();
+            }
         }
     }
 
@@ -86,7 +95,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
         if (component is CameraComponent cameraComponent)
         {
-            Pairs.Add(new CameraFramePair(new MsaaFramebuffer(1, 1), cameraComponent));
+            Pairs.Add(new CameraFramePair(UseMsaa ? new MsaaFramebuffer(1, 1) : new GeometryBuffer(1, 1), cameraComponent));
         }
     }
 

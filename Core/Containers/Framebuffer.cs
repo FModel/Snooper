@@ -2,7 +2,7 @@
 
 namespace Snooper.Core.Containers;
 
-public class Framebuffer : HandledObject, IBind
+public abstract class Framebuffer : HandledObject, IBind, IResizable
 {
     public override void Generate()
     {
@@ -22,6 +22,9 @@ public class Framebuffer : HandledObject, IBind
             throw new Exception($"Framebuffer failed to bind with error: {GL.GetProgramInfoLog(Handle)}");
         }
     }
+
+    public abstract void Resize(int newWidth, int newHeight);
+    public abstract IntPtr GetPointer();
 
     public override void Dispose()
     {

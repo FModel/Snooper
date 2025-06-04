@@ -11,7 +11,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent> : ActorSystem<TCompon
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
 
-    protected ShaderProgram Shader { get; } = new(
+    protected virtual ShaderProgram Shader { get; } = new(
 """
 #version 330 core
 layout (location = 0) in vec3 aPos;

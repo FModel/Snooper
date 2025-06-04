@@ -31,6 +31,7 @@ public partial class MainWindow : GameWindow
         ActorManager.RegisterSystemFactory<CameraSystem>();
         ActorManager.RegisterSystemFactory<CullingSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
+        ActorManager.RegisterSystemFactory<DeferredRenderSystem>();
         ActorManager.RegisterSystemFactory<RenderSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
 
@@ -209,7 +210,7 @@ public partial class MainWindow : GameWindow
                 for (var i = 0; i < root.Children.Count; i++)
                 {
                     var child = root.Children[i];
-                    
+
                     ImGui.PushID($"{child.Name}_{i}");
                     if (ImGui.TreeNode(child.Name))
                     {

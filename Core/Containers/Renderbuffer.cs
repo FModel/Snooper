@@ -2,8 +2,11 @@
 
 namespace Snooper.Core.Containers;
 
-public class Renderbuffer(int width, int height, RenderbufferStorage storage) : HandledObject, IBind, IResizable
+public class Renderbuffer(int width, int height, RenderbufferStorage storage, bool multisampled) : HandledObject, IBind, IResizable
 {
+    private int _width = width;
+    private int _height = height;
+
     public override void Generate()
     {
         Handle = GL.GenRenderbuffer();
@@ -16,11 +19,19 @@ public class Renderbuffer(int width, int height, RenderbufferStorage storage) : 
 
     public void Resize(int newWidth, int newHeight)
     {
-        width = newWidth;
-        height = newHeight;
+        _width = newWidth;
+        _height = newHeight;
 
         Bind();
-        GL.RenderbufferStorageMultisample(RenderbufferTarget.Renderbuffer, Settings.NumberOfSamples, storage, width, height);
+
+        if (multisampled)
+        {
+            GL.RenderbufferStorageMultisample(RenderbufferTarget.Renderbuffer, Settings.NumberOfSamples, storage, _width, _height);
+        }
+        else
+        {
+            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, storage, _width, _height);
+        }
     }
 
     public override void Dispose()
