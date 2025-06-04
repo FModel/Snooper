@@ -3,11 +3,11 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Programs;
 
-public sealed class ShaderProgram(string vertex, string fragment, string? geometry = null) : Program
+public class ShaderProgram(string vertex, string fragment, string? geometry = null) : Program
 {
-    public string VertexShaderCode { get; set; } = vertex;
-    public string FragmentShaderCode { get; set; } = fragment;
-    public string? GeometryShaderCode { get; set; } = geometry;
+    public string Vertex { get; set; } = vertex;
+    public string Fragment { get; set; } = fragment;
+    public string? Geometry { get; set; } = geometry;
 
     private readonly List<int> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
@@ -16,9 +16,9 @@ public sealed class ShaderProgram(string vertex, string fragment, string? geomet
     {
         base.Generate();
 
-        _shaderHandles.Add(CompileShader(ShaderType.VertexShader, VertexShaderCode));
-        _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, FragmentShaderCode));
-        if (!string.IsNullOrEmpty(GeometryShaderCode)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, GeometryShaderCode));
+        _shaderHandles.Add(CompileShader(ShaderType.VertexShader, Vertex));
+        _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, Fragment));
+        if (!string.IsNullOrEmpty(Geometry)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, Geometry));
     }
 
     public override void Link()
@@ -36,6 +36,22 @@ public sealed class ShaderProgram(string vertex, string fragment, string? geomet
             GL.DetachShader(Handle, shaderHandle);
             GL.DeleteShader(shaderHandle);
         }
+    }
+    
+    public virtual int CompileShader(ShaderType type, string content)
+    {
+        var handle = GL.CreateShader(type);
+        GL.ShaderSource(handle, content);
+        GL.CompileShader(handle);
+
+        var infoLog = GL.GetShaderInfoLog(handle);
+        if (!string.IsNullOrWhiteSpace(infoLog))
+        {
+            GL.DeleteShader(handle);
+            throw new Exception($"{type} failed to compile with error {infoLog}");
+        }
+
+        return handle;
     }
 
     public void SetUniform(string name, int value)
@@ -93,21 +109,5 @@ public sealed class ShaderProgram(string vertex, string fragment, string? geomet
             }
         }
         return location;
-    }
-
-    private int CompileShader(ShaderType type, string content)
-    {
-        var handle = GL.CreateShader(type);
-        GL.ShaderSource(handle, content);
-        GL.CompileShader(handle);
-
-        var infoLog = GL.GetShaderInfoLog(handle);
-        if (!string.IsNullOrWhiteSpace(infoLog))
-        {
-            GL.DeleteShader(handle);
-            throw new Exception($"{type} failed to compile with error {infoLog}");
-        }
-
-        return handle;
     }
 }

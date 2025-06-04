@@ -11,7 +11,7 @@ public abstract class ActorManager : IGameSystem
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private readonly HashSet<Actor> _actors = [];
     
-    public bool DebugMode = true;
+    public bool DebugMode = false;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new()
     {

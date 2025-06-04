@@ -116,15 +116,11 @@ void main() {
         _shader.Generate();
         _shader.Link();
 
+        base.Load();
         foreach (var component in Components)
         {
             component.Generate();
         }
-    }
-
-    public override void Update(float delta)
-    {
-
     }
 
     public override void Render(CameraComponent camera)

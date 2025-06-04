@@ -2,7 +2,7 @@
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
 
-namespace Snooper.Rendering.Containers;
+namespace Snooper.Rendering.Containers.Buffers;
 
 public class MsaaFramebuffer(int originalWidth, int originalHeight) : Framebuffer, IResizable
 {

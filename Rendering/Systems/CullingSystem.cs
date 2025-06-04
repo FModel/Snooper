@@ -10,16 +10,6 @@ public class CullingSystem : ActorSystem<CullingComponent>
     public override uint Order => 11;
     protected override bool AllowDerivation => true;
 
-    public override void Load()
-    {
-
-    }
-
-    public override void Update(float delta)
-    {
-
-    }
-
     public override void Render(CameraComponent camera)
     {
         if (!camera.IsActive) return;

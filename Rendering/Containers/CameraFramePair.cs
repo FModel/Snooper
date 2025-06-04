@@ -1,4 +1,5 @@
 ﻿using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Containers.Buffers;
 
 namespace Snooper.Rendering.Containers;
 

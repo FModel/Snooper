@@ -39,6 +39,7 @@ void main()
         Shader.Generate();
         Shader.Link();
 
+        base.Load();
         foreach (var component in Components)
         {
             component.Generate();
@@ -47,6 +48,7 @@ void main()
 
     public override void Update(float delta)
     {
+        base.Update(delta);
         foreach (var component in Components)
         {
             component.Update();

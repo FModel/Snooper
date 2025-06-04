@@ -35,6 +35,10 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 {
     public override int ComponentsCount => Components.Count;
     protected HashSet<TComponent> Components { get; } = [];
+    protected Queue<TComponent> ComponentsToLoad { get; } = [];
+
+    public override void Load() => DequeueComponents();
+    public override void Update(float delta) => DequeueComponents();
 
     public override void ProcessActorComponent(ActorComponent component, Actor actor)
     {
@@ -44,8 +48,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         switch (Components.Contains(actorComponent))
         {
             case false:
-                Components.Add(actorComponent);
-                OnActorComponentAdded(actorComponent);
+                ComponentsToLoad.Enqueue(actorComponent);
                 break;
             case true:
                 Components.Remove(actorComponent);
@@ -62,5 +65,15 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     protected virtual void OnActorComponentRemoved(TComponent component)
     {
 
+    }
+    
+    private void DequeueComponents()
+    {
+        while (ComponentsToLoad.Count > 0)
+        {
+            var component = ComponentsToLoad.Dequeue();
+            Components.Add(component);
+            OnActorComponentAdded(component);
+        }
     }
 }

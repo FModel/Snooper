@@ -5,7 +5,7 @@ using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
-namespace Snooper.Rendering.Containers;
+namespace Snooper.Rendering.Containers.Buffers;
 
 public class PostProcFramebuffer(int originalWidth, int originalHeight) : Framebuffer, IResizable
 {

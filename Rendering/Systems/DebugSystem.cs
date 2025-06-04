@@ -11,7 +11,7 @@ public class DebugSystem : PrimitiveSystem<Vector3, DebugComponent>
 
     public override void Load()
     {
-        Shader.FragmentShaderCode =
+        Shader.Fragment =
 """
 #version 330 core
 

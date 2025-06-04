@@ -22,6 +22,8 @@ public class CameraFrustumComponent(CameraComponent cameraComponent) : DebugComp
 
     public override void Update()
     {
+        base.Update();
+        
         VBO.Bind();
         VBO.Update(CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes()));
     }

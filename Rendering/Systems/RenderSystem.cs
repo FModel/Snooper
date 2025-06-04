@@ -13,7 +13,7 @@ public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent>
 
     public override void Load()
     {
-        Shader.VertexShaderCode =
+        Shader.Vertex =
 """
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -44,7 +44,7 @@ void main()
     vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
 }
 """;
-        Shader.FragmentShaderCode =
+        Shader.Fragment =
 """
 #version 330 core
 
@@ -71,8 +71,8 @@ void main()
 }
 """;
 
-        _debug.VertexShaderCode = Shader.VertexShaderCode;
-        _debug.FragmentShaderCode =
+        _debug.Vertex = Shader.Vertex;
+        _debug.Fragment =
 """
 #version 330 core
 
@@ -85,7 +85,7 @@ void main()
     FragColor = vec4(fColor, 1.0);
 }
 """;
-        _debug.GeometryShaderCode =
+        _debug.Geometry =
 """
 #version 330 core
 layout (triangles) in;

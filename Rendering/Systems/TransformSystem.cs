@@ -8,16 +8,12 @@ public sealed class TransformSystem : ActorSystem<TransformComponent>
 {
     public override uint Order => 9;
 
-    public override void Load()
-    {
-
-    }
-
     public override void Update(float delta)
     {
-        foreach (var transformComponent in Components)
+        base.Update(delta);
+        foreach (var component in Components)
         {
-            UpdateTransformComponentsRecursive(transformComponent);
+            UpdateTransformComponentsRecursive(component);
         }
     }
 

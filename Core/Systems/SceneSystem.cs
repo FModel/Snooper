@@ -3,6 +3,7 @@ using OpenTK.Windowing.Desktop;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
+using Snooper.Rendering.Containers.Buffers;
 
 namespace Snooper.Core.Systems;
 

@@ -198,6 +198,46 @@ public partial class MainWindow : GameWindow
             ImGui.End();
         }
 
+        var root = _sceneSystem.RootActor;
+        if (root != null)
+        {
+            if (ImGui.Begin("Scene Hierarchy"))
+            {
+                ImGui.Text($"Root Actor: {root.Name}");
+                ImGui.Separator();
+
+                for (var i = 0; i < root.Children.Count; i++)
+                {
+                    var child = root.Children[i];
+                    
+                    ImGui.PushID($"{child.Name}_{i}");
+                    if (ImGui.TreeNode(child.Name))
+                    {
+                        ImGui.Text($"Position: {child.Transform.Position}");
+                        ImGui.Text($"Rotation: {child.Transform.Rotation}");
+                        ImGui.Text($"Scale: {child.Transform.Scale}");
+                        ImGui.Text($"Components: {child.Components.Count}");
+                        foreach (var component in child.Components)
+                        {
+                            ImGui.Text($"- {component.GetType().Name}");
+                        }
+                        ImGui.TreePop();
+                    }
+                    ImGui.PopID();
+                }
+
+                if (ImGui.Button("Add Actor"))
+                {
+                    var actor = new Actor("New Actor");
+                    actor.Components.Add(new PrimitiveComponent(new Cube()));
+                    var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
+                    actor.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
+                    root.Children.Add(actor);
+                }
+            }
+            ImGui.End();
+        }
+
         if (ImGui.Begin("Systems Order"))
         {
             ImGui.Checkbox("Debug Mode", ref _sceneSystem.DebugMode);

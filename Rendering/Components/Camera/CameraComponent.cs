@@ -77,6 +77,15 @@ public sealed class CameraComponent : ActorComponent
         {
             Actor.Transform.Position -= up;
         }
+
+        if (keyboard.IsKeyDown(Keys.X))
+        {
+            FieldOfView += 1.0f;
+        }
+        if (keyboard.IsKeyDown(Keys.C))
+        {
+            FieldOfView -= 1.0f;
+        }
     }
 
     public void Update(Vector2 mouseDelta)

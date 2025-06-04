@@ -17,6 +17,8 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
     protected abstract Action<ArrayBuffer<T>> PointersFactory { get; }
     protected abstract PolygonMode PolygonMode { get; }
 
+    private bool _bGenerated;
+
     public virtual void Generate()
     {
         VAO.Generate();
@@ -31,11 +33,15 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
         EBO.SetData(primitive.Indices);
 
         PointersFactory(VBO);
+        _bGenerated = true;
     }
 
     public virtual void Update()
     {
-
+        if (!_bGenerated)
+        {
+            Generate();
+        }
     }
 
     public virtual void Render()

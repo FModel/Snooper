@@ -61,6 +61,8 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
             LODIndex = currentLODIndex;
 
             var primitive = GetPrimitive(LODIndex);
+            
+            base.Update();
             VBO.Bind();
             VBO.Update(primitive.Vertices);
 
