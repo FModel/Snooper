@@ -3,6 +3,17 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
 
+public enum ActorSystemType
+{
+    DeferredRender,
+    ForwardRender,
+    Physics,
+    Animation,
+    Input,
+    Audio,
+    Custom
+}
+
 public abstract class ActorSystem(Type? componentType) : IGameSystem
 {
     public Type? ComponentType { get; } = componentType;
@@ -16,6 +27,7 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
 
+    public virtual ActorSystemType SystemType { get; } = ActorSystemType.ForwardRender;
     protected virtual bool AllowDerivation { get => true; }
     public bool Accepts(Type type)
     {
@@ -35,7 +47,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 {
     public override int ComponentsCount => Components.Count;
     protected HashSet<TComponent> Components { get; } = [];
-    
+
     private Queue<TComponent> _componentsToLoad { get; } = [];
 
     public override void Load() => DequeueComponents();
@@ -67,7 +79,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     {
 
     }
-    
+
     private void DequeueComponents(int limit = 0)
     {
         var count = 0;

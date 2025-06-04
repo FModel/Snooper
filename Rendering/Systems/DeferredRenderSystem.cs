@@ -1,8 +1,11 @@
-﻿namespace Snooper.Rendering.Systems;
+﻿using Snooper.Core.Systems;
+
+namespace Snooper.Rendering.Systems;
 
 public class DeferredRenderSystem : RenderSystem
 {
     public override uint Order => 21;
+    public override ActorSystemType SystemType => ActorSystemType.DeferredRender;
 
     public override void Load()
     {

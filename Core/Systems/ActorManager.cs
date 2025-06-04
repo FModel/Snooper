@@ -11,7 +11,6 @@ public abstract class ActorManager : IGameSystem
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private readonly HashSet<Actor> _actors = [];
 
-    public bool UseMsaa = true;
     public bool DebugMode = false;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new()
@@ -42,9 +41,11 @@ public abstract class ActorManager : IGameSystem
         }
     }
 
-    public virtual void Render(CameraComponent camera)
+    [Obsolete("Use Render(CameraComponent camera, ActorSystemType systemType) instead.")]
+    public void Render(CameraComponent camera) => Render(camera, ActorSystemType.ForwardRender);
+    protected void Render(CameraComponent camera, ActorSystemType systemType)
     {
-        foreach (var system in Systems.Values)
+        foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
         {
             system.Render(camera);
         }

@@ -7,12 +7,18 @@ namespace Snooper.Rendering.Containers.Buffers;
 
 public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 {
+    public override int Width => _fullQuad.Width;
+    public override int Height => _fullQuad.Width;
+
+    private readonly FullQuadFramebuffer _fullQuad = new(originalWidth, originalHeight);
+
     private readonly Texture2D _position = new(originalWidth, originalHeight, PixelInternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float);
     private readonly Texture2D _normal = new(originalWidth, originalHeight, PixelInternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float);
     private readonly Texture2D _color = new(originalWidth, originalHeight, PixelInternalFormat.Rgba, PixelFormat.Rgba);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
-    private readonly PostProcFramebuffer _lightFramebuffer = new(originalWidth, originalHeight, new ShaderProgram(@"
+    private readonly ShaderProgram _shader = new(
+"""
 #version 330 core
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aTexCoords;
@@ -24,7 +30,8 @@ void main()
     gl_Position = vec4(aPos, 0.0, 1.0);
     vTexCoords = aTexCoords;
 }
-", @"
+""",
+"""
 #version 330 core
 
 in vec2 vTexCoords;
@@ -44,27 +51,27 @@ void main()
 
     FragColor = vec4(color.rgb * brightness, color.a);
 }
-"));
+""");
 
     public override void Generate()
     {
         _position.Generate();
-        _position.Resize(originalWidth, originalHeight);
+        _position.Resize(Width, Height);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
 
         _normal.Generate();
-        _normal.Resize(originalWidth, originalHeight);
+        _normal.Resize(Width, Height);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
 
         _color.Generate();
-        _color.Resize(originalWidth, originalHeight);
+        _color.Resize(Width, Height);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
 
         _depth.Generate();
-        _depth.Resize(originalWidth, originalHeight);
+        _depth.Resize(Width, Height);
 
         base.Generate();
         base.Bind();
@@ -74,28 +81,41 @@ void main()
         GL.DrawBuffers(3, [
             DrawBuffersEnum.ColorAttachment0,
             DrawBuffersEnum.ColorAttachment1,
-            DrawBuffersEnum.ColorAttachment2
+            DrawBuffersEnum.ColorAttachment2,
         ]);
         GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, _depth);
 
         CheckStatus();
 
-        _lightFramebuffer.Generate();
+        _fullQuad.Generate();
+
+        _shader.Generate();
+        _shader.Link();
     }
 
-    public void RenderLights()
+    public override void Bind()
+    {
+        base.Bind();
+        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+        GL.Disable(EnableCap.Blend);
+    }
+
+    public override void Render()
     {
         GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
-        _lightFramebuffer.Render(shader =>
-        {
-            // _position.Bind(TextureUnit.Texture0);
-            _normal.Bind(TextureUnit.Texture1);
-            _color.Bind(TextureUnit.Texture2);
+        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fullQuad);
+        GL.BlitFramebuffer(0, 0, Width, Height, 0, 0, Width, Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
 
-            // shader.SetUniform("gPosition", 0);
-            shader.SetUniform("gNormal", 1);
-            shader.SetUniform("gColor", 2);
-        });
+        // _position.Bind(TextureUnit.Texture0);
+        _normal.Bind(TextureUnit.Texture1);
+        _color.Bind(TextureUnit.Texture2);
+
+        _shader.Use();
+        // _shader.SetUniform("gPosition", 0);
+        _shader.SetUniform("gNormal", 1);
+        _shader.SetUniform("gColor", 2);
+
+        _fullQuad.Render();
     }
 
     public override void Resize(int newWidth, int newHeight)
@@ -104,8 +124,8 @@ void main()
         _normal.Resize(newWidth, newHeight);
         _color.Resize(newWidth, newHeight);
         _depth.Resize(newWidth, newHeight);
-        _lightFramebuffer.Resize(newWidth, newHeight);
+        _fullQuad.Resize(newWidth, newHeight);
     }
 
-    public override IntPtr GetPointer() => _lightFramebuffer.GetPointer();
+    public override IntPtr GetPointer() => _fullQuad.GetPointer();
 }

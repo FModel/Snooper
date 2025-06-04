@@ -98,12 +98,12 @@ public partial class MainWindow : GameWindow
     {
         base.OnLoad();
 
+        GL.ClearColor(OpenTK.Mathematics.Color4.Black);
         GL.Enable(EnableCap.DepthTest);
-        GL.DepthFunc(DepthFunction.Less);
         GL.Enable(EnableCap.Multisample);
         // GL.Enable(EnableCap.VertexProgramPointSize);
         // GL.StencilOp(StencilOp.Keep, StencilOp.Replace, StencilOp.Replace);
-        GL.Enable(EnableCap.Blend);
+        GL.DepthFunc(DepthFunction.Less);
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 #if DEBUG
         GL.DebugMessageCallback(_debugMessageDelegate, IntPtr.Zero);
@@ -136,11 +136,11 @@ public partial class MainWindow : GameWindow
         GL.EndQuery(QueryTarget.PrimitivesGenerated);
         GL.GetQueryObject(query, GetQueryObjectParam.QueryResult, out long primitiveCount);
 
-        GL.ClearColor(OpenTK.Mathematics.Color4.Black);
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        var j = 0;
         foreach (var pair in _sceneSystem.Pairs)
         {
             if (ImGui.Begin($"Viewport ({pair.Camera.Actor?.Name})"))
@@ -153,7 +153,8 @@ public partial class MainWindow : GameWindow
 
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
-                ImGui.Image(pair.Framebuffer.GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
+                ImGui.Image(j == 0 ? pair.MsaaBuffer.GetPointer() : pair.GBuffer.GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
+                j++;
 
                 if (ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))
                 {
@@ -267,7 +268,7 @@ public partial class MainWindow : GameWindow
 
         GL.Viewport(0, 0, e.Width, e.Height);
         foreach (var pair in _sceneSystem.Pairs)
-            pair.Framebuffer.Resize(e.Width, e.Height);
+            pair.Resize(e.Width, e.Height);
         _imguiSystem.Resize(e.Width, e.Height);
     }
 }

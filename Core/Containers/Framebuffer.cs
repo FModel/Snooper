@@ -4,6 +4,9 @@ namespace Snooper.Core.Containers;
 
 public abstract class Framebuffer : HandledObject, IBind, IResizable
 {
+    public abstract int Width { get; }
+    public abstract int Height { get; }
+
     public override void Generate()
     {
         Handle = GL.GenFramebuffer();
@@ -23,6 +26,7 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable
         }
     }
 
+    public abstract void Render();
     public abstract void Resize(int newWidth, int newHeight);
     public abstract IntPtr GetPointer();
 

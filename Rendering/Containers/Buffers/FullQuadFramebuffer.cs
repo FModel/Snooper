@@ -2,15 +2,16 @@
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Buffers;
 
-public class PostProcFramebuffer(int originalWidth, int originalHeight, ShaderProgram shader) : Framebuffer
+public class FullQuadFramebuffer(int originalWidth, int originalHeight) : Framebuffer
 {
-    private readonly Texture2D _color = new(originalWidth, originalHeight);
+    public override int Width => _color.Width;
+    public override int Height => _color.Width;
 
+    private readonly Texture2D _color = new(originalWidth, originalHeight);
     private readonly VertexArray _vao = new();
     private readonly ArrayBuffer<Vector4> _vbo = new(4, BufferUsageHint.StaticDraw);
     private readonly ElementArrayBuffer<uint> _ebo = new(6, BufferUsageHint.StaticDraw);
@@ -47,22 +48,13 @@ public class PostProcFramebuffer(int originalWidth, int originalHeight, ShaderPr
         GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, _vbo.Stride, 0);
         GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, _vbo.Stride, 8);
         GL.EnableVertexAttribArray(0);
-        GL.EnableVertexAttribArray(1);
-
-        shader.Generate();
-        shader.Link();
+        GL.EnableVertexAttribArray(1);;
     }
 
-    public void Render(Action<ShaderProgram> uniforms)
+    public override void Render()
     {
-        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, Handle);
-        GL.BlitFramebuffer(0, 0, _color.Width, _color.Height, 0, 0, _color.Width, _color.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
-
-        // shader.Use();
-        // uniforms(shader);
-        //
-        // _vao.Bind();
-        // GL.DrawElements(PrimitiveType.Triangles, _ebo.Size, DrawElementsType.UnsignedInt, 0);
+        _vao.Bind();
+        GL.DrawElements(PrimitiveType.Triangles, _ebo.Size, DrawElementsType.UnsignedInt, 0);
     }
 
     public override void Resize(int newWidth, int newHeight)

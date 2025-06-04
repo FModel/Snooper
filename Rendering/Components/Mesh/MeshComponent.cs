@@ -7,7 +7,7 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
-[DefaultActorSystem(typeof(RenderSystem))]
+[DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent<Vertex>(primitive)
 {
     protected override Action<ArrayBuffer<Vertex>> PointersFactory { get; } = buffer =>
@@ -24,7 +24,7 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
     protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
 
     public abstract int LODCount { get; }
-    
+
     public int LODIndex { get; private set; }
     public float[] ScreenSizes { get; protected init; } = [];
     public float CurrentScreenSize = 0;
@@ -61,7 +61,7 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
             LODIndex = currentLODIndex;
 
             var primitive = GetPrimitive(LODIndex);
-            
+
             base.Update();
             VBO.Bind();
             VBO.Update(primitive.Vertices);

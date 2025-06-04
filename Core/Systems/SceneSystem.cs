@@ -1,6 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Desktop;
-using Snooper.Core.Containers;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
@@ -54,8 +53,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
     {
         foreach (var pair in Pairs)
         {
-            pair.Framebuffer.Generate();
-            pair.Framebuffer.Resize(wnd.ClientSize.X, wnd.ClientSize.Y);
+            pair.Generate(wnd.ClientSize.X, wnd.ClientSize.Y);
         }
 
         base.Load();
@@ -70,22 +68,33 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
     public void Render()
     {
-        GL.ClearColor(OpenTK.Mathematics.Color4.Black);
         foreach (var pair in Pairs)
         {
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, pair.Framebuffer);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+            // render gBuffer
+            pair.GBuffer.Bind();
+            Render(pair.Camera, ActorSystemType.DeferredRender);
+            pair.GBuffer.Render();
 
-            Render(pair.Camera);
+            // copy gColor to framebuffer
+            // GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, pair.GBuffer);
+            // GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, pair.Framebuffer);
+            // GL.BlitFramebuffer(0, 0, pair.GBuffer.Width, pair.GBuffer.Height, 0, 0, pair.Framebuffer.Width, pair.Framebuffer.Height, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+            // pair.Framebuffer.Render(pair.GBuffer.Shade);
 
-            if (UseMsaa && pair.Framebuffer is MsaaFramebuffer msaa)
-            {
-                msaa.RenderPostProcessing();
-            }
-            else if (pair.Framebuffer is GeometryBuffer geometryBuffer)
-            {
-                geometryBuffer.RenderLights();
-            }
+            // // copy depth from gBuffer to msaaBuffer
+            // GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, pair.MsaaBuffer);
+            // GL.BlitFramebuffer(0, 0, pair.GBuffer.Width, pair.GBuffer.Height, 0, 0, pair.MsaaBuffer.Width, pair.MsaaBuffer.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+
+            // render msaaBuffer
+            pair.MsaaBuffer.Bind();
+            Render(pair.Camera, ActorSystemType.ForwardRender);
+            pair.MsaaBuffer.Render();
+
+            // // // copy msaaBuffer to framebuffer
+            // GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, pair.MsaaBuffer);
+            // GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, pair.Framebuffer);
+            // GL.BlitFramebuffer(0, 0, pair.MsaaBuffer.Width, pair.MsaaBuffer.Height, 0, 0, pair.Framebuffer.Width, pair.Framebuffer.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+            // pair.Framebuffer.Render(pair.MsaaBuffer.Shade);
         }
     }
 
@@ -95,7 +104,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
         if (component is CameraComponent cameraComponent)
         {
-            Pairs.Add(new CameraFramePair(UseMsaa ? new MsaaFramebuffer(1, 1) : new GeometryBuffer(1, 1), cameraComponent));
+            Pairs.Add(new CameraFramePair(cameraComponent));
         }
     }
 
