@@ -6,7 +6,7 @@ namespace Snooper.Rendering.Systems;
 
 public sealed class TransformSystem : ActorSystem<TransformComponent>
 {
-    public override uint Order { get => 9; }
+    public override uint Order => 9;
 
     public override void Load()
     {

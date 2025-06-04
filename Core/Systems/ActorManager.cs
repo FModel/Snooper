@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using System.Reflection;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
@@ -11,6 +10,8 @@ public abstract class ActorManager : IGameSystem
     private static readonly Dictionary<Type, Func<ActorSystem>> _registeredFactories = [];
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private readonly HashSet<Actor> _actors = [];
+    
+    public bool DebugMode = true;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new()
     {

@@ -1,12 +1,13 @@
 ﻿using System.Numerics;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
 public class DebugSystem : PrimitiveSystem<Vector3, DebugComponent>
 {
-    public override uint Order { get => 100; }
-    protected override bool AllowDerivation { get => true; }
+    public override uint Order => 100;
+    protected override bool AllowDerivation => true;
 
     public override void Load()
     {
@@ -23,5 +24,17 @@ void main()
 """;
 
         base.Load();
+    }
+
+    public override void Update(float delta)
+    {
+        if (!DebugMode) return;
+        base.Update(delta);
+    }
+
+    public override void Render(CameraComponent camera)
+    {
+        if (!DebugMode) return;
+        base.Render(camera);
     }
 }

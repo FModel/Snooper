@@ -3,7 +3,6 @@ using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
-using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
@@ -24,6 +23,8 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
     };
     protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
 
+    public abstract int LODCount { get; }
+    
     public int LODIndex { get; private set; }
     public float[] ScreenSizes { get; protected init; } = [];
     public float CurrentScreenSize = 0;
@@ -38,7 +39,8 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
 
     public override void Update()
     {
-        if (ScreenSizes.Length < 2 || Actor is not MeshActor { ActorManager: SceneSystem { ActiveCamera: {} camera }, IsVisible: true } actor)
+        if (LODCount < 2 || ScreenSizes.Length < 2 ||
+            Actor is not MeshActor { ActorManager: SceneSystem { ActiveCamera: {} camera }, IsVisible: true } actor)
             return;
 
         CurrentScreenSize = actor.CullingComponent.GetScreenSpaceCoverage(camera);
@@ -53,7 +55,7 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
             }
         }
 
-        if (currentLODIndex != LODIndex)
+        if (currentLODIndex != LODIndex && currentLODIndex >= 0 && currentLODIndex < LODCount)
         {
             Console.WriteLine("{0}: Screen Size: {1}, Switching LOD from {2} to {3}", actor.Name, CurrentScreenSize, LODIndex, currentLODIndex);
             LODIndex = currentLODIndex;

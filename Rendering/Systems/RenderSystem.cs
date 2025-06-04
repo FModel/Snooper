@@ -1,12 +1,15 @@
-﻿using Snooper.Rendering.Components.Mesh;
-using Snooper.Rendering.Primitives;
+﻿using Snooper.Core.Containers.Programs;
+using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
 public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent>
 {
-    public override uint Order { get => 21; }
-    protected override bool AllowDerivation { get => true; }
+    public override uint Order => 21;
+    protected override bool AllowDerivation => true;
+    
+    private readonly ShaderProgram _debug = new("", "");
 
     public override void Load()
     {
@@ -22,27 +25,23 @@ uniform mat4 uModelMatrix;
 uniform mat4 uViewProjectionMatrix;
 
 out VS_OUT {
+    vec3 vWorldPos;
     vec2 vTexCoords;
     mat3 TBN;
 } vs_out;
 
-vec3 calculateBitangent(vec3 normal, vec3 tangent)
-{
-    vec3 N = normalize(normal);
-    vec3 T = normalize(tangent);
-    return cross(N, T);
-}
-
 void main()
 {
-    gl_Position = uViewProjectionMatrix * uModelMatrix * vec4(aPos, 1.0);
+    vec4 model = uModelMatrix * vec4(aPos, 1.0);
+    gl_Position = uViewProjectionMatrix * model;
 
     vec3 T = normalize(vec3(uModelMatrix * vec4(aTangent,   0.0)));
-    vec3 B = normalize(vec3(uModelMatrix * vec4(calculateBitangent(aNormal, aTangent), 0.0)));
     vec3 N = normalize(vec3(uModelMatrix * vec4(aNormal,    0.0)));
+    T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
+    vs_out.vWorldPos = model.xyz;
     vs_out.vTexCoords = aTexCoords;
-    vs_out.TBN = mat3(T, B, N);
+    vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
 }
 """;
         Shader.FragmentShaderCode =
@@ -50,6 +49,7 @@ void main()
 #version 330 core
 
 in VS_OUT {
+    vec3 vWorldPos;
     vec2 vTexCoords;
     mat3 TBN;
 } fs_in;
@@ -58,17 +58,108 @@ out vec4 FragColor;
 
 void main()
 {
-    vec3 lightDir = normalize(vec3(1.0, 1.0, -1.0));
-
+    vec3 tangent = normalize(fs_in.TBN * vec3(1.0, 0.0, 0.0));
+    vec3 bitangent = normalize(fs_in.TBN * vec3(0.0, 1.0, 0.0));
     vec3 normal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
-    float diff = max(dot(normal, lightDir), 0.5);
 
-    vec3 finalColor = vec3(1.0) * diff;
+    float tFactor = 0.9 + 0.1 * tangent.z;
+    float bFactor = 0.9 + 0.1 * bitangent.z;
+    float nFactor = 0.7 + 0.3 * normal.z;
 
-    FragColor = vec4(finalColor, 1.0);
+    float brightness = (tFactor + bFactor + nFactor) / 3.0;
+    FragColor = vec4(vec3(0.75) * brightness, 1.0);
+}
+""";
+
+        _debug.VertexShaderCode = Shader.VertexShaderCode;
+        _debug.FragmentShaderCode =
+"""
+#version 330 core
+
+in vec3 fColor;
+
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(fColor, 1.0);
+}
+""";
+        _debug.GeometryShaderCode =
+"""
+#version 330 core
+layout (triangles) in;
+layout (line_strip, max_vertices = 6) out;
+
+in VS_OUT {
+    vec3 vWorldPos;
+    vec2 vTexCoords;
+    mat3 TBN;
+} gs_in[];
+
+uniform mat4 uViewProjectionMatrix;
+
+out vec3 fColor;
+
+const float MAGNITUDE = 0.01;
+
+void EmitDirection(vec3 worldPos, vec3 dir, vec3 color)
+{
+    vec4 p0 = uViewProjectionMatrix * vec4(worldPos, 1.0);
+    vec4 p1 = uViewProjectionMatrix * vec4(worldPos + dir * MAGNITUDE, 1.0);
+
+    fColor = color;
+    gl_Position = p0;
+    EmitVertex();
+
+    fColor = color;
+    gl_Position = p1;
+    EmitVertex();
+
+    EndPrimitive();
+}
+
+void GenerateLines(int index)
+{
+    mat3 TBN = gs_in[index].TBN;
+    vec3 pos = gs_in[index].vWorldPos;
+
+    vec3 tangent = normalize(TBN * vec3(1, 0, 0));
+    vec3 bitangent = normalize(TBN * vec3(0, 1, 0));
+    vec3 normal = normalize(TBN * vec3(0, 0, 1));
+
+    EmitDirection(pos, tangent, vec3(1, 0, 0));    // Red   - Tangent
+    EmitDirection(pos, bitangent, vec3(0, 1, 0));  // Green - Bitangent
+    EmitDirection(pos, normal, vec3(0, 0, 1));     // Blue  - Normal
+}
+
+void main()
+{
+    for (int i = 0; i < gl_in.length(); i++)
+    {
+        GenerateLines(i);
+    }
 }
 """;
 
         base.Load();
+
+        _debug.Generate();
+        _debug.Link();
+    }
+
+    public override void Render(CameraComponent camera)
+    {
+        Shader.Use();
+        Shader.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
+
+        RenderComponents(Shader);
+
+        if (!DebugMode) return;
+        
+        _debug.Use();
+        _debug.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
+
+        RenderComponents(_debug);
     }
 }

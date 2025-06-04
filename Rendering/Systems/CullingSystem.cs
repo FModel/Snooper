@@ -7,8 +7,8 @@ namespace Snooper.Rendering.Systems;
 
 public class CullingSystem : ActorSystem<CullingComponent>
 {
-    public override uint Order { get => 11; }
-    protected override bool AllowDerivation { get => true; }
+    public override uint Order => 11;
+    protected override bool AllowDerivation => true;
 
     public override void Load()
     {

@@ -3,12 +3,13 @@ using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Objects.Engine;
-using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Mesh;
 
 public class SkeletalMeshComponent : MeshComponent
 {
+    public override int LODCount => _mesh.LODs.Count;
+    
     private readonly CSkeletalMesh _mesh;
 
     public SkeletalMeshComponent(USkeletalMesh owner, CSkeletalMesh mesh) : base(new Geometry(mesh.LODs.First()))
@@ -23,14 +24,7 @@ public class SkeletalMeshComponent : MeshComponent
         }
     }
 
-    protected override IVertexData GetPrimitive(int index)
-    {
-        var maxIndex = _mesh.LODs.Count - 1;
-        if (index < 0 || index > maxIndex)
-            index = 0;
-
-        return new Geometry(_mesh.LODs[index]);
-    }
+    protected override IVertexData GetPrimitive(int index) => new Geometry(_mesh.LODs[index]);
 
     private readonly struct Geometry : IVertexData
     {

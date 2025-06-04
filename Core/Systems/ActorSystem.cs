@@ -23,6 +23,8 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
         return ComponentType?.IsAssignableFrom(type) ?? false;
     }
 
+    protected bool DebugMode => ActorManager?.DebugMode ?? false;
+
     public void Dispose()
     {
 
@@ -31,8 +33,7 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 
 public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)) where TComponent : ActorComponent
 {
-    public override int ComponentsCount { get => Components.Count; }
-
+    public override int ComponentsCount => Components.Count;
     protected HashSet<TComponent> Components { get; } = [];
 
     public override void ProcessActorComponent(ActorComponent component, Actor actor)

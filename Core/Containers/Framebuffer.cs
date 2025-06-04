@@ -14,7 +14,7 @@ public class Framebuffer : HandledObject, IBind
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, Handle);
     }
 
-    public void CheckStatus()
+    protected void CheckStatus()
     {
         var status = GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
         if (status != FramebufferErrorCode.FramebufferComplete)

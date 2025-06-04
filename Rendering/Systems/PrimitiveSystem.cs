@@ -8,8 +8,8 @@ namespace Snooper.Rendering.Systems;
 
 public abstract class PrimitiveSystem<TVertex, TComponent> : ActorSystem<TComponent> where TComponent : TPrimitiveComponent<TVertex> where TVertex : unmanaged
 {
-    public override uint Order { get => 20; }
-    protected override bool AllowDerivation { get => false; }
+    public override uint Order => 20;
+    protected override bool AllowDerivation => false;
 
     protected ShaderProgram Shader { get; } = new(
 """
@@ -58,10 +58,14 @@ void main()
         Shader.Use();
         Shader.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
 
-        foreach (var component in Components)
+        RenderComponents(Shader);
+    }
+
+    protected void RenderComponents(ShaderProgram shader)
+    {
+        foreach (var component in Components.Where(component => component.Actor is not null && component.Actor.IsVisible))
         {
-            if (component.Actor is null || !component.Actor.IsVisible) continue;
-            Shader.SetUniform("uModelMatrix", component.GetModelMatrix());
+            shader.SetUniform("uModelMatrix", component.GetModelMatrix());
             component.Render();
         }
     }

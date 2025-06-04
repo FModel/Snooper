@@ -200,6 +200,7 @@ public partial class MainWindow : GameWindow
 
         if (ImGui.Begin("Systems Order"))
         {
+            ImGui.Checkbox("Debug Mode", ref _sceneSystem.DebugMode);
             foreach (var system in _sceneSystem.Systems)
             {
                 ImGui.Text($"- {system.Value.GetType().Name} (Priority: {system.Key}) (Components: x{system.Value.ComponentsCount})");

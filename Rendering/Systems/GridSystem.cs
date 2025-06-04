@@ -8,7 +8,7 @@ namespace Snooper.Rendering.Systems;
 
 public class GridSystem : ActorSystem<GridComponent>
 {
-    public override uint Order { get => 1; }
+    public override uint Order => 1;
 
     private readonly ShaderProgram _shader = new(@"
 #version 460 core

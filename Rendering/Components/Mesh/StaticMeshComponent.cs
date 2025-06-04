@@ -7,6 +7,8 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public class StaticMeshComponent : MeshComponent
 {
+    public override int LODCount => _mesh.LODs.Count;
+    
     private readonly CStaticMesh _mesh;
 
     public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(new Geometry(mesh.LODs[0]))
@@ -16,14 +18,7 @@ public class StaticMeshComponent : MeshComponent
         ScreenSizes = owner.RenderData?.ScreenSize ?? [];
     }
 
-    protected override IVertexData GetPrimitive(int index)
-    {
-        var maxIndex = _mesh.LODs.Count - 1;
-        if (index < 0 || index > maxIndex)
-            index = 0;
-
-        return new Geometry(_mesh.LODs[index]);
-    }
+    protected override IVertexData GetPrimitive(int index) => new Geometry(_mesh.LODs[index]);
 
     private readonly struct Geometry : IVertexData
     {
