@@ -41,13 +41,16 @@ uniform sampler2D gNormal;
 uniform sampler2D gColor;
 uniform sampler2D ssao;
 
+uniform bool useSsao;
+
 out vec4 FragColor;
 
 void main()
 {
+    vec3 position = texture(gPosition, vTexCoords).rgb;
     vec3 normal = texture(gNormal, vTexCoords).rgb;
     vec4 color = texture(gColor, vTexCoords);
-    float ao = texture(ssao, vTexCoords).r;
+    float ao = useSsao ? texture(ssao, vTexCoords).r : 1.0;
 
     float brightness = 0.7 + 0.3 * normal.z;
 
@@ -97,36 +100,29 @@ void main()
         _shader.Link();
     }
 
-    public override void Bind()
-    {
-        base.Bind();
-        GL.ClearColor(0, 0, 0, 0);
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-        GL.Disable(EnableCap.Blend);
-    }
-
     public override void Bind(TextureUnit unit) => _fullQuad.Bind(unit);
 
-    public void BindSsao()
+    public void BindTextures(bool position = true, bool normal = true, bool color = true)
     {
-        _position.Bind(TextureUnit.Texture0);
-        _normal.Bind(TextureUnit.Texture1);
+        if (position) _position.Bind(TextureUnit.Texture0);
+        if (normal) _normal.Bind(TextureUnit.Texture1);
+        if (color) _color.Bind(TextureUnit.Texture2);
     }
 
-    public override void Render()
+    public override void Render(Action<ShaderProgram>? callback = null)
     {
         GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
         GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fullQuad);
         GL.BlitFramebuffer(0, 0, Width, Height, 0, 0, Width, Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
 
-        BindSsao();
-        _color.Bind(TextureUnit.Texture2);
+        BindTextures(false);
 
         _shader.Use();
-        _shader.SetUniform("gPosition", 0);
+        // _shader.SetUniform("gPosition", 0);
         _shader.SetUniform("gNormal", 1);
         _shader.SetUniform("gColor", 2);
-        _shader.SetUniform("ssao", 3);
+        _shader.SetUniform("useSsao", false);
+        callback?.Invoke(_shader);
 
         _fullQuad.Render();
     }

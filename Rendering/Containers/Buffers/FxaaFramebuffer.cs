@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Buffers;
@@ -32,21 +33,15 @@ public class FxaaFramebuffer(int originalWidth, int originalHeight) : Framebuffe
         _fullQuad.Generate();
     }
 
-    public override void Bind()
-    {
-        base.Bind();
-        GL.ClearColor(0, 0, 0, 0);
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.StencilBufferBit);
-        GL.Enable(EnableCap.Blend);
-    }
-
     public override void Bind(TextureUnit unit) => _fullQuad.Bind(unit);
 
-    public override void Render()
+    public override void Render(Action<ShaderProgram>? callback = null)
     {
         GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
         GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fullQuad);
         GL.BlitFramebuffer(0, 0, Width, Height, 0, 0, Width, Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+
+        // TODO: Implement fxaa rendering logic here
     }
 
     public override void Resize(int newWidth, int newHeight)

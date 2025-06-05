@@ -13,7 +13,8 @@ public sealed class CameraComponent : ActorComponent
     public Matrix4x4 ViewProjectionMatrix = Matrix4x4.Identity;
     public bool IsActive = false;
 
-    public CameraType Mode = CameraType.FlyCamera;
+    public CameraType Mode;
+    public bool bSSAO;
     public float MovementSpeed = 1f;
     public float FieldOfView = 60.0f;
     public float FarPlaneDistance = 25.0f;

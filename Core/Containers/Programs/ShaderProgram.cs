@@ -37,7 +37,7 @@ public class ShaderProgram(string vertex, string fragment, string? geometry = nu
             GL.DeleteShader(shaderHandle);
         }
     }
-    
+
     public virtual int CompileShader(ShaderType type, string content)
     {
         var handle = GL.CreateShader(type);

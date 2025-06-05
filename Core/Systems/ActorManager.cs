@@ -12,7 +12,6 @@ public abstract class ActorManager : IGameSystem
     private readonly HashSet<Actor> _actors = [];
 
     public bool DebugMode = false;
-    public bool UseSsao = false;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new()
     {

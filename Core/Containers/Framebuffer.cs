@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers.Programs;
 
 namespace Snooper.Core.Containers;
 
@@ -18,10 +19,10 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable
     }
 
     public abstract void Bind(TextureUnit unit);
-    public abstract void Render();
+    public abstract void Render(Action<ShaderProgram>? callback = null);
     public abstract void Resize(int newWidth, int newHeight);
     public abstract IntPtr GetPointer();
-    
+
     protected void CheckStatus()
     {
         var status = GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer);

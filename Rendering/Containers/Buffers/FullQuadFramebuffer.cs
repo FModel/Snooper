@@ -2,6 +2,7 @@
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Buffers;
@@ -57,7 +58,7 @@ public class FullQuadFramebuffer(
 
     public override void Bind(TextureUnit unit) => _color.Bind(unit);
 
-    public override void Render()
+    public override void Render(Action<ShaderProgram>? callback = null)
     {
         _vao.Bind();
         GL.DrawElements(PrimitiveType.Triangles, _ebo.Size, DrawElementsType.UnsignedInt, 0);

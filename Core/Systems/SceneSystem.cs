@@ -70,33 +70,9 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
     {
         foreach (var pair in Pairs)
         {
-            pair.DeferredPass.Bind();
-            Render(pair.Camera, ActorSystemType.Deferred);
-
-            if (UseSsao)
-            {
-                pair.SsaoPass.Bind();
-                pair.DeferredPass.BindSsao();
-                pair.SsaoPass.Render();
-                pair.SsaoPass.RenderBlur(pair.Camera.ProjectionMatrix);
-                pair.SsaoPass.Bind(TextureUnit.Texture3);
-            }
-            
-            pair.DeferredPass.Render();
-
-            // copy depth
-            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, pair.ForwardPass);
-            GL.BlitFramebuffer(0, 0, pair.DeferredPass.Width, pair.DeferredPass.Height, 0, 0, pair.ForwardPass.Width, pair.ForwardPass.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
-            
-            pair.ForwardPass.Bind();
-            Render(pair.Camera, ActorSystemType.Forward);
-            pair.ForwardPass.Render();
-            
-            pair.Framebuffer.Bind();
-            Render(pair.Camera, ActorSystemType.Background);
-            pair.DeferredPass.Bind(TextureUnit.Texture0);
-            pair.ForwardPass.Bind(TextureUnit.Texture1);
-            pair.Framebuffer.Render();
+            pair.DeferredRendering(Render);
+            pair.ForwardRendering(Render);
+            pair.PostProcessingRendering(Render);
         }
     }
 

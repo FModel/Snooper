@@ -64,7 +64,7 @@ public partial class MainWindow : GameWindow
 
         var plane = new Actor("Plane");
         plane.Transform.Position += Vector3.UnitY * 2.5f;
-        plane.Components.Add(new PrimitiveComponent(new Plane(Vector3.UnitY)));
+        plane.Components.Add(new PrimitiveComponent(new Plane(-Vector3.UnitY)));
         plane.Components.Add(new BoxCullingComponent(Vector3.Zero, new Vector3(1, 0, 1)));
         root.Children.Add(plane);
 
@@ -100,13 +100,16 @@ public partial class MainWindow : GameWindow
     protected override void OnLoad()
     {
         base.OnLoad();
-        
+
+        GL.Enable(EnableCap.CullFace);
+        GL.CullFace(TriangleFace.Front);
+
         GL.Enable(EnableCap.DepthTest);
         GL.DepthFunc(DepthFunction.Less);
-        
+
         GL.Enable(EnableCap.Blend);
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-        
+
         // GL.Enable(EnableCap.VertexProgramPointSize);
         // GL.StencilOp(StencilOp.Keep, StencilOp.Replace, StencilOp.Replace);
 #if DEBUG
@@ -155,9 +158,10 @@ public partial class MainWindow : GameWindow
                 largest.X -= ImGui.GetScrollX();
                 largest.Y -= ImGui.GetScrollY();
 
+                var pointers = pair.GetPointers();
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
-                ImGui.Image(pair.Framebuffer.GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
+                ImGui.Image(pointers[3], size, Vector2.UnitY, Vector2.UnitX);
 
                 if (ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))
                 {
@@ -170,8 +174,24 @@ public partial class MainWindow : GameWindow
                 }
 
                 const float margin = 7.5f;
+
+                var drawList = ImGui.GetWindowDrawList();
+                var miniSize = size * 0.2f;
+                var pos = ImGui.GetItemRectMin();
+                var topRight = new Vector2(pos.X + size.X - miniSize.X - margin, pos.Y + margin);
+                for (int i = 0; i < 3; i++)
+                {
+                    var pMin = topRight with { Y = topRight.Y + i * (miniSize.Y + margin) };
+                    var pMax = pMin + miniSize;
+
+                    drawList.AddImage(pointers[i], pMin, pMax, Vector2.UnitY, Vector2.UnitX);
+                    drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
+                }
+
                 ImGui.SetCursorPos(new Vector2(margin, margin + ImGui.GetFrameHeight()));
                 ImGui.Text($"Primitives: {primitiveCount}");
+                ImGui.SameLine();
+                ImGui.Checkbox("SSAO", ref pair.Camera.bSSAO);
 
                 var framerate = ImGui.GetIO().Framerate;
                 ImGui.SetCursorPos(size with { X = margin });
@@ -246,7 +266,6 @@ public partial class MainWindow : GameWindow
         if (ImGui.Begin("Systems Order"))
         {
             ImGui.Checkbox("Debug Mode", ref _sceneSystem.DebugMode);
-            ImGui.Checkbox("SSAO", ref _sceneSystem.UseSsao);
             foreach (var system in _sceneSystem.Systems.GroupBy(x => x.Value.SystemType).OrderByDescending(x => x.Key))
             {
                 ImGui.Text($"{system.Key}");

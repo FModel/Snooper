@@ -1,6 +1,4 @@
-﻿using OpenTK.Graphics.OpenGL4;
-using System.Numerics;
-using Snooper.Core.Containers.Programs;
+﻿using Snooper.Core.Containers.Programs;
 
 namespace Snooper.Rendering.Containers.Buffers;
 
@@ -34,7 +32,7 @@ void main()
 {
     vec4 deferredColor = texture(deferredTexture, vTexCoords);
     vec4 forwardColor = texture(forwardTexture, vTexCoords);
-    
+
     FragColor = mix(deferredColor, forwardColor, forwardColor.a);
 }
 """);
@@ -42,24 +40,18 @@ void main()
     public override void Generate()
     {
         base.Generate();
-        
+
         _shader.Generate();
         _shader.Link();
     }
 
-    public override void Bind()
-    {
-        base.Bind();
-        GL.ClearColor(0, 0, 0, 1);
-        GL.Clear(ClearBufferMask.ColorBufferBit);
-    }
-
-    public override void Render()
+    public override void Render(Action<ShaderProgram>? callback = null)
     {
         _shader.Use();
         _shader.SetUniform("deferredTexture", 0);
         _shader.SetUniform("forwardTexture", 1);
-        
+        callback?.Invoke(_shader);
+
         base.Render();
     }
 }
