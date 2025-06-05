@@ -37,7 +37,8 @@ public abstract class Texture(TextureTarget target) : HandledObject, IBind, IRes
         GL.BindTexture(Target, Handle);
     }
 
-    public void Resize(int newWidth, int newHeight)
+    public void Resize(int newWidth, int newHeight) => Resize<nint>(newWidth, newHeight, []);
+    public void Resize<T8>(int newWidth, int newHeight, T8[] pixels) where T8 : unmanaged
     {
         Width = newWidth;
         Height = newHeight;
@@ -46,7 +47,7 @@ public abstract class Texture(TextureTarget target) : HandledObject, IBind, IRes
         switch (Target)
         {
             case TextureTarget.Texture2D:
-                GL.TexImage2D(Target, 0, InternalFormat, newWidth, newHeight, 0, Format, Type, 0);
+                GL.TexImage2D(Target, 0, InternalFormat, newWidth, newHeight, 0, Format, Type, pixels);
                 break;
             case TextureTarget.Texture2DMultisample:
                 GL.TexImage2DMultisample(TextureTargetMultisample.Texture2DMultisample, Settings.NumberOfSamples, InternalFormat, newWidth, newHeight, true);

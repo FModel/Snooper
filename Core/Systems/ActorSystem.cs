@@ -5,8 +5,9 @@ namespace Snooper.Core.Systems;
 
 public enum ActorSystemType
 {
-    DeferredRender,
-    ForwardRender,
+    Background,
+    Deferred,
+    Forward,
     Physics,
     Animation,
     Input,
@@ -27,7 +28,7 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
 
-    public virtual ActorSystemType SystemType { get; } = ActorSystemType.ForwardRender;
+    public virtual ActorSystemType SystemType => ActorSystemType.Forward;
     protected virtual bool AllowDerivation { get => true; }
     public bool Accepts(Type type)
     {

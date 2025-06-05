@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
@@ -7,6 +8,7 @@ namespace Snooper.Rendering.Systems;
 public class DebugSystem : PrimitiveSystem<Vector3, DebugComponent>
 {
     public override uint Order => 100;
+    public override ActorSystemType SystemType => ActorSystemType.Background;
     protected override bool AllowDerivation => true;
 
     public override void Load()
@@ -19,7 +21,7 @@ out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(1.0f, 1.0f, 1.0f, 0.5f);
+    FragColor = vec4(1.0, 1.0, 1.0, 0.5);
 }
 """;
 

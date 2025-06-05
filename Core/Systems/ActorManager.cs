@@ -12,6 +12,7 @@ public abstract class ActorManager : IGameSystem
     private readonly HashSet<Actor> _actors = [];
 
     public bool DebugMode = false;
+    public bool UseSsao = false;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new()
     {
@@ -42,7 +43,7 @@ public abstract class ActorManager : IGameSystem
     }
 
     [Obsolete("Use Render(CameraComponent camera, ActorSystemType systemType) instead.")]
-    public void Render(CameraComponent camera) => Render(camera, ActorSystemType.ForwardRender);
+    public void Render(CameraComponent camera) => Render(camera, ActorSystemType.Forward);
     protected void Render(CameraComponent camera, ActorSystemType systemType)
     {
         foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))

@@ -5,19 +5,19 @@ namespace Snooper.Rendering.Systems;
 public class DeferredRenderSystem : RenderSystem
 {
     public override uint Order => 21;
-    public override ActorSystemType SystemType => ActorSystemType.DeferredRender;
+    public override ActorSystemType SystemType => ActorSystemType.Deferred;
 
     public override void Load()
     {
         Shader.Fragment =
 """
 #version 330 core
-layout (location = 0) out vec3 gPosition;
+layout (location = 0) out vec4 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
 
 in VS_OUT {
-    vec3 vWorldPos;
+    vec4 vWorldPos;
     vec2 vTexCoords;
     mat3 TBN;
 } fs_in;

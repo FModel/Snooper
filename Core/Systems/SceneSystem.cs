@@ -70,31 +70,33 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
     {
         foreach (var pair in Pairs)
         {
-            // render gBuffer
-            pair.GBuffer.Bind();
-            Render(pair.Camera, ActorSystemType.DeferredRender);
-            pair.GBuffer.Render();
+            pair.DeferredPass.Bind();
+            Render(pair.Camera, ActorSystemType.Deferred);
 
-            // copy gColor to framebuffer
-            // GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, pair.GBuffer);
-            // GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, pair.Framebuffer);
-            // GL.BlitFramebuffer(0, 0, pair.GBuffer.Width, pair.GBuffer.Height, 0, 0, pair.Framebuffer.Width, pair.Framebuffer.Height, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
-            // pair.Framebuffer.Render(pair.GBuffer.Shade);
+            if (UseSsao)
+            {
+                pair.SsaoPass.Bind();
+                pair.DeferredPass.BindSsao();
+                pair.SsaoPass.Render();
+                pair.SsaoPass.RenderBlur(pair.Camera.ProjectionMatrix);
+                pair.SsaoPass.Bind(TextureUnit.Texture3);
+            }
+            
+            pair.DeferredPass.Render();
 
-            // // copy depth from gBuffer to msaaBuffer
-            // GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, pair.MsaaBuffer);
-            // GL.BlitFramebuffer(0, 0, pair.GBuffer.Width, pair.GBuffer.Height, 0, 0, pair.MsaaBuffer.Width, pair.MsaaBuffer.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
-
-            // render msaaBuffer
-            pair.MsaaBuffer.Bind();
-            Render(pair.Camera, ActorSystemType.ForwardRender);
-            pair.MsaaBuffer.Render();
-
-            // // // copy msaaBuffer to framebuffer
-            // GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, pair.MsaaBuffer);
-            // GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, pair.Framebuffer);
-            // GL.BlitFramebuffer(0, 0, pair.MsaaBuffer.Width, pair.MsaaBuffer.Height, 0, 0, pair.Framebuffer.Width, pair.Framebuffer.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
-            // pair.Framebuffer.Render(pair.MsaaBuffer.Shade);
+            // copy depth
+            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, pair.ForwardPass);
+            GL.BlitFramebuffer(0, 0, pair.DeferredPass.Width, pair.DeferredPass.Height, 0, 0, pair.ForwardPass.Width, pair.ForwardPass.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+            
+            pair.ForwardPass.Bind();
+            Render(pair.Camera, ActorSystemType.Forward);
+            pair.ForwardPass.Render();
+            
+            pair.Framebuffer.Bind();
+            Render(pair.Camera, ActorSystemType.Background);
+            pair.DeferredPass.Bind(TextureUnit.Texture0);
+            pair.ForwardPass.Bind(TextureUnit.Texture1);
+            pair.Framebuffer.Render();
         }
     }
 

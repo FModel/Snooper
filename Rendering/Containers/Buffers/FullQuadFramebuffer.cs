@@ -6,12 +6,16 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Buffers;
 
-public class FullQuadFramebuffer(int originalWidth, int originalHeight) : Framebuffer
+public class FullQuadFramebuffer(
+    int originalWidth, int originalHeight,
+    PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
+    PixelFormat format = PixelFormat.Rgba,
+    PixelType type = PixelType.UnsignedByte) : Framebuffer
 {
     public override int Width => _color.Width;
     public override int Height => _color.Width;
 
-    private readonly Texture2D _color = new(originalWidth, originalHeight);
+    private readonly Texture2D _color = new(originalWidth, originalHeight, internalFormat, format, type);
     private readonly VertexArray _vao = new();
     private readonly ArrayBuffer<Vector4> _vbo = new(4, BufferUsageHint.StaticDraw);
     private readonly ElementArrayBuffer<uint> _ebo = new(6, BufferUsageHint.StaticDraw);
@@ -50,6 +54,8 @@ public class FullQuadFramebuffer(int originalWidth, int originalHeight) : Frameb
         GL.EnableVertexAttribArray(0);
         GL.EnableVertexAttribArray(1);;
     }
+
+    public override void Bind(TextureUnit unit) => _color.Bind(unit);
 
     public override void Render()
     {

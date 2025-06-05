@@ -14,7 +14,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 
     private readonly Texture2D _position = new(originalWidth, originalHeight, PixelInternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float);
     private readonly Texture2D _normal = new(originalWidth, originalHeight, PixelInternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float);
-    private readonly Texture2D _color = new(originalWidth, originalHeight, PixelInternalFormat.Rgba, PixelFormat.Rgba);
+    private readonly Texture2D _color = new(originalWidth, originalHeight);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
     private readonly ShaderProgram _shader = new(
@@ -39,6 +39,7 @@ in vec2 vTexCoords;
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gColor;
+uniform sampler2D ssao;
 
 out vec4 FragColor;
 
@@ -46,10 +47,11 @@ void main()
 {
     vec3 normal = texture(gNormal, vTexCoords).rgb;
     vec4 color = texture(gColor, vTexCoords);
+    float ao = texture(ssao, vTexCoords).r;
 
     float brightness = 0.7 + 0.3 * normal.z;
 
-    FragColor = vec4(color.rgb * brightness, color.a);
+    FragColor = vec4(color.rgb * brightness * ao, color.a);
 }
 """);
 
@@ -59,6 +61,8 @@ void main()
         _position.Resize(Width, Height);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
 
         _normal.Generate();
         _normal.Resize(Width, Height);
@@ -96,8 +100,17 @@ void main()
     public override void Bind()
     {
         base.Bind();
+        GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
         GL.Disable(EnableCap.Blend);
+    }
+
+    public override void Bind(TextureUnit unit) => _fullQuad.Bind(unit);
+
+    public void BindSsao()
+    {
+        _position.Bind(TextureUnit.Texture0);
+        _normal.Bind(TextureUnit.Texture1);
     }
 
     public override void Render()
@@ -106,14 +119,14 @@ void main()
         GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fullQuad);
         GL.BlitFramebuffer(0, 0, Width, Height, 0, 0, Width, Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
 
-        // _position.Bind(TextureUnit.Texture0);
-        _normal.Bind(TextureUnit.Texture1);
+        BindSsao();
         _color.Bind(TextureUnit.Texture2);
 
         _shader.Use();
-        // _shader.SetUniform("gPosition", 0);
+        _shader.SetUniform("gPosition", 0);
         _shader.SetUniform("gNormal", 1);
         _shader.SetUniform("gColor", 2);
+        _shader.SetUniform("ssao", 3);
 
         _fullQuad.Render();
     }

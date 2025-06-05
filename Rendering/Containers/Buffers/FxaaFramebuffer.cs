@@ -4,15 +4,15 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Buffers;
 
-public class MsaaFramebuffer(int originalWidth, int originalHeight) : Framebuffer
+public class FxaaFramebuffer(int originalWidth, int originalHeight) : Framebuffer
 {
     public override int Width => _fullQuad.Width;
     public override int Height => _fullQuad.Width;
 
     private readonly FullQuadFramebuffer _fullQuad = new(originalWidth, originalHeight);
 
-    private readonly Texture2DMultisample _color = new(originalWidth, originalHeight);
-    private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, true);
+    private readonly Texture2D _color = new(originalWidth, originalHeight);
+    private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
     public override void Generate()
     {
@@ -35,9 +35,12 @@ public class MsaaFramebuffer(int originalWidth, int originalHeight) : Framebuffe
     public override void Bind()
     {
         base.Bind();
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+        GL.ClearColor(0, 0, 0, 0);
+        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.StencilBufferBit);
         GL.Enable(EnableCap.Blend);
     }
+
+    public override void Bind(TextureUnit unit) => _fullQuad.Bind(unit);
 
     public override void Render()
     {

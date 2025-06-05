@@ -4,7 +4,7 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.UI.Containers.Textures;
 
-public class ImGuiFontTexture() : Texture2D(0, 0)
+public class ImGuiFontTexture() : Texture2D(0, 0, PixelInternalFormat.Rgb, PixelFormat.Rgb)
 {
     public override void Generate()
     {
