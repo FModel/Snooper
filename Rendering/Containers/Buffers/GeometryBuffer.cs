@@ -12,8 +12,8 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 
     private readonly FullQuadFramebuffer _fullQuad = new(originalWidth, originalHeight);
 
-    private readonly Texture2D _position = new(originalWidth, originalHeight, PixelInternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float);
-    private readonly Texture2D _normal = new(originalWidth, originalHeight, PixelInternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float);
+    private readonly Texture2D _position = new(originalWidth, originalHeight, PixelInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float);
+    private readonly Texture2D _normal = new(originalWidth, originalHeight, PixelInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float);
     private readonly Texture2D _color = new(originalWidth, originalHeight);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
@@ -137,4 +137,10 @@ void main()
     }
 
     public override IntPtr GetPointer() => _fullQuad.GetPointer();
+    public IntPtr[] GetTexturePointers() =>
+    [
+        _position.GetPointer(),
+        _normal.GetPointer(),
+        _color.GetPointer()
+    ];
 }

@@ -12,12 +12,12 @@ public class DeferredRenderSystem : RenderSystem
         Shader.Fragment =
 """
 #version 330 core
-layout (location = 0) out vec4 gPosition;
+layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
 
 in VS_OUT {
-    vec4 vWorldPos;
+    vec3 vWorldPos;
     vec2 vTexCoords;
     mat3 TBN;
 } fs_in;

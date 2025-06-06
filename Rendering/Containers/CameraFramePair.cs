@@ -47,6 +47,8 @@ public class CameraFramePair(CameraComponent camera) : IResizable
                 _geometry.BindTextures(true, true, false);
                 shader.SetUniform("uViewMatrix", Camera.ViewMatrix);
                 shader.SetUniform("uProjectionMatrix", Camera.ProjectionMatrix);
+                shader.SetUniform("radius", Camera.SsaoRadius);
+                shader.SetUniform("bias", Camera.SsaoBias);
             });
         }
 
@@ -103,7 +105,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
     public IntPtr GetPointer() => _framebuffer.GetPointer();
     public IntPtr[] GetPointers() =>
     [
-        _geometry.GetPointer(),
+        .._geometry.GetTexturePointers(),
         _ssao.GetPointer(),
         _fxaa.GetPointer(),
         _framebuffer.GetPointer()

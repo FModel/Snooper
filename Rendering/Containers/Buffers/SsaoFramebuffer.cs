@@ -39,17 +39,17 @@ uniform sampler2D gNormal;
 uniform sampler2D noiseTexture;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
+uniform float radius;
+uniform float bias;
 
 out float FragColor;
 
 int kernelSize = 64;
-float radius = 0.15;
-float bias = 0.025;
 
 void main()
 {
     vec3 fragPos = vec3(uViewMatrix * texture(gPosition, vTexCoords));
-    vec3 normal = vec3(uViewMatrix * texture(gNormal, vTexCoords));
+    vec3 normal = texture(gNormal, vTexCoords).xyz;
     vec3 randomVec = texture(noiseTexture, vTexCoords * noiseScale).xyz;
 
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
@@ -101,10 +101,12 @@ out float FragColor;
 void main()
 {
     vec2 texelSize = 1.0 / vec2(textureSize(ssaoInput, 0));
+    int intensity = 2;
+
     float result = 0.0;
-    for (int x = -2; x < 2; ++x)
+    for (int x = -intensity; x < intensity; ++x)
     {
-        for (int y = -2; y < 2; ++y)
+        for (int y = -intensity; y < intensity; ++y)
         {
             vec2 offset = vec2(float(x), float(y)) * texelSize;
             result += texture(ssaoInput, vTexCoords + offset).r;
@@ -145,7 +147,7 @@ void main()
         }
 
         _ssaoNoise.Generate();
-        _ssaoNoise.Resize(4, 4, _noise);
+        _ssaoNoise.Resize(NoiseSize, NoiseSize, _noise);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
@@ -159,6 +161,8 @@ void main()
         _blurShader.Generate();
         _blurShader.Link();
     }
+
+    public override void Bind(TextureUnit unit) => _blur.Bind(unit);
 
     public override void Render(Action<ShaderProgram>? callback = null)
     {
@@ -177,23 +181,16 @@ void main()
         _shader.SetUniform("noiseTexture", 2);
 
         base.Render();
-    }
+        base.Bind(TextureUnit.Texture0);
 
-    public void RenderBlur(Matrix4x4 projectionMatrix)
-    {
-        _shader.SetUniform("uProjectionMatrix", projectionMatrix);
-        base.Render();
+        _blur.Bind();
+        GL.ClearColor(255, 255, 255, 255);
+        GL.Clear(ClearBufferMask.ColorBufferBit);
 
-        // _blur.Bind();
-        // GL.ClearColor(0, 0, 0, 0);
-        // GL.Clear(ClearBufferMask.ColorBufferBit);
-        //
-        // _blur.Bind(TextureUnit.Texture0);
-        //
-        // _blurShader.Use();
-        // _blurShader.SetUniform("ssaoInput", 0);
-        //
-        // _blur.Render();
+        _blurShader.Use();
+        _blurShader.SetUniform("ssaoInput", 0);
+
+        _blur.Render();
     }
 
     public override void Resize(int newWidth, int newHeight)
@@ -202,5 +199,5 @@ void main()
         _blur.Resize(newWidth, newHeight);
     }
 
-    // public override IntPtr GetPointer() => _blur.GetPointer();
+    public override IntPtr GetPointer() => _blur.GetPointer();
 }

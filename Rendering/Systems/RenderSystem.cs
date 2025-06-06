@@ -20,7 +20,7 @@ uniform mat4 uModelMatrix;
 uniform mat4 uViewProjectionMatrix;
 
 out VS_OUT {
-    vec4 vWorldPos;
+    vec3 vWorldPos;
     vec2 vTexCoords;
     mat3 TBN;
 } vs_out;
@@ -34,7 +34,7 @@ void main()
     vec3 N = normalize(vec3(uModelMatrix * vec4(aNormal,    0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
-    vs_out.vWorldPos = worldPos;
+    vs_out.vWorldPos = worldPos.xyz;
     vs_out.vTexCoords = aTexCoords;
     vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
 }
@@ -43,7 +43,7 @@ void main()
 #version 330 core
 
 in VS_OUT {
-    vec4 vWorldPos;
+    vec3 vWorldPos;
     vec2 vTexCoords;
     mat3 TBN;
 } fs_in;
@@ -93,7 +93,7 @@ layout (triangles) in;
 layout (line_strip, max_vertices = 6) out;
 
 in VS_OUT {
-    vec4 vWorldPos;
+    vec3 vWorldPos;
     vec2 vTexCoords;
     mat3 TBN;
 } gs_in[];
@@ -123,7 +123,7 @@ void EmitDirection(vec3 worldPos, vec3 dir, vec3 color)
 void GenerateLines(int index)
 {
     mat3 TBN = gs_in[index].TBN;
-    vec3 pos = gs_in[index].vWorldPos.xyz;
+    vec3 pos = gs_in[index].vWorldPos;
 
     vec3 tangent = normalize(TBN * vec3(1, 0, 0));
     vec3 bitangent = normalize(TBN * vec3(0, 1, 0));

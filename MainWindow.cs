@@ -161,7 +161,7 @@ public partial class MainWindow : GameWindow
                 var pointers = pair.GetPointers();
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
-                ImGui.Image(pointers[3], size, Vector2.UnitY, Vector2.UnitX);
+                ImGui.Image(pointers[^1], size, Vector2.UnitY, Vector2.UnitX);
 
                 if (ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))
                 {
@@ -174,12 +174,23 @@ public partial class MainWindow : GameWindow
                 }
 
                 const float margin = 7.5f;
+                var frameHeight = ImGui.GetFrameHeight();
 
                 var drawList = ImGui.GetWindowDrawList();
-                var miniSize = size * 0.2f;
+                var remainingPointers = pointers.Length - 1;
+                var miniSize = size;
+                miniSize.Y = MathF.Min(miniSize.Y, (size.Y - margin) / remainingPointers) - frameHeight;
+                miniSize.X = miniSize.Y * (size.X / size.Y);
+                // if the size is greater than 1/3 of the viewport, we will clamp it to 1/3
+                if (miniSize.X > size.X / 3.0f)
+                {
+                    miniSize.X = size.X / 3.0f;
+                    miniSize.Y = miniSize.X * (size.Y / size.X);
+                }
+
                 var pos = ImGui.GetItemRectMin();
                 var topRight = new Vector2(pos.X + size.X - miniSize.X - margin, pos.Y + margin);
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < remainingPointers; i++)
                 {
                     var pMin = topRight with { Y = topRight.Y + i * (miniSize.Y + margin) };
                     var pMax = pMin + miniSize;
@@ -188,10 +199,16 @@ public partial class MainWindow : GameWindow
                     drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
                 }
 
-                ImGui.SetCursorPos(new Vector2(margin, margin + ImGui.GetFrameHeight()));
+                ImGui.SetCursorPos(new Vector2(margin, margin + frameHeight));
                 ImGui.Text($"Primitives: {primitiveCount}");
                 ImGui.SameLine();
                 ImGui.Checkbox("SSAO", ref pair.Camera.bSSAO);
+                ImGui.SameLine();
+                ImGui.BeginDisabled(!pair.Camera.bSSAO);
+                ImGui.VSliderFloat("Radius", new Vector2(20, 150), ref pair.Camera.SsaoRadius, 0.01f, 1.0f);
+                ImGui.SameLine();
+                ImGui.VSliderFloat("Bias", new Vector2(20, 150), ref pair.Camera.SsaoBias, 0.0f, 0.1f);
+                ImGui.EndDisabled();
 
                 var framerate = ImGui.GetIO().Framerate;
                 ImGui.SetCursorPos(size with { X = margin });

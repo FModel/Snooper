@@ -52,7 +52,7 @@ public partial class App : Application
         provider.PostMount();
 
         window.Insert(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"));
-        window.Insert(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Cone.Cone"));
+        window.Insert(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"));
         window.Run();
     }
 
