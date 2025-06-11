@@ -66,6 +66,7 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
             VBO.Bind();
             VBO.Update(primitive.Vertices);
 
+            if (GL.GetInteger(GetPName.VertexArrayBinding) != VAO) VAO.Bind();
             EBO.Bind();
             EBO.Update(primitive.Indices);
         }

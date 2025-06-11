@@ -15,7 +15,7 @@ public class MeshActor : Actor
         if (staticMesh.RenderData?.Bounds is null)
             throw new ArgumentException("Static mesh does not have render data or bounds.", nameof(staticMesh));
 
-        CullingComponent = new BoxCullingComponent(staticMesh.RenderData.Bounds.GetBox());
+        CullingComponent = new SphereCullingComponent(staticMesh.RenderData.Bounds);
 
         Components.Add(new StaticMeshComponent(staticMesh, mesh));
         Components.Add(CullingComponent);
@@ -26,7 +26,7 @@ public class MeshActor : Actor
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
 
-        CullingComponent = new BoxCullingComponent(skeletalMesh.ImportedBounds.GetBox());
+        CullingComponent = new SphereCullingComponent(skeletalMesh.ImportedBounds);
 
         Components.Add(new SkeletalMeshComponent(skeletalMesh, mesh));
         Components.Add(CullingComponent);

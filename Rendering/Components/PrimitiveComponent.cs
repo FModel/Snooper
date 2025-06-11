@@ -46,14 +46,11 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
 
     public virtual void Render()
     {
-        VAO.Bind();
-        VBO.Bind();
-        EBO.Bind();
-
         var polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
         var bDiff = polygonMode != PolygonMode;
         if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode);
 
+        VAO.Bind();
         GL.DrawElements(PrimitiveType.Triangles, EBO.Size, DrawElementsType.UnsignedInt, 0);
 
         if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, polygonMode);

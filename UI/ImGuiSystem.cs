@@ -17,9 +17,9 @@ public class ImGuiSystem : IResizable
     private Vector2 _size;
 
     private readonly ImGuiFontTexture _fontTexture;
-    private readonly VertexArray _vertexArray;
-    private readonly ArrayBuffer<ImDrawVert> _vertexBuffer;
-    private readonly ElementArrayBuffer<ushort> _indexBuffer;
+    private readonly VertexArray _vao;
+    private readonly ArrayBuffer<ImDrawVert> _vbo;
+    private readonly ElementArrayBuffer<ushort> _ebo;
     private readonly ShaderProgram _shader;
 
     public ImGuiSystem()
@@ -39,9 +39,9 @@ public class ImGuiSystem : IResizable
         io.BackendRendererUserData = 0;
 
         _fontTexture = new ImGuiFontTexture();
-        _vertexArray = new VertexArray();
-        _vertexBuffer = new ArrayBuffer<ImDrawVert>(1000);
-        _indexBuffer = new ElementArrayBuffer<ushort>(1500);
+        _vao = new VertexArray();
+        _vbo = new ArrayBuffer<ImDrawVert>(1000);
+        _ebo = new ElementArrayBuffer<ushort>(1500);
         _shader = new ShaderProgram(
 @"#version 330 core
 
@@ -82,18 +82,18 @@ void main()
         var prevVertices = GL.GetInteger(GetPName.ArrayBufferBinding);
         var prevIndices = GL.GetInteger(GetPName.ElementArrayBufferBinding);
 
-        _vertexArray.Generate();
-        _vertexArray.Bind();
+        _vao.Generate();
+        _vao.Bind();
 
-        _vertexBuffer.Generate();
-        _vertexBuffer.Bind();
-        _vertexBuffer.SetData();
+        _vbo.Generate();
+        _vbo.Bind();
+        _vbo.SetData();
 
-        _indexBuffer.Generate();
-        _indexBuffer.Bind();
-        _indexBuffer.SetData();
-        
-        var stride = _vertexBuffer.Stride;
+        _ebo.Generate();
+        _ebo.Bind();
+        _ebo.SetData();
+
+        var stride = _vbo.Stride;
         GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
         GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, stride, 8);
         GL.VertexAttribPointer(2, 4, VertexAttribPointerType.UnsignedByte, true, stride, 16);
@@ -188,6 +188,7 @@ void main()
 
         var prevVao = GL.GetInteger(GetPName.VertexArrayBinding);
         var prevArrayBuffer = GL.GetInteger(GetPName.ArrayBufferBinding);
+        var prevElementBuffer = GL.GetInteger(GetPName.ElementArrayBufferBinding);
         var prevProgram = GL.GetInteger(GetPName.CurrentProgram);
         var prevBlendEnabled = GL.GetBoolean(GetPName.Blend);
         var prevScissorTestEnabled = GL.GetBoolean(GetPName.ScissorTest);
@@ -229,17 +230,17 @@ void main()
         GL.Disable(EnableCap.DepthTest);
 
         // Render command lists
-        _vertexArray.Bind();
-        _vertexBuffer.Bind();
-        _indexBuffer.Bind();
+        _vao.Bind();
+        _vbo.Bind();
+        _ebo.Bind();
         for (var i = 0; i < drawData.CmdListsCount; i++)
         {
             var cmd = drawData.CmdLists[i];
 
-            _vertexBuffer.Update(cmd.VtxBuffer.Size, cmd.VtxBuffer.Data);
+            _vbo.Update(cmd.VtxBuffer.Size, cmd.VtxBuffer.Data);
             CheckForErrors($"Data Vert {i}");
 
-            _indexBuffer.Update(cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
+            _ebo.Update(cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
             CheckForErrors($"Data Idx {i}");
 
             for (var j = 0; j < cmd.CmdBuffer.Size; j++)
@@ -279,6 +280,7 @@ void main()
         GL.BindVertexArray(prevVao);
         GL.Scissor(prevScissorBox[0], prevScissorBox[1], prevScissorBox[2], prevScissorBox[3]);
         GL.BindBuffer(BufferTarget.ArrayBuffer, prevArrayBuffer);
+        GL.BindBuffer(BufferTarget.ElementArrayBuffer, prevElementBuffer);
         GL.BlendEquationSeparate((BlendEquationMode)prevBlendEquationRgb, (BlendEquationMode)prevBlendEquationAlpha);
         GL.BlendFuncSeparate((BlendingFactorSrc)prevBlendFuncSrcRgb, (BlendingFactorDest)prevBlendFuncDstRgb, (BlendingFactorSrc)prevBlendFuncSrcAlpha, (BlendingFactorDest)prevBlendFuncDstAlpha);
         if (prevBlendEnabled) GL.Enable(EnableCap.Blend); else GL.Disable(EnableCap.Blend);

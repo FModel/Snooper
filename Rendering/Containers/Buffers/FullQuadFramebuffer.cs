@@ -53,7 +53,7 @@ public class FullQuadFramebuffer(
         GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, _vbo.Stride, 0);
         GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, _vbo.Stride, 8);
         GL.EnableVertexAttribArray(0);
-        GL.EnableVertexAttribArray(1);;
+        GL.EnableVertexAttribArray(1);
     }
 
     public override void Bind(TextureUnit unit) => _color.Bind(unit);

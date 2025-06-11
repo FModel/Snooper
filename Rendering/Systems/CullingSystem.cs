@@ -27,6 +27,7 @@ public class CullingSystem : ActorSystem<CullingComponent>
 
         var added = component switch
         {
+            SphereCullingComponent sphere => _debugComponents.TryAdd(component, new DebugComponent(sphere)),
             BoxCullingComponent box => _debugComponents.TryAdd(component, new DebugComponent(box)),
             _ => false
         };
