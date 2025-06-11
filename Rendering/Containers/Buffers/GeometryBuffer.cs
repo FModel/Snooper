@@ -19,7 +19,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 
     private readonly ShaderProgram _shader = new(
 """
-#version 330 core
+#version 430 core
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aTexCoords;
 
@@ -32,7 +32,7 @@ void main()
 }
 """,
 """
-#version 330 core
+#version 430 core
 
 in vec2 vTexCoords;
 

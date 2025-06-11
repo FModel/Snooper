@@ -1,4 +1,6 @@
-﻿using Snooper.Core.Containers.Programs;
+﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 
@@ -8,15 +10,32 @@ public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent>
 {
     public override uint Order => 22;
     protected override bool AllowDerivation => true;
+
+    protected override Action<ArrayBuffer<Vertex>> PointersFactory { get; } = buffer =>
+    {
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, buffer.Stride, 0);
+        GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, buffer.Stride, 12);
+        GL.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, buffer.Stride, 24);
+        GL.VertexAttribPointer(3, 2, VertexAttribPointerType.Float, false, buffer.Stride, 36);
+        GL.EnableVertexAttribArray(0);
+        GL.EnableVertexAttribArray(1);
+        GL.EnableVertexAttribArray(2);
+        GL.EnableVertexAttribArray(3);
+    };
+
     protected override ShaderProgram Shader { get; } = new(
 """
-#version 330 core
+#version 430 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec3 aTangent;
 layout (location = 3) in vec2 aTexCoords;
 
-uniform mat4 uModelMatrix;
+layout(std430, binding = 0) buffer ModelMatrices
+{
+    mat4 uModelMatrices[];
+};
+
 uniform mat4 uViewProjectionMatrix;
 
 out VS_OUT {
@@ -27,11 +46,11 @@ out VS_OUT {
 
 void main()
 {
-    vec4 worldPos = uModelMatrix * vec4(aPos, 1.0);
+    vec4 worldPos = uModelMatrices[gl_InstanceID] * vec4(aPos, 1.0);
     gl_Position = uViewProjectionMatrix * worldPos;
 
-    vec3 T = normalize(vec3(uModelMatrix * vec4(aTangent,   0.0)));
-    vec3 N = normalize(vec3(uModelMatrix * vec4(aNormal,    0.0)));
+    vec3 T = normalize(vec3(uModelMatrices[gl_InstanceID] * vec4(aTangent,   0.0)));
+    vec3 N = normalize(vec3(uModelMatrices[gl_InstanceID] * vec4(aNormal,    0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
     vs_out.vWorldPos = worldPos.xyz;
@@ -40,7 +59,7 @@ void main()
 }
 """,
 """
-#version 330 core
+#version 430 core
 
 in VS_OUT {
     vec3 vWorldPos;
@@ -75,7 +94,7 @@ void main()
         _debug.Vertex = Shader.Vertex;
         _debug.Fragment =
 """
-#version 330 core
+#version 430 core
 
 in vec3 fColor;
 
@@ -88,7 +107,7 @@ void main()
 """;
         _debug.Geometry =
 """
-#version 330 core
+#version 430 core
 layout (triangles) in;
 layout (line_strip, max_vertices = 6) out;
 
@@ -148,16 +167,11 @@ void main()
 
     public override void Render(CameraComponent camera)
     {
-        Shader.Use();
-        Shader.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
-
-        RenderComponents(Shader);
-
-        if (!DebugMode) return;
-
-        _debug.Use();
-        _debug.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
-
-        RenderComponents(_debug);
+        base.Render(camera);
+        // if (!DebugMode) return;
+        //
+        // _debug.Use();
+        // _debug.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
+        // RenderComponents(_debug);
     }
 }

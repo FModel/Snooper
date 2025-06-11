@@ -20,13 +20,13 @@ public class CameraFrustumComponent(CameraComponent cameraComponent) : DebugComp
         ];
     }
 
-    public override void Update()
-    {
-        base.Update();
-        
-        VBO.Bind();
-        VBO.Update(CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes()));
-    }
+    // public override void Update(DrawIndirectBuffer commands, ElementArrayBuffer<uint> ebo, ArrayBuffer<Vector3> vbo)
+    // {
+    //     base.Update(commands, ebo, vbo);
+    //
+    //     vbo.Bind();
+    //     vbo.Update(CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes()), (int) DrawCommand?.BaseVertex);
+    // }
 
     private Vector3[] CalculateFrustumVertices(Plane[] frustumPlanes)
     {
