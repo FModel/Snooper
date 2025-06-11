@@ -10,7 +10,7 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
     public BufferTarget Target { get; internal set; } = target;
     public BufferUsageHint UsageHint { get; internal set; } = usageHint;
 
-    private int _maxSize = initialSize;
+    private int _capacity = initialSize;
     private bool _bInitialized;
 
     public override void Generate()
@@ -25,11 +25,11 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
 
     private void ResizeIfNeeded(int newSize, double factor = 1.5, bool keep = false)
     {
-        if (newSize <= _maxSize) return;
+        if (newSize <= _capacity) return;
 
-        newSize = (int) Math.Max(_maxSize * factor, newSize);
-        Console.WriteLine("Resizing buffer {0} from {1} to {2} (initialized ? {3})", Handle, _maxSize, newSize, _bInitialized);
-        _maxSize = newSize;
+        newSize = (int) Math.Max(_capacity * factor, newSize);
+        Console.WriteLine("Resizing buffer {0} from {1} to {2} (initialized ? {3})", Handle, _capacity, newSize, _bInitialized);
+        _capacity = newSize;
 
         if (_bInitialized)
         {
@@ -57,11 +57,11 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
     }
 
     public void SetData() => SetData(IntPtr.Zero);
-    public void SetData(IntPtr data) => SetData(data, _maxSize);
+    public void SetData(IntPtr data) => SetData(data, _capacity);
     public void SetData(IntPtr data, int count)
     {
         if (_bInitialized) throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
-        if (count > _maxSize) throw new ArgumentException($"Data count {count} exceeds buffer size {_maxSize}");
+        if (count > _capacity) throw new ArgumentException($"Data count {count} exceeds buffer capacity {_capacity}");
         GL.BufferData(Target, count * Stride, data, UsageHint);
         _bInitialized = true;
     }
@@ -72,12 +72,12 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
             throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
 
         Size = data.Length;
-        if (Size > _maxSize)
+        if (Size > _capacity)
         {
-            if (_maxSize > 0) throw new ArgumentException($"Data length {Size} exceeds buffer size {_maxSize}");
+            if (_capacity > 0) throw new ArgumentException($"Data length {Size} exceeds buffer capacity {_capacity}");
             ResizeIfNeeded(Size); // buffer is empty, we implicitly resize it before setting data
         }
-        GL.BufferData(Target, _maxSize * Stride, data, UsageHint);
+        GL.BufferData(Target, _capacity * Stride, data, UsageHint);
         _bInitialized = true;
     }
 
@@ -112,6 +112,17 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
         Size = count;
         ResizeIfNeeded(Size);
         GL.BufferSubData(Target, 0, Size * Stride, data);
+    }
+
+    public T[] GetData(int offset = 0, int size = -1)
+    {
+        if (!_bInitialized) throw new InvalidOperationException("Buffer is not initialized. Use SetData method to initialize it.");
+        if (size < 0) size = Size;
+        if (offset < 0 || offset + size > Size) throw new ArgumentOutOfRangeException(nameof(offset), "Offset is out of range.");
+
+        var data = new T[size];
+        GL.GetBufferSubData(Target, offset * Stride, size * Stride, data);
+        return data;
     }
 
     public override void Dispose()

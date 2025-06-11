@@ -9,6 +9,11 @@ public sealed class DrawIndirectBuffer(int size, BufferUsageHint usageHint = Buf
     {
 
     }
+
+    public void UpdateInstanceCount(int offset, uint value)
+    {
+        GL.BufferSubData(Target, offset * Stride + sizeof(uint), sizeof(uint), ref value);
+    }
 }
 
 [StructLayout(LayoutKind.Sequential)]

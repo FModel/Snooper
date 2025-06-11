@@ -22,9 +22,11 @@ public abstract class PrimitiveSystem<TVertex, TComponent> : ActorSystem<TCompon
     protected readonly ArrayBuffer<TVertex> VBO = new(0);
     protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
 
+    protected abstract PolygonMode PolygonMode { get; }
+
     protected virtual ShaderProgram Shader { get; } = new(
 """
-#version 430 core
+#version 460 core
 layout (location = 0) in vec3 aPos;
 
 layout(std430, binding = 0) buffer ModelMatrices
@@ -36,11 +38,11 @@ uniform mat4 uViewProjectionMatrix;
 
 void main()
 {
-    gl_Position = uViewProjectionMatrix * uModelMatrices[0] * vec4(aPos, 1.0);
+    gl_Position = uViewProjectionMatrix * uModelMatrices[gl_DrawID] * vec4(aPos, 1.0);
 }
 """,
 """
-#version 430 core
+#version 460 core
 
 out vec4 FragColor;
 
@@ -68,6 +70,8 @@ void main()
         foreach (var component in Components)
         {
             component.Generate(Commands, EBO, VBO);
+
+            component.Actor.Transform.UpdateWorldMatrix();
             Matrices.Add(component.GetModelMatrix());
         }
         PointersFactory(VBO);
@@ -81,14 +85,14 @@ void main()
         base.Update(delta);
 
         Commands.Bind();
-        // Matrices.Bind();
-        EBO.Bind();
-        VBO.Bind();
-        for (var i = 0; i < Components.Count; i++)
+        Matrices.Bind();
+        // EBO.Bind();
+        // VBO.Bind();
+        foreach (var component in Components)
         {
-            var component = Components.ElementAt(i);
             component.Update(Commands, EBO, VBO);
-            // Matrices.Update(component.GetModelMatrix(), i);
+            Matrices.Update(component.GetModelMatrix(), component.DrawId);
+            Commands.UpdateInstanceCount(component.DrawId, component.IsVisible ? 1u : 0u);
         }
     }
 
@@ -103,6 +107,7 @@ void main()
 
     protected void RenderComponents()
     {
+        Commands.Bind();
         VAO.Bind();
         GL.MultiDrawElementsIndirect(PrimitiveType.Triangles, DrawElementsType.UnsignedInt, IntPtr.Zero, Commands.Size, 0);
     }
@@ -115,6 +120,8 @@ public class PrimitiveSystem<TComponent> : PrimitiveSystem<Vector3, TComponent> 
         GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, buffer.Stride, 0);
         GL.EnableVertexAttribArray(0);
     };
+
+    protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
 }
 
 public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>;

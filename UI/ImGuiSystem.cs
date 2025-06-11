@@ -43,7 +43,7 @@ public class ImGuiSystem : IResizable
         _vbo = new ArrayBuffer<ImDrawVert>(1000);
         _ebo = new ElementArrayBuffer<ushort>(1500);
         _shader = new ShaderProgram(
-@"#version 430 core
+@"#version 460 core
 
 uniform mat4 projection_matrix;
 
@@ -60,7 +60,7 @@ void main()
     color = in_color;
     texCoord = in_texCoord;
 }",
-@"#version 430 core
+@"#version 460 core
 
 uniform sampler2D in_fontTexture;
 

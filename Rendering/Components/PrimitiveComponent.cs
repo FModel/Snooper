@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-using OpenTK.Graphics.OpenGL4;
 using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Primitives;
@@ -9,29 +8,29 @@ namespace Snooper.Rendering.Components;
 
 public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : ActorComponent where T : unmanaged
 {
-    protected DrawElementsIndirectCommand? DrawCommand;
-
-    protected abstract PolygonMode PolygonMode { get; }
+    private DrawElementsIndirectCommand? _drawCommand;
 
     public void Generate(DrawIndirectBuffer commands, ElementArrayBuffer<uint> ebo, ArrayBuffer<T> vbo)
     {
-        DrawCommand = new DrawElementsIndirectCommand
+        _drawCommand = new DrawElementsIndirectCommand
         {
             Count = (uint) primitive.Indices.Length,
             InstanceCount = 1,
             FirstIndex = (uint) ebo.Size,
             BaseVertex = (uint) vbo.Size,
-            BaseInstance = (uint) commands.Size
+            BaseInstance = 0
         };
 
-        commands.Add(DrawCommand.Value);
+        DrawId = commands.Size;
+
+        commands.Add(_drawCommand.Value);
         ebo.AddRange(primitive.Indices);
         vbo.AddRange(primitive.Vertices);
     }
 
     public virtual void Update(DrawIndirectBuffer commands, ElementArrayBuffer<uint> ebo, ArrayBuffer<T> vbo)
     {
-        if (DrawCommand == null)
+        if (_drawCommand == null)
         {
             Generate(commands, ebo, vbo);
         }
@@ -39,7 +38,4 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
 }
 
 [DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent(IPrimitiveData primitive) : TPrimitiveComponent<Vector3>(primitive)
-{
-    protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
-}
+public class PrimitiveComponent(IPrimitiveData primitive) : TPrimitiveComponent<Vector3>(primitive);

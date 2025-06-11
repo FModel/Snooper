@@ -15,7 +15,7 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight)
 
     private readonly ShaderProgram _shader = new(
 """
-#version 430 core
+#version 460 core
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aTexCoords;
 
@@ -28,7 +28,7 @@ void main()
 }
 """,
 """
-#version 430 core
+#version 460 core
 
 in vec2 vTexCoords;
 
@@ -77,7 +77,7 @@ void main()
 """);
     private readonly ShaderProgram _blurShader = new(
 """
-#version 430 core
+#version 460 core
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aTexCoords;
 
@@ -90,7 +90,7 @@ void main()
 }
 """,
 """
-#version 430 core
+#version 460 core
 
 in vec2 vTexCoords;
 

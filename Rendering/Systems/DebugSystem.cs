@@ -11,11 +11,13 @@ public class DebugSystem : PrimitiveSystem<DebugComponent>
     public override ActorSystemType SystemType => ActorSystemType.Background;
     protected override bool AllowDerivation => true;
 
+    protected override PolygonMode PolygonMode { get => PolygonMode.Line; }
+
     public override void Load()
     {
         Shader.Fragment =
 """
-#version 430 core
+#version 460 core
 
 out vec4 FragColor;
 
@@ -39,8 +41,15 @@ void main()
         if (!DebugMode) return;
 
         var bCull = GL.GetBoolean(GetPName.CullFace);
+        var polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
+
+        var bDiff = polygonMode != PolygonMode;
+        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode);
         if (bCull) GL.Disable(EnableCap.CullFace);
+
         base.Render(camera);
+
         if (bCull) GL.Enable(EnableCap.CullFace);
+        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, polygonMode);
     }
 }

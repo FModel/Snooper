@@ -10,8 +10,6 @@ namespace Snooper.Rendering.Components.Mesh;
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent<Vertex>(primitive)
 {
-    protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
-
     public abstract int LODCount { get; }
 
     public int LODIndex { get; private set; }

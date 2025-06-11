@@ -6,6 +6,9 @@ public abstract class ActorComponent
 {
     public Actor? Actor;
     public bool IsEnabled;
+    public int DrawId = -1;
+
+    public bool IsVisible => Actor?.IsVisible ?? false;
 
     public Matrix4x4 GetModelMatrix()
     {
