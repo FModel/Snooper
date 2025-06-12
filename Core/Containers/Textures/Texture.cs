@@ -4,6 +4,9 @@ namespace Snooper.Core.Containers.Textures;
 
 public abstract class Texture(TextureTarget target) : HandledObject, IBind, IResizable
 {
+    public abstract GetPName Name { get; }
+
+    public int PreviousHandle { get; private set; }
     public int Width { get; private set; }
     public int Height { get; private set; }
     public TextureTarget Target { get; } = target;
@@ -31,10 +34,16 @@ public abstract class Texture(TextureTarget target) : HandledObject, IBind, IRes
         Bind();
     }
 
+
     public void Bind()
     {
-        if (Handle < 1) throw new Exception("Bind called on an unhandled texture handle");
+        PreviousHandle = GL.GetInteger(Name);
         GL.BindTexture(Target, Handle);
+    }
+
+    public void Unbind()
+    {
+        GL.BindTexture(Target, PreviousHandle);
     }
 
     public void Resize(int newWidth, int newHeight) => Resize<nint>(newWidth, newHeight, []);

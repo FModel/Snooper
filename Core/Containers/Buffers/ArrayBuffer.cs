@@ -2,8 +2,10 @@
 
 namespace Snooper.Core.Containers.Buffers;
 
-public sealed class ArrayBuffer<T>(int size, BufferUsageHint usageHint = BufferUsageHint.DynamicDraw) : Buffer<T>(size, BufferTarget.ArrayBuffer, usageHint) where T : unmanaged
+public sealed class ArrayBuffer<T>(int capacity, BufferUsageHint usageHint = BufferUsageHint.DynamicDraw) : Buffer<T>(capacity, BufferTarget.ArrayBuffer, usageHint) where T : unmanaged
 {
+    public override GetPName Name => GetPName.ArrayBufferBinding;
+
     public ArrayBuffer(T[] data) : this(data.Length, BufferUsageHint.StaticDraw)
     {
 

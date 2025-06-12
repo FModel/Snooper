@@ -10,8 +10,7 @@ public class DebugSystem : PrimitiveSystem<DebugComponent>
     public override uint Order => 100;
     public override ActorSystemType SystemType => ActorSystemType.Background;
     protected override bool AllowDerivation => true;
-
-    protected override PolygonMode PolygonMode { get => PolygonMode.Line; }
+    protected override PolygonMode PolygonMode => PolygonMode.Line;
 
     public override void Load()
     {

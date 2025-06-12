@@ -18,8 +18,8 @@ public class ImGuiSystem : IResizable
 
     private readonly ImGuiFontTexture _fontTexture;
     private readonly VertexArray _vao;
-    private readonly ArrayBuffer<ImDrawVert> _vbo;
     private readonly ElementArrayBuffer<ushort> _ebo;
+    private readonly ArrayBuffer<ImDrawVert> _vbo;
     private readonly ShaderProgram _shader;
 
     public ImGuiSystem()
@@ -40,8 +40,8 @@ public class ImGuiSystem : IResizable
 
         _fontTexture = new ImGuiFontTexture();
         _vao = new VertexArray();
-        _vbo = new ArrayBuffer<ImDrawVert>(1000);
         _ebo = new ElementArrayBuffer<ushort>(1500);
+        _vbo = new ArrayBuffer<ImDrawVert>(1000);
         _shader = new ShaderProgram(
 @"#version 460 core
 
@@ -77,21 +77,16 @@ void main()
 
     public void Load()
     {
-        // save previous state
-        var prevVao = GL.GetInteger(GetPName.VertexArrayBinding);
-        var prevVertices = GL.GetInteger(GetPName.ArrayBufferBinding);
-        var prevIndices = GL.GetInteger(GetPName.ElementArrayBufferBinding);
-
         _vao.Generate();
         _vao.Bind();
 
-        _vbo.Generate();
-        _vbo.Bind();
-        _vbo.SetData();
-
         _ebo.Generate();
         _ebo.Bind();
-        _ebo.SetData();
+        _ebo.Allocate();
+
+        _vbo.Generate();
+        _vbo.Bind();
+        _vbo.Allocate();
 
         var stride = _vbo.Stride;
         GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
@@ -101,15 +96,14 @@ void main()
         GL.EnableVertexAttribArray(1);
         GL.EnableVertexAttribArray(2);
 
+        _vao.Unbind();
+        _ebo.Unbind();
+        _vbo.Unbind();
+
         _fontTexture.Generate();
 
         _shader.Generate();
         _shader.Link();
-
-        // restore previous state
-        GL.BindVertexArray(prevVao);
-        GL.BindBuffer(BufferTarget.ArrayBuffer, prevVertices);
-        GL.BindBuffer(BufferTarget.ElementArrayBuffer, prevIndices);
 
         CheckForErrors("End of ImGui setup");
     }
@@ -186,9 +180,6 @@ void main()
     {
         if (drawData.CmdListsCount == 0) return;
 
-        var prevVao = GL.GetInteger(GetPName.VertexArrayBinding);
-        var prevArrayBuffer = GL.GetInteger(GetPName.ArrayBufferBinding);
-        var prevElementBuffer = GL.GetInteger(GetPName.ElementArrayBufferBinding);
         var prevProgram = GL.GetInteger(GetPName.CurrentProgram);
         var prevBlendEnabled = GL.GetBoolean(GetPName.Blend);
         var prevScissorTestEnabled = GL.GetBoolean(GetPName.ScissorTest);
@@ -231,8 +222,8 @@ void main()
 
         // Render command lists
         _vao.Bind();
-        _vbo.Bind();
         _ebo.Bind();
+        _vbo.Bind();
         for (var i = 0; i < drawData.CmdListsCount; i++)
         {
             var cmd = drawData.CmdLists[i];
@@ -268,6 +259,9 @@ void main()
                 CheckForErrors("Draw");
             }
         }
+        _vao.Unbind();
+        _ebo.Unbind();
+        _vbo.Unbind();
         CheckForErrors("VAO");
 
         GL.Disable(EnableCap.Blend);
@@ -277,10 +271,7 @@ void main()
         GL.BindTexture(TextureTarget.Texture2D, prevTexture2D);
         GL.ActiveTexture((TextureUnit)prevActiveTexture);
         GL.UseProgram(prevProgram);
-        GL.BindVertexArray(prevVao);
         GL.Scissor(prevScissorBox[0], prevScissorBox[1], prevScissorBox[2], prevScissorBox[3]);
-        GL.BindBuffer(BufferTarget.ArrayBuffer, prevArrayBuffer);
-        GL.BindBuffer(BufferTarget.ElementArrayBuffer, prevElementBuffer);
         GL.BlendEquationSeparate((BlendEquationMode)prevBlendEquationRgb, (BlendEquationMode)prevBlendEquationAlpha);
         GL.BlendFuncSeparate((BlendingFactorSrc)prevBlendFuncSrcRgb, (BlendingFactorDest)prevBlendFuncDstRgb, (BlendingFactorSrc)prevBlendFuncSrcAlpha, (BlendingFactorDest)prevBlendFuncDstAlpha);
         if (prevBlendEnabled) GL.Enable(EnableCap.Blend); else GL.Disable(EnableCap.Blend);

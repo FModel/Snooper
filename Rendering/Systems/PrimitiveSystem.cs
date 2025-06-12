@@ -14,14 +14,14 @@ public abstract class PrimitiveSystem<TVertex, TComponent> : ActorSystem<TCompon
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
 
-    protected readonly DrawIndirectBuffer Commands = new(0);
-    protected readonly ShaderStorageBuffer<Matrix4x4> Matrices = new(0);
+    protected readonly DrawIndirectBuffer Commands = new(500);
+    protected readonly ShaderStorageBuffer<Matrix4x4> Matrices = new(500);
 
     protected readonly VertexArray VAO = new();
-    protected readonly ElementArrayBuffer<uint> EBO = new(0);
-    protected readonly ArrayBuffer<TVertex> VBO = new(0);
-    protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
+    protected readonly ElementArrayBuffer<uint> EBO = new(100000);
+    protected readonly ArrayBuffer<TVertex> VBO = new(50000);
 
+    protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
     protected abstract PolygonMode PolygonMode { get; }
 
     protected virtual ShaderProgram Shader { get; } = new(
@@ -67,14 +67,19 @@ void main()
         VAO.Bind();
         EBO.Bind();
         VBO.Bind();
+
         foreach (var component in Components)
         {
             component.Generate(Commands, EBO, VBO);
-
-            component.Actor.Transform.UpdateWorldMatrix();
             Matrices.Add(component.GetModelMatrix());
         }
         PointersFactory(VBO);
+
+        VAO.Unbind();
+        EBO.Unbind();
+        VBO.Unbind();
+        Matrices.Unbind();
+        Commands.Unbind();
 
         Shader.Generate();
         Shader.Link();
@@ -86,14 +91,22 @@ void main()
 
         Commands.Bind();
         Matrices.Bind();
-        // EBO.Bind();
-        // VBO.Bind();
+        VAO.Bind();
+        EBO.Bind();
+        VBO.Bind();
+
         foreach (var component in Components)
         {
             component.Update(Commands, EBO, VBO);
-            Matrices.Update(component.GetModelMatrix(), component.DrawId);
+            Matrices.Update(component.DrawId, component.GetModelMatrix());
             Commands.UpdateInstanceCount(component.DrawId, component.IsVisible ? 1u : 0u);
         }
+
+        VAO.Unbind();
+        EBO.Unbind();
+        VBO.Unbind();
+        Matrices.Unbind();
+        Commands.Unbind();
     }
 
     public override void Render(CameraComponent camera)
@@ -109,7 +122,11 @@ void main()
     {
         Commands.Bind();
         VAO.Bind();
-        GL.MultiDrawElementsIndirect(PrimitiveType.Triangles, DrawElementsType.UnsignedInt, IntPtr.Zero, Commands.Size, 0);
+
+        GL.MultiDrawElementsIndirect(PrimitiveType.Triangles, DrawElementsType.UnsignedInt, IntPtr.Zero, Commands.Count, 0);
+
+        VAO.Unbind();
+        Commands.Unbind();
     }
 }
 
@@ -121,7 +138,7 @@ public class PrimitiveSystem<TComponent> : PrimitiveSystem<Vector3, TComponent> 
         GL.EnableVertexAttribArray(0);
     };
 
-    protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
+    protected override PolygonMode PolygonMode => PolygonMode.Fill;
 }
 
 public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>;

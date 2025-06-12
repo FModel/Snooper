@@ -8,7 +8,7 @@ namespace Snooper.Rendering.Containers.Buffers;
 public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 {
     public override int Width => _fullQuad.Width;
-    public override int Height => _fullQuad.Width;
+    public override int Height => _fullQuad.Height;
 
     private readonly FullQuadFramebuffer _fullQuad = new(originalWidth, originalHeight);
 

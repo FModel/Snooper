@@ -8,6 +8,9 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable
     public abstract int Width { get; }
     public abstract int Height { get; }
 
+    public GetPName Name => GetPName.FramebufferBinding;
+    public int PreviousHandle { get; private set; }
+
     public override void Generate()
     {
         Handle = GL.GenFramebuffer();
@@ -15,7 +18,13 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable
 
     public virtual void Bind()
     {
+        PreviousHandle = GL.GetInteger(Name);
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, Handle);
+    }
+
+    public void Unbind()
+    {
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, PreviousHandle);
     }
 
     public abstract void Bind(TextureUnit unit);

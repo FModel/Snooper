@@ -7,6 +7,9 @@ public class Renderbuffer(int width, int height, RenderbufferStorage storage, bo
     private int _width = width;
     private int _height = height;
 
+    public GetPName Name => GetPName.RenderbufferBinding;
+    public int PreviousHandle { get; private set; }
+
     public override void Generate()
     {
         Handle = GL.GenRenderbuffer();
@@ -14,7 +17,13 @@ public class Renderbuffer(int width, int height, RenderbufferStorage storage, bo
 
     public void Bind()
     {
+        PreviousHandle = GL.GetInteger(Name);
         GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, Handle);
+    }
+
+    public void Unbind()
+    {
+        GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, PreviousHandle);
     }
 
     public void Resize(int newWidth, int newHeight)

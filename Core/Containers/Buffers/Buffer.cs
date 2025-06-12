@@ -3,15 +3,19 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Buffers;
 
-public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind where T : unmanaged
+public abstract class Buffer<T>(int initialCapacity, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind where T : unmanaged
 {
-    public int Size { get; private set; } = initialSize;
-    public int Stride { get; } = Marshal.SizeOf<T>();
-    public BufferTarget Target { get; internal set; } = target;
-    public BufferUsageHint UsageHint { get; internal set; } = usageHint;
+    public abstract GetPName Name { get; }
 
-    private int _capacity = initialSize;
+    public int PreviousHandle { get; private set; }
+    public int Count { get; private set; }
+    public int Stride { get; } = Marshal.SizeOf<T>();
+    public BufferTarget Target { get; } = target;
+    public BufferUsageHint UsageHint { get; } = usageHint;
+
+    private int _capacity = initialCapacity;
     private bool _bInitialized;
+    private readonly Stack<int> _freeIndices = new();
 
     public override void Generate()
     {
@@ -20,23 +24,29 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
 
     public void Bind()
     {
+        PreviousHandle = GL.GetInteger(Name);
         GL.BindBuffer(Target, Handle);
     }
 
-    private void ResizeIfNeeded(int newSize, double factor = 1.5, bool keep = false)
+    public void Unbind()
+    {
+        GL.BindBuffer(Target, PreviousHandle);
+    }
+
+    private void ResizeIfNeeded(int newSize, double factor = 1.5, bool copy = false)
     {
         if (newSize <= _capacity) return;
 
         newSize = (int) Math.Max(_capacity * factor, newSize);
-        Console.WriteLine("Resizing buffer {0} from {1} to {2} (initialized ? {3})", Handle, _capacity, newSize, _bInitialized);
+        Console.WriteLine("Resizing buffer {0} ({1}) from {2} to {3} (initialized ? {4})", Handle, Name, _capacity, newSize, _bInitialized);
         _capacity = newSize;
 
         if (_bInitialized)
         {
-            if (keep)
+            if (copy)
             {
                 var oldBuffer = Handle;
-                var oldSize = Size * Stride;
+                var oldSize = Count * Stride;
 
                 Generate();
                 GL.BindBuffer(BufferTarget.CopyWriteBuffer, Handle);
@@ -51,74 +61,108 @@ public abstract class Buffer<T>(int initialSize, BufferTarget target, BufferUsag
             else
             {
                 _bInitialized = false;
-                SetData();
+                Allocate();
             }
         }
     }
 
-    public void SetData() => SetData(IntPtr.Zero);
-    public void SetData(IntPtr data) => SetData(data, _capacity);
-    public void SetData(IntPtr data, int count)
+    public void Allocate()
     {
-        if (_bInitialized) throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
-        if (count > _capacity) throw new ArgumentException($"Data count {count} exceeds buffer capacity {_capacity}");
-        GL.BufferData(Target, count * Stride, data, UsageHint);
-        _bInitialized = true;
-    }
-
-    public void SetData(T[] data)
-    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(_capacity);
         if (_bInitialized)
             throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
 
-        Size = data.Length;
-        if (Size > _capacity)
-        {
-            if (_capacity > 0) throw new ArgumentException($"Data length {Size} exceeds buffer capacity {_capacity}");
-            ResizeIfNeeded(Size); // buffer is empty, we implicitly resize it before setting data
-        }
-        GL.BufferData(Target, _capacity * Stride, data, UsageHint);
+        GL.BufferData(Target, _capacity * Stride, IntPtr.Zero, UsageHint);
+        Count = 0;
+
         _bInitialized = true;
     }
 
-    public void Add(T data) => AddRange([data]);
+    public void Allocate(T data) => Allocate([data]);
+    public void Allocate(T[] data)
+    {
+        var length = data.Length;
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
+        if (_bInitialized)
+            throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
+
+        if (length > _capacity)
+            ResizeIfNeeded(length);
+
+        Allocate();
+        GL.BufferSubData(Target, 0, length * Stride, data);
+        Count = length;
+
+        _bInitialized = true;
+    }
+
+    public int Add(T data)
+    {
+        if (!_bInitialized)
+        {
+            Allocate(data);
+            return 0;
+        }
+
+        var index = _freeIndices.Count > 0 ? _freeIndices.Pop() : Count;
+        if (index >= _capacity)
+        {
+            ResizeIfNeeded(index + 1, copy: true);
+        }
+
+        GL.BufferSubData(Target, index * Stride, Stride, ref data);
+        Count = index + 1;
+
+        return index;
+    }
+
     public void AddRange(T[] data)
     {
         if (data.Length == 0) return;
         if (!_bInitialized)
         {
-            SetData(data);
+            Allocate(data);
             return;
         }
 
-        var offset = Size * Stride;
-        var newSize = Size + data.Length;
-        ResizeIfNeeded(newSize, keep: true);
+        var index = Count * Stride;
+        var newSize = Count + data.Length;
+        ResizeIfNeeded(newSize, copy: true);
 
-        GL.BufferSubData(Target, offset, data.Length * Stride, data);
-        Size = newSize;
+        GL.BufferSubData(Target, index, data.Length * Stride, data);
+        Count = newSize;
     }
 
-    public void Update(T data, int offset = 0) => Update([data], offset);
-    public void Update(T[] data, int offset = 0)
+    public void Update(int index, T data) => Update(index, [data]);
+    public void Update(int index, T[] data)
     {
-        Size = data.Length;
-        ResizeIfNeeded(Size);
-        GL.BufferSubData(Target, offset * Stride, Size * Stride, data);
+        if (data.Length == 0) return;
+        if (!_bInitialized) throw new InvalidOperationException("Buffer is not initialized. Use SetData method to initialize it.");
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        if (index >= _capacity)
+        {
+            Console.WriteLine($"attempt to update index {index} in buffer {Handle} ({Name}) with capacity {_capacity}. Resizing...");
+            ResizeIfNeeded(index + data.Length, copy: true);
+            Count += index + data.Length - Count;
+        }
+
+        GL.BufferSubData(Target, index * Stride, data.Length * Stride, data);
     }
 
     public void Update(int count, nint data)
     {
-        Size = count;
-        ResizeIfNeeded(Size);
-        GL.BufferSubData(Target, 0, Size * Stride, data);
+        Count = count;
+        ResizeIfNeeded(Count);
+        GL.BufferSubData(Target, 0, Count * Stride, data);
     }
 
     public T[] GetData(int offset = 0, int size = -1)
     {
         if (!_bInitialized) throw new InvalidOperationException("Buffer is not initialized. Use SetData method to initialize it.");
-        if (size < 0) size = Size;
-        if (offset < 0 || offset + size > Size) throw new ArgumentOutOfRangeException(nameof(offset), "Offset is out of range.");
+        if (size < 0) size = Count;
+        if (offset < 0 || offset + size > Count) throw new ArgumentOutOfRangeException(nameof(offset), "Offset is out of range.");
 
         var data = new T[size];
         GL.GetBufferSubData(Target, offset * Stride, size * Stride, data);

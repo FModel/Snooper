@@ -25,7 +25,7 @@ public class CameraFrustumComponent(CameraComponent cameraComponent) : DebugComp
     {
         base.Update(commands, ebo, vbo);
 
-        vbo.Update(CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes()), DrawId);
+        vbo.Update(DrawId, CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes()));
     }
 
     private Vector3[] CalculateFrustumVertices(Plane[] frustumPlanes)

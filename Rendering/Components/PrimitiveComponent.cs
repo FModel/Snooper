@@ -8,29 +8,25 @@ namespace Snooper.Rendering.Components;
 
 public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : ActorComponent where T : unmanaged
 {
-    private DrawElementsIndirectCommand? _drawCommand;
+    public int DrawId { get; private set; } = -1;
 
     public void Generate(DrawIndirectBuffer commands, ElementArrayBuffer<uint> ebo, ArrayBuffer<T> vbo)
     {
-        _drawCommand = new DrawElementsIndirectCommand
+        DrawId = commands.Add(new DrawElementsIndirectCommand
         {
             Count = (uint) primitive.Indices.Length,
             InstanceCount = 1,
-            FirstIndex = (uint) ebo.Size,
-            BaseVertex = (uint) vbo.Size,
+            FirstIndex = (uint) ebo.Count,
+            BaseVertex = (uint) vbo.Count,
             BaseInstance = 0
-        };
-
-        DrawId = commands.Size;
-
-        commands.Add(_drawCommand.Value);
+        });
         ebo.AddRange(primitive.Indices);
         vbo.AddRange(primitive.Vertices);
     }
 
     public virtual void Update(DrawIndirectBuffer commands, ElementArrayBuffer<uint> ebo, ArrayBuffer<T> vbo)
     {
-        if (_drawCommand == null)
+        if (DrawId < 0)
         {
             Generate(commands, ebo, vbo);
         }
