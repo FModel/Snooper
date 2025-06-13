@@ -133,7 +133,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         }
 
         GL.BufferSubData(Target, index * Stride, Stride, ref data);
-        Count = index + 1;
+        if (index == Count) Count++;
 
         return index;
     }
@@ -171,10 +171,18 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         {
             Console.WriteLine($"attempt to insert at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}. Resizing...");
             ResizeIfNeeded(index + 1, copy: true);
-            Count += index + 1 - Count;
         }
 
         GL.BufferSubData(Target, index * Stride, Stride, ref data);
+        Count++;
+    }
+
+    public virtual void Remove(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        if (index >= _capacity) throw new ArgumentOutOfRangeException(nameof(index), $"Cannot remove at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}.");
+
+        _freeIndices.Push(index);
     }
 
     public void Update(int index, T data) => Update(index, [data]);

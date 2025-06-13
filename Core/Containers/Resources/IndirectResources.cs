@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Rendering;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Primitives;
 
@@ -82,9 +81,16 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind where T
         _commands.UpdateCount(drawId, (uint) indices.Length);
     }
 
-    public void Remove(TPrimitiveComponent<TVertex> component)
+    public void Remove(int drawId)
     {
+        _commands.Bind();
+        _matrices.Bind();
 
+        _commands.Remove(drawId);
+        _matrices.Remove(drawId);
+
+        _commands.Unbind();
+        _matrices.Unbind();
     }
 
     public void RemoveAt(int index)

@@ -28,6 +28,12 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
     {
         GL.BufferSubData(Target, offset * Stride + 12, 4, ref value);
     }
+
+    public override void Remove(int index)
+    {
+        UpdateInstanceCount(index, 0);
+        base.Remove(index);
+    }
 }
 
 [StructLayout(LayoutKind.Sequential)]

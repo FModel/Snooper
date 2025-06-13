@@ -6,7 +6,7 @@ public class CameraActor : Actor
 {
     public CameraActor(string name) : base(name)
     {
-        var cameraComponent = new CameraComponent { FarPlaneDistance = 3.0f };
+        var cameraComponent = new CameraComponent();
         Components.Add(cameraComponent);
         Components.Add(new CameraFrustumComponent(cameraComponent));
     }

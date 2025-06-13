@@ -44,4 +44,11 @@ public abstract class IndirectRenderSystem<TVertex, TComponent>(int initialDrawC
     {
         Resources.Render();
     }
+
+    protected override void OnActorComponentRemoved(TComponent component)
+    {
+        base.OnActorComponentRemoved(component);
+
+        Resources.Remove(component.DrawId);
+    }
 }

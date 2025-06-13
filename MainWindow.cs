@@ -1,4 +1,5 @@
-﻿using CUE4Parse_Conversion.Meshes;
+﻿using System.Numerics;
+using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using ImGuiNET;
@@ -49,10 +50,11 @@ public partial class MainWindow : GameWindow
         grid.Components.Add(new GridComponent());
         root.Children.Add(grid);
 
-        var camera1 = new Actor("Camera 1");
-        camera1.Transform.Position -= Vector3.UnitZ * 2;
-        camera1.Transform.Position += Vector3.UnitY;
-        camera1.Transform.Position -= Vector3.UnitX;
+        var camera1 = new Actor("Debug Camera");
+        camera1.Transform.Position -= Vector3.UnitZ * 10;
+        camera1.Transform.Position += Vector3.UnitY * 4;
+        camera1.Transform.Position -= Vector3.UnitX * 3;
+        camera1.Transform.Rotation = Quaternion.CreateFromAxisAngle(new Vector3(0.5f, 0.5f, 0), MathF.PI / 4);
         camera1.Components.Add(new CameraComponent());
         root.Children.Add(camera1);
 
@@ -147,6 +149,8 @@ public partial class MainWindow : GameWindow
         GL.ClearColor(0, 1, 0, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
+        ImGui.DockSpaceOverViewport();
+
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         foreach (var pair in _sceneSystem.Pairs)
         {
@@ -199,24 +203,21 @@ public partial class MainWindow : GameWindow
                     drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
                 }
 
-                ImGui.SetCursorPos(new Vector2(margin, margin + frameHeight));
-                ImGui.Text($"Primitives: {primitiveCount}");
-                ImGui.SameLine();
-                ImGui.Checkbox("SSAO", ref pair.Camera.bSSAO);
-                ImGui.SameLine();
-                ImGui.BeginDisabled(!pair.Camera.bSSAO);
-                ImGui.VSliderFloat("Radius", new Vector2(20, 150), ref pair.Camera.SsaoRadius, 0.01f, 1.0f);
-                ImGui.SameLine();
-                ImGui.VSliderFloat("Bias", new Vector2(20, 150), ref pair.Camera.SsaoBias, 0.0f, 0.1f);
-                ImGui.EndDisabled();
+                drawList.AddText(new Vector2(pos.X + margin, pos.Y + margin), ImGui.GetColorU32(ImGuiCol.Text), $"Primitives: {primitiveCount:N0}");
 
                 var framerate = ImGui.GetIO().Framerate;
-                ImGui.SetCursorPos(size with { X = margin });
-                ImGui.Text($"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms)");
+                drawList.AddText(
+                    new Vector2(pos.X + margin, pos.Y + size.Y - frameHeight),
+                    ImGui.GetColorU32(ImGuiCol.Text),
+                    $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms)"
+                );
 
                 const string label = "Previewed content may differ from final version saved or used in-game.";
-                ImGui.SetCursorPos(size with { X = size.X - ImGui.CalcTextSize(label).X - margin });
-                ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 0.50f), label);
+                drawList.AddText(
+                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label).X - margin, pos.Y + size.Y - frameHeight),
+                    ImGui.GetColorU32(ImGuiCol.TextDisabled),
+                    label
+                );
             }
             ImGui.End();
         }
@@ -230,10 +231,12 @@ public partial class MainWindow : GameWindow
                 ImGui.Text($"Current camera: {camera.Actor?.Name}");
                 ImGui.Separator();
 
-                ImGui.Text($"Position: {camera.Actor.Transform.Position}");
-                ImGui.Text($"Rotation: {camera.Actor.Transform.Rotation}");
-                ImGui.Text($"Scale: {camera.Actor.Transform.Scale}");
-                ImGui.Text($"ViewportSize: {camera.ViewportSize}");
+                ImGui.Checkbox("SSAO", ref camera.bSSAO);
+                ImGui.BeginDisabled(!camera.bSSAO);
+                ImGui.SliderFloat("Radius", ref camera.SsaoRadius, 0.01f, 1.0f);
+                ImGui.SliderFloat("Bias", ref camera.SsaoBias, 0.0f, 0.1f);
+                ImGui.EndDisabled();
+
                 ImGui.DragFloat("Near Plane Distance", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
                 ImGui.DragFloat("Far Plane Distance", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
             }
@@ -268,14 +271,34 @@ public partial class MainWindow : GameWindow
                     ImGui.PopID();
                 }
 
-                if (ImGui.Button("Add Actor"))
+                if (ImGui.BeginPopupContextWindow("Add Actor"))
                 {
-                    var actor = new Actor("New Actor");
-                    actor.Components.Add(new PrimitiveComponent(new Cube()));
-                    actor.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
-                    var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
-                    actor.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
-                    root.Children.Add(actor);
+                    if (ImGui.MenuItem("Add Cube"))
+                    {
+                        var cube = new Actor("Cube");
+                        cube.Components.Add(new PrimitiveComponent(new Cube()));
+                        cube.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
+
+                        var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
+                        cube.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
+                        root.Children.Add(cube);
+                    }
+                    if (ImGui.MenuItem("Add Sphere"))
+                    {
+                        var sphere = new Actor("Sphere");
+                        sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
+                        sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
+
+                        var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
+                        sphere.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
+                        root.Children.Add(sphere);
+                    }
+                    if (ImGui.MenuItem("Add Camera"))
+                    {
+                        var cameraActor = new CameraActor($"Camera {root.Children.Count + 1}");
+                        root.Children.Add(cameraActor);
+                    }
+                    ImGui.EndPopup();
                 }
             }
             ImGui.End();
