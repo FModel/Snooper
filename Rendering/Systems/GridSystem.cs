@@ -6,12 +6,13 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public class GridSystem : ActorSystem<GridComponent>
+public class GridSystem : PrimitiveSystem<GridComponent>
 {
     public override uint Order => 1;
     public override ActorSystemType SystemType => ActorSystemType.Background;
 
-    private readonly ShaderProgram _shader = new(@"
+    protected override ShaderProgram Shader { get; } = new(
+"""
 #version 460 core
 
 layout (location = 0) in vec3 vPos;
@@ -31,7 +32,8 @@ uniform mat4 view;
 uniform float uNear;
 uniform float uFar;
 
-vec3 UnprojectPoint(vec2 xy, float z) {
+vec3 UnprojectPoint(vec2 xy, float z)
+{
     mat4 viewInv = inverse(view);
     mat4 projInv = inverse(proj);
     vec4 unprojectedPoint =  viewInv * projInv * vec4(xy, z, 1.0);
@@ -48,7 +50,8 @@ void main()
     outVar.farPoint  = UnprojectPoint(vPos.xy, 1.0).xyz;
     gl_Position = vec4(vPos, 1.0);
 }
-", @"
+""",
+"""
 #version 460 core
 
 // --------------------- IN ---------------------
@@ -64,7 +67,8 @@ in OUT_IN_VARIABLES {
 // --------------------- OUT --------------------
 out vec4 FragColor;
 
-vec4 grid(vec3 fragPos, float scale) {
+vec4 grid(vec3 fragPos, float scale)
+{
     vec2 coord = fragPos.xz * scale;
     vec2 derivative = fwidth(coord);
     vec2 grid = abs(fract(coord - 0.5) - 0.5) / derivative;
@@ -79,7 +83,8 @@ vec4 grid(vec3 fragPos, float scale) {
     return color;
 }
 
-float computeDepth(vec3 pos) {
+float computeDepth(vec3 pos)
+{
     vec4 clip_space_pos = inVar.proj * inVar.view * vec4(pos.xyz, 1.0);
     float clip_space_depth = clip_space_pos.z / clip_space_pos.w;
 
@@ -91,14 +96,16 @@ float computeDepth(vec3 pos) {
     return depth;
 }
 
-float computeLinearDepth(vec3 pos) {
+float computeLinearDepth(vec3 pos)
+{
     vec4 clip_space_pos = inVar.proj * inVar.view * vec4(pos.xyz, 1.0);
     float clip_space_depth = (clip_space_pos.z / clip_space_pos.w) * 2.0 - 1.0;
     float linearDepth = (2.0 * inVar.near * inVar.far) / (inVar.far + inVar.near - clip_space_depth * (inVar.far - inVar.near));
     return linearDepth / inVar.far / 2.0;
 }
 
-void main() {
+void main()
+{
     float t = -inVar.nearPoint.y / (inVar.farPoint.y - inVar.nearPoint.y);
     vec3 fragPos3D = inVar.nearPoint + t * (inVar.farPoint - inVar.nearPoint);
 
@@ -110,37 +117,24 @@ void main() {
     FragColor = (grid(fragPos3D, 10) + grid(fragPos3D, 1)) * float(t > 0);
     FragColor.a *= fading;
 }
-");
-
-    public override void Load()
-    {
-        _shader.Generate();
-        _shader.Link();
-
-        base.Load();
-        foreach (var component in Components)
-        {
-            component.Generate();
-        }
-    }
+""");
 
     public override void Render(CameraComponent camera)
     {
-        _shader.Use();
-        _shader.SetUniform("view", camera.ViewMatrix);
-        _shader.SetUniform("proj", camera.ProjectionMatrix);
-        _shader.SetUniform("uNear", camera.NearPlaneDistance);
-        _shader.SetUniform("uFar", camera.FarPlaneDistance);
+        Shader.Use();
+        Shader.SetUniform("view", camera.ViewMatrix);
+        Shader.SetUniform("proj", camera.ProjectionMatrix);
+        Shader.SetUniform("uNear", camera.NearPlaneDistance);
+        Shader.SetUniform("uFar", camera.FarPlaneDistance);
 
         var bCull = GL.GetBoolean(GetPName.CullFace);
         var bDepth = GL.GetBoolean(GetPName.DepthTest);
 
         if (bCull) GL.Disable(EnableCap.CullFace);
         if (bDepth) GL.Disable(EnableCap.DepthTest);
-        foreach (var component in Components)
-        {
-            component.Render();
-        }
+
+        Resources.Render();
+
         if (bDepth) GL.Enable(EnableCap.DepthTest);
         if (bCull) GL.Enable(EnableCap.CullFace);
     }

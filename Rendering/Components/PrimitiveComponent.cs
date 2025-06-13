@@ -1,8 +1,6 @@
 ﻿using System.Numerics;
-using OpenTK.Graphics.OpenGL4;
 using Snooper.Core;
-using Snooper.Core.Containers;
-using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -10,60 +8,25 @@ namespace Snooper.Rendering.Components;
 
 public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : ActorComponent where T : unmanaged
 {
-    protected readonly VertexArray VAO = new();
-    protected readonly ArrayBuffer<T> VBO = new(0, BufferUsageHint.StaticDraw);
-    protected readonly ElementArrayBuffer<uint> EBO = new(0, BufferUsageHint.StaticDraw);
+    public int DrawId { get; private set; } = -1;
 
-    protected abstract Action<ArrayBuffer<T>> PointersFactory { get; }
-    protected abstract PolygonMode PolygonMode { get; }
-
-    private bool _bGenerated;
-
-    public virtual void Generate()
+    public void Generate(IndirectResources<T> resources)
     {
-        VAO.Generate();
-        VAO.Bind();
-
-        VBO.Generate();
-        VBO.Bind();
-        VBO.SetData(primitive.Vertices);
-
-        EBO.Generate();
-        EBO.Bind();
-        EBO.SetData(primitive.Indices);
-
-        PointersFactory(VBO);
-        _bGenerated = true;
+        DrawId = resources.Add(primitive, GetModelMatrix());
     }
 
-    public virtual void Update()
+    public virtual void Update(IndirectResources<T> resources)
     {
-        if (!_bGenerated)
+        if (DrawId < 0)
         {
-            Generate();
+            Generate(resources);
         }
-    }
-
-    public virtual void Render()
-    {
-        var polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
-        var bDiff = polygonMode != PolygonMode;
-        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode);
-
-        VAO.Bind();
-        GL.DrawElements(PrimitiveType.Triangles, EBO.Size, DrawElementsType.UnsignedInt, 0);
-
-        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, polygonMode);
+        else
+        {
+            resources.Update(this);
+        }
     }
 }
 
 [DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent(IPrimitiveData primitive) : TPrimitiveComponent<Vector3>(primitive)
-{
-    protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>
-    {
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, buffer.Stride, 0);
-        GL.EnableVertexAttribArray(0);
-    };
-    protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
-}
+public class PrimitiveComponent(IPrimitiveData primitive) : TPrimitiveComponent<Vector3>(primitive);

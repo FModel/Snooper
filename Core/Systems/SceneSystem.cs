@@ -1,9 +1,7 @@
-﻿using OpenTK.Graphics.OpenGL4;
-using OpenTK.Windowing.Desktop;
+﻿using OpenTK.Windowing.Desktop;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
-using Snooper.Rendering.Containers.Buffers;
 
 namespace Snooper.Core.Systems;
 
@@ -51,11 +49,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
     public override void Load()
     {
-        foreach (var pair in Pairs)
-        {
-            pair.Generate(wnd.ClientSize.X, wnd.ClientSize.Y);
-        }
-
+        DequeuePairs();
         base.Load();
     }
 
@@ -63,6 +57,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
     {
         _activeCamera?.Update(wnd.KeyboardState, delta);
 
+        DequeuePairs(1);
         base.Update(delta);
     }
 
@@ -82,7 +77,7 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
         if (component is CameraComponent cameraComponent)
         {
-            Pairs.Add(new CameraFramePair(cameraComponent));
+            _pairsToLoad.Enqueue(new CameraFramePair(cameraComponent));
         }
     }
 
@@ -93,6 +88,20 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
         if (component is CameraComponent cameraComponent && Pairs.Find(x => x.Camera == cameraComponent) is var camera)
         {
             Pairs.Remove(camera);
+        }
+    }
+
+    private readonly Queue<CameraFramePair> _pairsToLoad = [];
+    private void DequeuePairs(int limit = 0)
+    {
+        var count = 0;
+        while (_pairsToLoad.Count > 0 && (limit == 0 || count < limit))
+        {
+            var pair = _pairsToLoad.Dequeue();
+            pair.Generate(wnd.ClientSize.X, wnd.ClientSize.Y);
+
+            Pairs.Add(pair);
+            count++;
         }
     }
 }

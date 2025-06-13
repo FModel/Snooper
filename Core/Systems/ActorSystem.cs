@@ -49,8 +49,6 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override int ComponentsCount => Components.Count;
     protected HashSet<TComponent> Components { get; } = [];
 
-    private Queue<TComponent> _componentsToLoad { get; } = [];
-
     public override void Load() => DequeueComponents();
     public override void Update(float delta) => DequeueComponents(5);
 
@@ -81,6 +79,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 
     }
 
+    private readonly Queue<TComponent> _componentsToLoad = [];
     private void DequeueComponents(int limit = 0)
     {
         var count = 0;

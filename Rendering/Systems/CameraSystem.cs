@@ -7,10 +7,18 @@ public sealed class CameraSystem : ActorSystem<CameraComponent>
 {
     public override uint Order => 10;
 
+    public override void Load()
+    {
+        base.Load();
+        foreach (var component in Components)
+        {
+            component.Update();
+        }
+    }
+
     public override void Update(float delta)
     {
         base.Update(delta);
-        
         foreach (var component in Components)
         {
             component.Update();

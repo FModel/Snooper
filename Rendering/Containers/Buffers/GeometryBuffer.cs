@@ -8,7 +8,7 @@ namespace Snooper.Rendering.Containers.Buffers;
 public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 {
     public override int Width => _fullQuad.Width;
-    public override int Height => _fullQuad.Width;
+    public override int Height => _fullQuad.Height;
 
     private readonly FullQuadFramebuffer _fullQuad = new(originalWidth, originalHeight);
 
@@ -19,7 +19,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 
     private readonly ShaderProgram _shader = new(
 """
-#version 330 core
+#version 460 core
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aTexCoords;
 
@@ -32,7 +32,7 @@ void main()
 }
 """,
 """
-#version 330 core
+#version 460 core
 
 in vec2 vTexCoords;
 
@@ -109,22 +109,23 @@ void main()
         if (color) _color.Bind(TextureUnit.Texture2);
     }
 
-    public override void Render(Action<ShaderProgram>? callback = null)
+    public void Render(Action<ShaderProgram> callback)
     {
         GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
         GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fullQuad);
         GL.BlitFramebuffer(0, 0, Width, Height, 0, 0, Width, Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
 
-        BindTextures(false);
+        _fullQuad.Render(() =>
+        {
+            BindTextures(false);
 
-        _shader.Use();
-        // _shader.SetUniform("gPosition", 0);
-        _shader.SetUniform("gNormal", 1);
-        _shader.SetUniform("gColor", 2);
-        _shader.SetUniform("useSsao", false);
-        callback?.Invoke(_shader);
-
-        _fullQuad.Render();
+            _shader.Use();
+            // _shader.SetUniform("gPosition", 0);
+            _shader.SetUniform("gNormal", 1);
+            _shader.SetUniform("gColor", 2);
+            _shader.SetUniform("useSsao", false);
+            callback.Invoke(_shader);
+        });
     }
 
     public override void Resize(int newWidth, int newHeight)

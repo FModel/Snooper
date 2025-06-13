@@ -6,7 +6,7 @@ public class PostProcessingFramebuffer(int originalWidth, int originalHeight) : 
 {
     private readonly ShaderProgram _shader = new(
 """
-#version 330 core
+#version 460 core
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aTexCoords;
 
@@ -19,7 +19,7 @@ void main()
 }
 """,
 """
-#version 330 core
+#version 460 core
 
 in vec2 vTexCoords;
 
@@ -45,13 +45,14 @@ void main()
         _shader.Link();
     }
 
-    public override void Render(Action<ShaderProgram>? callback = null)
+    public void Render(Action<ShaderProgram>? callback = null)
     {
-        _shader.Use();
-        _shader.SetUniform("deferredTexture", 0);
-        _shader.SetUniform("forwardTexture", 1);
-        callback?.Invoke(_shader);
-
-        base.Render();
+        base.Render(() =>
+        {
+            _shader.Use();
+            _shader.SetUniform("deferredTexture", 0);
+            _shader.SetUniform("forwardTexture", 1);
+            callback?.Invoke(_shader);
+        });
     }
 }

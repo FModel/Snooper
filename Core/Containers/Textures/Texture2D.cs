@@ -14,4 +14,7 @@ public class Texture2D(
         TextureTarget.Texture2D,
         internalFormat,
         format,
-        type);
+        type)
+{
+    public override GetPName Name => GetPName.TextureBinding2D;
+}

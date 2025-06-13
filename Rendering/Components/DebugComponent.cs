@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-using OpenTK.Graphics.OpenGL4;
 using Snooper.Core;
 using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Primitives;
@@ -10,8 +9,6 @@ namespace Snooper.Rendering.Components;
 [DefaultActorSystem(typeof(DebugSystem))]
 public class DebugComponent(IPrimitiveData primitive) : PrimitiveComponent(primitive)
 {
-    protected override PolygonMode PolygonMode { get => PolygonMode.Line; }
-
     public DebugComponent(BoxCullingComponent box) : this(new Geometry(box))
     {
 

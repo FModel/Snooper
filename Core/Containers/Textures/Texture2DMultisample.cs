@@ -11,4 +11,7 @@ public class Texture2DMultisample(
         TextureTarget.Texture2DMultisample,
         PixelInternalFormat.Rgb,
         PixelFormat.Rgb, PixelType.UnsignedByte
-        );
+        )
+{
+    public override GetPName Name => GetPName.TextureBinding2DMultisample;
+}

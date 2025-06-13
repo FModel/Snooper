@@ -1,12 +1,11 @@
-﻿using System.Numerics;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public class DebugSystem : PrimitiveSystem<Vector3, DebugComponent>
+public class DebugSystem : PrimitiveSystem<DebugComponent>
 {
     public override uint Order => 100;
     public override ActorSystemType SystemType => ActorSystemType.Background;
@@ -16,7 +15,7 @@ public class DebugSystem : PrimitiveSystem<Vector3, DebugComponent>
     {
         Shader.Fragment =
 """
-#version 330 core
+#version 460 core
 
 out vec4 FragColor;
 
@@ -40,8 +39,15 @@ void main()
         if (!DebugMode) return;
 
         var bCull = GL.GetBoolean(GetPName.CullFace);
+        var polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
+
+        var bDiff = polygonMode != PolygonMode.Line;
+        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
         if (bCull) GL.Disable(EnableCap.CullFace);
+
         base.Render(camera);
+
         if (bCull) GL.Enable(EnableCap.CullFace);
+        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, polygonMode);
     }
 }
