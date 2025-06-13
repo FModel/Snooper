@@ -48,6 +48,18 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
                 var oldBuffer = Handle;
                 var oldSize = Count * Stride;
 
+                var vao = 0;
+                if (Target == BufferTarget.ElementArrayBuffer)
+                {
+                    vao = GL.GetInteger(GetPName.VertexArrayBinding);
+                    if (vao != 0)
+                    {
+                        Unbind();
+                        GL.BindVertexArray(0);
+                    }
+                }
+                else Unbind();
+
                 Generate();
                 GL.BindBuffer(BufferTarget.CopyWriteBuffer, Handle);
                 GL.BufferData(BufferTarget.CopyWriteBuffer, newSize * Stride, IntPtr.Zero, UsageHint);
@@ -55,8 +67,17 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
                 GL.BindBuffer(BufferTarget.CopyReadBuffer, oldBuffer);
                 GL.CopyBufferSubData(BufferTarget.CopyReadBuffer, BufferTarget.CopyWriteBuffer, IntPtr.Zero, IntPtr.Zero, oldSize);
 
+                GL.BindBuffer(BufferTarget.CopyWriteBuffer, 0);
+                GL.BindBuffer(BufferTarget.CopyReadBuffer, 0);
                 GL.DeleteBuffer(oldBuffer);
+
+                if (vao != 0)
+                {
+                    GL.BindVertexArray(vao);
+                }
                 Bind();
+
+                Console.WriteLine($"Buffer {oldBuffer} ({Name}) has a new handle {Handle}.");
             }
             else
             {
@@ -134,6 +155,28 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         Count = newSize;
     }
 
+    public void Insert(int index, T data)
+    {
+        if (!_bInitialized)
+        {
+            if (index != 0)
+                throw new ArgumentOutOfRangeException(nameof(index), $"Buffer is not initialized. Cannot insert at index {index}.");
+
+            Add(data);
+            return;
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        if (index >= _capacity)
+        {
+            Console.WriteLine($"attempt to insert at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}. Resizing...");
+            ResizeIfNeeded(index + 1, copy: true);
+            Count += index + 1 - Count;
+        }
+
+        GL.BufferSubData(Target, index * Stride, Stride, ref data);
+    }
+
     public void Update(int index, T data) => Update(index, [data]);
     public void Update(int index, T[] data)
     {
@@ -143,9 +186,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
 
         if (index >= _capacity)
         {
-            Console.WriteLine($"attempt to update index {index} in buffer {Handle} ({Name}) with capacity {_capacity}. Resizing...");
-            ResizeIfNeeded(index + data.Length, copy: true);
-            Count += index + data.Length - Count;
+            throw new ArgumentOutOfRangeException(nameof(index), $"Cannot update at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}. Consider resizing the buffer.");
         }
 
         GL.BufferSubData(Target, index * Stride, data.Length * Stride, data);

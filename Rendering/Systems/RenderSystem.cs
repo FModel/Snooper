@@ -6,7 +6,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent>
+public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent>(500)
 {
     public override uint Order => 22;
     protected override bool AllowDerivation => true;
@@ -22,8 +22,6 @@ public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent>
         GL.EnableVertexAttribArray(2);
         GL.EnableVertexAttribArray(3);
     };
-
-    protected override PolygonMode PolygonMode { get => PolygonMode.Fill; }
 
     protected override ShaderProgram Shader { get; } = new(
 """
@@ -174,7 +172,6 @@ void main()
 
         _debug.Use();
         _debug.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
-        Matrices.Bind(0);
-        RenderComponents();
+        Resources.Render();
     }
 }

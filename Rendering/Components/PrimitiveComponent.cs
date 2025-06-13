@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 using Snooper.Core;
-using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -10,25 +10,20 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
 {
     public int DrawId { get; private set; } = -1;
 
-    public void Generate(DrawIndirectBuffer commands, ElementArrayBuffer<uint> ebo, ArrayBuffer<T> vbo)
+    public void Generate(IndirectResources<T> resources)
     {
-        DrawId = commands.Add(new DrawElementsIndirectCommand
-        {
-            Count = (uint) primitive.Indices.Length,
-            InstanceCount = 1,
-            FirstIndex = (uint) ebo.Count,
-            BaseVertex = (uint) vbo.Count,
-            BaseInstance = 0
-        });
-        ebo.AddRange(primitive.Indices);
-        vbo.AddRange(primitive.Vertices);
+        DrawId = resources.Add(primitive, GetModelMatrix());
     }
 
-    public virtual void Update(DrawIndirectBuffer commands, ElementArrayBuffer<uint> ebo, ArrayBuffer<T> vbo)
+    public virtual void Update(IndirectResources<T> resources)
     {
         if (DrawId < 0)
         {
-            Generate(commands, ebo, vbo);
+            Generate(resources);
+        }
+        else
+        {
+            resources.Update(this);
         }
     }
 }

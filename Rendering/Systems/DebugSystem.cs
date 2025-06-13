@@ -10,7 +10,6 @@ public class DebugSystem : PrimitiveSystem<DebugComponent>
     public override uint Order => 100;
     public override ActorSystemType SystemType => ActorSystemType.Background;
     protected override bool AllowDerivation => true;
-    protected override PolygonMode PolygonMode => PolygonMode.Line;
 
     public override void Load()
     {
@@ -42,8 +41,8 @@ void main()
         var bCull = GL.GetBoolean(GetPName.CullFace);
         var polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
 
-        var bDiff = polygonMode != PolygonMode;
-        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode);
+        var bDiff = polygonMode != PolygonMode.Line;
+        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
         if (bCull) GL.Disable(EnableCap.CullFace);
 
         base.Render(camera);

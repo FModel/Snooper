@@ -45,13 +45,14 @@ void main()
         _shader.Link();
     }
 
-    public override void Render(Action<ShaderProgram>? callback = null)
+    public void Render(Action<ShaderProgram>? callback = null)
     {
-        _shader.Use();
-        _shader.SetUniform("deferredTexture", 0);
-        _shader.SetUniform("forwardTexture", 1);
-        callback?.Invoke(_shader);
-
-        base.Render();
+        base.Render(() =>
+        {
+            _shader.Use();
+            _shader.SetUniform("deferredTexture", 0);
+            _shader.SetUniform("forwardTexture", 1);
+            callback?.Invoke(_shader);
+        });
     }
 }

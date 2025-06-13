@@ -1,5 +1,5 @@
 ﻿using System.Numerics;
-using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Primitives;
 using Plane = System.Numerics.Plane;
 
@@ -21,11 +21,11 @@ public class CameraFrustumComponent(CameraComponent cameraComponent) : DebugComp
         ];
     }
 
-    public override void Update(DrawIndirectBuffer commands, ElementArrayBuffer<uint> ebo, ArrayBuffer<Vector3> vbo)
+    public override void Update(IndirectResources<Vector3> resources)
     {
-        base.Update(commands, ebo, vbo);
+        base.Update(resources);
 
-        vbo.Update(DrawId, CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes()));
+        resources.UpdateVertices(DrawId, CalculateFrustumVertices(cameraComponent.GetLocalFrustumPlanes()));
     }
 
     private Vector3[] CalculateFrustumVertices(Plane[] frustumPlanes)

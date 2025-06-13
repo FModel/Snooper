@@ -204,6 +204,10 @@ void main()
             }
         }
 
+        _vao.Bind();
+        _ebo.Bind();
+        _vbo.Bind();
+
         // Setup orthographic projection matrix into our constant buffer
         var io = ImGui.GetIO();
         _shader.Use();
@@ -221,9 +225,6 @@ void main()
         GL.Disable(EnableCap.DepthTest);
 
         // Render command lists
-        _vao.Bind();
-        _ebo.Bind();
-        _vbo.Bind();
         for (var i = 0; i < drawData.CmdListsCount; i++)
         {
             var cmd = drawData.CmdLists[i];
@@ -259,6 +260,7 @@ void main()
                 CheckForErrors("Draw");
             }
         }
+
         _vao.Unbind();
         _ebo.Unbind();
         _vbo.Unbind();

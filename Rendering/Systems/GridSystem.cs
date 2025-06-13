@@ -133,7 +133,7 @@ void main()
         if (bCull) GL.Disable(EnableCap.CullFace);
         if (bDepth) GL.Disable(EnableCap.DepthTest);
 
-        RenderComponents();
+        Resources.Render();
 
         if (bDepth) GL.Enable(EnableCap.DepthTest);
         if (bCull) GL.Enable(EnableCap.CullFace);

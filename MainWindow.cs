@@ -272,6 +272,7 @@ public partial class MainWindow : GameWindow
                 {
                     var actor = new Actor("New Actor");
                     actor.Components.Add(new PrimitiveComponent(new Cube()));
+                    actor.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
                     var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
                     actor.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
                     root.Children.Add(actor);

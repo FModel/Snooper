@@ -164,33 +164,35 @@ void main()
 
     public override void Bind(TextureUnit unit) => _blur.Bind(unit);
 
-    public override void Render(Action<ShaderProgram>? callback = null)
+    public void Render(Action<ShaderProgram>? callback = null)
     {
-        _ssaoNoise.Bind(TextureUnit.Texture2);
-
-        _shader.Use();
-        callback?.Invoke(_shader);
-
-        _shader.SetUniform("noiseScale", new Vector2(Width / NoiseSize, Height / NoiseSize));
-        for (var i = 0; i < _kernel.Length; i++)
+        base.Render(() =>
         {
-            _shader.SetUniform($"samples[{i}]", _kernel[i]);
-        }
-        _shader.SetUniform("gPosition", 0);
-        _shader.SetUniform("gNormal", 1);
-        _shader.SetUniform("noiseTexture", 2);
+            _ssaoNoise.Bind(TextureUnit.Texture2);
 
-        base.Render();
-        base.Bind(TextureUnit.Texture0);
+            _shader.Use();
+            callback?.Invoke(_shader);
+            _shader.SetUniform("noiseScale", new Vector2(Width / NoiseSize, Height / NoiseSize));
+            for (var i = 0; i < _kernel.Length; i++)
+            {
+                _shader.SetUniform($"samples[{i}]", _kernel[i]);
+            }
+            _shader.SetUniform("gPosition", 0);
+            _shader.SetUniform("gNormal", 1);
+            _shader.SetUniform("noiseTexture", 2);
+        });
 
         _blur.Bind();
         GL.ClearColor(255, 255, 255, 255);
         GL.Clear(ClearBufferMask.ColorBufferBit);
 
-        _blurShader.Use();
-        _blurShader.SetUniform("ssaoInput", 0);
+        _blur.Render(() =>
+        {
+            base.Bind(TextureUnit.Texture0);
 
-        _blur.Render();
+            _blurShader.Use();
+            _blurShader.SetUniform("ssaoInput", 0);
+        });
     }
 
     public override void Resize(int newWidth, int newHeight)

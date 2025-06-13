@@ -68,8 +68,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
 
         // copy depth from gBuffer
         GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fxaa);
-        GL.BlitFramebuffer(0, 0, _geometry.Width, _geometry.Height, 0, 0, _fxaa.Width, _fxaa.Height,
-            ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+        GL.BlitFramebuffer(0, 0, _geometry.Width, _geometry.Height, 0, 0, _fxaa.Width, _fxaa.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
 
         _fxaa.Bind();
         GL.ClearColor(0, 0, 0, 0);

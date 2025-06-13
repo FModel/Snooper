@@ -15,12 +15,12 @@ public sealed class VertexArray : HandledObject, IBind
     public void Bind()
     {
         PreviousHandle = GL.GetInteger(Name);
-        GL.BindVertexArray(Handle);
+        GL.BindVertexArray(Handle); // this automatically binds the EBO
     }
 
     public void Unbind()
     {
-        GL.BindVertexArray(PreviousHandle);
+        GL.BindVertexArray(PreviousHandle); // but it does not automatically unbind the EBO...
     }
 
     public override void Dispose()

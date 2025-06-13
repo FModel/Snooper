@@ -35,7 +35,7 @@ public class FxaaFramebuffer(int originalWidth, int originalHeight) : Framebuffe
 
     public override void Bind(TextureUnit unit) => _fullQuad.Bind(unit);
 
-    public override void Render(Action<ShaderProgram>? callback = null)
+    public void Render(Action<ShaderProgram>? callback = null)
     {
         GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
         GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fullQuad);
