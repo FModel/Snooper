@@ -241,66 +241,59 @@ public partial class SnooperWindow : GameWindow
             ImGui.End();
         }
 
-        var root = _sceneSystem.RootActor;
-        if (root != null)
+        if (ImGui.Begin("Scene Hierarchy"))
         {
-            if (ImGui.Begin("Scene Hierarchy"))
+            for (var i = 0; i < _scene.Children.Count; i++)
             {
-                ImGui.Text($"Root Actor: {root.Name}");
-                ImGui.Separator();
+                var child = _scene.Children[i];
 
-                for (var i = 0; i < root.Children.Count; i++)
+                ImGui.PushID($"{child.Name}_{i}");
+                if (ImGui.TreeNode(child.Name))
                 {
-                    var child = root.Children[i];
-
-                    ImGui.PushID($"{child.Name}_{i}");
-                    if (ImGui.TreeNode(child.Name))
+                    ImGui.Text($"Position: {child.Transform.Position}");
+                    ImGui.Text($"Rotation: {child.Transform.Rotation}");
+                    ImGui.Text($"Scale: {child.Transform.Scale}");
+                    ImGui.Text($"Components: {child.Components.Count}");
+                    foreach (var component in child.Components)
                     {
-                        ImGui.Text($"Position: {child.Transform.Position}");
-                        ImGui.Text($"Rotation: {child.Transform.Rotation}");
-                        ImGui.Text($"Scale: {child.Transform.Scale}");
-                        ImGui.Text($"Components: {child.Components.Count}");
-                        foreach (var component in child.Components)
-                        {
-                            ImGui.Text($"- {component.GetType().Name}");
-                        }
-                        ImGui.TreePop();
+                        ImGui.Text($"- {component.GetType().Name}");
                     }
-                    ImGui.PopID();
+                    ImGui.TreePop();
                 }
-
-                if (ImGui.BeginPopupContextWindow("Add Actor"))
-                {
-                    if (ImGui.MenuItem("Add Cube"))
-                    {
-                        var cube = new Actor("Cube");
-                        cube.Components.Add(new PrimitiveComponent(new Cube()));
-                        cube.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
-
-                        var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
-                        cube.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
-                        root.Children.Add(cube);
-                    }
-                    if (ImGui.MenuItem("Add Sphere"))
-                    {
-                        var sphere = new Actor("Sphere");
-                        sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
-                        sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
-
-                        var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
-                        sphere.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
-                        root.Children.Add(sphere);
-                    }
-                    if (ImGui.MenuItem("Add Camera"))
-                    {
-                        var cameraActor = new CameraActor($"Camera {root.Children.Count + 1}");
-                        root.Children.Add(cameraActor);
-                    }
-                    ImGui.EndPopup();
-                }
+                ImGui.PopID();
             }
-            ImGui.End();
+
+            if (ImGui.BeginPopupContextWindow("Add Actor"))
+            {
+                if (ImGui.MenuItem("Add Cube"))
+                {
+                    var cube = new Actor("Cube");
+                    cube.Components.Add(new PrimitiveComponent(new Cube()));
+                    cube.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
+
+                    var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
+                    cube.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
+                    _scene.Children.Add(cube);
+                }
+                if (ImGui.MenuItem("Add Sphere"))
+                {
+                    var sphere = new Actor("Sphere");
+                    sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
+                    sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
+
+                    var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
+                    sphere.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
+                    _scene.Children.Add(sphere);
+                }
+                if (ImGui.MenuItem("Add Camera"))
+                {
+                    var cameraActor = new CameraActor("Camera Added");
+                    _scene.Children.Add(cameraActor);
+                }
+                ImGui.EndPopup();
+            }
         }
+        ImGui.End();
 
         if (ImGui.Begin("Systems Order"))
         {

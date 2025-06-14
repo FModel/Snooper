@@ -7,6 +7,8 @@ namespace Snooper.Core.Systems;
 
 public abstract class ActorManager : IGameSystem
 {
+    private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
+    
     private static readonly Dictionary<Type, Func<ActorSystem>> _registeredFactories = [];
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private readonly HashSet<Actor> _actors = [];
@@ -27,17 +29,15 @@ public abstract class ActorManager : IGameSystem
 
     public virtual void Load()
     {
-        for (var i = 0; i < Systems.Count; i++)
-        {
-            Systems.Values[i].Load();
-        }
+        DequeueSystems();
     }
 
     public virtual void Update(float delta)
     {
-        for (var i = 0; i < Systems.Count; i++)
+        DequeueSystems(1);
+        foreach (var system in Systems.Values)
         {
-            Systems.Values[i].Update(delta);
+            system.Update(delta);
         }
     }
 
@@ -132,19 +132,22 @@ public abstract class ActorManager : IGameSystem
             }
 
             systemsForComponent = [];
-            foreach (var system in Systems.Values)
-            {
-                if (system.Accepts(componentType))
-                {
-                    systemsForComponent.Add(system);
-                }
-            }
+            foreach (var system in _systemsToLoad) AddIfAccepted(system);
+            foreach (var system in Systems.Values) AddIfAccepted(system);
             _systemsPerComponentType.Add(componentType, systemsForComponent);
         }
 
         foreach (var system in systemsForComponent)
         {
             system.ProcessActorComponent(component, actor);
+        }
+
+        void AddIfAccepted(ActorSystem system)
+        {
+            if (system.Accepts(componentType))
+            {
+                systemsForComponent.Add(system);
+            }
         }
     }
 
@@ -153,7 +156,7 @@ public abstract class ActorManager : IGameSystem
         var actorSystemAttributes = componentType.GetCustomAttributes<DefaultActorSystemAttribute>();
         foreach (var actorSystemAttribute in actorSystemAttributes)
         {
-            var addNewSystem = Systems.All(s => s.Value.GetType() != actorSystemAttribute.Type);
+            var addNewSystem = _systemsToLoad.All(IsSystemNotOfType(actorSystemAttribute.Type)) && Systems.Values.All(IsSystemNotOfType(actorSystemAttribute.Type));
             if (addNewSystem)
             {
                 if (_registeredFactories.TryGetValue(actorSystemAttribute.Type, out Func<ActorSystem>? factory))
@@ -161,7 +164,7 @@ public abstract class ActorManager : IGameSystem
                     var system = factory();
                     system.ActorManager = this;
 
-                    Systems.Add(system.Order, system);
+                    _systemsToLoad.Enqueue(system);
                     return;
                 }
 
@@ -207,6 +210,20 @@ public abstract class ActorManager : IGameSystem
                     RemoveComponent(component, componentCollection.Actor);
                 }
                 break;
+        }
+    }
+    
+    private readonly Queue<ActorSystem> _systemsToLoad = [];
+    private void DequeueSystems(int limit = 0)
+    {
+        var count = 0;
+        while (_systemsToLoad.Count > 0 && (limit == 0 || count < limit))
+        {
+            var system = _systemsToLoad.Dequeue();
+            system.Load();
+            
+            Systems.Add(system.Order, system);
+            count++;
         }
     }
 
