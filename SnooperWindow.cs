@@ -1,7 +1,8 @@
 ﻿using System.Numerics;
-using CUE4Parse_Conversion.Meshes;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
@@ -15,20 +16,34 @@ using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
-using Plane = Snooper.Rendering.Primitives.Plane;
-using Quaternion = System.Numerics.Quaternion;
-using Vector2 = System.Numerics.Vector2;
-using Vector3 = System.Numerics.Vector3;
-using Vector4 = System.Numerics.Vector4;
 
 namespace Snooper;
 
-public partial class MainWindow : GameWindow
+public partial class SnooperWindow : GameWindow
 {
+    private readonly Actor _scene = new("Scene");
     private readonly SceneSystem _sceneSystem;
     private readonly ImGuiSystem _imguiSystem;
-
-    public MainWindow(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) : base(gameWindowSettings, nativeWindowSettings)
+    
+    public SnooperWindow(double fps, int width, int height, Version version, bool startVisible = true) : base(
+        new GameWindowSettings { UpdateFrequency = fps },
+        new NativeWindowSettings
+        {
+            ClientSize = new OpenTK.Mathematics.Vector2i(width, height),
+            // NumberOfSamples = Settings.NumberOfSamples,
+            WindowBorder = WindowBorder.Resizable,
+#if DEBUG
+            Flags = ContextFlags.ForwardCompatible | ContextFlags.Debug,
+#else
+        Flags = ContextFlags.ForwardCompatible,
+#endif
+            Profile = ContextProfile.Core,
+            Vsync = VSyncMode.Adaptive,
+            APIVersion = version,
+            StartVisible = startVisible,
+            StartFocused = startVisible,
+            Title = "Snooper"
+        })
     {
         ActorManager.RegisterSystemFactory<GridSystem>();
         ActorManager.RegisterSystemFactory<TransformSystem>();
@@ -38,61 +53,46 @@ public partial class MainWindow : GameWindow
         ActorManager.RegisterSystemFactory<DeferredRenderSystem>();
         ActorManager.RegisterSystemFactory<RenderSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
-
-        _sceneSystem = new SceneSystem(this);
-
-        _imguiSystem = new ImGuiSystem();
-        _imguiSystem.Resize(ClientSize.X, ClientSize.Y);
-
-        var root = new Actor("Scene");
-
+        
         var grid = new Actor("Grid");
         grid.Components.Add(new GridComponent());
-        root.Children.Add(grid);
-
-        var camera1 = new Actor("Debug Camera");
-        camera1.Transform.Position -= Vector3.UnitZ * 10;
-        camera1.Transform.Position += Vector3.UnitY * 4;
-        camera1.Transform.Position -= Vector3.UnitX * 3;
-        camera1.Transform.Rotation = Quaternion.CreateFromAxisAngle(new Vector3(0.5f, 0.5f, 0), MathF.PI / 4);
-        camera1.Components.Add(new CameraComponent());
-        root.Children.Add(camera1);
-
-        var camera2 = new CameraActor("Camera 2");
-        camera2.Transform.Position -= Vector3.UnitZ * 2;
-        camera2.Transform.Position += Vector3.UnitY;
-        camera2.Transform.Position += Vector3.UnitX;
-        root.Children.Add(camera2);
-
-        var plane = new Actor("Plane");
-        plane.Transform.Position += Vector3.UnitY * 2.5f;
-        plane.Components.Add(new PrimitiveComponent(new Plane(-Vector3.UnitY)));
-        plane.Components.Add(new BoxCullingComponent(Vector3.Zero, new Vector3(1, 0, 1)));
-        root.Children.Add(plane);
-
-        var sphere = new Actor("Sphere");
-        sphere.Transform.Position -= Vector3.UnitX * 2;
-        sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
-        sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, new Vector3(0.5f)));
-        root.Children.Add(sphere);
-
-        _sceneSystem.RootActor = root;
+        _scene.Children.Add(grid);
+        
+        var camera = new Actor("Camera");
+        camera.Transform.Position -= Vector3.UnitZ * 5;
+        camera.Transform.Position += Vector3.UnitY * 1.5f;
+        camera.Components.Add(new CameraComponent());
+        _scene.Children.Add(camera);
+        
+        _sceneSystem = new SceneSystem(this);
+        _sceneSystem.RootActor = _scene;
+        
+        _imguiSystem = new ImGuiSystem();
+        _imguiSystem.Resize(ClientSize.X, ClientSize.Y);
     }
 
-    public void Insert(UStaticMesh mesh)
+    public void AddToScene(UObject actor) => AddToScene(actor, FTransform.Identity);
+    public void AddToScene(UObject actor, FTransform transform)
     {
-        var actor = new MeshActor(mesh);
-        actor.Transform.Position += Vector3.UnitX;
-        _sceneSystem.RootActor?.Children.Add(actor);
+        switch (actor)
+        {
+            case UStaticMesh staticMesh:
+            {
+                var mesh = new MeshActor(staticMesh, transform);
+                _scene.Children.Add(mesh);
+                break;
+            }
+            case USkeletalMesh skeletalMesh:
+            {
+                var mesh = new MeshActor(skeletalMesh, transform);
+                _scene.Children.Add(mesh);
+                break;
+            }
+            default:
+                throw new NotImplementedException($"Actor type {actor.GetType()} is not supported.");
+        }
     }
-
-    public void Insert(USkeletalMesh mesh)
-    {
-        var actor = new MeshActor(mesh);
-        actor.Transform.Position -= Vector3.UnitX;
-        _sceneSystem.RootActor?.Children.Add(actor);
-    }
-
+    
     protected override void OnLoad()
     {
         base.OnLoad();
@@ -235,8 +235,8 @@ public partial class MainWindow : GameWindow
                 ImGui.SliderFloat("Bias", ref camera.SsaoBias, 0.0f, 0.1f);
                 ImGui.EndDisabled();
 
-                ImGui.DragFloat("Near Plane Distance", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
-                ImGui.DragFloat("Far Plane Distance", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
+                ImGui.DragFloat("Near Plane", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
+                ImGui.DragFloat("Far Plane", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
             }
             ImGui.End();
         }

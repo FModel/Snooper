@@ -27,17 +27,17 @@ public abstract class ActorManager : IGameSystem
 
     public virtual void Load()
     {
-        foreach (var system in Systems.Values)
+        for (var i = 0; i < Systems.Count; i++)
         {
-            system.Load();
+            Systems.Values[i].Load();
         }
     }
 
     public virtual void Update(float delta)
     {
-        foreach (var system in Systems.Values)
+        for (var i = 0; i < Systems.Count; i++)
         {
-            system.Update(delta);
+            Systems.Values[i].Update(delta);
         }
     }
 

@@ -101,8 +101,8 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind where T
 
         GL.MultiDrawElementsIndirect(PrimitiveType.Triangles, DrawElementsType.UnsignedInt, IntPtr.Zero, _commands.Current.Count, 0);
 
-        _vao.Unbind();
-        EBO.Unbind();
+        // _vao.Unbind();
+        // EBO.Unbind();
         _commands.Current.Unbind();
 
         // _commands.Swap();

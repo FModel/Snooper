@@ -4,7 +4,7 @@ using OpenTK.Graphics.OpenGL4;
 namespace Snooper;
 
 #if DEBUG
-public partial class MainWindow
+public partial class SnooperWindow
 {
     private static readonly DebugProc _debugMessageDelegate = OnDebugMessage;
     private static void OnDebugMessage(DebugSource source, DebugType type, int id, DebugSeverity severity, int length, IntPtr pMessage, IntPtr pUserParam)

@@ -10,7 +10,7 @@ public class Actor
     public string Name { get; }
     public bool IsVisible { get; internal set; }
 
-    public Actor(string name)
+    public Actor(string name, TransformComponent? transform = null)
     {
         Name = name;
         IsVisible = true;
@@ -21,7 +21,7 @@ public class Actor
         Children.CollectionChanged += OnChildrenCollectionChanged;
         Components.CollectionChanged += OnComponentsCollectionChanged;
 
-        Transform = new TransformComponent();
+        Transform = transform ?? new TransformComponent();
         Components.Add(Transform);
     }
 

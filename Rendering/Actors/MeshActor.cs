@@ -1,6 +1,7 @@
 ﻿using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Culling;
 
@@ -8,7 +9,7 @@ namespace Snooper.Rendering.Actors;
 
 public class MeshActor : Actor
 {
-    public MeshActor(UStaticMesh staticMesh) : base(staticMesh.Name)
+    public MeshActor(UStaticMesh staticMesh, TransformComponent? transform = null) : base(staticMesh.Name, transform)
     {
         if (!staticMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
@@ -21,7 +22,7 @@ public class MeshActor : Actor
         Components.Add(CullingComponent);
     }
 
-    public MeshActor(USkeletalMesh skeletalMesh) : base(skeletalMesh.Name)
+    public MeshActor(USkeletalMesh skeletalMesh, TransformComponent? transform = null) : base(skeletalMesh.Name, transform)
     {
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));

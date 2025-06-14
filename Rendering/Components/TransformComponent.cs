@@ -1,11 +1,12 @@
 ﻿using System.Numerics;
+using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Core;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components;
 
 [DefaultActorSystem(typeof(TransformSystem))]
-public sealed class TransformComponent : ActorComponent
+public sealed class TransformComponent() : ActorComponent
 {
     public Matrix4x4 LocalMatrix = Matrix4x4.Identity;
     public Matrix4x4 WorldMatrix = Matrix4x4.Identity;
@@ -35,6 +36,13 @@ public sealed class TransformComponent : ActorComponent
             }
         }
     }
+    
+    public TransformComponent(FTransform transform) : this()
+    {
+        Position = new Vector3(transform.Translation.X, transform.Translation.Z, transform.Translation.Y) * Settings.GlobalScale;
+        Rotation = new Quaternion(transform.Rotation.X, transform.Rotation.Z, transform.Rotation.Y, transform.Rotation.W);
+        Scale = new Vector3(transform.Scale3D.X, transform.Scale3D.Z, transform.Scale3D.Y);
+    }
 
     public void UpdateLocalMatrix()
     {
@@ -59,4 +67,6 @@ public sealed class TransformComponent : ActorComponent
             WorldMatrix = LocalMatrix * Relation.WorldMatrix;
         }
     }
+    
+    public static implicit operator TransformComponent(FTransform transform) => new(transform);
 }
