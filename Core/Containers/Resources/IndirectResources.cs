@@ -8,7 +8,7 @@ namespace Snooper.Core.Containers.Resources;
 
 public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind where TVertex : unmanaged
 {
-    private readonly DrawIndirectBuffer _commands = new(initialDrawCapacity);
+    private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
     private readonly ShaderStorageBuffer<Matrix4x4> _matrices = new(initialDrawCapacity);
 
     private readonly VertexArray _vao = new();
@@ -26,7 +26,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind where T
 
     public void Bind()
     {
-        _commands.Bind();
+        _commands.Current.Bind();
         _matrices.Bind();
         _vao.Bind();
         EBO.Bind();
@@ -35,7 +35,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind where T
 
     public void Unbind()
     {
-        _commands.Unbind();
+        _commands.Current.Unbind();
         _matrices.Unbind();
         _vao.Unbind();
         EBO.Unbind();
@@ -44,71 +44,68 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind where T
 
     public int Add(TPrimitiveData<TVertex> primitive, Matrix4x4 matrix)
     {
-        var drawId = _commands.Add(new DrawElementsIndirectCommand
+        var firstIndex = EBO.AddRange(primitive.Indices);
+        var baseVertex = VBO.AddRange(primitive.Vertices);
+
+        var drawId = _commands.Current.Add(new DrawElementsIndirectCommand
         {
             Count = (uint) primitive.Indices.Length,
             InstanceCount = 1,
-            FirstIndex = (uint) EBO.Count,
-            BaseVertex = (uint) VBO.Count,
+            FirstIndex = (uint) firstIndex,
+            BaseVertex = (uint) baseVertex,
             BaseInstance = 0
         });
-
         _matrices.Insert(drawId, matrix);
-        EBO.AddRange(primitive.Indices);
-        VBO.AddRange(primitive.Vertices);
 
         return drawId;
     }
 
     public void Update(TPrimitiveComponent<TVertex> component)
     {
-        _commands.UpdateInstanceCount(component.DrawId, component.IsVisible ? 1u : 0u);
+        _commands.Current.UpdateInstanceCount(component.DrawId, component.IsVisible ? 1u : 0u);
         _matrices.Update(component.DrawId, component.GetModelMatrix());
     }
 
     public void UpdateVertices(int drawId, TVertex[] vertices)
     {
-        var command = _commands[drawId];
+        var command = _commands.Current[drawId];
         VBO.Update((int) command.BaseVertex, vertices);
     }
 
     public void UpdatePrimitive(int drawId, uint[] indices, TVertex[] vertices)
     {
-        var command = _commands[drawId];
+        var command = _commands.Current[drawId];
         EBO.Update((int) command.FirstIndex, indices);
         VBO.Update((int) command.BaseVertex, vertices);
 
-        _commands.UpdateCount(drawId, (uint) indices.Length);
+        _commands.Current.UpdateCount(drawId, (uint) indices.Length);
     }
 
     public void Remove(int drawId)
     {
-        _commands.Bind();
+        _commands.Current.Bind();
         _matrices.Bind();
 
-        _commands.Remove(drawId);
+        _commands.Current.Remove(drawId);
         _matrices.Remove(drawId);
 
-        _commands.Unbind();
+        _commands.Current.Unbind();
         _matrices.Unbind();
-    }
-
-    public void RemoveAt(int index)
-    {
-
     }
 
     public void Render()
     {
-        _commands.Bind();
+        _commands.Current.Bind();
         _matrices.Bind(0);
         _vao.Bind();
 
-        GL.MultiDrawElementsIndirect(PrimitiveType.Triangles, DrawElementsType.UnsignedInt, IntPtr.Zero, _commands.Count, 0);
+        GL.MultiDrawElementsIndirect(PrimitiveType.Triangles, DrawElementsType.UnsignedInt, IntPtr.Zero, _commands.Current.Count, 0);
 
-        // _vao.Unbind();
-        // EBO.Unbind();
-        _commands.Unbind();
+        _vao.Unbind();
+        EBO.Unbind();
+        _commands.Current.Unbind();
+
+        // _commands.Swap();
     }
 
     public GetPName Name => throw new NotImplementedException();

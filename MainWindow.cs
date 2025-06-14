@@ -81,22 +81,16 @@ public partial class MainWindow : GameWindow
 
     public void Insert(UStaticMesh mesh)
     {
-        // if (mesh.TryConvert(out var primitiveData))
-        {
-            var actor = new MeshActor(mesh);
-            actor.Transform.Position += Vector3.UnitX;
-            _sceneSystem.RootActor?.Children.Add(actor);
-        }
+        var actor = new MeshActor(mesh);
+        actor.Transform.Position += Vector3.UnitX;
+        _sceneSystem.RootActor?.Children.Add(actor);
     }
 
     public void Insert(USkeletalMesh mesh)
     {
-        // if (mesh.TryConvert(out var primitiveData))
-        {
-            var actor = new MeshActor(mesh);
-            actor.Transform.Position -= Vector3.UnitX;
-            _sceneSystem.RootActor?.Children.Add(actor);
-        }
+        var actor = new MeshActor(mesh);
+        actor.Transform.Position -= Vector3.UnitX;
+        _sceneSystem.RootActor?.Children.Add(actor);
     }
 
     protected override void OnLoad()
@@ -181,26 +175,30 @@ public partial class MainWindow : GameWindow
                 var frameHeight = ImGui.GetFrameHeight();
 
                 var drawList = ImGui.GetWindowDrawList();
-                var remainingPointers = pointers.Length - 1;
-                var miniSize = size;
-                miniSize.Y = MathF.Min(miniSize.Y, (size.Y - margin) / remainingPointers) - frameHeight;
-                miniSize.X = miniSize.Y * (size.X / size.Y);
-                // if the size is greater than 1/3 of the viewport, we will clamp it to 1/3
-                if (miniSize.X > size.X / 3.0f)
-                {
-                    miniSize.X = size.X / 3.0f;
-                    miniSize.Y = miniSize.X * (size.Y / size.X);
-                }
-
                 var pos = ImGui.GetItemRectMin();
-                var topRight = new Vector2(pos.X + size.X - miniSize.X - margin, pos.Y + margin);
-                for (int i = 0; i < remainingPointers; i++)
-                {
-                    var pMin = topRight with { Y = topRight.Y + i * (miniSize.Y + margin) };
-                    var pMax = pMin + miniSize;
 
-                    drawList.AddImage(pointers[i], pMin, pMax, Vector2.UnitY, Vector2.UnitX);
-                    drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
+                if (_sceneSystem.DebugMode)
+                {
+                    var remainingPointers = pointers.Length - 1;
+                    var miniSize = size;
+                    miniSize.Y = MathF.Min(miniSize.Y, (size.Y - margin) / remainingPointers) - frameHeight;
+                    miniSize.X = miniSize.Y * (size.X / size.Y);
+                    // if the size is greater than 1/3 of the viewport, we will clamp it to 1/3
+                    if (miniSize.X > size.X / 3.0f)
+                    {
+                        miniSize.X = size.X / 3.0f;
+                        miniSize.Y = miniSize.X * (size.Y / size.X);
+                    }
+
+                    var topRight = new Vector2(pos.X + size.X - miniSize.X - margin, pos.Y + margin);
+                    for (int i = 0; i < remainingPointers; i++)
+                    {
+                        var pMin = topRight with { Y = topRight.Y + i * (miniSize.Y + margin) };
+                        var pMax = pMin + miniSize;
+
+                        drawList.AddImage(pointers[i], pMin, pMax, Vector2.UnitY, Vector2.UnitX);
+                        drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
+                    }
                 }
 
                 drawList.AddText(new Vector2(pos.X + margin, pos.Y + margin), ImGui.GetColorU32(ImGuiCol.Text), $"Primitives: {primitiveCount:N0}");

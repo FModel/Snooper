@@ -15,7 +15,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
 
     private int _capacity = initialCapacity;
     private bool _bInitialized;
-    private readonly Stack<int> _freeIndices = new();
+    private readonly Stack<Range> _freeRanges = new();
 
     public override void Generate()
     {
@@ -126,7 +126,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
             return 0;
         }
 
-        var index = _freeIndices.Count > 0 ? _freeIndices.Pop() : Count;
+        var index = GetValidIndex(1);
         if (index >= _capacity)
         {
             ResizeIfNeeded(index + 1, copy: true);
@@ -138,21 +138,27 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         return index;
     }
 
-    public void AddRange(T[] data)
+    public int AddRange(T[] data)
     {
-        if (data.Length == 0) return;
+        var length = data.Length;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
         if (!_bInitialized)
         {
             Allocate(data);
-            return;
+            return 0;
         }
 
-        var index = Count * Stride;
-        var newSize = Count + data.Length;
-        ResizeIfNeeded(newSize, copy: true);
+        var index = GetValidIndex(length);
+        var newSize = index + length;
+        if (newSize >= _capacity)
+        {
+            ResizeIfNeeded(newSize, copy: true);
+        }
 
-        GL.BufferSubData(Target, index, data.Length * Stride, data);
-        Count = newSize;
+        GL.BufferSubData(Target, index * Stride, length * Stride, data);
+        if (index == Count) Count = newSize;
+
+        return index;
     }
 
     public void Insert(int index, T data)
@@ -182,7 +188,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         if (index >= _capacity) throw new ArgumentOutOfRangeException(nameof(index), $"Cannot remove at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}.");
 
-        _freeIndices.Push(index);
+        _freeRanges.Push(new Range(index, 1));
     }
 
     public void Update(int index, T data) => Update(index, [data]);
@@ -221,5 +227,35 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
     public override void Dispose()
     {
         GL.DeleteBuffer(Handle);
+    }
+
+    private struct Range(int index, int length)
+    {
+        public readonly int Index = index;
+        public readonly int Length = length;
+    }
+
+    private int GetValidIndex(int length)
+    {
+        var index = Count;
+        if (_freeRanges.Count > 0)
+        {
+            var range = _freeRanges.Pop();
+            if (range.Length == length)
+            {
+                index = range.Index;
+            }
+            else if (range.Length > length)
+            {
+                index = range.Index;
+                _freeRanges.Push(new Range(index + length, range.Length - length));
+            }
+            else if (range.Length < length)
+            {
+                _freeRanges.Push(range);
+            }
+        }
+
+        return index;
     }
 }
