@@ -1,6 +1,8 @@
 ﻿using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Culling;
@@ -9,7 +11,10 @@ namespace Snooper.Rendering.Actors;
 
 public class MeshActor : Actor
 {
-    public MeshActor(UStaticMesh staticMesh, TransformComponent? transform = null) : base(staticMesh.Name, transform)
+    public CullingComponent CullingComponent { get; }
+    public MeshComponent MeshComponent { get; }
+    
+    public MeshActor(UStaticMesh staticMesh, TransformComponent? transform = null) : base(staticMesh.LightingGuid, staticMesh.Name, transform)
     {
         if (!staticMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
@@ -17,21 +22,21 @@ public class MeshActor : Actor
             throw new ArgumentException("Static mesh does not have render data or bounds.", nameof(staticMesh));
 
         CullingComponent = new SphereCullingComponent(staticMesh.RenderData.Bounds);
-
-        Components.Add(new StaticMeshComponent(staticMesh, mesh));
+        MeshComponent = new StaticMeshComponent(staticMesh, mesh);
+        
         Components.Add(CullingComponent);
+        Components.Add(MeshComponent);
     }
 
-    public MeshActor(USkeletalMesh skeletalMesh, TransformComponent? transform = null) : base(skeletalMesh.Name, transform)
+    public MeshActor(USkeletalMesh skeletalMesh, TransformComponent? transform = null) : base(new FGuid((uint) skeletalMesh.GetFullName().GetHashCode()), skeletalMesh.Name, transform)
     {
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
 
         CullingComponent = new SphereCullingComponent(skeletalMesh.ImportedBounds);
-
-        Components.Add(new SkeletalMeshComponent(skeletalMesh, mesh));
+        MeshComponent = new SkeletalMeshComponent(skeletalMesh, mesh);
+        
         Components.Add(CullingComponent);
+        Components.Add(MeshComponent);
     }
-
-    public CullingComponent CullingComponent { get; }
 }

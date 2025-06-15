@@ -22,11 +22,12 @@ layout(std430, binding = 0) buffer ModelMatrices
     mat4 uModelMatrices[];
 };
 
-uniform mat4 uViewProjectionMatrix;
+uniform mat4 uViewMatrix;
+uniform mat4 uProjectionMatrix;
 
 void main()
 {
-    gl_Position = uViewProjectionMatrix * uModelMatrices[gl_DrawID] * vec4(aPos, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrices[gl_DrawID] * vec4(aPos, 1.0);
 }
 """,
 """
@@ -51,7 +52,8 @@ void main()
     public override void Render(CameraComponent camera)
     {
         Shader.Use();
-        Shader.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
+        Shader.SetUniform("uViewMatrix", camera.ViewMatrix);
+        Shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
 
         Resources.Render();
     }

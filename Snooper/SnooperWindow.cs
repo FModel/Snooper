@@ -21,7 +21,7 @@ namespace Snooper;
 
 public partial class SnooperWindow : GameWindow
 {
-    private readonly Actor _scene = new("Scene");
+    private readonly Actor _scene = new(Guid.NewGuid(), "Scene");
     private readonly SceneSystem _sceneSystem;
     private readonly ImGuiSystem _imguiSystem;
     
@@ -53,11 +53,11 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<RenderSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
         
-        var grid = new Actor("Grid");
+        var grid = new Actor(Guid.NewGuid(), "Grid");
         grid.Components.Add(new GridComponent());
         _scene.Children.Add(grid);
-        
-        var camera = new Actor("Camera");
+
+        var camera = new Actor(Guid.NewGuid(), "Camera");
         camera.Transform.Position -= Vector3.UnitZ * 5;
         camera.Transform.Position += Vector3.UnitY * 1.5f;
         camera.Components.Add(new CameraComponent());
@@ -78,19 +78,20 @@ public partial class SnooperWindow : GameWindow
             case UStaticMesh staticMesh:
             {
                 var mesh = new MeshActor(staticMesh, transform);
-                _scene.Children.Add(mesh);
+                AddToScene(mesh);
                 break;
             }
             case USkeletalMesh skeletalMesh:
             {
                 var mesh = new MeshActor(skeletalMesh, transform);
-                _scene.Children.Add(mesh);
+                AddToScene(mesh);
                 break;
             }
             default:
                 throw new NotImplementedException($"Actor type {actor.GetType()} is not supported.");
         }
     }
+    public void AddToScene(Actor actor) => _scene.Children.Add(actor);
     
     protected override void OnLoad()
     {
@@ -245,29 +246,14 @@ public partial class SnooperWindow : GameWindow
         {
             for (var i = 0; i < _scene.Children.Count; i++)
             {
-                var child = _scene.Children[i];
-
-                ImGui.PushID($"{child.Name}_{i}");
-                if (ImGui.TreeNode(child.Name))
-                {
-                    ImGui.Text($"Position: {child.Transform.Position}");
-                    ImGui.Text($"Rotation: {child.Transform.Rotation}");
-                    ImGui.Text($"Scale: {child.Transform.Scale}");
-                    ImGui.Text($"Components: {child.Components.Count}");
-                    foreach (var component in child.Components)
-                    {
-                        ImGui.Text($"- {component.GetType().Name}");
-                    }
-                    ImGui.TreePop();
-                }
-                ImGui.PopID();
+                _scene.Children[i].DrawInterface();
             }
 
             if (ImGui.BeginPopupContextWindow("Add Actor"))
             {
                 if (ImGui.MenuItem("Add Cube"))
                 {
-                    var cube = new Actor("Cube");
+                    var cube = new Actor(Guid.NewGuid(), "Cube");
                     cube.Components.Add(new PrimitiveComponent(new Cube()));
                     cube.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
 
@@ -277,7 +263,7 @@ public partial class SnooperWindow : GameWindow
                 }
                 if (ImGui.MenuItem("Add Sphere"))
                 {
-                    var sphere = new Actor("Sphere");
+                    var sphere = new Actor(Guid.NewGuid(), "Sphere");
                     sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
                     sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
 

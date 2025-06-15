@@ -16,9 +16,9 @@ public sealed class CameraComponent : ActorComponent
     public CameraType Mode;
     public bool bFXAA = true;
     public bool bSSAO = false;
-    public float SsaoRadius = 0.05f;
-    public float SsaoBias = 0.025f;
-    public float MovementSpeed = 1f;
+    public float SsaoRadius = 0.150f;
+    public float SsaoBias = 0.05f;
+    public float MovementSpeed = 2f;
     public float FieldOfView = 60.0f;
     public float FarPlaneDistance = 25.0f;
     public float NearPlaneDistance = 0.05f;

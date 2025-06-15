@@ -17,16 +17,16 @@ layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
 
 in VS_OUT {
-    vec3 vWorldPos;
+    vec3 vViewPos;
     vec2 vTexCoords;
     mat3 TBN;
 } fs_in;
 
 void main()
 {
-    gPosition = fs_in.vWorldPos;
+    gPosition = fs_in.vViewPos;
     gNormal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
-    gColor.rgb = vec3(0.75);
+    gColor.rgb = vec3(1.0);
     gColor.a = 1.0;
 }
 """;

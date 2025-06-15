@@ -37,7 +37,6 @@ uniform vec3 samples[64];
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D noiseTexture;
-uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform float radius;
 uniform float bias;
@@ -48,7 +47,7 @@ int kernelSize = 64;
 
 void main()
 {
-    vec3 fragPos = vec3(uViewMatrix * texture(gPosition, vTexCoords));
+    vec3 fragPos = texture(gPosition, vTexCoords).xyz;
     vec3 normal = texture(gNormal, vTexCoords).xyz;
     vec3 randomVec = texture(noiseTexture, vTexCoords * noiseScale).xyz;
 
@@ -66,7 +65,7 @@ void main()
         offset.xyz /= offset.w;
         offset.xyz = offset.xyz * 0.5 + 0.5;
 
-        float sampleDepth = vec3(uViewMatrix * texture(gPosition, offset.xy)).z;
+        float sampleDepth = texture(gPosition, offset.xy).z;
 
         float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
         occlusion += (sampleDepth <= samplePos.z - bias ? 1.0 : 0.0) * rangeCheck;

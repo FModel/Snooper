@@ -47,7 +47,6 @@ public class CameraFramePair(CameraComponent camera) : IResizable
             _ssao.Render(shader =>
             {
                 _geometry.BindTextures(true, true, false);
-                shader.SetUniform("uViewMatrix", Camera.ViewMatrix);
                 shader.SetUniform("uProjectionMatrix", Camera.ProjectionMatrix);
                 shader.SetUniform("radius", Camera.SsaoRadius);
                 shader.SetUniform("bias", Camera.SsaoBias);
@@ -74,7 +73,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
 
         _forward.Bind();
         GL.ClearColor(0, 0, 0, 0);
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.StencilBufferBit);
+        GL.Clear(ClearBufferMask.ColorBufferBit);
         GL.Enable(EnableCap.Blend);
         
         render(Camera, ActorSystemType.Forward);

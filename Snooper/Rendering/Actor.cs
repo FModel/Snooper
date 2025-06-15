@@ -1,5 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using CUE4Parse.UE4.Objects.Core.Misc;
+using ImGuiNET;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 
@@ -7,11 +9,13 @@ namespace Snooper.Rendering;
 
 public class Actor
 {
+    public FGuid Guid { get; }
     public string Name { get; }
     public bool IsVisible { get; internal set; }
 
-    public Actor(string name, TransformComponent? transform = null)
+    public Actor(FGuid guid, string name, TransformComponent? transform = null)
     {
+        Guid = guid;
         Name = name;
         IsVisible = true;
 
@@ -44,6 +48,32 @@ public class Actor
 
     public ActorManager? ActorManager { get; internal set; }
     public TransformComponent Transform { get; private set; }
+    
+    public void DrawInterface()
+    {
+        if (ImGui.TreeNode(Name))
+        {
+            if (Components.Count > 0)
+            {
+                ImGui.SeparatorText($"{Components.Count} Components");
+                foreach (var component in Components)
+                {
+                    ImGui.Text($"- {component.GetType().Name}");
+                }
+            }
+
+            if (Children.Count > 0)
+            {
+                ImGui.SeparatorText($"{Children.Count} Children");
+                foreach (var child in Children)
+                {
+                    child.DrawInterface();
+                }
+            }
+
+            ImGui.TreePop();
+        }
+    }
 
     private void AddInternal(Actor actor)
     {

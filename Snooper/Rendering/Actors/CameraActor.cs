@@ -4,7 +4,7 @@ namespace Snooper.Rendering.Actors;
 
 public class CameraActor : Actor
 {
-    public CameraActor(string name) : base(name)
+    public CameraActor(string name) : base(System.Guid.NewGuid(), name)
     {
         var cameraComponent = new CameraComponent();
         Components.Add(cameraComponent);

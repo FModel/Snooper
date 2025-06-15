@@ -36,24 +36,25 @@ layout(std430, binding = 0) buffer ModelMatrices
     mat4 uModelMatrices[];
 };
 
-uniform mat4 uViewProjectionMatrix;
+uniform mat4 uViewMatrix;
+uniform mat4 uProjectionMatrix;
 
 out VS_OUT {
-    vec3 vWorldPos;
+    vec3 vViewPos;
     vec2 vTexCoords;
     mat3 TBN;
 } vs_out;
 
 void main()
 {
-    vec4 worldPos = uModelMatrices[gl_DrawID] * vec4(aPos, 1.0);
-    gl_Position = uViewProjectionMatrix * worldPos;
+    vec4 viewPos = uViewMatrix * uModelMatrices[gl_DrawID] * vec4(aPos, 1.0);
+    gl_Position = uProjectionMatrix * viewPos;
 
-    vec3 T = normalize(vec3(vec4(aTangent,   0.0)));
-    vec3 N = normalize(vec3(vec4(aNormal,    0.0)));
+    vec3 T = normalize(vec3(uModelMatrices[gl_DrawID] * vec4(aTangent,   0.0)));
+    vec3 N = normalize(vec3(uModelMatrices[gl_DrawID] * vec4(aNormal,    0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
-    vs_out.vWorldPos = worldPos.xyz;
+    vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
     vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
 }
@@ -62,7 +63,7 @@ void main()
 #version 460 core
 
 in VS_OUT {
-    vec3 vWorldPos;
+    vec3 vViewPos;
     vec2 vTexCoords;
     mat3 TBN;
 } fs_in;
@@ -80,7 +81,7 @@ void main()
     float nFactor = 0.7 + 0.3 * normal.z;
 
     float brightness = (tFactor + bFactor + nFactor) / 3.0;
-    FragColor = vec4(vec3(0.75) * brightness, 1.0);
+    FragColor = vec4(vec3(1.0) * brightness, 1.0);
 }
 """
 );
@@ -112,21 +113,22 @@ layout (triangles) in;
 layout (line_strip, max_vertices = 6) out;
 
 in VS_OUT {
-    vec3 vWorldPos;
+    vec3 vViewPos;
     vec2 vTexCoords;
     mat3 TBN;
 } gs_in[];
 
-uniform mat4 uViewProjectionMatrix;
+uniform mat4 uViewMatrix;
+uniform mat4 uProjectionMatrix;
 
 out vec3 fColor;
 
 const float MAGNITUDE = 0.01;
 
-void EmitDirection(vec3 worldPos, vec3 dir, vec3 color)
+void EmitDirection(vec3 viewPos, vec3 dir, vec3 color)
 {
-    vec4 p0 = uViewProjectionMatrix * vec4(worldPos, 1.0);
-    vec4 p1 = uViewProjectionMatrix * vec4(worldPos + dir * MAGNITUDE, 1.0);
+    vec4 p0 = uProjectionMatrix * vec4(viewPos, 1.0);
+    vec4 p1 = uProjectionMatrix * vec4(viewPos + dir * MAGNITUDE, 1.0);
 
     fColor = color;
     gl_Position = p0;
@@ -141,8 +143,8 @@ void EmitDirection(vec3 worldPos, vec3 dir, vec3 color)
 
 void GenerateLines(int index)
 {
-    mat3 TBN = gs_in[index].TBN;
-    vec3 pos = gs_in[index].vWorldPos;
+    mat3 TBN = mat3(uViewMatrix) * gs_in[index].TBN;
+    vec3 pos = gs_in[index].vViewPos;
 
     vec3 tangent = normalize(TBN * vec3(1, 0, 0));
     vec3 bitangent = normalize(TBN * vec3(0, 1, 0));
@@ -171,7 +173,8 @@ void main()
         if (!DebugMode) return;
 
         _debug.Use();
-        _debug.SetUniform("uViewProjectionMatrix", camera.ViewProjectionMatrix);
+        _debug.SetUniform("uViewMatrix", camera.ViewMatrix);
+        _debug.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
         Resources.Render();
     }
 }
