@@ -14,15 +14,17 @@ public class CameraFramePair(CameraComponent camera) : IResizable
 
     private readonly GeometryBuffer _geometry = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly SsaoFramebuffer _ssao = new(DefaultWidthHeight, DefaultWidthHeight);
+    private readonly ForwardFramebuffer _forward = new(DefaultWidthHeight, DefaultWidthHeight);
+    private readonly CombinedFramebuffer _combined = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly FxaaFramebuffer _fxaa = new(DefaultWidthHeight, DefaultWidthHeight);
-    private readonly PostProcessingFramebuffer _framebuffer = new(DefaultWidthHeight, DefaultWidthHeight);
 
     public void Generate(int width, int height)
     {
         _geometry.Generate();
         _ssao.Generate();
+        _forward.Generate();
+        _combined.Generate();
         _fxaa.Generate();
-        _framebuffer.Generate();
 
         Resize(width, height);
     }
@@ -67,46 +69,60 @@ public class CameraFramePair(CameraComponent camera) : IResizable
             GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _geometry);
 
         // copy depth from gBuffer
-        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fxaa);
-        GL.BlitFramebuffer(0, 0, _geometry.Width, _geometry.Height, 0, 0, _fxaa.Width, _fxaa.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _forward);
+        GL.BlitFramebuffer(0, 0, _geometry.Width, _geometry.Height, 0, 0, _forward.Width, _forward.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
 
-        _fxaa.Bind();
+        _forward.Bind();
         GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.StencilBufferBit);
         GL.Enable(EnableCap.Blend);
-
+        
         render(Camera, ActorSystemType.Forward);
 
-        _fxaa.Render();
+        _forward.Render();
     }
 
-    public void PostProcessingRendering(Action<CameraComponent, ActorSystemType> render)
+    public void CombineRendering(Action<CameraComponent, ActorSystemType> render)
     {
-        _framebuffer.Bind();
+        _combined.Bind();
+        GL.ClearColor(0, 0, 0, 1);
+        GL.Clear(ClearBufferMask.ColorBufferBit);
+        
+        render(Camera, ActorSystemType.Background);
+
+        _combined.Render(_ =>
+        {
+            _geometry.Bind(TextureUnit.Texture0);
+            _forward.Bind(TextureUnit.Texture1);
+        });
+    }
+    
+    public void ApplyFxaa()
+    {
+        if (!camera.bFXAA) return;
+        
+        _fxaa.Bind();
         GL.ClearColor(0, 0, 0, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit);
 
-        render(Camera, ActorSystemType.Background);
-
-        _geometry.Bind(TextureUnit.Texture0);
-        _fxaa.Bind(TextureUnit.Texture1);
-        _framebuffer.Render();
+        _fxaa.Render(_ => _combined.Bind(TextureUnit.Texture0));
     }
 
     public void Resize(int newWidth, int newHeight)
     {
         _geometry.Resize(newWidth, newHeight);
         _ssao.Resize(newWidth, newHeight);
+        _forward.Resize(newWidth, newHeight);
+        _combined.Resize(newWidth, newHeight);
         _fxaa.Resize(newWidth, newHeight);
-        _framebuffer.Resize(newWidth, newHeight);
     }
 
-    public IntPtr GetPointer() => _framebuffer.GetPointer();
+    public IntPtr GetPointer() => _fxaa.GetPointer();
     public IntPtr[] GetPointers() =>
     [
         .._geometry.GetTexturePointers(),
         _ssao.GetPointer(),
-        _fxaa.GetPointer(),
-        _framebuffer.GetPointer()
+        _forward.GetPointer(),
+        camera.bFXAA ? _fxaa.GetPointer() : _combined.GetPointer(),
     ];
 }

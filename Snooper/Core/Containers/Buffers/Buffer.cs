@@ -213,14 +213,14 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         GL.BufferSubData(Target, 0, Count * Stride, data);
     }
 
-    public T[] GetData(int offset = 0, int size = -1)
+    public T[] GetData(int index = 0, int size = -1)
     {
         if (!_bInitialized) throw new InvalidOperationException("Buffer is not initialized. Use SetData method to initialize it.");
         if (size < 0) size = Count;
-        if (offset < 0 || offset + size > Count) throw new ArgumentOutOfRangeException(nameof(offset), "Offset is out of range.");
+        if (index < 0 || index + size > Count) throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
 
         var data = new T[size];
-        GL.GetBufferSubData(Target, offset * Stride, size * Stride, data);
+        GL.GetBufferSubData(Target, index * Stride, size * Stride, data);
         return data;
     }
 

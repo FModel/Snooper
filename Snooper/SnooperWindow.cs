@@ -25,12 +25,11 @@ public partial class SnooperWindow : GameWindow
     private readonly SceneSystem _sceneSystem;
     private readonly ImGuiSystem _imguiSystem;
     
-    public SnooperWindow(double fps, int width, int height, Version version, bool startVisible = true) : base(
+    public SnooperWindow(double fps, int width, int height, bool startVisible = true) : base(
         new GameWindowSettings { UpdateFrequency = fps },
         new NativeWindowSettings
         {
             ClientSize = new OpenTK.Mathematics.Vector2i(width, height),
-            // NumberOfSamples = Settings.NumberOfSamples,
             WindowBorder = WindowBorder.Resizable,
 #if DEBUG
             Flags = ContextFlags.ForwardCompatible | ContextFlags.Debug,
@@ -39,7 +38,7 @@ public partial class SnooperWindow : GameWindow
 #endif
             Profile = ContextProfile.Core,
             Vsync = VSyncMode.Adaptive,
-            APIVersion = version,
+            APIVersion = new Version(4, 6),
             StartVisible = startVisible,
             StartFocused = startVisible,
             Title = "Snooper"
@@ -229,6 +228,7 @@ public partial class SnooperWindow : GameWindow
                 ImGui.Text($"Current camera: {camera.Actor?.Name}");
                 ImGui.Separator();
 
+                ImGui.Checkbox("FXAA", ref camera.bFXAA);
                 ImGui.Checkbox("SSAO", ref camera.bSSAO);
                 ImGui.BeginDisabled(!camera.bSSAO);
                 ImGui.SliderFloat("Radius", ref camera.SsaoRadius, 0.01f, 1.0f);

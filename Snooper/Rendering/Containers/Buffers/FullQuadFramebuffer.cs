@@ -17,8 +17,8 @@ public class FullQuadFramebuffer(
 
     private readonly Texture2D _color = new(originalWidth, originalHeight, internalFormat, format, type);
     private readonly VertexArray _vao = new();
-    private readonly ArrayBuffer<Vector4> _vbo = new(4, BufferUsageHint.StaticDraw);
-    private readonly ElementArrayBuffer<uint> _ebo = new(6, BufferUsageHint.StaticDraw);
+    private readonly ArrayBuffer<Vector4> _vbo = new(4);
+    private readonly ElementArrayBuffer<uint> _ebo = new(6);
 
     public override void Generate()
     {

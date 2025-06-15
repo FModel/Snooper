@@ -67,7 +67,9 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
         {
             pair.DeferredRendering(Render);
             pair.ForwardRendering(Render);
-            pair.PostProcessingRendering(Render);
+            pair.CombineRendering(Render);
+            
+            pair.ApplyFxaa();
         }
     }
 

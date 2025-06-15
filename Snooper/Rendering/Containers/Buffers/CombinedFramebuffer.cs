@@ -2,7 +2,7 @@
 
 namespace Snooper.Rendering.Containers.Buffers;
 
-public class PostProcessingFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight)
+public class CombinedFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight)
 {
     private readonly ShaderProgram _shader = new(
 """
