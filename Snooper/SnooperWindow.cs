@@ -97,9 +97,6 @@ public partial class SnooperWindow : GameWindow
     {
         base.OnLoad();
 
-        GL.Enable(EnableCap.CullFace);
-        GL.CullFace(TriangleFace.Front);
-
         GL.Enable(EnableCap.DepthTest);
         GL.DepthFunc(DepthFunction.Less);
 
@@ -236,6 +233,7 @@ public partial class SnooperWindow : GameWindow
                 ImGui.SliderFloat("Bias", ref camera.SsaoBias, 0.0f, 0.1f);
                 ImGui.EndDisabled();
 
+                ImGui.DragFloat("Speed", ref camera.MovementSpeed, 0.1f, 1f, 100f);
                 ImGui.DragFloat("Near Plane", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
                 ImGui.DragFloat("Far Plane", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
             }

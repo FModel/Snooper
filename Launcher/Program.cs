@@ -26,36 +26,42 @@ var snooper = new SnooperWindow(144, 1500, 900, false);
 // return;
 
 var dictionary = new Dictionary<FGuid, MeshActor>();
-var world = provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathB.Bonsai_Art_AtkPathB");
-var scene = new Actor(world.ObjectGuid ?? Guid.NewGuid(), world.Name);
-
-var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
-foreach (var actorPtr in actors)
-{
-    if (!actorPtr.TryLoad(out var actor)) continue;
-
-    if (actor.TryGetValue(out UInstancedStaticMeshComponent[] instanceComponents, "InstanceComponents"))
-    {
-        foreach (var instanceComponent in instanceComponents)
-        {
-            AddToScene(instanceComponent, scene);
-        }
-    }
-    else if (actor.TryGetValue(out UStaticMeshComponent[] bpComponents, "BlueprintCreatedComponents"))
-    {
-        foreach (var bpComponent in bpComponents)
-        {
-            AddToScene(bpComponent, scene);
-        }
-    }
-    else if (actor.TryGetValue(out UStaticMeshComponent staticMeshComponent, "StaticMeshComponent"))
-    {
-        AddToScene(staticMeshComponent, scene);
-    }
-}
-snooper.AddToScene(scene);
+AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathA.Bonsai_Art_AtkPathA"));
+AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathB.Bonsai_Art_AtkPathB"));
 
 snooper.Run();
+
+void AddWorldToScene(UWorld world)
+{
+    var scene = new Actor(world.ObjectGuid ?? Guid.NewGuid(), world.Name);
+
+    var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
+    foreach (var actorPtr in actors)
+    {
+        if (!actorPtr.TryLoad(out var actor)) continue;
+
+        if (actor.TryGetValue(out UInstancedStaticMeshComponent[] instanceComponents, "InstanceComponents"))
+        {
+            foreach (var instanceComponent in instanceComponents)
+            {
+                AddToScene(instanceComponent, scene);
+            }
+        }
+        else if (actor.TryGetValue(out UStaticMeshComponent[] bpComponents, "BlueprintCreatedComponents"))
+        {
+            foreach (var bpComponent in bpComponents)
+            {
+                AddToScene(bpComponent, scene);
+            }
+        }
+        else if (actor.TryGetValue(out UStaticMeshComponent staticMeshComponent, "StaticMeshComponent"))
+        {
+            AddToScene(staticMeshComponent, scene);
+        }
+    }
+    
+    snooper.AddToScene(scene);
+}
 
 void AddToScene(UStaticMeshComponent component, Actor parent)
 {

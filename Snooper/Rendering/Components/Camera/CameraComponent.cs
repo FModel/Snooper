@@ -32,12 +32,12 @@ public sealed class CameraComponent : ActorComponent
         if (Actor is null) return;
 
         Matrix4x4.Decompose(Actor.Transform.WorldMatrix, out _, out var rotation, out var position);
-        ViewMatrix = Matrix4x4.CreateLookAtLeftHanded(
+        ViewMatrix = Matrix4x4.CreateLookAt(
             position,
             position + Vector3.Transform(Vector3.UnitZ, rotation),
             Vector3.Transform(Vector3.UnitY, rotation));
 
-        ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(
+        ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(
             FieldOfViewRadians,
             AspectRatio,
             NearPlaneDistance,
@@ -54,7 +54,7 @@ public sealed class CameraComponent : ActorComponent
         var moveSpeed = MovementSpeed * multiplier * time;
 
         var moveAxis = Vector3.Transform(Vector3.UnitZ, Actor.Transform.Rotation) * moveSpeed;
-        var panAxis = Vector3.Transform(Vector3.UnitX, Actor.Transform.Rotation) * moveSpeed;
+        var panAxis = Vector3.Transform(-Vector3.UnitX, Actor.Transform.Rotation) * moveSpeed;
         var up = Vector3.Transform(Vector3.UnitY, Actor.Transform.Rotation) * moveSpeed;
 
         if (keyboard.IsKeyDown(Keys.W))
@@ -98,7 +98,7 @@ public sealed class CameraComponent : ActorComponent
 
         const float sensitivity = 0.001f;
 
-        var yawRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, mouseDelta.X * sensitivity);
+        var yawRotation = Quaternion.CreateFromAxisAngle(-Vector3.UnitY, mouseDelta.X * sensitivity);
         var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, mouseDelta.Y * sensitivity);
 
         Actor.Transform.Rotation = Quaternion.Normalize(yawRotation * Actor.Transform.Rotation * pitchRotation);
