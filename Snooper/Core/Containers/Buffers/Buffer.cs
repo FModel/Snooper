@@ -1,17 +1,17 @@
 ﻿using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Buffers;
 
-public abstract class Buffer<T>(int initialCapacity, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind where T : unmanaged
+public abstract class Buffer<T>(int initialCapacity, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind, IMemorySizeProvider where T : unmanaged
 {
     public abstract GetPName Name { get; }
 
     public int PreviousHandle { get; private set; }
     public int Count { get; private set; }
     public int Stride { get; } = Marshal.SizeOf<T>();
-    public BufferTarget Target { get; } = target;
-    public BufferUsageHint UsageHint { get; } = usageHint;
+    protected BufferTarget Target { get; } = target;
 
     private int _capacity = initialCapacity;
     private bool _bInitialized;
@@ -62,7 +62,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
 
                 Generate();
                 GL.BindBuffer(BufferTarget.CopyWriteBuffer, Handle);
-                GL.BufferData(BufferTarget.CopyWriteBuffer, newSize * Stride, IntPtr.Zero, UsageHint);
+                GL.BufferData(BufferTarget.CopyWriteBuffer, newSize * Stride, IntPtr.Zero, usageHint);
 
                 GL.BindBuffer(BufferTarget.CopyReadBuffer, oldBuffer);
                 GL.CopyBufferSubData(BufferTarget.CopyReadBuffer, BufferTarget.CopyWriteBuffer, IntPtr.Zero, IntPtr.Zero, oldSize);
@@ -93,7 +93,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         if (_bInitialized)
             throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
 
-        GL.BufferData(Target, _capacity * Stride, IntPtr.Zero, UsageHint);
+        GL.BufferData(Target, _capacity * Stride, IntPtr.Zero, usageHint);
         Count = 0;
 
         _bInitialized = true;
@@ -223,6 +223,10 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         GL.GetBufferSubData(Target, index * Stride, size * Stride, data);
         return data;
     }
+    
+    public long Allocated => _capacity * Stride;
+    public long Used => Count * Stride;
+    public string GetFormattedSpace() => Used.GetReadableSizeOutOf(Allocated);
 
     public override void Dispose()
     {

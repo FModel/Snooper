@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Text;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
@@ -6,7 +7,7 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind where TVertex : unmanaged
+public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemorySizeProvider where TVertex : unmanaged
 {
     private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
     private readonly ShaderStorageBuffer<Matrix4x4> _matrices = new(initialDrawCapacity);
@@ -106,6 +107,17 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind where T
         _commands.Current.Unbind();
 
         // _commands.Swap();
+    }
+
+    public string GetFormattedSpace()
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}>:");
+        builder.AppendLine($"    Commands: {_commands.Current.GetFormattedSpace()}");
+        builder.AppendLine($"    Matrices: {_matrices.GetFormattedSpace()}");
+        builder.AppendLine($"    Indices:  {EBO.GetFormattedSpace()}");
+        builder.AppendLine($"    Vertices: {VBO.GetFormattedSpace()}");
+        return builder.ToString();
     }
 
     public GetPName Name => throw new NotImplementedException();

@@ -40,23 +40,16 @@ void AddWorldToScene(UWorld world)
     {
         if (!actorPtr.TryLoad(out var actor)) continue;
 
-        if (actor.TryGetValue(out UInstancedStaticMeshComponent[] instanceComponents, "InstanceComponents"))
+        if (actor.TryGetValue(out UStaticMeshComponent[] components, "InstanceComponents", "BlueprintCreatedComponents"))
         {
-            foreach (var instanceComponent in instanceComponents)
+            foreach (var component in components)
             {
-                AddToScene(instanceComponent, scene);
+                AddToScene(component, scene);
             }
         }
-        else if (actor.TryGetValue(out UStaticMeshComponent[] bpComponents, "BlueprintCreatedComponents"))
+        else if (actor.TryGetValue(out UStaticMeshComponent component, "StaticMeshComponent"))
         {
-            foreach (var bpComponent in bpComponents)
-            {
-                AddToScene(bpComponent, scene);
-            }
-        }
-        else if (actor.TryGetValue(out UStaticMeshComponent staticMeshComponent, "StaticMeshComponent"))
-        {
-            AddToScene(staticMeshComponent, scene);
+            AddToScene(component, scene);
         }
     }
     

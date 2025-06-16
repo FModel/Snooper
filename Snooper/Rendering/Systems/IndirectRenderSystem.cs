@@ -1,4 +1,5 @@
-﻿using Snooper.Core.Containers.Buffers;
+﻿using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
@@ -6,7 +7,7 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent>(int initialDrawCapacity) : ActorSystem<TComponent> where TComponent : TPrimitiveComponent<TVertex> where TVertex : unmanaged
+public abstract class IndirectRenderSystem<TVertex, TComponent>(int initialDrawCapacity) : ActorSystem<TComponent>, IMemorySizeProvider where TComponent : TPrimitiveComponent<TVertex> where TVertex : unmanaged
 {
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
@@ -51,4 +52,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent>(int initialDrawC
 
         Resources.Remove(component.DrawId);
     }
+
+    public string GetFormattedSpace() => Resources.GetFormattedSpace();
 }

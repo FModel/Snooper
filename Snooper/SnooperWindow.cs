@@ -7,6 +7,7 @@ using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using Snooper.Core.Containers;
 using Snooper.Core.Systems;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
@@ -288,6 +289,10 @@ public partial class SnooperWindow : GameWindow
                 foreach (var pair in system)
                 {
                     ImGui.Text($"- {pair.Value.GetType().Name} (Priority: {pair.Key}, Components: x{pair.Value.ComponentsCount})");
+                    if (pair.Value is IMemorySizeProvider provider)
+                    {
+                        ImGui.TextUnformatted(provider.GetFormattedSpace());
+                    }
                 }
             }
         }
