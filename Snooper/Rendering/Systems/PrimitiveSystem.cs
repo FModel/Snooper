@@ -27,7 +27,7 @@ uniform mat4 uProjectionMatrix;
 
 void main()
 {
-    gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrices[gl_DrawID] * vec4(aPos, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrices[gl_BaseInstance + gl_InstanceID] * vec4(aPos, 1.0);
 }
 """,
 """

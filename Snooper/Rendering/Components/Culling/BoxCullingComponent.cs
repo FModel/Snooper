@@ -32,15 +32,19 @@ public class BoxCullingComponent : CullingComponent
             throw new ArgumentException("Frustum must be defined by exactly six planes.");
         }
 
-        var center = Vector3.Transform(Center, Actor?.Transform.WorldMatrix ?? Matrix4x4.Identity);
-        foreach (var plane in frustum)
+        Matrix4x4[] transforms = [Actor.Transform.WorldMatrix, ..Actor.InstancedTransforms.WorldMatrix];
+        foreach (var transform in transforms)
         {
-            var distance = Vector3.Dot(plane.Normal, center) + plane.D;
-            var radius = Vector3.Dot(Extents, Vector3.Abs(plane.Normal));
-            if (distance < -radius)
+            var center = Vector3.Transform(Center, transform);
+            foreach (var plane in frustum)
             {
-                Actor.IsVisible = false;
-                return;
+                var distance = Vector3.Dot(plane.Normal, center) + plane.D;
+                var radius = Vector3.Dot(Extents, Vector3.Abs(plane.Normal));
+                if (distance < -radius)
+                {
+                    Actor.IsVisible = false;
+                    return;
+                }
             }
         }
 

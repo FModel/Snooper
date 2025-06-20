@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace Snooper.Rendering;
+﻿namespace Snooper.Rendering;
 
 public abstract class ActorComponent
 {
@@ -8,12 +6,4 @@ public abstract class ActorComponent
     public bool IsDirty = true;
 
     public bool IsVisible => Actor?.IsVisible ?? false;
-
-    public Matrix4x4 GetModelMatrix()
-    {
-        if (Actor == null)
-            throw new InvalidOperationException("Actor is not set for this component.");
-
-        return Actor.Transform.WorldMatrix;
-    }
 }

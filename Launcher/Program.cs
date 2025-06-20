@@ -75,15 +75,23 @@ void AddToScene(UStaticMeshComponent component, Actor parent)
         
         if (component is UInstancedStaticMeshComponent instancedComponent)
         {
-            foreach (var data in instancedComponent.PerInstanceSMData ?? [])
+            var array = instancedComponent.PerInstanceSMData ?? [];
+            var actor = new MeshActor(staticMesh, array[0].TransformData * transform);
+
+            for (var i = 1; i < array.Length; i++)
             {
-                parent.Children.Add(new MeshActor(staticMesh, data.TransformData * transform));
+                actor.InstancedTransforms.AddInstance(array[i].TransformData * transform);
             }
+            parent.Children.Add(actor);
+        }
+        else if (dictionary.TryGetValue(staticMesh.LightingGuid, out var actor))
+        {
+            actor.InstancedTransforms.AddInstance(transform);
         }
         else
         {
             var mesh = new MeshActor(staticMesh, transform);
-            dictionary.TryAdd(mesh.Guid, mesh);
+            dictionary.Add(mesh.Guid, mesh);
             parent.Children.Add(mesh);
         }
     }

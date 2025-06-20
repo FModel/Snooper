@@ -1,11 +1,10 @@
 ﻿using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
-using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Culling;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
 

@@ -3,7 +3,7 @@ using System.Collections.Specialized;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core.Systems;
-using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering;
 
@@ -26,7 +26,10 @@ public class Actor
         Components.CollectionChanged += OnComponentsCollectionChanged;
 
         Transform = transform ?? new TransformComponent();
+        InstancedTransforms = new InstancedTransformComponent();
+        
         Components.Add(Transform);
+        Components.Add(InstancedTransforms);
     }
 
     public ActorComponentCollection Components { get; }
@@ -48,6 +51,7 @@ public class Actor
 
     public ActorManager? ActorManager { get; internal set; }
     public TransformComponent Transform { get; private set; }
+    public InstancedTransformComponent InstancedTransforms { get; }
     
     public void DrawInterface()
     {

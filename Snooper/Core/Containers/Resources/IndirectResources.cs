@@ -43,28 +43,29 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
         VBO.Unbind();
     }
 
-    public int Add(TPrimitiveData<TVertex> primitive, Matrix4x4 matrix)
+    public int Add(TPrimitiveData<TVertex> primitive, Matrix4x4[] matrices)
     {
         var firstIndex = EBO.AddRange(primitive.Indices);
         var baseVertex = VBO.AddRange(primitive.Vertices);
+        var baseInstance = _matrices.AddRange(matrices);
 
         var drawId = _commands.Current.Add(new DrawElementsIndirectCommand
         {
             Count = (uint) primitive.Indices.Length,
-            InstanceCount = 1,
+            InstanceCount = (uint) matrices.Length,
             FirstIndex = (uint) firstIndex,
             BaseVertex = (uint) baseVertex,
-            BaseInstance = 0
+            BaseInstance = (uint) baseInstance
         });
-        _matrices.Insert(drawId, matrix);
 
         return drawId;
     }
 
     public void Update(TPrimitiveComponent<TVertex> component)
     {
-        _commands.Current.UpdateInstanceCount(component.DrawId, component.IsVisible ? 1u : 0u);
-        _matrices.Update(component.DrawId, component.GetModelMatrix());
+        var instanceCount = 1 + component.Actor?.InstancedTransforms.WorldMatrix.Count ?? 0;
+        // _commands.Current.UpdateInstanceCount(component.DrawId, component.IsVisible ? (uint) instanceCount : 0u);
+        // _matrices.Update(component.DrawId, component.GetModelMatrix());
     }
 
     public void UpdateVertices(int drawId, TVertex[] vertices)

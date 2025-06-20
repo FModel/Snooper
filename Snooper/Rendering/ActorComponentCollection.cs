@@ -1,5 +1,5 @@
 ﻿using System.Collections.ObjectModel;
-using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering;
 

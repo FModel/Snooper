@@ -3,7 +3,7 @@ using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Core;
 using Snooper.Rendering.Systems;
 
-namespace Snooper.Rendering.Components;
+namespace Snooper.Rendering.Components.Transforms;
 
 [DefaultActorSystem(typeof(TransformSystem))]
 public sealed class TransformComponent() : ActorComponent
@@ -49,10 +49,10 @@ public sealed class TransformComponent() : ActorComponent
         LocalMatrix = Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Rotation) * Matrix4x4.CreateTranslation(Position);
     }
 
-    public void UpdateWorldMatrix()
+    public void UpdateWorldMatrix(bool recursive = true)
     {
         UpdateLocalMatrix();
-        UpdateWorldMatrixInternal(true);
+        UpdateWorldMatrixInternal(recursive);
     }
 
     internal void UpdateWorldMatrixInternal(bool recursive)

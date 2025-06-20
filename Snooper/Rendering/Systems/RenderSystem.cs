@@ -47,11 +47,12 @@ out VS_OUT {
 
 void main()
 {
-    vec4 viewPos = uViewMatrix * uModelMatrices[gl_DrawID] * vec4(aPos, 1.0);
+    int index = gl_BaseInstance + gl_InstanceID;
+    vec4 viewPos = uViewMatrix * uModelMatrices[index] * vec4(aPos, 1.0);
     gl_Position = uProjectionMatrix * viewPos;
 
-    vec3 T = normalize(vec3(uModelMatrices[gl_DrawID] * vec4(aTangent,   0.0)));
-    vec3 N = normalize(vec3(uModelMatrices[gl_DrawID] * vec4(aNormal,    0.0)));
+    vec3 T = normalize(vec3(uModelMatrices[index] * vec4(aTangent,   0.0)));
+    vec3 N = normalize(vec3(uModelMatrices[index] * vec4(aNormal,    0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
     vs_out.vViewPos = viewPos.xyz;

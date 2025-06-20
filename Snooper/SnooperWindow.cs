@@ -7,6 +7,7 @@ using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
 using Snooper.Rendering;
@@ -35,7 +36,7 @@ public partial class SnooperWindow : GameWindow
 #if DEBUG
             Flags = ContextFlags.ForwardCompatible | ContextFlags.Debug,
 #else
-        Flags = ContextFlags.ForwardCompatible,
+            Flags = ContextFlags.ForwardCompatible,
 #endif
             Profile = ContextProfile.Core,
             Vsync = VSyncMode.Adaptive,

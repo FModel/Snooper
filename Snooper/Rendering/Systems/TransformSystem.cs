@@ -1,6 +1,6 @@
 ﻿using Snooper.Core.Systems;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Systems;
 
