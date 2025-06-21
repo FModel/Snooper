@@ -9,10 +9,11 @@ namespace Snooper.Rendering.Components;
 public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : ActorComponent where T : unmanaged
 {
     public int DrawId { get; private set; } = -1;
+    internal int MatrixOriginalBaseIndex { get; private set; } = -1;
 
     public void Generate(IndirectResources<T> resources)
     {
-        DrawId = resources.Add(primitive, GetWorldMatrices());
+        (DrawId, MatrixOriginalBaseIndex) = resources.Add(primitive, GetWorldMatrices());
     }
 
     public virtual void Update(IndirectResources<T> resources)

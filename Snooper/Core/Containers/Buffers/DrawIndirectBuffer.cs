@@ -14,9 +14,18 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
         GL.BufferSubData(Target, offset * Stride, 4, ref value);
     }
 
-    public void UpdateInstanceCount(int offset, uint value)
+    public void UpdateInstance(int offset, uint instanceCount, uint baseInstance)
     {
-        GL.BufferSubData(Target, offset * Stride + 4, 4, ref value);
+        var ptr = GL.MapBufferRange(BufferTarget.DrawIndirectBuffer, offset * Stride, Stride, MapBufferAccessMask.MapReadBit | MapBufferAccessMask.MapWriteBit);
+
+        unsafe
+        {
+            var uPtr = (DrawElementsIndirectCommand*)ptr;
+            uPtr->InstanceCount = instanceCount;
+            uPtr->BaseInstance = baseInstance;
+        }
+
+        GL.UnmapBuffer(BufferTarget.DrawIndirectBuffer);
     }
 
     public void UpdateFirstIndex(int offset, uint value)
@@ -31,7 +40,7 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
 
     public override void Remove(int index)
     {
-        UpdateInstanceCount(index, 0);
+        UpdateInstance(index, 0, 0);
         base.Remove(index);
     }
 }

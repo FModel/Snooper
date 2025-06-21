@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Math;
+using ImGuiNET;
 using Snooper.Core;
 using Snooper.Rendering.Systems;
 
@@ -69,4 +70,32 @@ public sealed class TransformComponent() : ActorComponent
     }
     
     public static implicit operator TransformComponent(FTransform transform) => new(transform);
+
+    public void DrawInterface()
+    {
+        if (ImGui.CollapsingHeader("Transform"))
+        {
+            ImGui.Text($"Position: {Position}");
+            ImGui.Text($"Rotation: {Rotation}");
+            ImGui.Text($"Scale: {Scale}");
+            ImGui.Text($"Local Matrix: {LocalMatrix}");
+            ImGui.Text($"World Matrix: {WorldMatrix}");
+
+            if (ImGui.Button("Update Local Matrix"))
+            {
+                UpdateLocalMatrix();
+            }
+            
+            if (ImGui.Button("Update World Matrix"))
+            {
+                UpdateWorldMatrix();
+            }
+
+            if (Relation != null && ImGui.TreeNode("Relation"))
+            {
+                Relation.DrawInterface();
+                ImGui.TreePop();
+            }
+        }
+    }
 }

@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Math;
+using Serilog;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Components.Culling;
@@ -31,24 +32,43 @@ public class BoxCullingComponent : CullingComponent
         {
             throw new ArgumentException("Frustum must be defined by exactly six planes.");
         }
+        
+        var minIndex = int.MaxValue;
+        var maxIndex = int.MinValue;
 
-        Matrix4x4[] transforms = [Actor.Transform.WorldMatrix, ..Actor.InstancedTransforms.WorldMatrix];
-        foreach (var transform in transforms)
+        Matrix4x4[] matrices = [Actor.Transform.WorldMatrix, ..Actor.InstancedTransforms.WorldMatrix];
+        for (var i = 0; i < matrices.Length; i++)
         {
-            var center = Vector3.Transform(Center, transform);
+            var matrix = matrices[i];
+            var center = Vector3.Transform(Center, matrix);
+            
+            var visible = true;
             foreach (var plane in frustum)
             {
                 var distance = Vector3.Dot(plane.Normal, center) + plane.D;
                 var radius = Vector3.Dot(Extents, Vector3.Abs(plane.Normal));
                 if (distance < -radius)
                 {
-                    Actor.IsVisible = false;
-                    return;
+                    visible = false;
+                    break;
                 }
+            }
+            
+            if (visible)
+            {
+                minIndex = Math.Min(minIndex, i);
+                maxIndex = Math.Max(maxIndex, i);
             }
         }
 
-        Actor.IsVisible = true;
+        if (minIndex == int.MaxValue || maxIndex == int.MinValue)
+        {
+            Actor.VisibleInstances = new Range(0, 0);
+        }
+        else
+        {
+            Actor.VisibleInstances = new Range(minIndex, maxIndex + 1);
+        }
     }
 
     public override float GetScreenSpaceCoverage(CameraComponent cameraComponent)

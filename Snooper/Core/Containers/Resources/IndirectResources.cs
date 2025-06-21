@@ -1,7 +1,9 @@
 ﻿using System.Numerics;
 using System.Text;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 using Snooper.Core.Containers.Buffers;
+using Snooper.Rendering;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Primitives;
 
@@ -43,7 +45,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
         VBO.Unbind();
     }
 
-    public int Add(TPrimitiveData<TVertex> primitive, Matrix4x4[] matrices)
+    public (int, int) Add(TPrimitiveData<TVertex> primitive, Matrix4x4[] matrices)
     {
         var firstIndex = EBO.AddRange(primitive.Indices);
         var baseVertex = VBO.AddRange(primitive.Vertices);
@@ -58,13 +60,14 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
             BaseInstance = (uint) baseInstance
         });
 
-        return drawId;
+        return (drawId, baseInstance);
     }
 
     public void Update(TPrimitiveComponent<TVertex> component)
     {
-        var instanceCount = 1 + component.Actor?.InstancedTransforms.WorldMatrix.Count ?? 0;
-        // _commands.Current.UpdateInstanceCount(component.DrawId, component.IsVisible ? (uint) instanceCount : 0u);
+        var instanceCount = component.Actor.VisibleInstances.End.Value - component.Actor.VisibleInstances.Start.Value;
+        var baseInstance = component.MatrixOriginalBaseIndex + component.Actor.VisibleInstances.Start.Value;
+        _commands.Current.UpdateInstance(component.DrawId, component.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
         // _matrices.Update(component.DrawId, component.GetModelMatrix());
     }
 

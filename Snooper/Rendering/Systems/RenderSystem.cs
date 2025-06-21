@@ -43,21 +43,27 @@ out VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
     mat3 TBN;
+    vec3 vColor;
 } vs_out;
 
 void main()
 {
-    int index = gl_BaseInstance + gl_InstanceID;
-    vec4 viewPos = uViewMatrix * uModelMatrices[index] * vec4(aPos, 1.0);
+    int id = gl_BaseInstance + gl_InstanceID;
+    vec4 viewPos = uViewMatrix * uModelMatrices[id] * vec4(aPos, 1.0);
     gl_Position = uProjectionMatrix * viewPos;
 
-    vec3 T = normalize(vec3(uModelMatrices[index] * vec4(aTangent,   0.0)));
-    vec3 N = normalize(vec3(uModelMatrices[index] * vec4(aNormal,    0.0)));
+    vec3 T = normalize(vec3(uModelMatrices[id] * vec4(aTangent,   0.0)));
+    vec3 N = normalize(vec3(uModelMatrices[id] * vec4(aNormal,    0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
     vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
+    vs_out.vColor = mix(vec3(0.3), vec3(1.0), vec3(
+        float((id * 97u) % 255u) / 255.0,
+        float((id * 59u) % 255u) / 255.0,
+        float((id * 31u) % 255u) / 255.0
+    ));
 }
 """,
 """
@@ -67,6 +73,7 @@ in VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
     mat3 TBN;
+    vec3 vColor;
 } fs_in;
 
 out vec4 FragColor;
@@ -117,6 +124,7 @@ in VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
     mat3 TBN;
+    vec3 vColor;
 } gs_in[];
 
 uniform mat4 uViewMatrix;

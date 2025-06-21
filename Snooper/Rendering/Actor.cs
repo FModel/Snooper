@@ -10,13 +10,14 @@ public class Actor
 {
     public FGuid Guid { get; }
     public string Name { get; }
-    public bool IsVisible { get; internal set; }
+    public Range VisibleInstances { get; internal set; }
+    public bool IsVisible => VisibleInstances.Start.Value <= VisibleInstances.End.Value;
 
     public Actor(FGuid guid, string name, TransformComponent? transform = null)
     {
         Guid = guid;
         Name = name;
-        IsVisible = true;
+        VisibleInstances = new Range(0, 1);
 
         Components = new ActorComponentCollection(this);
         Children = new ActorChildrenCollection();
@@ -56,23 +57,30 @@ public class Actor
     {
         if (ImGui.TreeNode(Name))
         {
-            if (Components.Count > 0)
-            {
-                ImGui.SeparatorText($"{Components.Count} Components");
-                foreach (var component in Components)
-                {
-                    ImGui.Text($"- {component.GetType().Name}");
-                }
-            }
-
-            if (Children.Count > 0)
-            {
-                ImGui.SeparatorText($"{Children.Count} Children");
-                foreach (var child in Children)
-                {
-                    child.DrawInterface();
-                }
-            }
+            ImGui.Text($"GUID: {Guid}");
+            ImGui.Text($"Visible Instances: {VisibleInstances}");
+            ImGui.Text($"Is Visible: {IsVisible}");
+            ImGui.Text($"Parent: {(Parent != null ? Parent.Name : "None")}");
+            
+            Transform.DrawInterface();
+            
+            // if (Components.Count > 0)
+            // {
+            //     ImGui.SeparatorText($"{Components.Count} Components");
+            //     foreach (var component in Components)
+            //     {
+            //         ImGui.Text($"- {component.GetType().Name}");
+            //     }
+            // }
+            //
+            // if (Children.Count > 0)
+            // {
+            //     ImGui.SeparatorText($"{Children.Count} Children");
+            //     foreach (var child in Children)
+            //     {
+            //         child.DrawInterface();
+            //     }
+            // }
 
             ImGui.TreePop();
         }

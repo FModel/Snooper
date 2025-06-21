@@ -1,6 +1,7 @@
 ﻿using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
+using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Math;
@@ -28,7 +29,10 @@ provider.SubmitKey(new FGuid(), new FAesKey("0x4BE71AF2459CF83899EC9DC2CB60E22AC
 provider.PostMount();
 
 var snooper = new SnooperWindow(144, 1500, 900, false);
-// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"));
+// var actor = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(2000, 0, 0)));
+// actor.InstancedTransforms.AddInstance(new FTransform(new FVector(500, 0, 0)));
+// actor.InstancedTransforms.AddInstance(new FTransform(new FVector(0, 1300, 0)));
+// snooper.AddToScene(actor);
 // snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"));
 // snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(500, 0, 0)));
 // snooper.Run();
