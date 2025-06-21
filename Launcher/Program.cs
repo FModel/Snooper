@@ -1,5 +1,6 @@
 ﻿using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
@@ -39,8 +40,11 @@ var snooper = new SnooperWindow(144, 1500, 900, false);
 // return;
 
 var dictionary = new Dictionary<FGuid, MeshActor>();
+AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_A.Bonsai_Art_A"));
 AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathA.Bonsai_Art_AtkPathA"));
 AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathB.Bonsai_Art_AtkPathB"));
+AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkSpawn.Bonsai_Art_AtkSpawn"));
+AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_ATower.Bonsai_Art_ATower"));
 
 snooper.Run();
 
@@ -53,7 +57,7 @@ void AddWorldToScene(UWorld world)
     {
         if (!actorPtr.TryLoad(out var actor)) continue;
 
-        if (actor.TryGetValue(out UStaticMeshComponent[] components, "InstanceComponents", "BlueprintCreatedComponents"))
+        if (actor.TryGetValue(out USceneComponent[] components, "InstanceComponents", "BlueprintCreatedComponents"))
         {
             foreach (var component in components)
             {
@@ -69,22 +73,20 @@ void AddWorldToScene(UWorld world)
     snooper.AddToScene(scene);
 }
 
-void AddToScene(UStaticMeshComponent component, Actor parent)
+void AddToScene(USceneComponent component, Actor parent)
 {
-    if (component.TryGetValue(out FPackageIndex attachParent, "AttachParent") &&
-        attachParent.TryLoad(out UStaticMeshComponent parentComponent) &&
-        parentComponent.GetStaticMesh().TryLoad(out UStaticMesh parentStaticMesh))
+    if (component.GetAttachParent() is UStaticMeshComponent attachParent &&
+        attachParent.GetStaticMesh().TryLoad(out UStaticMesh parentStaticMesh))
     {
-        AddToScene(parentComponent, dictionary[parentStaticMesh.LightingGuid]);
+        AddToScene(attachParent, dictionary[parentStaticMesh.LightingGuid]);
     }
     
-    if (component.GetStaticMesh().TryLoad(out UStaticMesh staticMesh))
+    if (component is UStaticMeshComponent staticMeshComponent && staticMeshComponent.GetStaticMesh().TryLoad(out UStaticMesh staticMesh))
     {
         var transform = new FTransform(
-            component.GetOrDefault("RelativeRotation", FRotator.ZeroRotator).Quaternion(),
-            component.GetOrDefault("RelativeLocation", FVector.ZeroVector),
-            component.GetOrDefault("RelativeScale3D", FVector.OneVector)
-        );
+            component.GetRelativeRotation(),
+            component.GetRelativeLocation(),
+            component.GetRelativeScale3D());
         
         if (component is UInstancedStaticMeshComponent instancedComponent)
         {
