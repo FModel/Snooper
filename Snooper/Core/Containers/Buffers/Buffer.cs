@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Buffers;
@@ -38,7 +39,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         if (newSize <= _capacity) return;
 
         newSize = (int) Math.Max(_capacity * factor, newSize);
-        Console.WriteLine("Resizing buffer {0} ({1}) from {2} to {3} (initialized ? {4})", Handle, Name, _capacity, newSize, _bInitialized);
+        Log.Verbose("Resizing buffer {0} ({1}) from {2} to {3} (initialized ? {4})", Handle, Name, _capacity, newSize, _bInitialized);
         _capacity = newSize;
 
         if (_bInitialized)
@@ -77,7 +78,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
                 }
                 Bind();
 
-                Console.WriteLine($"Buffer {oldBuffer} ({Name}) has a new handle {Handle}.");
+                Log.Verbose("Buffer {OldBuffer} ({GetPName}) has a new handle {I}.", oldBuffer, Name, Handle);
             }
             else
             {
@@ -175,7 +176,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         if (index >= _capacity)
         {
-            Console.WriteLine($"attempt to insert at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}. Resizing...");
+            Log.Verbose("attempt to insert at index {Index} in buffer {I} ({GetPName}) with capacity {Capacity}. Resizing...", index, Handle, Name, _capacity);
             ResizeIfNeeded(index + 1, copy: true);
         }
 

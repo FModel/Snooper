@@ -1,5 +1,6 @@
 ﻿using System.Collections.Specialized;
 using System.Reflection;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
 
@@ -11,7 +12,7 @@ public abstract class ActorManager : IGameSystem
     
     private static readonly Dictionary<Type, Func<ActorSystem>> _registeredFactories = [];
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
-    private readonly HashSet<Actor> _actors = [];
+    // private readonly HashSet<FGuid> _actors = [];
 
     public bool DebugMode = false;
 
@@ -63,23 +64,22 @@ public abstract class ActorManager : IGameSystem
 
     private void AddInternal(Actor actor)
     {
-        if (_actors.Contains(actor)) return;
+        // if (_actors.Contains(actor.Guid))
+        //     throw new ArgumentException("This actor is already added to the actor manager.", nameof(actor));
         if (actor.ActorManager != null)
-        {
             throw new ArgumentException("This actor is already used by another actor manager.", nameof(actor));
-        }
 
         actor.ActorManager = this;
-        _actors.Add(actor);
+        // _actors.Add(actor.Guid);
 
         for (var i = 0; i < actor.Components.Count; i++)
         {
             AddComponent(actor.Components[i], actor);
         }
 
-        for (var i = 0; i < actor.Children.Count; i++)
+        foreach (var child in actor.Children)
         {
-            AddInternal(actor.Children[i]);
+            AddInternal(child);
         }
 
         actor.Children.CollectionChanged += OnChildrenCollectionChanged;
@@ -93,7 +93,7 @@ public abstract class ActorManager : IGameSystem
 
     private void RemoveInternal(Actor actor)
     {
-        if (!_actors.Remove(actor)) return;
+        // if (!_actors.Remove(actor.Guid)) return;
 
         actor.Components.CollectionChanged -= OnComponentsCollectionChanged;
         actor.Children.CollectionChanged -= OnChildrenCollectionChanged;
@@ -103,9 +103,9 @@ public abstract class ActorManager : IGameSystem
             RemoveComponent(actor.Components[i], actor);
         }
 
-        for (var i = 0; i < actor.Children.Count; i++)
+        foreach (var child in actor.Children)
         {
-            RemoveInternal(actor.Children[i]);
+            RemoveInternal(child);
         }
 
         actor.ActorManager = null;

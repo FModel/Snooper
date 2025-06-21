@@ -244,9 +244,9 @@ public partial class SnooperWindow : GameWindow
 
         if (ImGui.Begin("Scene Hierarchy"))
         {
-            for (var i = 0; i < _scene.Children.Count; i++)
+            foreach (var child in _scene.Children)
             {
-                _scene.Children[i].DrawInterface();
+                child.DrawInterface();
             }
 
             if (ImGui.BeginPopupContextWindow("Add Actor"))

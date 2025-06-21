@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 
 namespace Snooper;
 
@@ -12,7 +13,7 @@ public partial class SnooperWindow
         if (severity == DebugSeverity.DebugSeverityNotification) return;
 
         var message = Marshal.PtrToStringAnsi(pMessage, length);
-        Console.WriteLine("[{0} source={1} type={2} id={3}] {4}", severity.ToString()[13..], source.ToString()[11..], type.ToString()[9..], id, message);
+        Log.Debug("[{0} source={1} type={2} id={3}] {4}", severity.ToString()[13..], source.ToString()[11..], type.ToString()[9..], id, message);
 
         if (type == DebugType.DebugTypeError)
         {

@@ -3,6 +3,7 @@ using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using Serilog;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -288,7 +289,7 @@ void main()
         var i = 1;
         while ((error = GL.GetError()) != ErrorCode.NoError)
         {
-            Console.WriteLine($"{title} ({i++}): {error}");
+            Log.Error("{Title} ({I}): {Error}", title, i++, error);
         }
     }
 

@@ -1,4 +1,5 @@
-﻿using Snooper.Core;
+﻿using Serilog;
+using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
@@ -37,7 +38,7 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
 
         if (currentLODIndex != LODIndex && currentLODIndex >= 0 && currentLODIndex < LODCount)
         {
-            Console.WriteLine("{0}: Screen Size: {1}, Switching LOD from {2} to {3}", actor.Name, CurrentScreenSize, LODIndex, currentLODIndex);
+            Log.Debug("{0}: Screen Size: {1}, Switching LOD from {2} to {3}", actor.Name, CurrentScreenSize, LODIndex, currentLODIndex);
             LODIndex = currentLODIndex;
 
             var primitive = GetPrimitive(LODIndex);

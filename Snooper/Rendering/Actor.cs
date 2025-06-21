@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core.Systems;
@@ -20,7 +19,7 @@ public class Actor
         IsVisible = true;
 
         Components = new ActorComponentCollection(this);
-        Children = [];
+        Children = new ActorChildrenCollection();
 
         Children.CollectionChanged += OnChildrenCollectionChanged;
         Components.CollectionChanged += OnComponentsCollectionChanged;
@@ -33,7 +32,7 @@ public class Actor
     }
 
     public ActorComponentCollection Components { get; }
-    public ObservableCollection<Actor> Children { get; }
+    public ActorChildrenCollection Children { get; }
 
     private Actor? _parent;
     public Actor? Parent
@@ -85,7 +84,7 @@ public class Actor
         {
             throw new InvalidOperationException("This actor already has a parent.");
         }
-
+        
         actor._parent = this;
     }
 

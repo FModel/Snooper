@@ -8,9 +8,18 @@ using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Versions;
+using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 using Snooper;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Verbose()
+    .WriteTo.Console(
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}]: {Message:lj}{NewLine}{Exception}",
+        theme: AnsiConsoleTheme.Literate)
+    .CreateLogger();
 
 var version = new VersionContainer(EGame.GAME_Valorant, ETexturePlatform.DesktopMobile);
 var provider = new DefaultFileProvider("D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks", SearchOption.TopDirectoryOnly, version);
@@ -75,14 +84,7 @@ void AddToScene(UStaticMeshComponent component, Actor parent)
         
         if (component is UInstancedStaticMeshComponent instancedComponent)
         {
-            var array = instancedComponent.PerInstanceSMData ?? [];
-            var actor = new MeshActor(staticMesh, array[0].TransformData * transform);
-
-            for (var i = 1; i < array.Length; i++)
-            {
-                actor.InstancedTransforms.AddInstance(array[i].TransformData * transform);
-            }
-            parent.Children.Add(actor);
+            parent.Children.Add(new MeshActor(transform, staticMesh, instancedComponent.PerInstanceSMData ?? []));
         }
         else if (dictionary.TryGetValue(staticMesh.LightingGuid, out var actor))
         {

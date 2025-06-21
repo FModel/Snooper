@@ -1,6 +1,8 @@
 ﻿using CUE4Parse_Conversion.Meshes;
+using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Culling;
@@ -25,6 +27,14 @@ public class MeshActor : Actor
         
         Components.Add(CullingComponent);
         Components.Add(MeshComponent);
+    }
+    
+    public MeshActor(FTransform relation, UStaticMesh staticMesh, params FInstancedStaticMeshInstanceData[] transforms) : this(staticMesh, transforms[0].TransformData * relation)
+    {
+        for (var i = 1; i < transforms.Length; i++)
+        {
+            InstancedTransforms.AddInstance(transforms[i].TransformData * relation);
+        }
     }
 
     public MeshActor(USkeletalMesh skeletalMesh, TransformComponent? transform = null) : base(new FGuid((uint) skeletalMesh.GetFullName().GetHashCode()), skeletalMesh.Name, transform)
