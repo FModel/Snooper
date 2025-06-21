@@ -4,6 +4,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snooper", "Snooper.csproj",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Launcher", "..\Launcher\Launcher.csproj", "{469ACF81-8DB8-4951-91BD-8D7A78C2DAAE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CUE4Parse", "..\CUE4Parse\CUE4Parse\CUE4Parse.csproj", "{2B3A4C7B-F51B-4499-9D83-2C627FA74ABC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CUE4Parse-Conversion", "..\CUE4Parse\CUE4Parse-Conversion\CUE4Parse-Conversion.csproj", "{FF22964D-B155-484E-AA99-7444203952E0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +22,13 @@ Global
 		{469ACF81-8DB8-4951-91BD-8D7A78C2DAAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{469ACF81-8DB8-4951-91BD-8D7A78C2DAAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{469ACF81-8DB8-4951-91BD-8D7A78C2DAAE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B3A4C7B-F51B-4499-9D83-2C627FA74ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B3A4C7B-F51B-4499-9D83-2C627FA74ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B3A4C7B-F51B-4499-9D83-2C627FA74ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B3A4C7B-F51B-4499-9D83-2C627FA74ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FF22964D-B155-484E-AA99-7444203952E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF22964D-B155-484E-AA99-7444203952E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF22964D-B155-484E-AA99-7444203952E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF22964D-B155-484E-AA99-7444203952E0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

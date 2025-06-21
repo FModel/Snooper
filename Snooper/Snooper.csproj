@@ -8,9 +8,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="CUE4Parse-Conversion" Version="1.2.1" />
       <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
       <PackageReference Include="OpenTK" Version="4.9.4" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\CUE4Parse\CUE4Parse-Conversion\CUE4Parse-Conversion.csproj" />
     </ItemGroup>
 
 </Project>

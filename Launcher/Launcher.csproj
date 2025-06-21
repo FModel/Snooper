@@ -8,10 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="CUE4Parse" Version="1.2.2" />
-    </ItemGroup>
-
-    <ItemGroup>
+      <ProjectReference Include="..\CUE4Parse\CUE4Parse\CUE4Parse.csproj" />
       <ProjectReference Include="..\Snooper\Snooper.csproj" />
     </ItemGroup>
 
