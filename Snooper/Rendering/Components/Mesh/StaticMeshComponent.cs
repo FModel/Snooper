@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
-using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Mesh;
 
@@ -40,7 +39,7 @@ public class StaticMeshComponent : MeshComponent
             }
 
             Indices = new uint[lod.Indices.Value.Length];
-            for (int i = 0; i < Indices.Length; i++)
+            for (var i = 0; i < Indices.Length; i++)
             {
                 Indices[i] = (uint) lod.Indices.Value[i];
             }

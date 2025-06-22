@@ -1,9 +1,7 @@
 ﻿using System.Numerics;
 using System.Text;
 using OpenTK.Graphics.OpenGL4;
-using Serilog;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Rendering;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Primitives;
 
@@ -68,7 +66,8 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
         var instanceCount = component.Actor.VisibleInstances.End.Value - component.Actor.VisibleInstances.Start.Value;
         var baseInstance = component.MatrixOriginalBaseIndex + component.Actor.VisibleInstances.Start.Value;
         _commands.Current.UpdateInstance(component.DrawId, component.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
-        // _matrices.Update(component.DrawId, component.GetModelMatrix());
+        
+        _matrices.Update(component.MatrixOriginalBaseIndex, component.GetWorldMatrices());
     }
 
     public void UpdateVertices(int drawId, TVertex[] vertices)

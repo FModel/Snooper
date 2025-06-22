@@ -31,7 +31,7 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec3 aTangent;
 layout (location = 3) in vec2 aTexCoords;
 
-layout(std430, binding = 0) buffer ModelMatrices
+layout(std430, binding = 0) readonly buffer ModelMatrices
 {
     mat4 uModelMatrices[];
 };

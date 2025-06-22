@@ -17,7 +17,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent>(int initialDrawCapaci
 #version 460 core
 layout (location = 0) in vec3 aPos;
 
-layout(std430, binding = 0) buffer ModelMatrices
+layout(std430, binding = 0) readonly buffer ModelMatrices
 {
     mat4 uModelMatrices[];
 };

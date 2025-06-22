@@ -40,18 +40,24 @@ public class BoxCullingComponent : CullingComponent
         for (var i = 0; i < matrices.Length; i++)
         {
             var matrix = matrices[i];
-            var center = Vector3.Transform(Center, matrix);
+            var visible = false;
             
-            var visible = true;
+            var corners = new Vector3[8];
+            for (var j = 0; j < corners.Length; j++)
+            {
+                corners[j] = Vector3.Transform(GetLocalCorner(j), matrix);
+            }
+            
             foreach (var plane in frustum)
             {
-                var distance = Vector3.Dot(plane.Normal, center) + plane.D;
-                var radius = Vector3.Dot(Extents, Vector3.Abs(plane.Normal));
-                if (distance < -radius)
+                var outsideCount = corners.Select(corner => Vector3.Dot(plane.Normal, corner) + plane.D).Count(distance => distance < 0f);
+                if (outsideCount == corners.Length)
                 {
                     visible = false;
                     break;
                 }
+
+                visible = true;
             }
             
             if (visible)
@@ -70,6 +76,13 @@ public class BoxCullingComponent : CullingComponent
             Actor.VisibleInstances = new Range(minIndex, maxIndex + 1);
         }
     }
+    
+    private Vector3 GetLocalCorner(int i)
+        => Center + new Vector3(
+            (i & 1) == 0 ? Extents.X : -Extents.X,
+            (i & 2) == 0 ? Extents.Y : -Extents.Y,
+            (i & 4) == 0 ? Extents.Z : -Extents.Z
+        );
 
     public override float GetScreenSpaceCoverage(CameraComponent cameraComponent)
     {
@@ -93,16 +106,12 @@ public class BoxCullingComponent : CullingComponent
     private Vector3[] GetWorldCorners()
     {
         var worldMatrix = Actor?.Transform.WorldMatrix ?? Matrix4x4.Identity;
+        
         var corners = new Vector3[8];
-
-        corners[0] = Vector3.Transform(Center + new Vector3(Extents.X, Extents.Y, Extents.Z), worldMatrix);
-        corners[1] = Vector3.Transform(Center + Extents with { Z = -Extents.Z }, worldMatrix);
-        corners[2] = Vector3.Transform(Center + Extents with { Y = -Extents.Y }, worldMatrix);
-        corners[3] = Vector3.Transform(Center + new Vector3(Extents.X, -Extents.Y, -Extents.Z), worldMatrix);
-        corners[4] = Vector3.Transform(Center + Extents with { X = -Extents.X }, worldMatrix);
-        corners[5] = Vector3.Transform(Center + new Vector3(-Extents.X, Extents.Y, -Extents.Z), worldMatrix);
-        corners[6] = Vector3.Transform(Center + new Vector3(-Extents.X, -Extents.Y, Extents.Z), worldMatrix);
-        corners[7] = Vector3.Transform(Center + new Vector3(-Extents.X, -Extents.Y, -Extents.Z), worldMatrix);
+        for (var i = 0; i < corners.Length; i++)
+        {
+            corners[i] = Vector3.Transform(GetLocalCorner(i), worldMatrix);
+        }
 
         return corners;
     }
@@ -112,7 +121,7 @@ public class BoxCullingComponent : CullingComponent
         var corners = GetWorldCorners();
         var screenCorners = new Vector2[corners.Length];
 
-        for (int i = 0; i < corners.Length; i++)
+        for (var i = 0; i < corners.Length; i++)
         {
             screenCorners[i] = cameraComponent.ProjectToScreen(corners[i]);
         }

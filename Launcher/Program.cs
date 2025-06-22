@@ -1,5 +1,6 @@
 ﻿using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
+using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
@@ -30,21 +31,25 @@ provider.SubmitKey(new FGuid(), new FAesKey("0x4BE71AF2459CF83899EC9DC2CB60E22AC
 provider.PostMount();
 
 var snooper = new SnooperWindow(144, 1500, 900, false);
-// var actor = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(2000, 0, 0)));
-// actor.InstancedTransforms.AddInstance(new FTransform(new FVector(500, 0, 0)));
-// actor.InstancedTransforms.AddInstance(new FTransform(new FVector(0, 1300, 0)));
-// snooper.AddToScene(actor);
-// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"));
-// snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(500, 0, 0)));
+// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
+// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
+// snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(200, 0, 0)));
 // snooper.Run();
 // return;
 
 var dictionary = new Dictionary<FGuid, MeshActor>();
-AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_A.Bonsai_Art_A"));
-AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathA.Bonsai_Art_AtkPathA"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_A.Bonsai_Art_A"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathA.Bonsai_Art_AtkPathA"));
 AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathB.Bonsai_Art_AtkPathB"));
-AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkSpawn.Bonsai_Art_AtkSpawn"));
-AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_ATower.Bonsai_Art_ATower"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkSpawn.Bonsai_Art_AtkSpawn"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_ATower.Bonsai_Art_ATower"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_B.Bonsai_Art_B"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_Birthday.Bonsai_Art_Birthday"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_BTower.Bonsai_Art_BTower"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_DefPathA.Bonsai_Art_DefPathA"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_DefPathB.Bonsai_Art_DefPathB"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_DefSpawn.Bonsai_Art_DefSpawn"));
+// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_Mid.Bonsai_Art_Mid"));
 
 snooper.Run();
 
@@ -55,7 +60,7 @@ void AddWorldToScene(UWorld world)
     var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
     foreach (var actorPtr in actors)
     {
-        if (!actorPtr.TryLoad(out var actor)) continue;
+        if (!actorPtr.TryLoad(out AActor actor)) continue;
 
         if (actor.TryGetValue(out USceneComponent[] components, "InstanceComponents", "BlueprintCreatedComponents"))
         {
@@ -88,9 +93,9 @@ void AddToScene(USceneComponent component, Actor parent)
             component.GetRelativeLocation(),
             component.GetRelativeScale3D());
         
-        if (component is UInstancedStaticMeshComponent instancedComponent)
+        if (component is UInstancedStaticMeshComponent { PerInstanceSMData.Length: > 0 } instancedComponent)
         {
-            parent.Children.Add(new MeshActor(transform, staticMesh, instancedComponent.PerInstanceSMData ?? []));
+            parent.Children.Add(new MeshActor(transform, staticMesh, instancedComponent.PerInstanceSMData));
         }
         else if (dictionary.TryGetValue(staticMesh.LightingGuid, out var actor))
         {

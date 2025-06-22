@@ -128,11 +128,6 @@ public sealed class CameraComponent : ActorComponent
         planes[4] = new Plane(matrix.M14 + matrix.M13, matrix.M24 + matrix.M23, matrix.M34 + matrix.M33, matrix.M44 + matrix.M43); // Bottom
         planes[5] = new Plane(matrix.M14 - matrix.M13, matrix.M24 - matrix.M23, matrix.M34 - matrix.M33, matrix.M44 - matrix.M43); // Top
 
-        for (int i = 0; i < planes.Length; i++)
-        {
-            planes[i] = Plane.Normalize(planes[i]);
-        }
-
         return planes;
     }
 }

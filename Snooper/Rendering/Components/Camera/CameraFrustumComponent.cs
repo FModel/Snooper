@@ -66,7 +66,7 @@ public class CameraFrustumComponent(CameraComponent cameraComponent) : DebugComp
         var v3 = c.D * Vector3.Cross(a.Normal, b.Normal);
         var vec = new Vector3(v1.X + v2.X + v3.X, v1.Y + v2.Y + v3.Y, v1.Z + v2.Z + v3.Z);
 
-        var f = -Vector3.Dot(a.Normal, Vector3.Cross(b.Normal, c.Normal));
+        var f = Vector3.Dot(a.Normal, Vector3.Cross(b.Normal, c.Normal));
         return vec / f;
     }
 }

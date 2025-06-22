@@ -11,7 +11,7 @@ public class Actor
     public FGuid Guid { get; }
     public string Name { get; }
     public Range VisibleInstances { get; internal set; }
-    public bool IsVisible => VisibleInstances.Start.Value <= VisibleInstances.End.Value;
+    public bool IsVisible => VisibleInstances.Start.Value != VisibleInstances.End.Value;
 
     public Actor(FGuid guid, string name, TransformComponent? transform = null)
     {
