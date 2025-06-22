@@ -13,12 +13,15 @@ public class CullingSystem : ActorSystem<CullingComponent>
     public override void Render(CameraComponent camera)
     {
         if (!camera.IsActive) return;
-
         // TODO: do this OnUpdateFrame instead
-        foreach (var component in Components)
+        
+        var frustum = camera.GetWorldFrustumPlanes();
+        if (frustum.Length != 6)
         {
-            component.Update(camera);
+            throw new ArgumentException("Frustum must be defined by exactly six planes.");
         }
+        
+        Parallel.ForEach(Components, component => component.Update(camera, frustum));
     }
 
     protected override void OnActorComponentAdded(CullingComponent component)

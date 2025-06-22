@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Math;
-using Serilog;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Components.Culling;
@@ -25,14 +24,8 @@ public class BoxCullingComponent : CullingComponent
         Extents = new Vector3(extents.X, extents.Z, extents.Y);
     }
 
-    public override void Update(CameraComponent cameraComponent)
+    public override void Update(CameraComponent cameraComponent, Plane[] frustum)
     {
-        var frustum = cameraComponent.GetWorldFrustumPlanes();
-        if (frustum.Length != 6)
-        {
-            throw new ArgumentException("Frustum must be defined by exactly six planes.");
-        }
-        
         var minIndex = int.MaxValue;
         var maxIndex = int.MinValue;
 
