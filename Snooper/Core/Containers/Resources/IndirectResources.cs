@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using System.Text;
+using CUE4Parse_Conversion.Meshes.PSK;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
@@ -43,7 +44,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
         VBO.Unbind();
     }
 
-    public (int, int) Add(TPrimitiveData<TVertex> primitive, Matrix4x4[] matrices)
+    public IndirectDrawMetadata Add(TPrimitiveData<TVertex> primitive, Matrix4x4[] matrices)
     {
         var firstIndex = EBO.AddRange(primitive.Indices);
         var baseVertex = VBO.AddRange(primitive.Vertices);
@@ -58,16 +59,43 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
             BaseInstance = (uint) baseInstance
         });
 
-        return (drawId, baseInstance);
+        return new IndirectDrawMetadata
+        {
+            DrawIds = [drawId],
+            BaseInstance = baseInstance,
+        };
+    }
+    
+    public IndirectDrawMetadata Add2(TPrimitiveData<TVertex> primitive, CMeshSection[] sections, Matrix4x4[] matrices)
+    {
+        var firstIndex = EBO.AddRange(primitive.Indices);
+        var baseVertex = VBO.AddRange(primitive.Vertices);
+        var baseInstance = _matrices.AddRange(matrices);
+
+        var metadata = new IndirectDrawMetadata { DrawIds = new int[sections.Length], BaseInstance = baseInstance };
+        for (var i = 0; i < sections.Length; i++)
+        {
+            var section = sections[i];
+            metadata.DrawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
+            {
+                Count = (uint)section.NumFaces * 3,
+                InstanceCount = (uint)matrices.Length,
+                FirstIndex = (uint)(firstIndex + section.FirstIndex),
+                BaseVertex = (uint)baseVertex,
+                BaseInstance = (uint)baseInstance
+            });
+        }
+
+        return metadata;
     }
 
     public void Update(TPrimitiveComponent<TVertex> component)
     {
         var instanceCount = component.Actor.VisibleInstances.End.Value - component.Actor.VisibleInstances.Start.Value;
-        var baseInstance = component.MatrixOriginalBaseIndex + component.Actor.VisibleInstances.Start.Value;
-        _commands.Current.UpdateInstance(component.DrawId, component.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
+        var baseInstance = component.DrawMetadata.BaseInstance + component.Actor.VisibleInstances.Start.Value;
+        _commands.Current.UpdateInstance(component.DrawMetadata.DrawIds, component.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
         
-        _matrices.Update(component.MatrixOriginalBaseIndex, component.GetWorldMatrices());
+        _matrices.Update(component.DrawMetadata.BaseInstance, component.GetWorldMatrices());
     }
 
     public void UpdateVertices(int drawId, TVertex[] vertices)
@@ -85,13 +113,13 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
         _commands.Current.UpdateCount(drawId, (uint) indices.Length);
     }
 
-    public void Remove(int drawId)
+    public void Remove(IndirectDrawMetadata metadata)
     {
         _commands.Current.Bind();
         _matrices.Bind();
 
-        _commands.Current.Remove(drawId);
-        _matrices.Remove(drawId);
+        _commands.Current.RemoveRange(metadata.DrawIds);
+        _matrices.Remove(metadata.BaseInstance);
 
         _commands.Current.Unbind();
         _matrices.Unbind();

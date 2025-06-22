@@ -9,7 +9,7 @@ namespace Snooper.Rendering.Systems;
 public class GridSystem : PrimitiveSystem<GridComponent>
 {
     public override uint Order => 1;
-    public override ActorSystemType SystemType => ActorSystemType.Background;
+    public override ActorSystemType SystemType => ActorSystemType.Forward;
 
     protected override ShaderProgram Shader { get; } = new(
 """
@@ -112,30 +112,26 @@ void main()
     gl_FragDepth = computeDepth(fragPos3D);
 
     float linearDepth = computeLinearDepth(fragPos3D);
-    float fading = max(0, (0.5 - linearDepth));
+    float fading = max(0, (0.75 - linearDepth));
 
     FragColor = (grid(fragPos3D, 10) + grid(fragPos3D, 1)) * float(t > 0);
     FragColor.a *= fading;
 }
 """);
 
-    public override void Render(CameraComponent camera)
+    protected override void PreRender(CameraComponent camera)
     {
         Shader.Use();
         Shader.SetUniform("view", camera.ViewMatrix);
         Shader.SetUniform("proj", camera.ProjectionMatrix);
         Shader.SetUniform("uNear", camera.NearPlaneDistance);
         Shader.SetUniform("uFar", camera.FarPlaneDistance);
-
-        var bCull = GL.GetBoolean(GetPName.CullFace);
-        var bDepth = GL.GetBoolean(GetPName.DepthTest);
-
-        if (bCull) GL.Disable(EnableCap.CullFace);
-        if (bDepth) GL.Disable(EnableCap.DepthTest);
-
-        Resources.Render();
-
-        if (bDepth) GL.Enable(EnableCap.DepthTest);
-        if (bCull) GL.Enable(EnableCap.CullFace);
+        
+        GL.DepthMask(false);
+    }
+    
+    protected override void PostRender(CameraComponent camera)
+    {
+        GL.DepthMask(true);
     }
 }

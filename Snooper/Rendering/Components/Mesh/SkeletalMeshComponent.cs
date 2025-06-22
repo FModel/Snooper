@@ -9,7 +9,8 @@ namespace Snooper.Rendering.Components.Mesh;
 public class SkeletalMeshComponent : MeshComponent
 {
     public override int LODCount => _mesh.LODs.Count;
-    
+    public override CMeshSection[] Sections => _mesh.LODs[LODIndex].Sections.Value;
+
     private readonly CSkeletalMesh _mesh;
 
     public SkeletalMeshComponent(USkeletalMesh owner, CSkeletalMesh mesh) : base(new Geometry(mesh.LODs.First()))
@@ -46,7 +47,7 @@ public class SkeletalMeshComponent : MeshComponent
             }
 
             Indices = new uint[lod.Indices.Value.Length];
-            for (int i = 0; i < Indices.Length; i++)
+            for (var i = 0; i < Indices.Length; i++)
             {
                 Indices[i] = (uint) lod.Indices.Value[i];
             }

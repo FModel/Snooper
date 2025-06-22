@@ -8,17 +8,16 @@ namespace Snooper.Rendering.Components;
 
 public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : ActorComponent where T : unmanaged
 {
-    public int DrawId { get; private set; } = -1;
-    internal int MatrixOriginalBaseIndex { get; private set; } = -1;
+    public IndirectDrawMetadata DrawMetadata { get; protected set; } = new();
 
-    public void Generate(IndirectResources<T> resources)
+    public virtual void Generate(IndirectResources<T> resources)
     {
-        (DrawId, MatrixOriginalBaseIndex) = resources.Add(primitive, GetWorldMatrices());
+        DrawMetadata = resources.Add(primitive, GetWorldMatrices());
     }
 
     public virtual void Update(IndirectResources<T> resources)
     {
-        if (DrawId < 0)
+        if (DrawMetadata.BaseInstance < 0)
         {
             Generate(resources);
         }
@@ -28,7 +27,7 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
         }
     }
 
-    internal Matrix4x4[] GetWorldMatrices()
+    public Matrix4x4[] GetWorldMatrices()
     {
         if (Actor == null)
             throw new InvalidOperationException("Actor is not set for this component.");

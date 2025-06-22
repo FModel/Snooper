@@ -184,12 +184,20 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         Count++;
     }
 
-    public virtual void Remove(int index)
+    public void Remove(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         if (index >= _capacity) throw new ArgumentOutOfRangeException(nameof(index), $"Cannot remove at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}.");
 
         _freeRanges.Push(new Range(index, 1));
+    }
+
+    public virtual void RemoveRange(int[] indices)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(indices.Length);
+        if (indices.Length > _capacity) throw new ArgumentOutOfRangeException(nameof(indices), $"Cannot remove range of {indices.Length} indices in buffer {Handle} ({Name}) with capacity {_capacity}.");
+        
+        _freeRanges.Push(new Range(indices[0], indices.Length - 1));
     }
 
     public void Update(int index, T data) => Update(index, [data]);

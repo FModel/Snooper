@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using CUE4Parse_Conversion.Meshes.PSK;
+using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
@@ -11,10 +12,16 @@ namespace Snooper.Rendering.Components.Mesh;
 public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent<Vertex>(primitive)
 {
     public abstract int LODCount { get; }
+    public abstract CMeshSection[] Sections { get; }
 
     public int LODIndex { get; private set; }
     public float[] ScreenSizes { get; protected init; } = [];
     public float CurrentScreenSize = 0;
+
+    public override void Generate(IndirectResources<Vertex> resources)
+    {
+        DrawMetadata = resources.Add2(primitive, Sections, GetWorldMatrices()); // TODO: rework that shit
+    }
 
     // public override void Update(IndirectResources<Vertex> resources)
     // {

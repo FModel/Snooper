@@ -8,8 +8,9 @@ namespace Snooper.Rendering.Systems;
 public class DebugSystem : PrimitiveSystem<DebugComponent>
 {
     public override uint Order => 100;
-    public override ActorSystemType SystemType => ActorSystemType.Background;
+    public override ActorSystemType SystemType => ActorSystemType.Forward;
     protected override bool AllowDerivation => true;
+    protected override bool IsRenderable => DebugMode;
 
     public override void Load()
     {
@@ -21,7 +22,7 @@ out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(1.0, 1.0, 1.0, 0.5);
+    FragColor = vec4(vec3(0.25), 1.0);
 }
 """;
 
@@ -30,24 +31,29 @@ void main()
 
     public override void Update(float delta)
     {
-        if (!DebugMode) return;
+        if (!IsRenderable) return;
         base.Update(delta);
     }
-
-    public override void Render(CameraComponent camera)
+    
+    protected override void PreRender(CameraComponent camera)
     {
-        if (!DebugMode) return;
+        base.PreRender(camera);
+        
+        _bCull = GL.GetBoolean(GetPName.CullFace);
+        _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
 
-        var bCull = GL.GetBoolean(GetPName.CullFace);
-        var polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
+        _bDiff = _polygonMode != PolygonMode.Line;
+        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
+        if (_bCull) GL.Disable(EnableCap.CullFace);
+    }
+    
+    private bool _bCull;
+    private bool _bDiff;
+    private PolygonMode _polygonMode;
 
-        var bDiff = polygonMode != PolygonMode.Line;
-        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
-        if (bCull) GL.Disable(EnableCap.CullFace);
-
-        base.Render(camera);
-
-        if (bCull) GL.Enable(EnableCap.CullFace);
-        if (bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, polygonMode);
+    protected override void PostRender(CameraComponent camera)
+    {
+        if (_bCull) GL.Enable(EnableCap.CullFace);
+        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
     }
 }

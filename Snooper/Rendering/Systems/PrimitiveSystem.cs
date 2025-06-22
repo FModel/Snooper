@@ -49,13 +49,25 @@ void main()
         Shader.Link();
     }
 
-    public override void Render(CameraComponent camera)
+    protected virtual void PreRender(CameraComponent camera)
     {
         Shader.Use();
         Shader.SetUniform("uViewMatrix", camera.ViewMatrix);
         Shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
+    }
 
-        Resources.Render();
+    public sealed override void Render(CameraComponent camera)
+    {
+        if (!IsRenderable) return;
+        
+        PreRender(camera);
+        base.Render(camera);
+        PostRender(camera);
+    }
+
+    protected virtual void PostRender(CameraComponent camera)
+    {
+        
     }
 }
 

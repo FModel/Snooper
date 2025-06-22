@@ -38,6 +38,7 @@ layout(std430, binding = 0) readonly buffer ModelMatrices
 
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
+uniform int uDebugColorMode;
 
 out VS_OUT {
     vec3 vViewPos;
@@ -59,7 +60,19 @@ void main()
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
     vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
-    vs_out.vColor = mix(vec3(0.3), vec3(1.0), vec3(
+    
+    vs_out.vColor = vec3(0.75);
+    if (uDebugColorMode == 0) return;
+    else if (uDebugColorMode == 2)
+    {
+        id = gl_DrawID;
+    }
+    else if (uDebugColorMode == 3)
+    {
+        id = gl_BaseInstance;
+    }
+    
+    vs_out.vColor = mix(vec3(0.25), vec3(1.0), vec3(
         float((id * 97u) % 255u) / 255.0,
         float((id * 59u) % 255u) / 255.0,
         float((id * 31u) % 255u) / 255.0
@@ -89,7 +102,7 @@ void main()
     float nFactor = 0.7 + 0.3 * normal.z;
 
     float brightness = (tFactor + bFactor + nFactor) / 3.0;
-    FragColor = vec4(vec3(1.0) * brightness, 1.0);
+    FragColor = vec4(fs_in.vColor * brightness, 1.0);
 }
 """
 );
@@ -176,14 +189,20 @@ void main()
         _debug.Link();
     }
 
-    public override void Render(CameraComponent camera)
+    protected override void PreRender(CameraComponent camera)
     {
-        base.Render(camera);
+        base.PreRender(camera);
+        Shader.SetUniform("uDebugColorMode", (int)DebugColorMode);
+    }
+
+    protected override void PostRender(CameraComponent camera)
+    {
         if (!DebugMode) return;
 
         _debug.Use();
         _debug.SetUniform("uViewMatrix", camera.ViewMatrix);
         _debug.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
+        _debug.SetUniform("uDebugColorMode", (int)DebugColorMode);
         Resources.Render();
     }
 }

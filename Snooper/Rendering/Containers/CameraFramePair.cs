@@ -41,7 +41,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         if (Camera.bSSAO)
         {
             _ssao.Bind();
-            GL.ClearColor(255, 255, 255, 255);
+            GL.ClearColor(1, 1, 1, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
             _ssao.Render(shader =>
@@ -81,14 +81,12 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _forward.Render();
     }
 
-    public void CombineRendering(Action<CameraComponent, ActorSystemType> render)
+    public void CombineRendering()
     {
         _combined.Bind();
         GL.ClearColor(0, 0, 0, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit);
         
-        render(Camera, ActorSystemType.Background);
-
         _combined.Render(_ =>
         {
             _geometry.Bind(TextureUnit.Texture0);

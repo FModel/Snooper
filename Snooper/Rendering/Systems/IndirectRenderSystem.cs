@@ -50,7 +50,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent>(int initialDrawC
     {
         base.OnActorComponentRemoved(component);
 
-        Resources.Remove(component.DrawId);
+        Resources.Remove(component.DrawMetadata);
     }
 
     public string GetFormattedSpace() => Resources.GetFormattedSpace();

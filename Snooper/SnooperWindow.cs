@@ -284,6 +284,10 @@ public partial class SnooperWindow : GameWindow
         if (ImGui.Begin("Systems Order"))
         {
             ImGui.Checkbox("Debug Mode", ref _sceneSystem.DebugMode);
+            var c = (int) _sceneSystem.DebugColorMode;
+            ImGui.Combo("DebugColorMode", ref c, "None\0Per Instance\0Per Section\0Per Actor\0");
+            _sceneSystem.DebugColorMode = (ActorDebugColorMode) c;
+            
             foreach (var system in _sceneSystem.Systems.GroupBy(x => x.Value.SystemType).OrderByDescending(x => x.Key))
             {
                 ImGui.Text($"{system.Key}");

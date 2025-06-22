@@ -7,6 +7,7 @@ namespace Snooper.Rendering.Components.Mesh;
 public class StaticMeshComponent : MeshComponent
 {
     public override int LODCount => _mesh.LODs.Count;
+    public override CMeshSection[] Sections => _mesh.LODs[LODIndex].Sections.Value;
     
     private readonly CStaticMesh _mesh;
 

@@ -182,7 +182,7 @@ void main()
         });
 
         _blur.Bind();
-        GL.ClearColor(255, 255, 255, 255);
+        GL.ClearColor(1, 1, 1, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit);
 
         _blur.Render(() =>
