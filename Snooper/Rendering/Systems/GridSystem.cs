@@ -1,6 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Programs;
-using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
@@ -9,7 +8,6 @@ namespace Snooper.Rendering.Systems;
 public class GridSystem : PrimitiveSystem<GridComponent>
 {
     public override uint Order => 1;
-    public override ActorSystemType SystemType => ActorSystemType.Forward;
 
     protected override ShaderProgram Shader { get; } = new(
 """
@@ -75,7 +73,7 @@ vec4 grid(vec3 fragPos, float scale)
     float line = min(grid.x, grid.y);
     float minimumz = min(derivative.y, 1) * 0.1;
     float minimumx = min(derivative.x, 1) * 0.1;
-    vec4 color = vec4(0.102, 0.102, 0.129, 1.0 - min(line, 1.0));
+    vec4 color = vec4(0.102, 0.102, 0.129, 1.0 - min(line, 0.75));
     if(abs(fragPos.x) < minimumx)
     color.z = 1.0;
     if(abs(fragPos.z) < minimumz)
@@ -112,7 +110,7 @@ void main()
     gl_FragDepth = computeDepth(fragPos3D);
 
     float linearDepth = computeLinearDepth(fragPos3D);
-    float fading = max(0, (0.75 - linearDepth));
+    float fading = max(0, (0.5 - linearDepth));
 
     FragColor = (grid(fragPos3D, 10) + grid(fragPos3D, 1)) * float(t > 0);
     FragColor.a *= fading;

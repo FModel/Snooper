@@ -24,7 +24,7 @@ public class BoxCullingComponent : CullingComponent
         Extents = new Vector3(extents.X, extents.Z, extents.Y);
     }
 
-    public override void Update(CameraComponent cameraComponent, Plane[] frustum)
+    public override void CheckForVisibility(Plane[] frustum)
     {
         var minIndex = int.MaxValue;
         var maxIndex = int.MinValue;

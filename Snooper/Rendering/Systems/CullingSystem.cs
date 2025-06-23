@@ -21,7 +21,7 @@ public class CullingSystem : ActorSystem<CullingComponent>
             throw new ArgumentException("Frustum must be defined by exactly six planes.");
         }
         
-        Parallel.ForEach(Components, component => component.Update(camera, frustum));
+        Parallel.ForEach(Components, component => component.CheckForVisibility(frustum));
     }
 
     protected override void OnActorComponentAdded(CullingComponent component)

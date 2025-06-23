@@ -63,13 +63,13 @@ void main()
     
     vs_out.vColor = vec3(0.75);
     if (uDebugColorMode == 0) return;
-    else if (uDebugColorMode == 2)
+    else if (uDebugColorMode == 1)
     {
-        id = gl_DrawID;
+        id = gl_BaseVertex;
     }
     else if (uDebugColorMode == 3)
     {
-        id = gl_BaseInstance;
+        id = gl_DrawID;
     }
     
     vs_out.vColor = mix(vec3(0.25), vec3(1.0), vec3(
@@ -197,7 +197,7 @@ void main()
 
     protected override void PostRender(CameraComponent camera)
     {
-        if (!DebugMode) return;
+        if (!ActorManager?.DebugMode ?? true) return;
 
         _debug.Use();
         _debug.SetUniform("uViewMatrix", camera.ViewMatrix);

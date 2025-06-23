@@ -15,7 +15,8 @@ public abstract class ActorManager : IGameSystem
     // private readonly HashSet<FGuid> _actors = [];
 
     public bool DebugMode = false;
-    public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.PerInstance;
+    public bool DrawBoundingBoxes = false;
+    public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.PerMaterial;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new()
     {

@@ -10,7 +10,7 @@ public class DebugSystem : PrimitiveSystem<DebugComponent>
     public override uint Order => 100;
     public override ActorSystemType SystemType => ActorSystemType.Forward;
     protected override bool AllowDerivation => true;
-    protected override bool IsRenderable => DebugMode;
+    protected override bool IsRenderable => ActorManager?.DrawBoundingBoxes ?? false;
 
     public override void Load()
     {
@@ -37,23 +37,18 @@ void main()
     
     protected override void PreRender(CameraComponent camera)
     {
-        base.PreRender(camera);
-        
-        _bCull = GL.GetBoolean(GetPName.CullFace);
         _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
-
         _bDiff = _polygonMode != PolygonMode.Line;
         if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
-        if (_bCull) GL.Disable(EnableCap.CullFace);
+        
+        base.PreRender(camera);
     }
     
-    private bool _bCull;
     private bool _bDiff;
     private PolygonMode _polygonMode;
 
     protected override void PostRender(CameraComponent camera)
     {
-        if (_bCull) GL.Enable(EnableCap.CullFace);
         if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
     }
 }

@@ -20,8 +20,8 @@ public sealed class CameraComponent : ActorComponent
     public float SsaoBias = 0.05f;
     public float MovementSpeed = 2f;
     public float FieldOfView = 60.0f;
-    public float FarPlaneDistance = 25.0f;
-    public float NearPlaneDistance = 0.05f;
+    public float FarPlaneDistance = 100f;
+    public float NearPlaneDistance = 0.1f;
     public Vector2 ViewportSize = new(16, 9);
 
     public float FieldOfViewRadians => MathF.PI / 180.0f * FieldOfView;

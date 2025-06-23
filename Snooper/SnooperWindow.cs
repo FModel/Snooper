@@ -236,8 +236,8 @@ public partial class SnooperWindow : GameWindow
                 ImGui.EndDisabled();
 
                 ImGui.DragFloat("Speed", ref camera.MovementSpeed, 0.1f, 1f, 100f);
-                ImGui.DragFloat("Near Plane", ref camera.NearPlaneDistance, 0.001f, 0.001f, 0.099f);
-                ImGui.DragFloat("Far Plane", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance, 1000.0f);
+                ImGui.DragFloat("Near Plane", ref camera.NearPlaneDistance, 0.001f, 0.001f, camera.FarPlaneDistance - 1);
+                ImGui.DragFloat("Far Plane", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance + 1, 1000.0f);
             }
             ImGui.End();
         }
@@ -284,8 +284,9 @@ public partial class SnooperWindow : GameWindow
         if (ImGui.Begin("Systems Order"))
         {
             ImGui.Checkbox("Debug Mode", ref _sceneSystem.DebugMode);
+            ImGui.Checkbox("Draw Bounding Boxes", ref _sceneSystem.DrawBoundingBoxes);
             var c = (int) _sceneSystem.DebugColorMode;
-            ImGui.Combo("DebugColorMode", ref c, "None\0Per Instance\0Per Section\0Per Actor\0");
+            ImGui.Combo("DebugColorMode", ref c, "None\0Per Actor\0Per Instance\0Per Material\0Per Primitive\0");
             _sceneSystem.DebugColorMode = (ActorDebugColorMode) c;
             
             foreach (var system in _sceneSystem.Systems.GroupBy(x => x.Value.SystemType).OrderByDescending(x => x.Key))

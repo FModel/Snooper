@@ -77,14 +77,12 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         GL.Enable(EnableCap.Blend);
         
         render(Camera, ActorSystemType.Forward);
-
-        _forward.Render();
     }
 
     public void CombineRendering()
     {
         _combined.Bind();
-        GL.ClearColor(0, 0, 0, 1);
+        GL.ClearColor(0.66f, 0.88f, 0.44f, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit);
         
         _combined.Render(_ =>
@@ -96,7 +94,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
     
     public void ApplyFxaa()
     {
-        if (!camera.bFXAA) return;
+        if (!Camera.bFXAA) return;
         
         _fxaa.Bind();
         GL.ClearColor(0, 0, 0, 1);
@@ -114,12 +112,11 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _fxaa.Resize(newWidth, newHeight);
     }
 
-    public IntPtr GetPointer() => _fxaa.GetPointer();
     public IntPtr[] GetPointers() =>
     [
         .._geometry.GetTexturePointers(),
         _ssao.GetPointer(),
         _forward.GetPointer(),
-        camera.bFXAA ? _fxaa.GetPointer() : _combined.GetPointer(),
+        Camera.bFXAA ? _fxaa.GetPointer() : _combined.GetPointer(),
     ];
 }
