@@ -16,19 +16,11 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
 
     public void UpdateInstance(int[] offsets, uint instanceCount, uint baseInstance)
     {
-        var ptr = GL.MapBufferRange(BufferTarget.DrawIndirectBuffer, offsets[0] * Stride, offsets.Length * Stride, MapBufferAccessMask.MapReadBit | MapBufferAccessMask.MapWriteBit);
-
-        unsafe
+        foreach (var offset in offsets)
         {
-            var commands = (DrawElementsIndirectCommand*)ptr;
-            for (var i = 0; i < offsets.Length; i++)
-            {
-                commands[i].InstanceCount = instanceCount;
-                commands[i].BaseInstance = baseInstance;
-            }
+            GL.BufferSubData(Target, offset * Stride + 4, 4, ref instanceCount);
+            GL.BufferSubData(Target, offset * Stride + 16, 4, ref baseInstance);
         }
-
-        GL.UnmapBuffer(BufferTarget.DrawIndirectBuffer);
     }
 
     public void UpdateFirstIndex(int offset, uint value)
