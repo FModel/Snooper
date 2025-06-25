@@ -8,7 +8,6 @@ namespace Snooper.Rendering.Systems;
 public class DebugSystem : PrimitiveSystem<DebugComponent>
 {
     public override uint Order => 100;
-    public override ActorSystemType SystemType => ActorSystemType.Forward;
     protected override bool AllowDerivation => true;
     protected override bool IsRenderable => ActorManager?.DrawBoundingBoxes ?? false;
 
@@ -22,7 +21,7 @@ out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(vec3(0.25), 1.0);
+    FragColor = vec4(vec3(0.75), 1.0);
 }
 """;
 

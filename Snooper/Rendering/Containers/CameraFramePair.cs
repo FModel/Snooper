@@ -82,7 +82,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
     public void CombineRendering()
     {
         _combined.Bind();
-        GL.ClearColor(0.66f, 0.88f, 0.44f, 1);
+        GL.ClearColor(0.2f, 0.2f, 0.2f, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit);
         
         _combined.Render(_ =>

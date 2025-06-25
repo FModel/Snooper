@@ -1,26 +1,26 @@
-﻿using CUE4Parse_Conversion.Meshes.PSK;
-using Serilog;
+﻿using System.Numerics;
+using CUE4Parse_Conversion.Meshes.PSK;
 using Snooper.Core;
-using Snooper.Core.Containers.Resources;
-using Snooper.Core.Systems;
-using Snooper.Rendering.Actors;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent<Vertex>(primitive)
+public abstract class MeshComponent : TPrimitiveComponent<Vertex>
 {
-    public abstract int LODCount { get; }
-    public abstract CMeshSection[] Sections { get; }
+    public abstract int LodCount { get; }
+    public abstract float[] ScreenSizes { get; }
+    
+    public sealed override MeshMaterialSection[] MaterialSections { get; protected init; }
 
-    public int LODIndex { get; private set; }
-    public float[] ScreenSizes { get; protected init; } = [];
-    public float CurrentScreenSize = 0;
-
-    public override void Generate(IndirectResources<Vertex> resources)
+    protected MeshComponent(CBaseMeshLod lod) : base(new Geometry(lod))
     {
-        DrawMetadata = resources.Add2(primitive, Sections, GetWorldMatrices()); // TODO: rework that shit
+        MaterialSections = new MeshMaterialSection[lod.Sections.Value.Length];
+        for (var i = 0; i < MaterialSections.Length; i++)
+        {
+            var section = lod.Sections.Value[i];
+            MaterialSections[i] = new MeshMaterialSection(section.MaterialIndex, section.FirstIndex, section.NumFaces * 3);
+        }
     }
 
     // public override void Update(IndirectResources<Vertex> resources)
@@ -54,4 +54,38 @@ public abstract class MeshComponent(IVertexData primitive) : TPrimitiveComponent
     // }
 
     protected abstract IVertexData GetPrimitive(int index);
+    
+    protected readonly struct Geometry : IVertexData
+    {
+        public Vertex[] Vertices { get; }
+        public uint[] Indices { get; }
+        
+        public Geometry(CBaseMeshLod lod)
+        {
+            var vertices = lod switch
+            {
+                CStaticMeshLod staticLod => staticLod.Verts,
+                CSkelMeshLod skelLod => skelLod.Verts,
+                _ => throw new NotSupportedException($"Unsupported mesh type: {lod.GetType().Name}")
+            };
+
+            Vertices = new Vertex[vertices.Length];
+            for (var i = 0; i < Vertices.Length; i++)
+            {
+                var vertex = vertices[i];
+                var position = new Vector3(vertex.Position.X, vertex.Position.Z, vertex.Position.Y) * Settings.GlobalScale;
+                var normal = new Vector3(vertex.Normal.X, vertex.Normal.Z, vertex.Normal.Y);
+                var tangent = new Vector3(vertex.Tangent.X, vertex.Tangent.Z, vertex.Tangent.Y);
+                var texCoord = new Vector2(vertex.UV.U, vertex.UV.V);
+
+                Vertices[i] = new Vertex(position, normal, tangent, texCoord);
+            }
+
+            Indices = new uint[lod.Indices.Value.Length];
+            for (var i = 0; i < Indices.Length; i++)
+            {
+                Indices[i] = (uint) lod.Indices.Value[i];
+            }
+        }
+    }
 }

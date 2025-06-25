@@ -20,3 +20,17 @@ public struct Vertex
         TexCoord = texCoord;
     }
 }
+
+public struct MeshMaterialSection
+{
+    public int MaterialIndex;
+    public int FirstIndex;
+    public int IndexCount;
+
+    public MeshMaterialSection(int materialIndex, int firstIndex, int indexCount)
+    {
+        MaterialIndex = materialIndex;
+        FirstIndex = firstIndex;
+        IndexCount = indexCount;
+    }
+}

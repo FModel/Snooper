@@ -1,9 +1,9 @@
 ﻿using System.Numerics;
 using System.Text;
-using CUE4Parse_Conversion.Meshes.PSK;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Primitives;
 
 namespace Snooper.Core.Containers.Resources;
@@ -43,44 +43,22 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
         EBO.Unbind();
         VBO.Unbind();
     }
-
-    public IndirectDrawMetadata Add(TPrimitiveData<TVertex> primitive, Matrix4x4[] matrices)
-    {
-        var firstIndex = EBO.AddRange(primitive.Indices);
-        var baseVertex = VBO.AddRange(primitive.Vertices);
-        var baseInstance = _matrices.AddRange(matrices);
-
-        var drawId = _commands.Current.Add(new DrawElementsIndirectCommand
-        {
-            Count = (uint) primitive.Indices.Length,
-            InstanceCount = (uint) matrices.Length,
-            FirstIndex = (uint) firstIndex,
-            BaseVertex = (uint) baseVertex,
-            BaseInstance = (uint) baseInstance
-        });
-
-        return new IndirectDrawMetadata
-        {
-            DrawIds = [drawId],
-            BaseInstance = baseInstance,
-        };
-    }
     
-    public IndirectDrawMetadata Add2(TPrimitiveData<TVertex> primitive, CMeshSection[] sections, Matrix4x4[] matrices)
+    public IndirectDrawMetadata Add(TPrimitiveData<TVertex> primitive, MeshMaterialSection[] materialSections, Matrix4x4[] matrices)
     {
         var firstIndex = EBO.AddRange(primitive.Indices);
         var baseVertex = VBO.AddRange(primitive.Vertices);
         var baseInstance = _matrices.AddRange(matrices);
 
-        var metadata = new IndirectDrawMetadata { DrawIds = new int[sections.Length], BaseInstance = baseInstance };
-        for (var i = 0; i < sections.Length; i++)
+        var metadata = new IndirectDrawMetadata { DrawIds = new int[materialSections.Length], BaseInstance = baseInstance };
+        for (var i = 0; i < materialSections.Length; i++)
         {
-            var section = sections[i];
+            var materialSection = materialSections[i];
             metadata.DrawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
             {
-                Count = (uint)section.NumFaces * 3,
+                Count = (uint)materialSection.IndexCount,
                 InstanceCount = (uint)matrices.Length,
-                FirstIndex = (uint)(firstIndex + section.FirstIndex),
+                FirstIndex = (uint)(firstIndex + materialSection.FirstIndex),
                 BaseVertex = (uint)baseVertex,
                 BaseInstance = (uint)baseInstance
             });
