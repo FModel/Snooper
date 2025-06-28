@@ -11,14 +11,29 @@ public class Actor
 {
     public FGuid Guid { get; }
     public string Name { get; }
-    public Range VisibleInstances { get; internal set; }
+    public bool IsDirty { get; internal set; }
+    
+    private Range _visibleInstances = new(0, 1);
+    public Range VisibleInstances
+    {
+        get => _visibleInstances;
+        set 
+        {
+            if (_visibleInstances.Equals(value))
+                return;
+            
+            _visibleInstances = value;
+            IsDirty = true;
+        }
+    }
+    
     public bool IsVisible => VisibleInstances.Start.Value != VisibleInstances.End.Value;
 
     public Actor(FGuid guid, string name, TransformComponent? transform = null)
     {
         Guid = guid;
         Name = name;
-        VisibleInstances = new Range(0, 1);
+        IsDirty = true;
 
         Components = new ActorComponentCollection(this);
         Children = new ActorChildrenCollection();
@@ -67,6 +82,10 @@ public class Actor
         return matrices;
     }
 
+    private const int FrameLimit = 200;
+    private int _frameCounter;
+    private bool _condition;
+    
     private readonly int _id = Random.Shared.Next();
     private readonly Vector2 _iconSize = new(10);
     public void DrawInterface()
@@ -76,8 +95,21 @@ public class Actor
         ImGui.Image(0, _iconSize, Vector2.UnitY, Vector2.UnitX, Vector4.Zero, Vector4.One);
         ImGui.SameLine();
 
+        if (!_condition && IsDirty) _condition = true;
+        if (_condition)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0f, 0f, 1));
+            _frameCounter++;
+        }
         var open = ImGui.TreeNodeEx(Name, ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick);
+        if (_condition) ImGui.PopStyleColor();
 
+        if (_frameCounter >= FrameLimit)
+        {
+            _frameCounter = 0;
+            _condition = false;
+        }
+        
         if (open)
         {
             ImGui.Text($"Visible Instances: {VisibleInstances}");

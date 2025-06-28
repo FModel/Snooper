@@ -69,11 +69,14 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
 
     public void Update(TPrimitiveComponent<TVertex> component)
     {
+        if (!component.Actor.IsDirty) return;
+        
         var instanceCount = component.Actor.VisibleInstances.End.Value - component.Actor.VisibleInstances.Start.Value;
         var baseInstance = component.DrawMetadata.BaseInstance + component.Actor.VisibleInstances.Start.Value;
-        _commands.Current.UpdateInstance(component.DrawMetadata.DrawIds, component.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
+        _commands.Current.UpdateInstance(component.DrawMetadata.DrawIds, component.Actor.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
         
         _matrices.Update(component.DrawMetadata.BaseInstance, component.Actor.GetWorldMatrices());
+        component.Actor.IsDirty = false;
     }
 
     public void UpdateVertices(int drawId, TVertex[] vertices)
