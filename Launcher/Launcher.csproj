@@ -12,4 +12,8 @@
       <ProjectReference Include="..\Snooper\Snooper.csproj" />
     </ItemGroup>
 
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <DefineConstants>FN</DefineConstants>
+    </PropertyGroup>
+
 </Project>

@@ -33,7 +33,7 @@ public class MeshActor : Actor
     {
         for (var i = 1; i < transforms.Length; i++)
         {
-            InstancedTransforms.AddInstance(transforms[i].TransformData * relation);
+            InstancedTransforms.AddLocalInstance(transforms[i].TransformData * relation);
         }
     }
 

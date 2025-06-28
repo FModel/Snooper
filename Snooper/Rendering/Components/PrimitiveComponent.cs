@@ -14,7 +14,7 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
 
     public void Generate(IndirectResources<T> resources)
     {
-        DrawMetadata = resources.Add(primitive, MaterialSections, GetWorldMatrices());
+        DrawMetadata = resources.Add(primitive, MaterialSections, Actor.GetWorldMatrices());
     }
 
     public virtual void Update(IndirectResources<T> resources)
@@ -27,20 +27,6 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
         {
             resources.Update(this);
         }
-    }
-
-    public Matrix4x4[] GetWorldMatrices()
-    {
-        if (Actor == null)
-            throw new InvalidOperationException("Actor is not set for this component.");
-        
-        var matrices = new Matrix4x4[1 + Actor.InstancedTransforms.WorldMatrix.Count];
-        matrices[0] = Actor.Transform.WorldMatrix;
-        for (var i = 0; i < Actor.InstancedTransforms.WorldMatrix.Count; i++)
-        {
-            matrices[i + 1] = Actor.InstancedTransforms.WorldMatrix[i];
-        }
-        return matrices;
     }
 }
 

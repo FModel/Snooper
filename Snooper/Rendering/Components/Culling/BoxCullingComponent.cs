@@ -29,7 +29,7 @@ public class BoxCullingComponent : CullingComponent
         var minIndex = int.MaxValue;
         var maxIndex = int.MinValue;
 
-        Matrix4x4[] matrices = [Actor.Transform.WorldMatrix, ..Actor.InstancedTransforms.WorldMatrix];
+        var matrices = Actor.GetWorldMatrices();
         for (var i = 0; i < matrices.Length; i++)
         {
             var matrix = matrices[i];

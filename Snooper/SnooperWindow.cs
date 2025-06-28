@@ -143,6 +143,8 @@ public partial class SnooperWindow : GameWindow
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
         ImGui.DockSpaceOverViewport();
+        
+        ImGui.ShowDemoWindow();
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         foreach (var pair in _sceneSystem.Pairs)

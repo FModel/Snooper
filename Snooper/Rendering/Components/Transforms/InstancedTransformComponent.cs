@@ -4,13 +4,11 @@ namespace Snooper.Rendering.Components.Transforms;
 
 public class InstancedTransformComponent : ActorComponent
 {
-    public readonly List<Matrix4x4> WorldMatrix = [];
+    public readonly List<Matrix4x4> LocalMatrices = []; // local matrices will be relative to the actor's relation matrix
     
-    public bool IsInstanced => WorldMatrix.Count > 0;
-    
-    public void AddInstance(TransformComponent transformComponent)
+    public void AddLocalInstance(TransformComponent transformComponent)
     {
         transformComponent.UpdateLocalMatrix();
-        WorldMatrix.Add(transformComponent.LocalMatrix);
+        LocalMatrices.Add(transformComponent.LocalMatrix);
     }
 }

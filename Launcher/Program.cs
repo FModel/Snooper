@@ -1,11 +1,12 @@
-﻿using CUE4Parse.Encryption.Aes;
+﻿using System.Numerics;
+using CUE4Parse.Compression;
+using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
+using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
-using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
-using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Engine;
@@ -16,6 +17,10 @@ using Serilog.Sinks.SystemConsole.Themes;
 using Snooper;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Culling;
+using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Primitives;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
@@ -24,10 +29,26 @@ Log.Logger = new LoggerConfiguration()
         theme: AnsiConsoleTheme.Literate)
     .CreateLogger();
 
-var version = new VersionContainer(EGame.GAME_Valorant, ETexturePlatform.DesktopMobile);
-var provider = new DefaultFileProvider("D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks", SearchOption.TopDirectoryOnly, version);
+OodleHelper.Initialize();
+
+#if FN
+const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-36.10-CL-43486998-Windows_oo.usmap";
+const string key = "0xA43F7FD912C317930F9AABA5075F0ABCF4EE8A7102582636330BECC449D54560";
+var version = new VersionContainer(EGame.GAME_UE5_6);
+#elif VL
+const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
+const string key = "0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6";
+var version = new VersionContainer(EGame.GAME_Valorant);
+#endif
+var provider = new DefaultFileProvider(dir, SearchOption.TopDirectoryOnly, version)
+{
+#if FN
+        MappingsContainer = new FileUsmapTypeMappingsProvider(mapping)
+#endif
+};
 provider.Initialize();
-provider.SubmitKey(new FGuid(), new FAesKey("0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6"));
+provider.SubmitKey(new FGuid(), new FAesKey(key));
 provider.PostMount();
 
 var snooper = new SnooperWindow(144, 1500, 900, false);
@@ -37,75 +58,102 @@ var snooper = new SnooperWindow(144, 1500, 900, false);
 // snooper.Run();
 // return;
 
-var dictionary = new Dictionary<FGuid, MeshActor>();
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_A.Bonsai_Art_A"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathA.Bonsai_Art_AtkPathA"));
-AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkPathB.Bonsai_Art_AtkPathB"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_AtkSpawn.Bonsai_Art_AtkSpawn"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_ATower.Bonsai_Art_ATower"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_B.Bonsai_Art_B"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_Birthday.Bonsai_Art_Birthday"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_BTower.Bonsai_Art_BTower"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_DefPathA.Bonsai_Art_DefPathA"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_DefPathB.Bonsai_Art_DefPathB"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_DefSpawn.Bonsai_Art_DefSpawn"));
-// AddWorldToScene(provider.LoadPackageObject<UWorld>("ShooterGame/Content/Maps/Bonsai/Bonsai_Art_Mid.Bonsai_Art_Mid"));
+var dictionary = new Dictionary<UActorComponent, Actor>();
+switch (provider.ProjectName)
+{
+    case "ShooterGame":
+    {
+        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
+        foreach (var file in files)
+        {
+            var parts = file.NameWithoutExtension.Split('_');
+            if (parts.Length < 2 || parts[1] != "Art" || parts[^1] == "VFX") continue;
+    
+            AddWorldToScene(provider.LoadPackageObject<UWorld>(file.PathWithoutExtension + "." + file.NameWithoutExtension));
+        }
+        break;
+    }
+    case "FortniteGame":
+    {
+        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
+        break;
+    }
+}
 
 snooper.Run();
 
-void AddWorldToScene(UWorld world)
+void AddWorldToScene(UWorld world, Actor? parent = null)
 {
-    var scene = new Actor(world.ObjectGuid ?? Guid.NewGuid(), world.Name);
-
+    var add = parent is null;
+    parent ??= new Actor(Guid.NewGuid(), world.Name);
+    
     var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
     foreach (var actorPtr in actors)
     {
         if (!actorPtr.TryLoad(out AActor actor)) continue;
-
-        if (actor.TryGetValue(out USceneComponent[] components, "InstanceComponents", "BlueprintCreatedComponents"))
+        
+        if (actor.TryGetValue(out UStaticMeshComponent smComponent, "StaticMeshComponent"))
+        {
+            AddToScene(smComponent, parent);
+        }
+        
+        if (actor.TryGetValue(out UActorComponent[] components, "BlueprintCreatedComponents", "InstanceComponents"))
         {
             foreach (var component in components)
             {
-                AddToScene(component, scene);
+                AddToScene(component, parent);
             }
         }
-        else if (actor.TryGetValue(out UStaticMeshComponent component, "StaticMeshComponent"))
+        
+        if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
         {
-            AddToScene(component, scene);
+            foreach (var additionalWorld in additionalWorlds)
+            {
+                AddWorldToScene(additionalWorld, dictionary[smComponent]);
+            }
         }
     }
     
-    snooper.AddToScene(scene);
+    if (add) snooper.AddToScene(parent);
 }
 
-void AddToScene(USceneComponent component, Actor parent)
+void AddToScene(UActorComponent? component, Actor parent)
 {
-    if (component.GetAttachParent() is UStaticMeshComponent attachParent &&
-        attachParent.GetStaticMesh().TryLoad(out UStaticMesh parentStaticMesh))
-    {
-        AddToScene(attachParent, dictionary[parentStaticMesh.LightingGuid]);
-    }
+    if (component is null) return;
     
-    if (component is UStaticMeshComponent staticMeshComponent && staticMeshComponent.GetStaticMesh().TryLoad(out UStaticMesh staticMesh))
+    Actor actor;
+    if (component is USceneComponent sceneComponent)
     {
-        var transform = new FTransform(
-            component.GetRelativeRotation(),
-            component.GetRelativeLocation(),
-            component.GetRelativeScale3D());
-        
-        if (component is UInstancedStaticMeshComponent { PerInstanceSMData.Length: > 0 } instancedComponent)
+        var attach = sceneComponent.GetAttachParent();
+        if (attach is not null && dictionary.TryGetValue(attach, out var attachment))
         {
-            parent.Children.Add(new MeshActor(transform, staticMesh, instancedComponent.PerInstanceSMData));
+            parent = attachment;
         }
-        else if (dictionary.TryGetValue(staticMesh.LightingGuid, out var actor))
+        
+        var transform = sceneComponent.GetRelativeTransform();
+        if (component is UStaticMeshComponent smComponent && smComponent.GetStaticMesh().TryLoad(out UStaticMesh staticMesh))
         {
-            actor.InstancedTransforms.AddInstance(transform);
+            if (component is UInstancedStaticMeshComponent { PerInstanceSMData.Length: > 0 } instancedComponent)
+            {
+                actor = new MeshActor(transform, staticMesh, instancedComponent.PerInstanceSMData);
+            }
+            else
+            {
+                actor = new MeshActor(staticMesh, transform);
+            }
         }
         else
         {
-            var mesh = new MeshActor(staticMesh, transform);
-            dictionary.Add(mesh.Guid, mesh);
-            parent.Children.Add(mesh);
+            actor = new Actor(Guid.NewGuid(), $"{component.Name} ({component.GetType().Name})", transform);
+            actor.Components.Add(new PrimitiveComponent(new Cube()));
+            // actor.Transform.Scale = Vector3.One / 3;
         }
     }
+    else
+    {
+        actor = new Actor(Guid.NewGuid(), $"{component.Name} ({component.GetType().Name})");
+    }
+
+    dictionary.TryAdd(component, actor);
+    parent.Children.Add(actor);
 }

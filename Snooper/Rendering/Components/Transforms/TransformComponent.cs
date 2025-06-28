@@ -75,27 +75,10 @@ public sealed class TransformComponent() : ActorComponent
     {
         if (ImGui.CollapsingHeader("Transform"))
         {
-            ImGui.Text($"Position: {Position}");
+            ImGui.DragFloat3("Position", ref Position);
+
             ImGui.Text($"Rotation: {Rotation}");
             ImGui.Text($"Scale: {Scale}");
-            ImGui.Text($"Local Matrix: {LocalMatrix}");
-            ImGui.Text($"World Matrix: {WorldMatrix}");
-
-            if (ImGui.Button("Update Local Matrix"))
-            {
-                UpdateLocalMatrix();
-            }
-            
-            if (ImGui.Button("Update World Matrix"))
-            {
-                UpdateWorldMatrix();
-            }
-
-            if (Relation != null && ImGui.TreeNode("Relation"))
-            {
-                Relation.DrawInterface();
-                ImGui.TreePop();
-            }
         }
     }
 }

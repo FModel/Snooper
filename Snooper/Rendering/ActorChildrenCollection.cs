@@ -19,10 +19,10 @@ public class ActorChildrenCollection : IDictionary<FGuid, Actor>, IEnumerable<Ac
             Log.Warning("Actor {Name} with GUID {Guid} already exists. Merging transforms.", actor.Name, actor.Guid);
 
             actor.Transform.UpdateLocalMatrix();
-            existing.InstancedTransforms.WorldMatrix.Add(actor.Transform.LocalMatrix); // TODO: keep an eye on this, it might not always be correct
-            foreach (var matrix in actor.InstancedTransforms.WorldMatrix)
+            existing.InstancedTransforms.LocalMatrices.Add(actor.Transform.LocalMatrix);
+            foreach (var matrix in actor.InstancedTransforms.LocalMatrices)
             {
-                existing.InstancedTransforms.WorldMatrix.Add(matrix);
+                existing.InstancedTransforms.LocalMatrices.Add(matrix);
             }
             return;
         }
@@ -55,7 +55,7 @@ public class ActorChildrenCollection : IDictionary<FGuid, Actor>, IEnumerable<Ac
 
     public Actor this[FGuid key]
     {
-        get => throw new NotImplementedException();
+        get => _dict[key];
         set => throw new NotImplementedException();
     }
     

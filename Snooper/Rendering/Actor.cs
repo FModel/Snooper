@@ -1,4 +1,5 @@
 ﻿using System.Collections.Specialized;
+using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core.Systems;
@@ -53,14 +54,33 @@ public class Actor
     public TransformComponent Transform { get; private set; }
     public InstancedTransformComponent InstancedTransforms { get; }
     
+    public Matrix4x4[] GetWorldMatrices()
+    {
+        // TODO: this is called a lot, find a way to optimize it
+        var relation = Transform.Relation?.WorldMatrix ?? Matrix4x4.Identity;
+        var matrices = new Matrix4x4[1 + InstancedTransforms.LocalMatrices.Count];
+        matrices[0] = Transform.WorldMatrix;
+        for (var i = 0; i < InstancedTransforms.LocalMatrices.Count; i++)
+        {
+            matrices[i + 1] = InstancedTransforms.LocalMatrices[i] * relation;
+        }
+        return matrices;
+    }
+
+    private readonly int _id = Random.Shared.Next();
+    private readonly Vector2 _iconSize = new(10);
     public void DrawInterface()
     {
-        if (ImGui.TreeNode(Name))
+        ImGui.PushID(_id);
+        
+        ImGui.Image(0, _iconSize, Vector2.UnitY, Vector2.UnitX, Vector4.Zero, Vector4.One);
+        ImGui.SameLine();
+
+        var open = ImGui.TreeNodeEx(Name, ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick);
+
+        if (open)
         {
-            ImGui.Text($"GUID: {Guid}");
             ImGui.Text($"Visible Instances: {VisibleInstances}");
-            ImGui.Text($"Is Visible: {IsVisible}");
-            ImGui.Text($"Parent: {(Parent != null ? Parent.Name : "None")}");
             
             Transform.DrawInterface();
             
@@ -72,18 +92,21 @@ public class Actor
             //         ImGui.Text($"- {component.GetType().Name}");
             //     }
             // }
-            //
-            // if (Children.Count > 0)
-            // {
-            //     ImGui.SeparatorText($"{Children.Count} Children");
-            //     foreach (var child in Children)
-            //     {
-            //         child.DrawInterface();
-            //     }
-            // }
-
+            
+            var count = Children.Count;
+            if (count > 0)
+            {
+                ImGui.SeparatorText($"{count} Child{(count > 1 ? "ren" : "")}");
+                foreach (var child in Children)
+                {
+                    child.DrawInterface();
+                }
+            }
+            
             ImGui.TreePop();
         }
+        
+        ImGui.PopID();
     }
 
     private void AddInternal(Actor actor)
