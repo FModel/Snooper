@@ -76,7 +76,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
         _commands.Current.UpdateInstance(component.DrawMetadata.DrawIds, component.Actor.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
         
         _matrices.Update(component.DrawMetadata.BaseInstance, component.Actor.GetWorldMatrices());
-        component.Actor.IsDirty = false;
+        component.Actor.MarkClean();
     }
 
     public void UpdateVertices(int drawId, TVertex[] vertices)

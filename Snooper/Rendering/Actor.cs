@@ -11,7 +11,7 @@ public class Actor
 {
     public FGuid Guid { get; }
     public string Name { get; }
-    public bool IsDirty { get; internal set; }
+    public bool IsDirty { get; private set; } // currently driven by the mesh being in/out of view, or by the transform being changed
     
     private Range _visibleInstances = new(0, 1);
     public Range VisibleInstances
@@ -23,7 +23,7 @@ public class Actor
                 return;
             
             _visibleInstances = value;
-            IsDirty = true;
+            MarkDirty();
         }
     }
     
@@ -33,7 +33,6 @@ public class Actor
     {
         Guid = guid;
         Name = name;
-        IsDirty = true;
 
         Components = new ActorComponentCollection(this);
         Children = new ActorChildrenCollection();
@@ -81,6 +80,9 @@ public class Actor
         }
         return matrices;
     }
+    
+    internal void MarkDirty() => IsDirty = true;
+    internal void MarkClean() => IsDirty = false;
 
     private const int FrameLimit = 200;
     private int _frameCounter;
@@ -88,7 +90,7 @@ public class Actor
     
     private readonly int _id = Random.Shared.Next();
     private readonly Vector2 _iconSize = new(10);
-    public void DrawInterface()
+    internal void DrawInterface()
     {
         ImGui.PushID(_id);
         

@@ -9,8 +9,33 @@ namespace Snooper.Rendering.Components.Transforms;
 [DefaultActorSystem(typeof(TransformSystem))]
 public sealed class TransformComponent() : ActorComponent
 {
-    public Matrix4x4 LocalMatrix = Matrix4x4.Identity;
-    public Matrix4x4 WorldMatrix = Matrix4x4.Identity;
+    private Matrix4x4 _localMatrix = Matrix4x4.Identity;
+    public Matrix4x4 LocalMatrix
+    {
+        get => _localMatrix;
+        private set
+        {
+            if (_localMatrix == value)
+                return;
+            
+            _localMatrix = value;
+            Actor?.MarkDirty();
+        }
+    }
+    
+    private Matrix4x4 _worldMatrix = Matrix4x4.Identity;
+    public Matrix4x4 WorldMatrix
+    {
+        get => _worldMatrix;
+        private set
+        {
+            if (_worldMatrix == value)
+                return;
+            
+            _worldMatrix = value;
+            Actor?.MarkDirty();
+        }
+    }
 
     public Vector3 Position = Vector3.Zero;
     public Quaternion Rotation = Quaternion.Identity;
