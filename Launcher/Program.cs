@@ -107,10 +107,32 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
         
         if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
         {
+#if RELATIONAL_WORLDS
+            var relation = parent.Children[dictionary[smComponent].Guid];
+            // TODO:
+            // world position is determined by its UStaticMeshComponent which acts as an attachment point
+            // the current implementation adds a new actor instance if the actor's parent already has the child we want to add
+            // because worlds can share the same UStaticMeshComponent, the world position should be determined by the last instance of the UStaticMeshComponent
+            // but it is currently not possible for child actors to have an instanced parent relation 
+            // pseudo code:
+            // var attach = relation.Transform.WorldMatrix;
+            // if (relation.InstancedTransforms.LocalMatrices.Count > 0)
+            // {
+            //     attach = relation.InstancedTransforms.LocalMatrices[^1] * relation.Transform.Relation.WorldMatrix;
+            // }
+            
             foreach (var additionalWorld in additionalWorlds)
             {
-                AddWorldToScene(additionalWorld, dictionary[smComponent]);
+                AddWorldToScene(additionalWorld, relation);
             }
+#else
+            foreach (var additionalWorld in additionalWorlds)
+            {
+                var relation = new Actor(Guid.NewGuid(), additionalWorld.Name, smComponent.GetRelativeTransform());
+                AddWorldToScene(additionalWorld, relation);
+                snooper.AddToScene(relation);
+            }
+#endif
         }
     }
     
