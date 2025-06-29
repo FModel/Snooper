@@ -52,30 +52,35 @@ public class LandscapeMeshComponent : PrimitiveComponent
                 component.GetComponentExtent(ref minX, ref minY, ref maxX, ref maxY);
             }
             
-            var w = maxX - minX + 1;
-            var h = maxY - minY + 1;
+            var scaleX = (float)(maxX - minX) / sizeQuads;
+            var scaleY = (float)(maxY - minY) / sizeQuads;
+            var w = sizeQuads + 1;
+            var h = sizeQuads + 1;
             
             Vertices = new Vector3[w * h];
             for (var y = 0; y < h; y++)
             {
                 for (var x = 0; x < w; x++)
                 {
-                    Vertices[y * w + x] = new Vector3(x, 0, y) * Settings.GlobalScale;
+                    Vertices[y * w + x] = new Vector3(x * scaleX, 0, y * scaleY) * Settings.GlobalScale;
                 }
             }
             
             Indices = new uint[(w - 1) * (h - 1) * 6];
+            var index = 0;
             for (var y = 0; y < h - 1; y++)
             {
                 for (var x = 0; x < w - 1; x++)
                 {
-                    var i = (y * (w - 1) + x) * 6;
-                    Indices[i] = (uint)(y * w + x);
-                    Indices[i + 1] = (uint)((y + 1) * w + x);
-                    Indices[i + 2] = (uint)(y * w + x + 1);
-                    Indices[i + 3] = (uint)((y + 1) * w + x);
-                    Indices[i + 4] = (uint)((y + 1) * w + x + 1);
-                    Indices[i + 5] = (uint)(y * w + x + 1);
+                    var i = (uint)(y * w + x);
+
+                    Indices[index++] = i;
+                    Indices[index++] = i + (uint)w;
+                    Indices[index++] = i + (uint)w + 1;
+
+                    Indices[index++] = i;
+                    Indices[index++] = i + (uint)w + 1;
+                    Indices[index++] = i + 1;
                 }
             }
         }
