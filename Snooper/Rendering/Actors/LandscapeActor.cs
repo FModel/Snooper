@@ -1,16 +1,20 @@
-﻿using CUE4Parse_Conversion.Landscape;
-using CUE4Parse_Conversion.Meshes;
-using CUE4Parse.UE4.Assets.Exports.Actor;
-using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+﻿using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Components.Mesh;
-using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
 
 public class LandscapeActor : Actor
 {
-    public LandscapeActor(ALandscapeProxy landscape, TransformComponent? transform = null) : base(System.Guid.NewGuid(), landscape.Name, transform)
+    public CullingComponent CullingComponent { get; }
+    public LandscapeMeshComponent MeshComponent { get; }
+    
+    public LandscapeActor(ULandscapeComponent component) : base(component.MapBuildDataId, component.Name, component.GetRelativeTransform())
     {
-        Components.Add(new LandscapeMeshComponent(landscape));
+        CullingComponent = new BoxCullingComponent(component.CachedLocalBox);
+        MeshComponent = new LandscapeMeshComponent(component);
+        
+        Components.Add(CullingComponent);
+        Components.Add(MeshComponent);
     }
 }

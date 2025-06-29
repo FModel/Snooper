@@ -6,6 +6,7 @@ using CUE4Parse.FileProvider;
 using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
@@ -95,8 +96,9 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
 
         if (actor is ALandscapeProxy landscape && actor.TryGetValue(out USceneComponent root, "RootComponent"))
         {
-            parent.Children.Add(new LandscapeActor(landscape, root.GetRelativeTransform()));
-            parent.Children.Add(new MeshActor(landscape, root.GetRelativeTransform()));
+            parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform()));
+            // parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform(), true));
+            // break;
         }
         continue;
         
@@ -121,7 +123,10 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
             // world position is determined by its UStaticMeshComponent which acts as an attachment point
             // the current implementation adds a new actor instance if the actor's parent already has the child we want to add
             // because worlds can share the same UStaticMeshComponent, the world position should be determined by the last instance of the UStaticMeshComponent
-            // but it is currently not possible for child actors to have an instanced parent relation 
+            // but it is currently not possible for child actors to have an instanced parent relation
+            // ---
+            // BTW this is the same problem with landscapes, multiple actors can share the same landscape GUID
+            // ---
             // pseudo code:
             // var attach = relation.Transform.WorldMatrix;
             // if (relation.InstancedTransforms.LocalMatrices.Count > 0)

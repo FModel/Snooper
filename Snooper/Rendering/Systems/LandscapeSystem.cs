@@ -10,6 +10,47 @@ namespace Snooper.Rendering.Systems;
 public class LandscapeSystem() : PrimitiveSystem<Vector3, LandscapeMeshComponent>(10, PrimitiveType.Triangles)
 {
     public override uint Order => 23;
+    
+    protected override ShaderProgram Shader { get; } = new(
+        """
+        #version 460 core
+        layout (location = 0) in vec3 aPos;
+
+        layout(std430, binding = 0) readonly buffer ModelMatrices
+        {
+            mat4 uModelMatrices[];
+        };
+
+        uniform mat4 uViewMatrix;
+        uniform mat4 uProjectionMatrix;
+        
+        out float Height;
+        
+        const float MinHeight = -32.0;
+        const float MaxHeight = 32.0;
+        
+        float NormalizeHeight(float y) {
+            return clamp((y - MinHeight) / (MaxHeight - MinHeight), 0.0, 1.0);
+        }
+
+        void main()
+        {
+            vec4 worldPos = uModelMatrices[gl_BaseInstance + gl_InstanceID] * vec4(aPos, 1.0);
+            gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
+            Height = NormalizeHeight(worldPos.y);
+        }
+        """,
+        """
+        #version 460 core
+
+        in float Height;
+        out vec4 FragColor;
+
+        void main()
+        {
+           FragColor = vec4(Height, Height, Height, 1.0);
+        }
+        """);
 
 //     protected override ShaderProgram Shader { get; } = new(
 // """
@@ -113,9 +154,9 @@ public class LandscapeSystem() : PrimitiveSystem<Vector3, LandscapeMeshComponent
 
     protected override void PreRender(CameraComponent camera)
     {
-        _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
-        _bDiff = _polygonMode != PolygonMode.Line;
-        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
+        // _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
+        // _bDiff = _polygonMode != PolygonMode.Line;
+        // if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
         
         base.PreRender(camera);
     }
@@ -125,7 +166,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector3, LandscapeMeshComponent
 
     protected override void PostRender(CameraComponent camera)
     {
-        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
+        // if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
     }
 
     protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>
