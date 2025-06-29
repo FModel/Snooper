@@ -8,7 +8,7 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemorySizeProvider where TVertex : unmanaged
+public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType type) : IBind, IMemorySizeProvider where TVertex : unmanaged
 {
     private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
     private readonly ShaderStorageBuffer<Matrix4x4> _matrices = new(initialDrawCapacity);
@@ -112,7 +112,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity) : IBind, IMemor
         _matrices.Bind(0);
         _vao.Bind();
 
-        GL.MultiDrawElementsIndirect(PrimitiveType.Triangles, DrawElementsType.UnsignedInt, IntPtr.Zero, _commands.Current.Count, 0);
+        GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, IntPtr.Zero, _commands.Current.Count, 0);
 
         // _vao.Unbind();
         // EBO.Unbind();

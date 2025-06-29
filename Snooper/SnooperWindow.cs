@@ -51,6 +51,7 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<CameraSystem>();
         ActorManager.RegisterSystemFactory<CullingSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
+        ActorManager.RegisterSystemFactory<LandscapeSystem>();
         ActorManager.RegisterSystemFactory<DeferredRenderSystem>();
         ActorManager.RegisterSystemFactory<RenderSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
@@ -104,6 +105,8 @@ public partial class SnooperWindow : GameWindow
 
         GL.Enable(EnableCap.Blend);
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+        
+        GL.PatchParameter(PatchParameterInt.PatchVertices, 4);
 
         // GL.Enable(EnableCap.VertexProgramPointSize);
         // GL.StencilOp(StencilOp.Keep, StencilOp.Replace, StencilOp.Replace);

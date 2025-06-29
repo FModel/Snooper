@@ -3,11 +3,13 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Programs;
 
-public class ShaderProgram(string vertex, string fragment, string? geometry = null) : Program
+public class ShaderProgram(string vertex, string fragment) : Program
 {
     public string Vertex { get; set; } = vertex;
     public string Fragment { get; set; } = fragment;
-    public string? Geometry { get; set; } = geometry;
+    public string? Geometry { get; set; }
+    public string? TesselationControl { get; set; }
+    public string? TesselationEvaluation { get; set; }
 
     private readonly List<int> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
@@ -19,6 +21,8 @@ public class ShaderProgram(string vertex, string fragment, string? geometry = nu
         _shaderHandles.Add(CompileShader(ShaderType.VertexShader, Vertex));
         _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, Fragment));
         if (!string.IsNullOrEmpty(Geometry)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, Geometry));
+        if (!string.IsNullOrEmpty(TesselationControl)) _shaderHandles.Add(CompileShader(ShaderType.TessControlShader, TesselationControl));
+        if (!string.IsNullOrEmpty(TesselationEvaluation)) _shaderHandles.Add(CompileShader(ShaderType.TessEvaluationShader, TesselationEvaluation));
     }
 
     public override void Link()

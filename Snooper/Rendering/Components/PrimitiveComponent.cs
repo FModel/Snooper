@@ -12,8 +12,9 @@ public abstract class TPrimitiveComponent<T>(TPrimitiveData<T> primitive) : Acto
     public IndirectDrawMetadata DrawMetadata { get; private set; } = new();
     public abstract MeshMaterialSection[] MaterialSections { get; protected init; }
 
-    public void Generate(IndirectResources<T> resources)
+    public virtual void Generate(IndirectResources<T> resources)
     {
+        if (!primitive.IsValid) return;
         DrawMetadata = resources.Add(primitive, MaterialSections, Actor.GetWorldMatrices());
     }
 

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
@@ -75,7 +76,7 @@ switch (provider.ProjectName)
     }
     case "FortniteGame":
     {
-        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
+        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
         break;
     }
 }
@@ -91,6 +92,13 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
     foreach (var actorPtr in actors)
     {
         if (!actorPtr.TryLoad(out AActor actor)) continue;
+
+        if (actor is ALandscapeProxy landscape && actor.TryGetValue(out USceneComponent root, "RootComponent"))
+        {
+            parent.Children.Add(new LandscapeActor(landscape, root.GetRelativeTransform()));
+            parent.Children.Add(new MeshActor(landscape, root.GetRelativeTransform()));
+        }
+        continue;
         
         if (actor.TryGetValue(out UStaticMeshComponent smComponent, "StaticMeshComponent"))
         {
@@ -126,9 +134,10 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
                 AddWorldToScene(additionalWorld, relation);
             }
 #else
+            var transform = smComponent.GetRelativeTransform();
             foreach (var additionalWorld in additionalWorlds)
             {
-                var relation = new Actor(Guid.NewGuid(), additionalWorld.Name, smComponent.GetRelativeTransform());
+                var relation = new Actor(Guid.NewGuid(), additionalWorld.Name, transform);
                 AddWorldToScene(additionalWorld, relation);
                 snooper.AddToScene(relation);
             }

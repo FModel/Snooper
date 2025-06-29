@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.Reflection;
+﻿using System.Reflection;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Programs;
 
@@ -9,7 +8,7 @@ public class ResourceShaderProgram : ShaderProgram
 {
     private readonly Assembly _assembly = Assembly.GetExecutingAssembly();
     
-    public ResourceShaderProgram(string vertex, string fragment, string? geometry = null) : base(vertex, fragment, geometry)
+    public ResourceShaderProgram(string vertex, string fragment) : base(vertex, fragment)
     {
         
     }

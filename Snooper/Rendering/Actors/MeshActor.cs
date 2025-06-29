@@ -1,4 +1,6 @@
-﻿using CUE4Parse_Conversion.Meshes;
+﻿using CUE4Parse_Conversion.Landscape;
+using CUE4Parse_Conversion.Meshes;
+using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
@@ -35,6 +37,18 @@ public class MeshActor : Actor
         {
             InstancedTransforms.AddLocalInstance(transforms[i].TransformData * relation);
         }
+    }
+    
+    public MeshActor(ALandscapeProxy landscape, TransformComponent? transform = null) : base(System.Guid.NewGuid(), landscape.Name, transform)
+    {
+        if (!landscape.TryConvert(null, ELandscapeExportFlags.Mesh, out var mesh, out _, out _))
+            throw new ArgumentException("Failed to convert static mesh.", nameof(landscape));
+
+        CullingComponent = new BoxCullingComponent(mesh.BoundingBox);
+        MeshComponent = new StaticMeshComponent(landscape, mesh);
+        
+        Components.Add(CullingComponent);
+        Components.Add(MeshComponent);
     }
 
     public MeshActor(USkeletalMesh skeletalMesh, TransformComponent? transform = null) : base(new FGuid((uint) skeletalMesh.GetFullName().GetHashCode()), skeletalMesh.Name, transform)

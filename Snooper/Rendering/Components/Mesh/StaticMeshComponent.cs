@@ -1,4 +1,5 @@
 ﻿using CUE4Parse_Conversion.Meshes.PSK;
+using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 
 namespace Snooper.Rendering.Components.Mesh;
@@ -15,6 +16,13 @@ public class StaticMeshComponent : MeshComponent
         _mesh = mesh;
 
         ScreenSizes = owner.RenderData?.ScreenSize ?? [];
+    }
+    
+    public StaticMeshComponent(ALandscapeProxy owner, CStaticMesh mesh) : base(mesh.LODs[0])
+    {
+        _mesh = mesh;
+
+        ScreenSizes = [];
     }
 
     protected override IVertexData GetPrimitive(int index) => new Geometry(_mesh.LODs[index]);
