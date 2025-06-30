@@ -33,19 +33,20 @@ public class LandscapeMeshComponent : PrimitiveComponent
             var h = sizeQuads + 1;
             
             var heightmap = component.GetHeightmap().Decode();
+            var middle = w * h * 2;
             
             Vertices = new Vector3[w * h];
             for (var y = 0; y < h; y++)
             {
                 for (var x = 0; x < w; x++)
                 {
-                    var localX = Math.Min(x, sizeQuads);
-                    var localY = Math.Min(y, sizeQuads);
-                    var pixelIndex = (localY * 128 + localX) * 4;
+                    var localX = (int)(heightmap.Width * component.HeightmapScaleBias.Z) + x;
+                    var localY = (int)(heightmap.Height * component.HeightmapScaleBias.W) + y;
+                    var pixelIndex = (localY * heightmap.Height + localX) * 4;
                     
                     var red = heightmap.Data[pixelIndex + 2];
                     var green = heightmap.Data[pixelIndex + 1];
-                    var height = ((red << 8) + green - 32768) / 128f;
+                    var height = ((red << 8) + green - middle) / (float)h;
                     
                     Vertices[y * w + x] = new Vector3(x * scaleX, height, y * scaleY) * Settings.GlobalScale;
                 }

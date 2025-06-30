@@ -77,7 +77,7 @@ switch (provider.ProjectName)
     }
     case "FortniteGame":
     {
-        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
+        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
         break;
     }
 }
