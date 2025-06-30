@@ -7,37 +7,26 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class LandscapeSystem() : PrimitiveSystem<Vector3, LandscapeMeshComponent>(50, PrimitiveType.Triangles)
+public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent>(32, PrimitiveType.Patches)
 {
     public override uint Order => 23;
-    
+    protected override int BatchCount => 32;
+
     protected override ShaderProgram Shader { get; } = new(
 """
 #version 460 core
-layout (location = 0) in vec3 aPos;
+layout (location = 0) in vec2 aPos;
 
-layout(std430, binding = 0) readonly buffer ModelMatrices
-{
-    mat4 uModelMatrices[];
-};
+uniform float uGlobalScale;
 
-uniform mat4 uViewMatrix;
-uniform mat4 uProjectionMatrix;
-
-out float Height;
-
-const float MinHeight = -32.0;
-const float MaxHeight = 32.0;
-
-float NormalizeHeight(float y) {
-    return clamp((y - MinHeight) / (MaxHeight - MinHeight), 0.0, 1.0);
-}
+out flat int vMatrixIndex;
+out flat int vDrawID;
 
 void main()
 {
-    vec4 worldPos = uModelMatrices[gl_BaseInstance + gl_InstanceID] * vec4(aPos, 1.0);
-    gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
-    Height = NormalizeHeight(worldPos.y);
+    gl_Position = vec4(aPos.x * uGlobalScale, 0.0, aPos.y * uGlobalScale, 1.0);
+    vMatrixIndex = gl_BaseInstance + gl_InstanceID;
+    vDrawID = gl_DrawID;
 }
 """,
 """
@@ -49,150 +38,199 @@ out vec4 FragColor;
 void main()
 {
     vec3 color;
-    if (Height < 0.5)
-    {
-        float t = Height / 0.5;
+
+    if (Height < -0.15) {
+        float t = clamp((Height + 0.25) / 0.1, 0.0, 1.0);
+        color = mix(vec3(0.0, 0.02, 0.1), vec3(0.0, 0.1, 0.4), t);
+    }
+    else if (Height < -0.05) {
+        float t = (Height + 0.15) / 0.1;
         color = mix(vec3(0.0, 0.1, 0.4), vec3(0.0, 0.4, 0.8), t);
     }
-    else if (Height < 0.55)
-    {
-        float t = (Height - 0.5) / 0.05;
+    else if (Height < 0.0) {
+        float t = (Height + 0.05) / 0.05;
+        color = mix(vec3(0.0, 0.4, 0.8), vec3(0.9, 0.85, 0.6), t);
+    }
+    else if (Height < 0.1) {
+        float t = Height / 0.1;
         color = mix(vec3(0.9, 0.85, 0.6), vec3(0.6, 0.4, 0.2), t);
     }
-    else if (Height < 0.7)
-    {
-        float t = (Height - 0.55) / 0.15;
+    else if (Height < 0.3) {
+        float t = (Height - 0.1) / 0.2;
         color = mix(vec3(0.6, 0.4, 0.2), vec3(0.1, 0.5, 0.1), t);
     }
-    else
-    {
-        float t = clamp((Height - 0.7) / 0.3, 0.0, 1.0);
-        color = mix(vec3(0.1, 0.5, 0.1), vec3(0.05, 0.3, 0.05), t);
+    else if (Height < 0.85) {
+        float t = (Height - 0.3) / 0.55;
+        color = mix(vec3(0.1, 0.5, 0.1), vec3(0.3, 0.3, 0.3), t);
     }
+    else {
+        float t = clamp((Height - 0.85) / 0.15, 0.0, 1.0);
+        color = mix(vec3(0.3, 0.3, 0.3), vec3(1.0, 1.0, 1.0), t);
+    }
+
     FragColor = vec4(color, 1.0);
 }
-""");
-
-//     protected override ShaderProgram Shader { get; } = new(
-// """
-// #version 460 core
-// layout (location = 0) in vec3 aPos;
-//
-// out flat int vMatrixIndex;
-//
-// void main()
-// {
-//     gl_Position = vec4(aPos, 1.0);
-//     vMatrixIndex = gl_BaseInstance + gl_InstanceID;
-// }
-// """,
-// """
-// #version 460 core
-//
-// out vec4 FragColor;
-//
-// void main()
-// {
-//    FragColor = vec4(1.0, 0.0, 0.0, 0.9);
-// }
-// """)
-//     {
-//         TesselationControl =
-// """
-// #version 460 core
-// layout (vertices = 4) out;
-//
-// in gl_PerVertex
-// {
-//     vec4 gl_Position;
-//     float gl_PointSize;
-//     float gl_ClipDistance[];
-// } gl_in[gl_MaxPatchVertices];
-//
-// in flat int vMatrixIndex[];
-// out flat int tcMatrixIndex[];
-//
-// void main()
-// {
-//     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-//     tcMatrixIndex[gl_InvocationID] = vMatrixIndex[gl_InvocationID];
-//     
-//     if (gl_InvocationID == 0)
-//     {
-//         gl_TessLevelOuter[0] = 1;
-//         gl_TessLevelOuter[1] = 1;
-//         gl_TessLevelOuter[2] = 1;
-//         gl_TessLevelOuter[3] = 1;
-//
-//         gl_TessLevelInner[0] = 1;
-//         gl_TessLevelInner[1] = 1;
-//     }
-// }
-// """,
-//         TesselationEvaluation =
-// """
-// #version 460 core
-// layout (quads, fractional_odd_spacing, ccw) in;
-//
-// layout(std430, binding = 0) readonly buffer ModelMatrices
-// {
-//     mat4 uModelMatrices[];
-// };
-//
-// in flat int tcMatrixIndex[];
-//
-// uniform sampler2D uHeightMap0;
-// uniform mat4 uViewMatrix;
-// uniform mat4 uProjectionMatrix;
-//
-// void main()
-// {
-//     float u = gl_TessCoord.x;
-//     float v = gl_TessCoord.y;
-//
-//     vec4 p00 = gl_in[0].gl_Position;
-//     vec4 p01 = gl_in[1].gl_Position;
-//     vec4 p10 = gl_in[2].gl_Position;
-//     vec4 p11 = gl_in[3].gl_Position;
-//
-//     // compute patch surface normal
-//     vec4 uVec = p01 - p00;
-//     vec4 vVec = p10 - p00;
-//     vec4 normal = normalize(vec4(cross(vVec.xyz, uVec.xyz), 0));
-//
-//     // bilinearly interpolate position coordinate across patch
-//     vec4 p0 = (p01 - p00) * u + p00;
-//     vec4 p1 = (p11 - p10) * u + p10;
-//     vec4 p = (p1 - p0) * v + p0;
-//
-//     // displace point along normal
-//     // p += normal * Height;
-//
-//     gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrices[tcMatrixIndex[0]] * p;
-// }
-// """
-//     };
-
-    protected override void PreRender(CameraComponent camera)
+""")
     {
-        // _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
-        // _bDiff = _polygonMode != PolygonMode.Line;
-        // if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
-        
-        base.PreRender(camera);
-    }
+        TesselationControl =
+"""
+#version 460 core
+layout (vertices = 4) out;
+
+layout(std430, binding = 0) readonly buffer ModelMatrices
+{
+    mat4 uModelMatrices[];
+};
+
+in gl_PerVertex
+{
+    vec4 gl_Position;
+    float gl_PointSize;
+    float gl_ClipDistance[];
+} gl_in[gl_MaxPatchVertices];
+
+uniform mat4 uViewMatrix;
+
+in flat int vMatrixIndex[];
+in flat int vDrawID[];
+out flat int tcMatrixIndex[];
+out flat int tcDrawID[];
+
+float getTessLevel(vec4 pos)
+{
+    float d = smoothstep(20, 1000, length(pos.xyz));
+    return mix(128, 16, d);
+}
+
+void main()
+{
+    gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+    tcMatrixIndex[gl_InvocationID] = vMatrixIndex[gl_InvocationID];
+    tcDrawID[gl_InvocationID] = vDrawID[gl_InvocationID];
     
-    private bool _bDiff;
-    private PolygonMode _polygonMode;
-
-    protected override void PostRender(CameraComponent camera)
+    if (gl_InvocationID == 0)
     {
-        // if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
+        vec4 eyeSpacePos00 = uViewMatrix * uModelMatrices[vMatrixIndex[0]] * gl_in[0].gl_Position;
+        vec4 eyeSpacePos01 = uViewMatrix * uModelMatrices[vMatrixIndex[1]] * gl_in[1].gl_Position;
+        vec4 eyeSpacePos10 = uViewMatrix * uModelMatrices[vMatrixIndex[2]] * gl_in[2].gl_Position;
+        vec4 eyeSpacePos11 = uViewMatrix * uModelMatrices[vMatrixIndex[3]] * gl_in[3].gl_Position;
+
+        float tessLevel0 = getTessLevel(eyeSpacePos00);
+        float tessLevel1 = getTessLevel(eyeSpacePos01);
+        float tessLevel2 = getTessLevel(eyeSpacePos10);
+        float tessLevel3 = getTessLevel(eyeSpacePos11);
+
+        gl_TessLevelOuter[0] = tessLevel0;
+        gl_TessLevelOuter[1] = tessLevel1;
+        gl_TessLevelOuter[2] = tessLevel2;
+        gl_TessLevelOuter[3] = tessLevel3;
+
+        gl_TessLevelInner[0] = max(tessLevel1, tessLevel3);
+        gl_TessLevelInner[1] = max(tessLevel0, tessLevel2);
+    }
+}
+""",
+        TesselationEvaluation =
+"""
+#version 460 core
+layout (quads, fractional_odd_spacing, ccw) in;
+
+layout(std430, binding = 0) readonly buffer ModelMatrices
+{
+    mat4 uModelMatrices[];
+};
+
+layout(std430, binding = 1) readonly buffer LandscapeScales
+{
+    vec2 uLandscapeScales[];
+};
+
+in flat int tcMatrixIndex[];
+in flat int tcDrawID[];
+
+uniform sampler2D uHeightMaps[32];
+uniform float uGlobalScale;
+uniform mat4 uViewMatrix;
+uniform mat4 uProjectionMatrix;
+
+out float Height;
+
+void main()
+{
+    float u = gl_TessCoord.x;
+    float v = gl_TessCoord.y;
+
+    vec4 p00 = gl_in[0].gl_Position;
+    vec4 p01 = gl_in[1].gl_Position;
+    vec4 p10 = gl_in[2].gl_Position;
+    vec4 p11 = gl_in[3].gl_Position;
+
+    vec4 uVec = p01 - p00;
+    vec4 vVec = p10 - p00;
+    vec4 normal = normalize(vec4(cross(vVec.xyz, uVec.xyz), 0));
+
+    vec4 p0 = (p01 - p00) * u + p00;
+    vec4 p1 = (p11 - p10) * u + p10;
+    vec4 p = (p1 - p0) * v + p0;
+    
+    // i don't really understand this part, it kinda works though
+    vec2 textureSize = textureSize(uHeightMaps[tcDrawID[0]], 0);
+    vec2 scaleBias = uLandscapeScales[tcMatrixIndex[0]];
+    vec2 tileSize = vec2(128.0) / textureSize;
+    vec2 uv = vec2(u, v) * tileSize + scaleBias;
+    vec2 texelSize = vec2(1.0) / textureSize;
+    uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
+    
+    vec4 color = texture(uHeightMaps[tcDrawID[0]], uv);
+    float R = color.b * 255.0;
+    float G = color.g * 255.0;
+    Height = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
+
+    // displace point along normal
+    p += normal * Height;
+
+    gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrices[tcMatrixIndex[0]] * p;
+}
+"""
+    };
+    
+    private readonly ShaderStorageBuffer<Vector2> _scales = new(32);
+
+    public override void Load()
+    {
+        base.Load();
+        
+        _scales.Generate();
+        _scales.Bind();
+        foreach (var component in Components)
+        {
+            _scales.Add(component.ScaleBias);
+        }
+        _scales.Unbind();
+        
+        Shader.Use();
+        Shader.SetUniform("uHeightMaps", BatchCount, Enumerable.Range(0, BatchCount).ToArray());
     }
 
-    protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>
+    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, buffer.Stride, 0);
+        base.PreRender(camera, batchIndex);
+
+        var unit = TextureUnit.Texture0;
+        var batchLimit = Math.Min(BatchCount, ComponentsCount - batchIndex);
+        for (var i = 0; i < batchLimit; i++)
+        {
+            Components.ElementAt(batchIndex + i).Heightmap.Bind(unit);
+            unit++;
+        }
+        
+        Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
+        _scales.Bind(1);
+    }
+
+    protected override Action<ArrayBuffer<Vector2>> PointersFactory { get; } = buffer =>
+    {
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, buffer.Stride, 0);
         GL.EnableVertexAttribArray(0);
     };
 }

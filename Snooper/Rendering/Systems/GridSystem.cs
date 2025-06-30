@@ -117,7 +117,7 @@ void main()
 }
 """);
 
-    protected override void PreRender(CameraComponent camera)
+    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
         Shader.Use();
         Shader.SetUniform("view", camera.ViewMatrix);
@@ -128,7 +128,7 @@ void main()
         GL.DepthMask(false);
     }
     
-    protected override void PostRender(CameraComponent camera)
+    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
     {
         GL.DepthMask(true);
     }

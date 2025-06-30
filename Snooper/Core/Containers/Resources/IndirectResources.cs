@@ -16,6 +16,8 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
     private readonly VertexArray _vao = new();
     public readonly ElementArrayBuffer<uint> EBO = new(initialDrawCapacity * 200);
     public readonly ArrayBuffer<TVertex> VBO = new(initialDrawCapacity * 100);
+    
+    public int Count => _commands.Current.Count;
 
     public void Generate()
     {
@@ -106,13 +108,15 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
         _matrices.Unbind();
     }
 
-    public void Render()
+    public void Render() => RenderBatch(IntPtr.Zero, Count);
+    public void RenderBatch(nint offset, int batchSize)
     {
         _commands.Current.Bind();
         _matrices.Bind(0);
         _vao.Bind();
 
-        GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, IntPtr.Zero, _commands.Current.Count, 0);
+        var batchCount = Math.Min(batchSize, Count - (int)offset);
+        GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, offset * _commands.Current.Stride, batchCount, 0);
 
         // _vao.Unbind();
         // EBO.Unbind();

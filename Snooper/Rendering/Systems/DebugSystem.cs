@@ -34,19 +34,19 @@ void main()
         base.Update(delta);
     }
     
-    protected override void PreRender(CameraComponent camera)
+    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
         _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
         _bDiff = _polygonMode != PolygonMode.Line;
         if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
         
-        base.PreRender(camera);
+        base.PreRender(camera, batchIndex);
     }
     
     private bool _bDiff;
     private PolygonMode _polygonMode;
 
-    protected override void PostRender(CameraComponent camera)
+    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
     {
         if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
     }

@@ -22,6 +22,8 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent>(500)
         GL.EnableVertexAttribArray(2);
         GL.EnableVertexAttribArray(3);
     };
+    
+    protected override int BatchCount => int.MaxValue;
 
     protected override ShaderProgram Shader { get; } = new(
 """
@@ -189,13 +191,13 @@ void main()
         _debug.Link();
     }
 
-    protected override void PreRender(CameraComponent camera)
+    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
-        base.PreRender(camera);
+        base.PreRender(camera, batchIndex);
         Shader.SetUniform("uDebugColorMode", (int)DebugColorMode);
     }
 
-    protected override void PostRender(CameraComponent camera)
+    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
     {
         if (!ActorManager?.DebugMode ?? true) return;
 

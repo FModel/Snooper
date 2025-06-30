@@ -62,6 +62,11 @@ public class ShaderProgram(string vertex, string fragment) : Program
     {
         GL.Uniform1(GetUniformLocation(name), value);
     }
+    
+    public void SetUniform(string name, int count, int[] values)
+    {
+        GL.Uniform1(GetUniformLocation(name), count, values);
+    }
 
     public unsafe void SetUniform(string name, Matrix4x4 value) => UniformMatrix4(name, (float*) &value);
     private unsafe void UniformMatrix4(string name, float* value)

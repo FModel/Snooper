@@ -11,6 +11,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent>(int initialDrawCapaci
 {
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
+    protected abstract int BatchCount { get; }
 
     protected virtual ShaderProgram Shader { get; } = new(
 """
@@ -49,7 +50,7 @@ void main()
         Shader.Link();
     }
 
-    protected virtual void PreRender(CameraComponent camera)
+    protected virtual void PreRender(CameraComponent camera, int batchIndex = 0)
     {
         Shader.Use();
         Shader.SetUniform("uViewMatrix", camera.ViewMatrix);
@@ -59,13 +60,16 @@ void main()
     public sealed override void Render(CameraComponent camera)
     {
         if (!IsRenderable) return;
-        
-        PreRender(camera);
-        base.Render(camera);
-        PostRender(camera);
+
+        for (var batchIndex = 0; batchIndex < Resources.Count; batchIndex += BatchCount)
+        {
+            PreRender(camera, batchIndex);
+            Resources.RenderBatch(batchIndex, BatchCount);
+            PostRender(camera, batchIndex);
+        }
     }
 
-    protected virtual void PostRender(CameraComponent camera)
+    protected virtual void PostRender(CameraComponent camera, int batchIndex = 0)
     {
         
     }
@@ -78,6 +82,8 @@ public class PrimitiveSystem<TComponent>() : PrimitiveSystem<Vector3, TComponent
         GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, buffer.Stride, 0);
         GL.EnableVertexAttribArray(0);
     };
+
+    protected override int BatchCount => int.MaxValue;
 }
 
 public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>;
