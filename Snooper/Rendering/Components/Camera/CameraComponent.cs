@@ -84,11 +84,11 @@ public sealed class CameraComponent : ActorComponent
 
         if (keyboard.IsKeyDown(Keys.X))
         {
-            FieldOfView += 1.0f;
+            FieldOfView = Math.Clamp(FieldOfView + 0.5f, 1.0f, 89.0f);
         }
         if (keyboard.IsKeyDown(Keys.C))
         {
-            FieldOfView -= 1.0f;
+            FieldOfView = Math.Clamp(FieldOfView - 0.5f, 1.0f, 89.0f);
         }
     }
 

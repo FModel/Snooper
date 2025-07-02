@@ -7,11 +7,11 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent>(32, PrimitiveType.Patches)
+public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent>(100, PrimitiveType.Patches)
 {
     public override uint Order => 23;
     protected override int BatchCount => 32;
-
+    
     protected override ShaderProgram Shader { get; } = new(
 """
 #version 460 core
@@ -72,7 +72,7 @@ void main()
 }
 """)
     {
-        TesselationControl =
+        TessellationControl =
 """
 #version 460 core
 layout (vertices = 4) out;
@@ -98,8 +98,17 @@ out flat int tcDrawID[];
 
 float getTessLevel(vec4 pos)
 {
-    float d = smoothstep(20, 1000, length(pos.xyz));
-    return mix(128, 16, d);
+    // uTessMin = 4.0
+    // uTessMax = 128.0
+    // uTessNear = 5.0
+    // uTessFar = 900.0
+    // uFalloffExp = 0.35
+    
+    float dist = length(pos.xyz);
+    float t = clamp((dist - 5.0) / (900.0 - 5.0), 0.0, 1.0);
+    float falloff = 1.0 - pow(t, 0.35);
+
+    return mix(4.0, 128.0, falloff);
 }
 
 void main()
@@ -130,7 +139,7 @@ void main()
     }
 }
 """,
-        TesselationEvaluation =
+        TessellationEvaluation =
 """
 #version 460 core
 layout (quads, fractional_odd_spacing, ccw) in;
@@ -149,6 +158,7 @@ in flat int tcMatrixIndex[];
 in flat int tcDrawID[];
 
 uniform sampler2D uHeightMaps[32];
+uniform float uSizeQuads;
 uniform float uGlobalScale;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
@@ -173,12 +183,16 @@ void main()
     vec4 p1 = (p11 - p10) * u + p10;
     vec4 p = (p1 - p0) * v + p0;
     
-    // i don't really understand this part, it kinda works though
     vec2 textureSize = textureSize(uHeightMaps[tcDrawID[0]], 0);
-    vec2 scaleBias = uLandscapeScales[tcMatrixIndex[0]];
-    vec2 tileSize = vec2(128.0) / textureSize;
+    vec2 texelSize = 1.0 / textureSize;
+    
+    // TODO: not working with shared heightmap between multiple landscapes (component.HeightmapScaleBias)
+    // the actual index in this case is tcMatrixIndex[0] * quadCount * quadCount + gl_PrimitiveID but still not working only for quadCount > 1
+    // Hermes_Terrain:Lobby_Landscape...
+    vec2 scaleBias = uLandscapeScales[gl_PrimitiveID];
+    vec2 tileSize = vec2(uSizeQuads) / textureSize;
+    
     vec2 uv = vec2(u, v) * tileSize + scaleBias;
-    vec2 texelSize = vec2(1.0) / textureSize;
     uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
     
     vec4 color = texture(uHeightMaps[tcDrawID[0]], uv);
@@ -194,26 +208,35 @@ void main()
 """
     };
     
-    private readonly ShaderStorageBuffer<Vector2> _scales = new(32);
+    private readonly ShaderStorageBuffer<Vector2> _scales = new(100);
 
     public override void Load()
     {
         base.Load();
-        
+
+        var sizeQuads = 0;
+
         _scales.Generate();
         _scales.Bind();
         foreach (var component in Components)
         {
-            _scales.Add(component.ScaleBias);
+            _scales.AddRange(component.Scales);
+            sizeQuads = Math.Max(sizeQuads, component.SizeQuads + 1);
         }
         _scales.Unbind();
         
         Shader.Use();
+        Shader.SetUniform("uSizeQuads", sizeQuads * Settings.TessellationScaleFactor);
+        Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
         Shader.SetUniform("uHeightMaps", BatchCount, Enumerable.Range(0, BatchCount).ToArray());
     }
 
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
+        _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
+        _bDiff = _polygonMode != PolygonMode.Line;
+        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
+        
         base.PreRender(camera, batchIndex);
 
         var unit = TextureUnit.Texture0;
@@ -223,9 +246,16 @@ void main()
             Components.ElementAt(batchIndex + i).Heightmap.Bind(unit);
             unit++;
         }
-        
-        Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
+    
         _scales.Bind(1);
+    }
+    
+    private bool _bDiff;
+    private PolygonMode _polygonMode;
+    
+    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
+    {
+        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
     }
 
     protected override Action<ArrayBuffer<Vector2>> PointersFactory { get; } = buffer =>

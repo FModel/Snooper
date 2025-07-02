@@ -206,13 +206,6 @@ public partial class SnooperWindow : GameWindow
                 }
 
                 drawList.AddText(new Vector2(pos.X + margin, pos.Y + margin), ImGui.GetColorU32(ImGuiCol.Text), $"Primitives: {primitiveCount:N0}");
-                var maxTessLevel = GL.GetInteger(GetPName.MaxTessGenLevel);
-                if (maxTessLevel < 128)
-                {
-                    var yellow = ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 0.0f, 1.0f));
-                    drawList.AddText(new Vector2(pos.X + margin, pos.Y + margin + frameHeight),
-                        ImGui.GetColorU32(yellow), $"MaxTessGenLevel: {maxTessLevel}");
-                }
 
                 var framerate = ImGui.GetIO().Framerate;
                 drawList.AddText(
