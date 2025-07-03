@@ -5,7 +5,7 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public class DebugSystem : PrimitiveSystem<DebugComponent>
+public class DebugSystem() : PrimitiveSystem<DebugComponent>(500) // 500 because RenderSystem is 500
 {
     public override uint Order => 100;
     protected override bool AllowDerivation => true;

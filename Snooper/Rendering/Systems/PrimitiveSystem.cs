@@ -85,7 +85,7 @@ void main()
     }
 }
 
-public class PrimitiveSystem<TComponent>() : PrimitiveSystem<Vector3, TComponent, PerInstanceData>(10) where TComponent : TPrimitiveComponent<Vector3, PerInstanceData>
+public class PrimitiveSystem<TComponent>(int initialDrawCapacity) : PrimitiveSystem<Vector3, TComponent, PerInstanceData>(initialDrawCapacity) where TComponent : TPrimitiveComponent<Vector3, PerInstanceData>
 {
     protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>
     {
@@ -96,4 +96,4 @@ public class PrimitiveSystem<TComponent>() : PrimitiveSystem<Vector3, TComponent
     protected override int BatchCount => int.MaxValue;
 }
 
-public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>;
+public class PrimitiveSystem() : PrimitiveSystem<PrimitiveComponent>(10);

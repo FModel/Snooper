@@ -37,43 +37,57 @@ void main()
 """
 #version 460 core
 
-in float Height;
+in TE_OUT {
+    float vHeight;
+    mat3 TBN;
+} fs_in;
+
 out vec4 FragColor;
 
 void main()
 {
     vec3 color;
+    float height = fs_in.vHeight;
 
-    if (Height < -0.15) {
-        float t = clamp((Height + 0.25) / 0.1, 0.0, 1.0);
+    if (height < -0.15) {
+        float t = clamp((height + 0.25) / 0.1, 0.0, 1.0);
         color = mix(vec3(0.0, 0.02, 0.1), vec3(0.0, 0.1, 0.4), t);
     }
-    else if (Height < -0.05) {
-        float t = (Height + 0.15) / 0.1;
+    else if (height < -0.05) {
+        float t = (height + 0.15) / 0.1;
         color = mix(vec3(0.0, 0.1, 0.4), vec3(0.0, 0.4, 0.8), t);
     }
-    else if (Height < 0.0) {
-        float t = (Height + 0.05) / 0.05;
+    else if (height < 0.0) {
+        float t = (height + 0.05) / 0.05;
         color = mix(vec3(0.0, 0.4, 0.8), vec3(0.9, 0.85, 0.6), t);
     }
-    else if (Height < 0.1) {
-        float t = Height / 0.1;
+    else if (height < 0.1) {
+        float t = height / 0.1;
         color = mix(vec3(0.9, 0.85, 0.6), vec3(0.6, 0.4, 0.2), t);
     }
-    else if (Height < 0.3) {
-        float t = (Height - 0.1) / 0.2;
+    else if (height < 0.3) {
+        float t = (height - 0.1) / 0.2;
         color = mix(vec3(0.6, 0.4, 0.2), vec3(0.1, 0.5, 0.1), t);
     }
-    else if (Height < 0.85) {
-        float t = (Height - 0.3) / 0.55;
+    else if (height < 0.85) {
+        float t = (height - 0.3) / 0.55;
         color = mix(vec3(0.1, 0.5, 0.1), vec3(0.3, 0.3, 0.3), t);
     }
     else {
-        float t = clamp((Height - 0.85) / 0.15, 0.0, 1.0);
+        float t = clamp((height - 0.85) / 0.15, 0.0, 1.0);
         color = mix(vec3(0.3, 0.3, 0.3), vec3(1.0, 1.0, 1.0), t);
     }
 
-    FragColor = vec4(color, 1.0);
+    vec3 tangent = normalize(fs_in.TBN * vec3(1.0, 0.0, 0.0));
+    vec3 bitangent = normalize(fs_in.TBN * vec3(0.0, 1.0, 0.0));
+    vec3 normal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
+
+    float tFactor = 0.9 + 0.1 * tangent.z;
+    float bFactor = 0.9 + 0.1 * bitangent.z;
+    float nFactor = 0.7 + 0.3 * normal.z;
+
+    float brightness = (tFactor + bFactor + nFactor) / 3.0;
+    FragColor = vec4(color * brightness, 1.0);
 }
 """)
     {
@@ -183,53 +197,57 @@ uniform float uGlobalScale;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 
-out float Height;
+out TE_OUT {
+    float vHeight;
+    mat3 TBN;
+} te_out;
 
 void main()
 {
+    // TODO: not working with shared heightmap between multiple landscapes (component.HeightmapScaleBias)
+    // the actual index in this case is tcMatrixIndex[0] * quadCount * quadCount + gl_PrimitiveID but still not working only for quadCount > 1
+    // Hermes_Terrain:Lobby_Landscape...
+
+    PerInstanceData instanceData = uInstanceDataBuffer[tcMatrixIndex[0]];
+    vec2 textureSize = textureSize(instanceData.Heightmap, 0);
+    vec2 texelSize = 1.0 / textureSize;
+    vec2 scale = uLandscapeScales[gl_PrimitiveID];
+    vec2 tileSize = vec2(uSizeQuads) / textureSize;
+    
     float u = gl_TessCoord.x;
     float v = gl_TessCoord.y;
+    vec2 uv = vec2(u, v) * tileSize + scale;
+    uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
+
+    vec4 color = texture(instanceData.Heightmap, uv + instanceData.ScaleBias);
+    float R = color.b * 255.0;
+    float G = color.g * 255.0;
+    te_out.vHeight = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
+
+    float nx = 2.0 * color.r - 1.0;
+    float ny = 2.0 * color.a - 1.0;
+    float nz = sqrt(max(0.0, 1.0 - (nx * nx + ny * ny)));
+    te_out.TBN = mat3(normalize(vec3(-nz, 0.0, nx)), normalize(vec3(0.0, nz, -ny)), normalize(vec3(nx, ny, nz)));
 
     vec4 p00 = gl_in[0].gl_Position;
     vec4 p01 = gl_in[1].gl_Position;
     vec4 p10 = gl_in[2].gl_Position;
     vec4 p11 = gl_in[3].gl_Position;
 
-    vec4 uVec = p01 - p00;
-    vec4 vVec = p10 - p00;
-    vec4 normal = normalize(vec4(cross(vVec.xyz, uVec.xyz), 0));
-
     vec4 p0 = (p01 - p00) * u + p00;
     vec4 p1 = (p11 - p10) * u + p10;
     vec4 p = (p1 - p0) * v + p0;
-    
-    PerInstanceData instanceData = uInstanceDataBuffer[tcMatrixIndex[0]];
-    vec2 textureSize = textureSize(instanceData.Heightmap, 0);
-    vec2 texelSize = 1.0 / textureSize;
-    
-    // TODO: not working with shared heightmap between multiple landscapes (component.HeightmapScaleBias)
-    // the actual index in this case is tcMatrixIndex[0] * quadCount * quadCount + gl_PrimitiveID but still not working only for quadCount > 1
-    // Hermes_Terrain:Lobby_Landscape...
-    vec2 scale = uLandscapeScales[gl_PrimitiveID];
-    vec2 tileSize = vec2(uSizeQuads) / textureSize;
-    
-    vec2 uv = vec2(u, v) * tileSize + scale;
-    uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
-    
-    vec4 color = texture(instanceData.Heightmap, uv + instanceData.ScaleBias);
-    float R = color.b * 255.0;
-    float G = color.g * 255.0;
-    Height = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
 
     // displace point along normal
-    p += normal * Height;
+    vec4 normal = normalize(vec4(cross((p10 - p00).xyz, (p01 - p00).xyz), 0));
+    p += normal * te_out.vHeight;
 
     gl_Position = uProjectionMatrix * uViewMatrix * instanceData.Matrix * p;
 }
 """
     };
     
-    private readonly ShaderStorageBuffer<Vector2> _scales = new(100);
+    private readonly ShaderStorageBuffer<Vector2> _scales = new(100 * Settings.TessellationQuadCountTotal);
 
     public override void Load()
     {
@@ -242,7 +260,7 @@ void main()
         foreach (var component in Components)
         {
             _scales.AddRange(component.Scales);
-            sizeQuads = Math.Max(sizeQuads, component.SizeQuads + 1);
+            sizeQuads = Math.Max(sizeQuads, component.SizeQuads);
         }
         _scales.Unbind();
         
@@ -253,20 +271,8 @@ void main()
 
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
-        _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
-        _bDiff = _polygonMode != PolygonMode.Line;
-        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
-        
         base.PreRender(camera, batchIndex);
     
         _scales.Bind(1);
-    }
-    
-    private bool _bDiff;
-    private PolygonMode _polygonMode;
-    
-    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
-    {
-        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
     }
 }

@@ -16,7 +16,7 @@ public class Texture2D(
 
     private readonly UTexture2D? _owner;
 
-    public Texture2D(UTexture2D texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, PixelInternalFormat.Rgba8)
+    public Texture2D(UTexture2D texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, GetInternalFormat(texture.Format))
     {
         _owner = texture;
     }
@@ -36,5 +36,15 @@ public class Texture2D(
         GL.TexParameter(Target, TextureParameterName.TextureMaxLevel, 8);
 
         GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+    }
+    
+    private static PixelInternalFormat GetInternalFormat(EPixelFormat format)
+    {
+        return format switch
+        {
+            EPixelFormat.PF_B8G8R8A8 => PixelInternalFormat.Rgba8,
+            EPixelFormat.PF_R8G8B8A8 => PixelInternalFormat.Rgba8,
+            _ => PixelInternalFormat.Rgba
+        };
     }
 }

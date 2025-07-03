@@ -22,10 +22,10 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLa
             throw new InvalidOperationException("Landscape component does not have a valid heightmap.");
         }
         
-        SizeQuads = component.ComponentSizeQuads;
+        SizeQuads = component.ComponentSizeQuads + 1;
         Heightmap = new BindlessTexture(new Texture2D(heightmap));
 
-        Scales = new Vector2[Settings.TessellationIndicesPerQuad / 4];
+        Scales = new Vector2[Settings.TessellationQuadCountTotal];
         ScaleBias = new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W) / Scales.Length;
         
         const int quadCount = Settings.TessellationQuadCount;
