@@ -8,7 +8,7 @@ using Snooper.Rendering.Systems;
 namespace Snooper.Rendering.Components.Mesh;
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
-public class LandscapeMeshComponent : TPrimitiveComponent<Vector2>
+public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLandscapeData>
 {
     public readonly int SizeQuads;
     public readonly BindlessTexture Heightmap;
@@ -40,6 +40,21 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2>
     }
 
     public sealed override MeshMaterialSection[] MaterialSections { get; protected init; } = [new(0, 0, Settings.TessellationIndicesPerQuad)];
+
+    public override PerInstanceLandscapeData[] GetPerInstanceData()
+    {
+        var data = base.GetPerInstanceData();
+        for (var i = 0; i < data.Length; i++)
+        {
+            Heightmap.Generate();
+            Heightmap.MakeResident();
+
+            data[i].Heightmap = Heightmap;
+            data[i].ScaleBias = ScaleBias;
+        }
+
+        return data;
+    }
 
     private readonly struct Geometry : TPrimitiveData<Vector2>
     {

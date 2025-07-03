@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using System.Text;
+﻿using System.Text;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
@@ -8,10 +7,13 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType type) : IBind, IMemorySizeProvider where TVertex : unmanaged
+public class IndirectResources<TVertex, TInstanceData>(int initialDrawCapacity, PrimitiveType type)
+    : IBind, IMemorySizeProvider
+    where TVertex : unmanaged
+    where TInstanceData : unmanaged, IPerInstanceData
 {
     private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
-    private readonly ShaderStorageBuffer<Matrix4x4> _matrices = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new(initialDrawCapacity);
 
     private readonly VertexArray _vao = new();
     public readonly ElementArrayBuffer<uint> EBO = new(initialDrawCapacity * 200);
@@ -22,7 +24,8 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
     public void Generate()
     {
         _commands.Generate();
-        _matrices.Generate();
+        _instanceData.Generate();
+        
         _vao.Generate();
         EBO.Generate();
         VBO.Generate();
@@ -31,7 +34,8 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
     public void Bind()
     {
         _commands.Current.Bind();
-        _matrices.Bind();
+        _instanceData.Bind();
+        
         _vao.Bind();
         EBO.Bind();
         VBO.Bind();
@@ -40,17 +44,18 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
     public void Unbind()
     {
         _commands.Current.Unbind();
-        _matrices.Unbind();
+        _instanceData.Unbind();
+        
         _vao.Unbind();
         EBO.Unbind();
         VBO.Unbind();
     }
     
-    public IndirectDrawMetadata Add(TPrimitiveData<TVertex> primitive, MeshMaterialSection[] materialSections, Matrix4x4[] matrices)
+    public IndirectDrawMetadata Add(TPrimitiveData<TVertex> primitive, MeshMaterialSection[] materialSections, TInstanceData[] instanceData)
     {
         var firstIndex = EBO.AddRange(primitive.Indices);
         var baseVertex = VBO.AddRange(primitive.Vertices);
-        var baseInstance = _matrices.AddRange(matrices);
+        var baseInstance = _instanceData.AddRange(instanceData);
 
         var metadata = new IndirectDrawMetadata { DrawIds = new int[materialSections.Length], BaseInstance = baseInstance };
         for (var i = 0; i < materialSections.Length; i++)
@@ -59,7 +64,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
             metadata.DrawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
             {
                 Count = (uint)materialSection.IndexCount,
-                InstanceCount = (uint)matrices.Length,
+                InstanceCount = (uint)instanceData.Length,
                 FirstIndex = (uint)(firstIndex + materialSection.FirstIndex),
                 BaseVertex = (uint)baseVertex,
                 BaseInstance = (uint)baseInstance
@@ -69,7 +74,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
         return metadata;
     }
 
-    public void Update(TPrimitiveComponent<TVertex> component)
+    public void Update(TPrimitiveComponent<TVertex, TInstanceData> component)
     {
         if (!component.Actor.IsDirty) return;
         
@@ -77,7 +82,7 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
         var baseInstance = component.DrawMetadata.BaseInstance + component.Actor.VisibleInstances.Start.Value;
         _commands.Current.UpdateInstance(component.DrawMetadata.DrawIds, component.Actor.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
         
-        _matrices.Update(component.DrawMetadata.BaseInstance, component.Actor.GetWorldMatrices());
+        _instanceData.Update(component.DrawMetadata.BaseInstance, component.GetPerInstanceData());
         component.Actor.MarkClean();
     }
 
@@ -99,20 +104,20 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
     public void Remove(IndirectDrawMetadata metadata)
     {
         _commands.Current.Bind();
-        _matrices.Bind();
+        _instanceData.Bind();
 
         _commands.Current.RemoveRange(metadata.DrawIds);
-        _matrices.Remove(metadata.BaseInstance);
+        _instanceData.Remove(metadata.BaseInstance);
 
         _commands.Current.Unbind();
-        _matrices.Unbind();
+        _instanceData.Unbind();
     }
 
     public void Render() => RenderBatch(IntPtr.Zero, Count);
     public void RenderBatch(nint offset, int batchSize)
     {
         _commands.Current.Bind();
-        _matrices.Bind(0);
+        _instanceData.Bind(0);
         _vao.Bind();
 
         var batchCount = Math.Min(batchSize, Count - (int)offset);
@@ -129,10 +134,10 @@ public class IndirectResources<TVertex>(int initialDrawCapacity, PrimitiveType t
     {
         var builder = new StringBuilder();
         builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}>:");
-        builder.AppendLine($"    Commands: {_commands.Current.GetFormattedSpace()}");
-        builder.AppendLine($"    Matrices: {_matrices.GetFormattedSpace()}");
-        builder.AppendLine($"    Indices:  {EBO.GetFormattedSpace()}");
-        builder.AppendLine($"    Vertices: {VBO.GetFormattedSpace()}");
+        builder.AppendLine($"    Commands:     {_commands.Current.GetFormattedSpace()}");
+        builder.AppendLine($"    InstanceData: {_instanceData.GetFormattedSpace()}");
+        builder.AppendLine($"    Indices:      {EBO.GetFormattedSpace()}");
+        builder.AppendLine($"    Vertices:     {VBO.GetFormattedSpace()}");
         return builder.ToString();
     }
 

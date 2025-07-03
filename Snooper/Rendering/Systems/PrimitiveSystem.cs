@@ -2,12 +2,17 @@
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class PrimitiveSystem<TVertex, TComponent>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles) : IndirectRenderSystem<TVertex, TComponent>(initialDrawCapacity, type) where TVertex : unmanaged where TComponent : TPrimitiveComponent<TVertex>
+public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
+    : IndirectRenderSystem<TVertex, TComponent, TInstanceData>(initialDrawCapacity, type)
+    where TVertex : unmanaged
+    where TComponent : TPrimitiveComponent<TVertex, TInstanceData>
+    where TInstanceData : unmanaged, IPerInstanceData
 {
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
@@ -18,9 +23,14 @@ public abstract class PrimitiveSystem<TVertex, TComponent>(int initialDrawCapaci
 #version 460 core
 layout (location = 0) in vec3 aPos;
 
-layout(std430, binding = 0) restrict readonly buffer ModelMatrices
+struct PerInstanceData
 {
-    mat4 uModelMatrices[];
+    mat4 Matrix;
+};
+
+layout(std430, binding = 0) restrict readonly buffer PerInstanceDataBuffer
+{
+    PerInstanceData uInstanceDataBuffer[];
 };
 
 uniform mat4 uViewMatrix;
@@ -28,7 +38,7 @@ uniform mat4 uProjectionMatrix;
 
 void main()
 {
-    gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrices[gl_BaseInstance + gl_InstanceID] * vec4(aPos, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * uInstanceDataBuffer[gl_BaseInstance + gl_InstanceID].Matrix * vec4(aPos, 1.0);
 }
 """,
 """
@@ -75,7 +85,7 @@ void main()
     }
 }
 
-public class PrimitiveSystem<TComponent>() : PrimitiveSystem<Vector3, TComponent>(10) where TComponent : TPrimitiveComponent<Vector3>
+public class PrimitiveSystem<TComponent>() : PrimitiveSystem<Vector3, TComponent, PerInstanceData>(10) where TComponent : TPrimitiveComponent<Vector3, PerInstanceData>
 {
     protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>
     {

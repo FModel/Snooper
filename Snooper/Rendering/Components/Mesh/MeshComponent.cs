@@ -1,12 +1,13 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion.Meshes.PSK;
 using Snooper.Core;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent : TPrimitiveComponent<Vertex>
+public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceData>
 {
     public abstract int LodCount { get; }
     public abstract float[] ScreenSizes { get; }

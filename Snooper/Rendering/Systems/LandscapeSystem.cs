@@ -7,7 +7,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent>(100, PrimitiveType.Patches)
+public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceLandscapeData>(100, PrimitiveType.Patches)
 {
     public override uint Order => 23;
     protected override int BatchCount => int.MaxValue;
@@ -80,11 +80,19 @@ void main()
         TessellationControl =
 """
 #version 460 core
+#extension GL_ARB_bindless_texture : require
 layout (vertices = 4) out;
 
-layout(std430, binding = 0) restrict readonly buffer ModelMatrices
+struct PerInstanceData
 {
-    mat4 uModelMatrices[];
+    mat4 Matrix;
+    sampler2D Heightmap;
+    vec2 ScaleBias;
+};
+
+layout(std430, binding = 0) restrict readonly buffer PerInstanceDataBuffer
+{
+    PerInstanceData uInstanceDataBuffer[];
 };
 
 in gl_PerVertex
@@ -124,10 +132,10 @@ void main()
     
     if (gl_InvocationID == 0)
     {
-        vec4 eyeSpacePos00 = uViewMatrix * uModelMatrices[vMatrixIndex[0]] * gl_in[0].gl_Position;
-        vec4 eyeSpacePos01 = uViewMatrix * uModelMatrices[vMatrixIndex[1]] * gl_in[1].gl_Position;
-        vec4 eyeSpacePos10 = uViewMatrix * uModelMatrices[vMatrixIndex[2]] * gl_in[2].gl_Position;
-        vec4 eyeSpacePos11 = uViewMatrix * uModelMatrices[vMatrixIndex[3]] * gl_in[3].gl_Position;
+        vec4 eyeSpacePos00 = uViewMatrix * uInstanceDataBuffer[vMatrixIndex[0]].Matrix * gl_in[0].gl_Position;
+        vec4 eyeSpacePos01 = uViewMatrix * uInstanceDataBuffer[vMatrixIndex[1]].Matrix * gl_in[1].gl_Position;
+        vec4 eyeSpacePos10 = uViewMatrix * uInstanceDataBuffer[vMatrixIndex[2]].Matrix * gl_in[2].gl_Position;
+        vec4 eyeSpacePos11 = uViewMatrix * uInstanceDataBuffer[vMatrixIndex[3]].Matrix * gl_in[3].gl_Position;
 
         float tessLevel0 = getTessLevel(eyeSpacePos00);
         float tessLevel1 = getTessLevel(eyeSpacePos01);
@@ -150,23 +158,19 @@ void main()
 #extension GL_ARB_bindless_texture : require
 layout (quads, fractional_odd_spacing, ccw) in;
 
-struct HeightmapComponent
+struct PerInstanceData
 {
+    mat4 Matrix;
     sampler2D Heightmap;
     vec2 ScaleBias;
 };
 
-layout(std430, binding = 0) restrict readonly buffer ModelMatrices
+layout(std430, binding = 0) restrict readonly buffer PerInstanceDataBuffer
 {
-    mat4 uModelMatrices[];
+    PerInstanceData uInstanceDataBuffer[];
 };
 
-layout(std430, binding = 1) restrict readonly buffer HeightMaps
-{
-    HeightmapComponent uHeightMaps[];
-};
-
-layout(std430, binding = 2) restrict readonly buffer LandscapeScales
+layout(std430, binding = 1) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };
@@ -199,8 +203,8 @@ void main()
     vec4 p1 = (p11 - p10) * u + p10;
     vec4 p = (p1 - p0) * v + p0;
     
-    HeightmapComponent comp = uHeightMaps[tcDrawID[0]];
-    vec2 textureSize = textureSize(comp.Heightmap, 0);
+    PerInstanceData instanceData = uInstanceDataBuffer[tcMatrixIndex[0]];
+    vec2 textureSize = textureSize(instanceData.Heightmap, 0);
     vec2 texelSize = 1.0 / textureSize;
     
     // TODO: not working with shared heightmap between multiple landscapes (component.HeightmapScaleBias)
@@ -212,7 +216,7 @@ void main()
     vec2 uv = vec2(u, v) * tileSize + scale;
     uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
     
-    vec4 color = texture(comp.Heightmap, uv + comp.ScaleBias);
+    vec4 color = texture(instanceData.Heightmap, uv + instanceData.ScaleBias);
     float R = color.b * 255.0;
     float G = color.g * 255.0;
     Height = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
@@ -220,37 +224,16 @@ void main()
     // displace point along normal
     p += normal * Height;
 
-    gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrices[tcMatrixIndex[0]] * p;
+    gl_Position = uProjectionMatrix * uViewMatrix * instanceData.Matrix * p;
 }
 """
     };
     
-    private struct HeightmapComponent
-    {
-        public long Heightmap;
-        public Vector2 ScaleBias;
-    }
-    
-    private readonly ShaderStorageBuffer<HeightmapComponent> _heightMaps = new(100);
     private readonly ShaderStorageBuffer<Vector2> _scales = new(100);
 
     public override void Load()
     {
         base.Load();
-        
-        _heightMaps.Generate();
-        _heightMaps.Bind();
-        foreach (var component in Components)
-        {
-            component.Heightmap.Generate();
-            component.Heightmap.MakeResident();
-            _heightMaps.Add(new HeightmapComponent
-            {
-                Heightmap = component.Heightmap,
-                ScaleBias = component.ScaleBias
-            });
-        }
-        _heightMaps.Unbind();
 
         var sizeQuads = 0;
 
@@ -276,8 +259,7 @@ void main()
         
         base.PreRender(camera, batchIndex);
     
-        _heightMaps.Bind(1);
-        _scales.Bind(2);
+        _scales.Bind(1);
     }
     
     private bool _bDiff;
