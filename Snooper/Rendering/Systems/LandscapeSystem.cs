@@ -10,7 +10,12 @@ namespace Snooper.Rendering.Systems;
 public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent>(100, PrimitiveType.Patches)
 {
     public override uint Order => 23;
-    protected override int BatchCount => 32;
+    protected override int BatchCount => int.MaxValue;
+    protected override Action<ArrayBuffer<Vector2>> PointersFactory { get; } = buffer =>
+    {
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, buffer.Stride, 0);
+        GL.EnableVertexAttribArray(0);
+    };
     
     protected override ShaderProgram Shader { get; } = new(
 """
@@ -77,7 +82,7 @@ void main()
 #version 460 core
 layout (vertices = 4) out;
 
-layout(std430, binding = 0) readonly buffer ModelMatrices
+layout(std430, binding = 0) restrict readonly buffer ModelMatrices
 {
     mat4 uModelMatrices[];
 };
@@ -142,14 +147,26 @@ void main()
         TessellationEvaluation =
 """
 #version 460 core
+#extension GL_ARB_bindless_texture : require
 layout (quads, fractional_odd_spacing, ccw) in;
 
-layout(std430, binding = 0) readonly buffer ModelMatrices
+struct HeightmapComponent
+{
+    sampler2D Heightmap;
+    vec2 ScaleBias;
+};
+
+layout(std430, binding = 0) restrict readonly buffer ModelMatrices
 {
     mat4 uModelMatrices[];
 };
 
-layout(std430, binding = 1) readonly buffer LandscapeScales
+layout(std430, binding = 1) restrict readonly buffer HeightMaps
+{
+    HeightmapComponent uHeightMaps[];
+};
+
+layout(std430, binding = 2) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };
@@ -157,7 +174,6 @@ layout(std430, binding = 1) readonly buffer LandscapeScales
 in flat int tcMatrixIndex[];
 in flat int tcDrawID[];
 
-uniform sampler2D uHeightMaps[32];
 uniform float uSizeQuads;
 uniform float uGlobalScale;
 uniform mat4 uViewMatrix;
@@ -183,19 +199,20 @@ void main()
     vec4 p1 = (p11 - p10) * u + p10;
     vec4 p = (p1 - p0) * v + p0;
     
-    vec2 textureSize = textureSize(uHeightMaps[tcDrawID[0]], 0);
+    HeightmapComponent comp = uHeightMaps[tcDrawID[0]];
+    vec2 textureSize = textureSize(comp.Heightmap, 0);
     vec2 texelSize = 1.0 / textureSize;
     
     // TODO: not working with shared heightmap between multiple landscapes (component.HeightmapScaleBias)
     // the actual index in this case is tcMatrixIndex[0] * quadCount * quadCount + gl_PrimitiveID but still not working only for quadCount > 1
     // Hermes_Terrain:Lobby_Landscape...
-    vec2 scaleBias = uLandscapeScales[gl_PrimitiveID];
+    vec2 scale = uLandscapeScales[gl_PrimitiveID];
     vec2 tileSize = vec2(uSizeQuads) / textureSize;
     
-    vec2 uv = vec2(u, v) * tileSize + scaleBias;
+    vec2 uv = vec2(u, v) * tileSize + scale;
     uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
     
-    vec4 color = texture(uHeightMaps[tcDrawID[0]], uv);
+    vec4 color = texture(comp.Heightmap, uv + comp.ScaleBias);
     float R = color.b * 255.0;
     float G = color.g * 255.0;
     Height = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
@@ -208,11 +225,32 @@ void main()
 """
     };
     
+    private struct HeightmapComponent
+    {
+        public long Heightmap;
+        public Vector2 ScaleBias;
+    }
+    
+    private readonly ShaderStorageBuffer<HeightmapComponent> _heightMaps = new(100);
     private readonly ShaderStorageBuffer<Vector2> _scales = new(100);
 
     public override void Load()
     {
         base.Load();
+        
+        _heightMaps.Generate();
+        _heightMaps.Bind();
+        foreach (var component in Components)
+        {
+            component.Heightmap.Generate();
+            component.Heightmap.MakeResident();
+            _heightMaps.Add(new HeightmapComponent
+            {
+                Heightmap = component.Heightmap,
+                ScaleBias = component.ScaleBias
+            });
+        }
+        _heightMaps.Unbind();
 
         var sizeQuads = 0;
 
@@ -228,7 +266,6 @@ void main()
         Shader.Use();
         Shader.SetUniform("uSizeQuads", sizeQuads * Settings.TessellationScaleFactor);
         Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
-        Shader.SetUniform("uHeightMaps", BatchCount, Enumerable.Range(0, BatchCount).ToArray());
     }
 
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
@@ -238,16 +275,9 @@ void main()
         if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
         
         base.PreRender(camera, batchIndex);
-
-        var unit = TextureUnit.Texture0;
-        var batchLimit = Math.Min(BatchCount, ComponentsCount - batchIndex);
-        for (var i = 0; i < batchLimit; i++)
-        {
-            Components.ElementAt(batchIndex + i).Heightmap.Bind(unit);
-            unit++;
-        }
     
-        _scales.Bind(1);
+        _heightMaps.Bind(1);
+        _scales.Bind(2);
     }
     
     private bool _bDiff;
@@ -257,10 +287,4 @@ void main()
     {
         if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
     }
-
-    protected override Action<ArrayBuffer<Vector2>> PointersFactory { get; } = buffer =>
-    {
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, buffer.Stride, 0);
-        GL.EnableVertexAttribArray(0);
-    };
 }
