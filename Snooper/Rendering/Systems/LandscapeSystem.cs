@@ -2,6 +2,7 @@
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 
@@ -10,6 +11,7 @@ namespace Snooper.Rendering.Systems;
 public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceLandscapeData>(100, PrimitiveType.Patches)
 {
     public override uint Order => 23;
+    public override ActorSystemType SystemType => ActorSystemType.Deferred;
     protected override int BatchCount => int.MaxValue;
     protected override Action<ArrayBuffer<Vector2>> PointersFactory { get; } = buffer =>
     {
@@ -36,13 +38,15 @@ void main()
 """,
 """
 #version 460 core
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec3 gNormal;
+layout (location = 2) out vec4 gColor;
 
 in TE_OUT {
+    vec3 vViewPos;
     float vHeight;
     mat3 TBN;
 } fs_in;
-
-out vec4 FragColor;
 
 void main()
 {
@@ -78,16 +82,10 @@ void main()
         color = mix(vec3(0.3, 0.3, 0.3), vec3(1.0, 1.0, 1.0), t);
     }
 
-    vec3 tangent = normalize(fs_in.TBN * vec3(1.0, 0.0, 0.0));
-    vec3 bitangent = normalize(fs_in.TBN * vec3(0.0, 1.0, 0.0));
-    vec3 normal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
-
-    float tFactor = 0.9 + 0.1 * tangent.z;
-    float bFactor = 0.9 + 0.1 * bitangent.z;
-    float nFactor = 0.7 + 0.3 * normal.z;
-
-    float brightness = (tFactor + bFactor + nFactor) / 3.0;
-    FragColor = vec4(color * brightness, 1.0);
+    gPosition = fs_in.vViewPos;
+    gNormal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
+    gColor.rgb = color;
+    gColor.a = 1.0;
 }
 """)
     {
@@ -198,6 +196,7 @@ uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 
 out TE_OUT {
+    vec3 vViewPos;
     float vHeight;
     mat3 TBN;
 } te_out;
@@ -242,7 +241,9 @@ void main()
     vec4 normal = normalize(vec4(cross((p10 - p00).xyz, (p01 - p00).xyz), 0));
     p += normal * te_out.vHeight;
 
-    gl_Position = uProjectionMatrix * uViewMatrix * instanceData.Matrix * p;
+    vec4 viewPos = uViewMatrix * instanceData.Matrix * p;
+    gl_Position = uProjectionMatrix * viewPos;
+    te_out.vViewPos = viewPos.xyz;
 }
 """
     };
