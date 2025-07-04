@@ -33,7 +33,8 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData>(TPrimitiveData
         }
     }
     
-    public virtual TInstanceData[] GetPerInstanceData()
+    private TInstanceData[]? _cachedInstanceData { get; set; }
+    public TInstanceData[] GetPerInstanceData()
     {
         if (Actor is null)
             throw new InvalidOperationException("Actor is not set for the component.");
@@ -44,7 +45,28 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData>(TPrimitiveData
         {
             data[i] = new TInstanceData { Matrix = matrices[i] };
         }
+        
+        if (_cachedInstanceData is null)
+        {
+            ApplyInstanceData(data);
+            _cachedInstanceData = data;
+        }
+        else
+        {
+            CopyCachedData(data, _cachedInstanceData);
+        }
+
         return data;
+    }
+
+    protected virtual void ApplyInstanceData(TInstanceData[] data)
+    {
+        
+    }
+
+    protected virtual void CopyCachedData(TInstanceData[] data, TInstanceData[] cached)
+    {
+        
     }
 }
 

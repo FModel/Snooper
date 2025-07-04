@@ -32,6 +32,7 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 OodleHelper.Initialize();
+ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";

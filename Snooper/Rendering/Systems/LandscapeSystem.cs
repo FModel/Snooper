@@ -10,7 +10,7 @@ namespace Snooper.Rendering.Systems;
 
 public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceLandscapeData>(100, PrimitiveType.Patches)
 {
-    public override uint Order => 23;
+    public override uint Order => 21;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
     protected override int BatchCount => int.MaxValue;
     protected override Action<ArrayBuffer<Vector2>> PointersFactory { get; } = buffer =>

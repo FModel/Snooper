@@ -36,7 +36,6 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
         return ComponentType?.IsAssignableFrom(type) ?? false;
     }
 
-    protected bool DebugMode => ActorManager?.DebugMode ?? false;
     protected ActorDebugColorMode DebugColorMode => ActorManager?.DebugColorMode ?? ActorDebugColorMode.None;
 
     public void Dispose()
