@@ -73,7 +73,7 @@ vec4 grid(vec3 fragPos, float scale)
     float line = min(grid.x, grid.y) / 2.0;
     float minimumz = min(derivative.y, 1) * 0.1;
     float minimumx = min(derivative.x, 1) * 0.1;
-    vec4 color = vec4(0.1, 0.1, 0.1, 1.0 - min(line, 0.75));
+    vec4 color = vec4(0.1, 0.1, 0.1, 1.0 - min(line, 1.0));
     if(abs(fragPos.x) < minimumx)
     color.z = 1.0;
     if(abs(fragPos.z) < minimumz)

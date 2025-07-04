@@ -26,15 +26,14 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLa
         Heightmap = new BindlessTexture(new Texture2D(heightmap));
 
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
-        ScaleBias = new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W) / Scales.Length;
+        ScaleBias = new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W);
         
         const int quadCount = Settings.TessellationQuadCount;
         for (var x = 0; x < quadCount; x++)
         {
             for (var y = 0; y < quadCount; y++)
             {
-                var patchUv = new Vector2(x, y);
-                Scales[x * quadCount + y] = patchUv * Settings.TessellationScaleFactor;
+                Scales[x * quadCount + y] = new Vector2(x, y);
             }
         }
     }

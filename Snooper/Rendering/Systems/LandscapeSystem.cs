@@ -191,6 +191,7 @@ in flat int tcMatrixIndex[];
 in flat int tcDrawID[];
 
 uniform float uSizeQuads;
+uniform float uQuadCount;
 uniform float uGlobalScale;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
@@ -203,22 +204,19 @@ out TE_OUT {
 
 void main()
 {
-    // TODO: not working with shared heightmap between multiple landscapes (component.HeightmapScaleBias)
-    // the actual index in this case is tcMatrixIndex[0] * quadCount * quadCount + gl_PrimitiveID but still not working only for quadCount > 1
-    // Hermes_Terrain:Lobby_Landscape...
-
     PerInstanceData instanceData = uInstanceDataBuffer[tcMatrixIndex[0]];
-    vec2 textureSize = textureSize(instanceData.Heightmap, 0);
-    vec2 texelSize = 1.0 / textureSize;
-    vec2 scale = uLandscapeScales[gl_PrimitiveID];
-    vec2 tileSize = vec2(uSizeQuads) / textureSize;
+    vec2 heightmapSize = textureSize(instanceData.Heightmap, 0);
+    vec2 texelSize = 1.0 / heightmapSize;
+    vec2 componentUvSize = vec2(uSizeQuads) / heightmapSize;
+    float quadFraction = 1.0 / uQuadCount;
     
+    vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
     float u = gl_TessCoord.x;
     float v = gl_TessCoord.y;
-    vec2 uv = vec2(u, v) * tileSize + scale;
+    vec2 uv = instanceData.ScaleBias + subPatchOffset * componentUvSize + vec2(u, v) * (componentUvSize * quadFraction);
     uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
 
-    vec4 color = texture(instanceData.Heightmap, uv + instanceData.ScaleBias);
+    vec4 color = texture(instanceData.Heightmap, uv);
     float R = color.b * 255.0;
     float G = color.g * 255.0;
     te_out.vHeight = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
@@ -254,7 +252,7 @@ void main()
     {
         base.Load();
 
-        var sizeQuads = 0;
+        var sizeQuads = 0.0f;
 
         _scales.Generate();
         _scales.Bind();
@@ -266,7 +264,8 @@ void main()
         _scales.Unbind();
         
         Shader.Use();
-        Shader.SetUniform("uSizeQuads", sizeQuads * Settings.TessellationScaleFactor);
+        Shader.SetUniform("uSizeQuads", sizeQuads);
+        Shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
         Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
     }
 
