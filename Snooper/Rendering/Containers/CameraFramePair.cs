@@ -112,7 +112,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _fxaa.Resize(newWidth, newHeight);
     }
 
-    public IntPtr[] GetPointers() =>
+    public IntPtr[] GetFramebuffers() =>
     [
         .._geometry.GetTexturePointers(),
         _ssao.GetPointer(),

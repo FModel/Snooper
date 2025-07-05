@@ -16,7 +16,7 @@ public class Texture2D(
 
     private readonly UTexture2D? _owner;
 
-    public Texture2D(UTexture2D texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, GetInternalFormat(texture.Format))
+    public Texture2D(UTexture2D texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, GetInternalFormat(texture))
     {
         _owner = texture;
     }
@@ -30,21 +30,30 @@ public class Texture2D(
         
         var bitmap = _owner.Decode();
         GL.TexImage2D(Target, 0, InternalFormat, Width, Height, 0, Format, Type, bitmap.Data);
-        GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
-        GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-        GL.TexParameter(Target, TextureParameterName.TextureBaseLevel, 0);
-        GL.TexParameter(Target, TextureParameterName.TextureMaxLevel, 8);
-
-        GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+        
+        if (_owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap)
+        {
+            GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+            GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+            GL.TexParameter(Target, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+            GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+        }
+        else
+        {
+            GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
+            GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+            GL.TexParameter(Target, TextureParameterName.TextureBaseLevel, 0);
+            GL.TexParameter(Target, TextureParameterName.TextureMaxLevel, 8);
+            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+        }
     }
     
-    private static PixelInternalFormat GetInternalFormat(EPixelFormat format)
+    private static PixelInternalFormat GetInternalFormat(UTexture2D texture)
     {
-        return format switch
+        return texture.Format switch
         {
             EPixelFormat.PF_B8G8R8A8 => PixelInternalFormat.Rgba8,
-            EPixelFormat.PF_R8G8B8A8 => PixelInternalFormat.Rgba8,
-            _ => PixelInternalFormat.Rgba
+            _ => PixelInternalFormat.Rgb
         };
     }
 }

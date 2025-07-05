@@ -17,6 +17,7 @@ public enum ActorSystemType
 public abstract class ActorSystem(Type? componentType) : IGameSystem
 {
     public Type? ComponentType { get; } = componentType;
+    public SystemProfiler Profiler { get; } = new();
     public ActorManager? ActorManager { get; internal set; }
     public abstract uint Order { get; }
     public abstract int ComponentsCount { get; }

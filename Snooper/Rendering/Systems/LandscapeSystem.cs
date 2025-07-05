@@ -222,8 +222,8 @@ void main()
     te_out.vHeight = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
 
     float nx = 2.0 * color.r - 1.0;
-    float ny = 2.0 * color.a - 1.0;
-    float nz = sqrt(max(0.0, 1.0 - (nx * nx + ny * ny)));
+    float nz = 2.0 * color.a - 1.0;
+    float ny = sqrt(1.0 - nx * nx + nz * nz);
     te_out.TBN = mat3(normalize(vec3(-nz, 0.0, nx)), normalize(vec3(0.0, nz, -ny)), normalize(vec3(nx, ny, nz)));
 
     vec4 p00 = gl_in[0].gl_Position;

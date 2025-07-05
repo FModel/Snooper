@@ -8,6 +8,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
 using Snooper.Rendering;
@@ -134,12 +135,8 @@ public partial class SnooperWindow : GameWindow
     protected override void OnRenderFrame(FrameEventArgs args)
     {
         base.OnRenderFrame(args);
-
-        var query = GL.GenQuery();
-        GL.BeginQuery(QueryTarget.PrimitivesGenerated, query);
+        
         _sceneSystem.Render();
-        GL.EndQuery(QueryTarget.PrimitivesGenerated);
-        GL.GetQueryObject(query, GetQueryObjectParam.QueryResult, out long primitiveCount);
 
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         GL.ClearColor(0, 1, 0, 1);
@@ -160,10 +157,10 @@ public partial class SnooperWindow : GameWindow
                 largest.X -= ImGui.GetScrollX();
                 largest.Y -= ImGui.GetScrollY();
 
-                var pointers = pair.GetPointers();
+                var framebuffers = pair.GetFramebuffers();
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
-                ImGui.Image(pointers[^1], size, Vector2.UnitY, Vector2.UnitX);
+                ImGui.Image(framebuffers[^1], size, Vector2.UnitY, Vector2.UnitX);
 
                 if (ImGui.IsItemHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Left))
                 {
@@ -183,7 +180,7 @@ public partial class SnooperWindow : GameWindow
 
                 if (_sceneSystem.DebugMode)
                 {
-                    var remainingPointers = pointers.Length - 1;
+                    var remainingPointers = framebuffers.Length - 1;
                     var miniSize = size;
                     miniSize.Y = MathF.Min(miniSize.Y, (size.Y - margin) / remainingPointers) - frameHeight;
                     miniSize.X = miniSize.Y * (size.X / size.Y);
@@ -195,17 +192,15 @@ public partial class SnooperWindow : GameWindow
                     }
 
                     var topRight = new Vector2(pos.X + size.X - miniSize.X - margin, pos.Y + margin);
-                    for (int i = 0; i < remainingPointers; i++)
+                    for (var i = 0; i < remainingPointers; i++)
                     {
                         var pMin = topRight with { Y = topRight.Y + i * (miniSize.Y + margin) };
                         var pMax = pMin + miniSize;
 
-                        drawList.AddImage(pointers[i], pMin, pMax, Vector2.UnitY, Vector2.UnitX);
+                        drawList.AddImage(framebuffers[i], pMin, pMax, Vector2.UnitY, Vector2.UnitX);
                         drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
                     }
                 }
-
-                drawList.AddText(new Vector2(pos.X + margin, pos.Y + margin), ImGui.GetColorU32(ImGuiCol.Text), $"Primitives: {primitiveCount:N0}");
 
                 var framerate = ImGui.GetIO().Framerate;
                 drawList.AddText(
@@ -286,7 +281,7 @@ public partial class SnooperWindow : GameWindow
         }
         ImGui.End();
 
-        if (ImGui.Begin("Systems Order"))
+        if (ImGui.Begin("Profiler"))
         {
             ImGui.Checkbox("Debug Mode", ref _sceneSystem.DebugMode);
             ImGui.Checkbox("Draw Bounding Boxes", ref _sceneSystem.DrawBoundingBoxes);
@@ -294,15 +289,33 @@ public partial class SnooperWindow : GameWindow
             ImGui.Combo("DebugColorMode", ref c, "None\0Per Actor\0Per Instance\0Per Material\0Per Primitive\0");
             _sceneSystem.DebugColorMode = (ActorDebugColorMode) c;
             
-            foreach (var system in _sceneSystem.Systems.GroupBy(x => x.Value.SystemType).OrderByDescending(x => x.Key))
+            ImGui.SeparatorText("Systems");
+            foreach (var system in _sceneSystem.Systems.Values)
             {
-                ImGui.Text($"{system.Key}");
-                foreach (var pair in system)
+                var name = system.GetType().Name;
+                if (ImGui.CollapsingHeader($"{system.Order} - {name} ({system.SystemType})"))
                 {
-                    ImGui.Text($"- {pair.Value.GetType().Name} (Priority: {pair.Key}, Components: x{pair.Value.ComponentsCount})");
-                    if (pair.Value is IMemorySizeProvider provider)
+                    if (ImGui.TreeNode($"x{system.ComponentsCount} {system.ComponentType?.Name}{(system.ComponentsCount > 1 ? "s" : "")}"))
                     {
-                        ImGui.TextUnformatted(provider.GetFormattedSpace());
+                        if (system is IMemorySizeProvider provider)
+                        {
+                            ImGui.TextUnformatted(provider.GetFormattedSpace());
+                        }
+                        ImGui.TreePop();
+                    }
+                    
+                    if (ImGui.TreeNode($"{name}_profiler", "Profiler"))
+                    {
+                        system.Profiler.PollResults();
+
+                        ImGui.Text($"Primitives Generated: {system.Profiler.PrimitivesGenerated:N0}");
+                        ImGui.PlotLines(
+                            "Time Elapsed (ms)", ref system.Profiler.TimeElapsedMs[0],
+                            SystemProfiler.MaxFrameHistory, 0, $"avg {system.Profiler.AverageTimeElapsedMs:F} ms",
+                            0, system.Profiler.MaxTimeElapsedMs,
+                            new Vector2(0, 25));
+                        
+                        ImGui.TreePop();
                     }
                 }
             }
