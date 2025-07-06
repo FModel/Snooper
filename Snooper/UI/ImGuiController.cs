@@ -12,7 +12,7 @@ using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
 namespace Snooper.UI;
 
-public class ImGuiSystem : IResizable
+public class ImGuiController : IResizable
 {
     private bool _frameBegun;
     private Vector2 _size;
@@ -23,7 +23,7 @@ public class ImGuiSystem : IResizable
     private readonly ArrayBuffer<ImDrawVert> _vbo;
     private readonly ShaderProgram _shader;
 
-    public ImGuiSystem()
+    public ImGuiController()
     {
         ImGui.SetCurrentContext(ImGui.CreateContext());
 

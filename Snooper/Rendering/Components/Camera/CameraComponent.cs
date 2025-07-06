@@ -8,10 +8,12 @@ namespace Snooper.Rendering.Components.Camera;
 [DefaultActorSystem(typeof(CameraSystem))]
 public sealed class CameraComponent : ActorComponent
 {
+    internal int PairIndex = -1;
+    internal bool IsActive = false;
+    
     public Matrix4x4 ViewMatrix = Matrix4x4.Identity;
     public Matrix4x4 ProjectionMatrix = Matrix4x4.Identity;
     public Matrix4x4 ViewProjectionMatrix = Matrix4x4.Identity;
-    public bool IsActive = false;
 
     public CameraType Mode;
     public bool bFXAA = true;
@@ -92,14 +94,15 @@ public sealed class CameraComponent : ActorComponent
         }
     }
 
-    public void Update(Vector2 mouseDelta)
+    public void Update(Vector2 mouseDelta) => Update(mouseDelta.X, mouseDelta.Y);
+    public void Update(float deltaX, float deltaY)
     {
         if (Actor is null) return;
 
         const float sensitivity = 0.001f;
 
-        var yawRotation = Quaternion.CreateFromAxisAngle(-Vector3.UnitY, mouseDelta.X * sensitivity);
-        var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, mouseDelta.Y * sensitivity);
+        var yawRotation = Quaternion.CreateFromAxisAngle(-Vector3.UnitY, deltaX * sensitivity);
+        var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, deltaY * sensitivity);
 
         Actor.Transform.Rotation = Quaternion.Normalize(yawRotation * Actor.Transform.Rotation * pitchRotation);
     }

@@ -19,16 +19,17 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
     public Type? ComponentType { get; } = componentType;
     public SystemProfiler Profiler { get; } = new();
     public ActorManager? ActorManager { get; internal set; }
+    
+    public abstract ActorSystemType SystemType { get; }
     public abstract uint Order { get; }
     public abstract int ComponentsCount { get; }
 
     public abstract void Load();
     public abstract void Update(float delta);
     public abstract void Render(CameraComponent camera);
-
+    
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
-
-    public virtual ActorSystemType SystemType => ActorSystemType.Forward;
+    
     protected virtual bool AllowDerivation => true;
     protected virtual bool IsRenderable => true;
     public bool Accepts(Type type)
@@ -47,7 +48,9 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 
 public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)) where TComponent : ActorComponent
 {
+    public override ActorSystemType SystemType => ActorSystemType.Forward;
     public override int ComponentsCount => Components.Count;
+    
     protected HashSet<TComponent> Components { get; } = [];
 
     public override void Load() => DequeueComponents();
