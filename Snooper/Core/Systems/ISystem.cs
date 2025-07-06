@@ -1,5 +1,4 @@
-﻿using Snooper.Core.Containers;
-using Snooper.Rendering.Components.Camera;
+﻿using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
 
@@ -10,14 +9,4 @@ public interface ISystem<in T> : IDisposable
     public void Render(T generic);
 }
 
-public interface IGameSystem : ISystem<CameraComponent>
-{
-    
-}
-
-public interface IInterfaceSystem : ISystem<SceneSystem>, IResizable
-{
-    public bool IsActive { get; set; }
-    
-    public void TextInput(char c);
-}
+public interface IGameSystem : ISystem<CameraComponent>;

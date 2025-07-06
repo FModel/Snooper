@@ -20,6 +20,7 @@ using Snooper;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
@@ -55,7 +56,20 @@ provider.SubmitKey(new FGuid(), new FAesKey(key));
 provider.PostMount();
 
 var snooper = new SnooperWindow(144, 1500, 900, false);
+var scene = new Actor(Guid.NewGuid(), "Scene");
+
+var grid = new Actor(Guid.NewGuid(), "Grid");
+grid.Components.Add(new GridComponent());
+scene.Children.Add(grid);
+
+var camera = new Actor(Guid.NewGuid(), "Camera");
+camera.Transform.Position -= Vector3.UnitZ * 5;
+camera.Transform.Position += Vector3.UnitY * 1.5f;
+camera.Components.Add(new CameraComponent());
+scene.Children.Add(camera);
+
 #if VL
+snooper.AddToScene(scene);
 snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
 snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
 snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(200, 0, 0)));
@@ -80,12 +94,13 @@ switch (provider.ProjectName)
     }
     case "FortniteGame":
     {
-        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
-        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
+        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
+        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
         break;
     }
 }
 
+snooper.AddToScene(scene);
 snooper.Run();
 
 void AddWorldToScene(UWorld world, Actor? parent = null)
@@ -104,7 +119,7 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
             // parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform(), true));
             // break;
         }
-        continue;
+        // continue;
         
         if (actor.TryGetValue(out UStaticMeshComponent smComponent, "StaticMeshComponent"))
         {
@@ -148,13 +163,13 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
             {
                 var relation = new Actor(Guid.NewGuid(), additionalWorld.Name, transform);
                 AddWorldToScene(additionalWorld, relation);
-                snooper.AddToScene(relation);
+                scene.Children.Add(relation);
             }
 #endif
         }
     }
     
-    if (add) snooper.AddToScene(parent);
+    if (add) scene.Children.Add(parent);
 }
 
 void AddToScene(UActorComponent? component, Actor parent)

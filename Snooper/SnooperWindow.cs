@@ -15,7 +15,7 @@ namespace Snooper;
 
 public partial class SnooperWindow : GameWindow
 {
-    private readonly SceneSystem _sceneSystem;
+    private readonly InterfaceSystem _interface;
     
     public SnooperWindow(double fps, int width, int height, bool startVisible = true) : base(
         new GameWindowSettings { UpdateFrequency = fps },
@@ -46,9 +46,7 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<RenderSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
         
-        _sceneSystem = new SceneSystem(this);
-        _sceneSystem.InterfaceSystem = new ImGuiSystem(this);
-        _sceneSystem.InterfaceSystem?.Resize(ClientSize.X, ClientSize.Y);
+        _interface = new LevelSystem(this);
     }
 
     public void AddToScene(UObject actor) => AddToScene(actor, FTransform.Identity);
@@ -72,7 +70,18 @@ public partial class SnooperWindow : GameWindow
                 throw new NotImplementedException($"Actor type {actor.GetType()} is not supported.");
         }
     }
-    public void AddToScene(Actor actor) => _sceneSystem.RootActor?.Children.Add(actor);
+
+    public void AddToScene(Actor actor)
+    {
+        if (_interface.RootActor is null)
+        {
+            _interface.RootActor = actor;
+        }
+        else
+        {
+            _interface.RootActor.Children.Add(actor);
+        }
+    }
     
     protected override void OnLoad()
     {
@@ -93,7 +102,7 @@ public partial class SnooperWindow : GameWindow
         GL.Enable(EnableCap.DebugOutput);
 #endif
 
-        _sceneSystem.Load();
+        _interface.Load();
 
         CenterWindow();
         IsVisible = true;
@@ -104,14 +113,14 @@ public partial class SnooperWindow : GameWindow
         base.OnUpdateFrame(args);
 
         var delta = (float) args.Time;
-        _sceneSystem.Update(delta);
+        _interface.Update(delta);
     }
 
     protected override void OnRenderFrame(FrameEventArgs args)
     {
         base.OnRenderFrame(args);
         
-        _sceneSystem.Render();
+        _interface.Render();
 
         SwapBuffers();
     }
@@ -120,7 +129,7 @@ public partial class SnooperWindow : GameWindow
     {
         base.OnTextInput(e);
 
-        _sceneSystem.InterfaceSystem?.TextInput((char) e.Unicode);
+        _interface.TextInput((char) e.Unicode);
     }
 
     protected override void OnFramebufferResize(FramebufferResizeEventArgs e)
@@ -128,6 +137,6 @@ public partial class SnooperWindow : GameWindow
         base.OnFramebufferResize(e);
 
         GL.Viewport(0, 0, e.Width, e.Height);
-        _sceneSystem.Resize(e.Width, e.Height);
+        _interface.Resize(e.Width, e.Height);
     }
 }

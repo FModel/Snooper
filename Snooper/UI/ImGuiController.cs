@@ -23,7 +23,7 @@ public class ImGuiController : IResizable
     private readonly ArrayBuffer<ImDrawVert> _vbo;
     private readonly ShaderProgram _shader;
 
-    public ImGuiController()
+    public ImGuiController(int width, int height)
     {
         ImGui.SetCurrentContext(ImGui.CreateContext());
 
@@ -39,6 +39,7 @@ public class ImGuiController : IResizable
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.BackendRendererUserData = 0;
 
+        Resize(width, height);
         _fontTexture = new ImGuiFontTexture();
         _vao = new VertexArray();
         _ebo = new ElementArrayBuffer<ushort>(1500);

@@ -1,11 +1,9 @@
 ﻿using System.Numerics;
 using ImGuiNET;
-using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Snooper.Core;
 using Snooper.Core.Containers;
-using Snooper.Core.Systems;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -14,24 +12,20 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.UI.Systems;
 
-public class ImGuiSystem(GameWindow wnd) : IInterfaceSystem
+public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 {
-    public void Render(SceneSystem scene)
+    protected override void RenderInterface()
     {
-        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-        GL.ClearColor(0, 0, 0, 1);
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-
         ImGui.DockSpaceOverViewport();
         
         ImGui.ShowDemoWindow();
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        foreach (var pair in scene.Pairs)
+        foreach (var pair in Pairs)
         {
             if (ImGui.Begin($"Viewport ({pair.Camera.Actor?.Name})", ref pair.IsOpen))
             {
-                if (ImGui.IsWindowFocused()) scene.ActiveCamera = pair.Camera;
+                if (ImGui.IsWindowFocused()) ActiveCamera = pair.Camera;
 
                 var largest = ImGui.GetContentRegionAvail();
                 largest.X -= ImGui.GetScrollX();
@@ -44,7 +38,7 @@ public class ImGuiSystem(GameWindow wnd) : IInterfaceSystem
 
                 if (ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                 {
-                    wnd.CursorState = CursorState.Grabbed;
+                    Window.CursorState = CursorState.Grabbed;
                 }
 
                 const float margin = 7.5f;
@@ -53,7 +47,7 @@ public class ImGuiSystem(GameWindow wnd) : IInterfaceSystem
                 var drawList = ImGui.GetWindowDrawList();
                 var pos = ImGui.GetItemRectMin();
 
-                if (scene.DebugMode)
+                if (DebugMode)
                 {
                     var remainingPointers = framebuffers.Length - 1;
                     var miniSize = size;
@@ -95,7 +89,7 @@ public class ImGuiSystem(GameWindow wnd) : IInterfaceSystem
         }
         ImGui.PopStyleVar();
 
-        var camera = scene.ActiveCamera;
+        var camera = ActiveCamera;
         if (camera != null)
         {
             if (ImGui.Begin("Controls"))
@@ -117,7 +111,7 @@ public class ImGuiSystem(GameWindow wnd) : IInterfaceSystem
             ImGui.End();
         }
 
-        if (scene.RootActor is { } root && ImGui.Begin("Scene Hierarchy"))
+        if (RootActor is { } root && ImGui.Begin("Scene Hierarchy"))
         {
             foreach (var child in root.Children)
             {
@@ -148,7 +142,7 @@ public class ImGuiSystem(GameWindow wnd) : IInterfaceSystem
                 }
                 if (ImGui.MenuItem("Add Camera"))
                 {
-                    var cameraActor = new CameraActor($"Camera {scene.Pairs.Count + 1}");
+                    var cameraActor = new CameraActor($"Camera {Pairs.Count + 1}");
                     root.Children.Add(cameraActor);
                 }
                 ImGui.EndPopup();
@@ -158,21 +152,21 @@ public class ImGuiSystem(GameWindow wnd) : IInterfaceSystem
 
         if (ImGui.Begin("Profiler"))
         {
-            ImGui.Text($"API: {scene.Context.Name}");
-            ImGui.Text($"OpenGL: {scene.Context.Version}");
-            ImGui.Text($"GPU: {scene.Context.DeviceInfo.Name}");
-            ImGui.Text($"Vendor: {scene.Context.DeviceInfo.Vendor}");
-            ImGui.Text($"Extensions: x{scene.Context.DeviceInfo.ExtensionSupport.Extensions.Length}");
+            ImGui.Text($"API: {Context.Name}");
+            ImGui.Text($"OpenGL: {Context.Version}");
+            ImGui.Text($"GPU: {Context.DeviceInfo.Name}");
+            ImGui.Text($"Vendor: {Context.DeviceInfo.Vendor}");
+            ImGui.Text($"Extensions: x{Context.DeviceInfo.ExtensionSupport.Extensions.Length}");
             
             ImGui.SeparatorText("Options");
-            ImGui.Checkbox("Debug Mode", ref scene.DebugMode);
-            ImGui.Checkbox("Draw Bounding Boxes", ref scene.DrawBoundingBoxes);
-            var c = (int) scene.DebugColorMode;
+            ImGui.Checkbox("Debug Mode", ref DebugMode);
+            ImGui.Checkbox("Draw Bounding Boxes", ref DrawBoundingBoxes);
+            var c = (int) DebugColorMode;
             ImGui.Combo("DebugColorMode", ref c, "None\0Per Actor\0Per Instance\0Per Material\0Per Primitive\0");
-            scene.DebugColorMode = (ActorDebugColorMode) c;
+            DebugColorMode = (ActorDebugColorMode) c;
             
             ImGui.SeparatorText("Systems");
-            foreach (var system in scene.Systems.Values)
+            foreach (var system in Systems.Values)
             {
                 var name = system.GetType().Name;
                 if (ImGui.CollapsingHeader($"{system.Order} - {name} ({system.SystemType})"))
@@ -203,24 +197,5 @@ public class ImGuiSystem(GameWindow wnd) : IInterfaceSystem
             }
         }
         ImGui.End();
-
-        _controller.Render();
-    }
-    
-    private readonly ImGuiController _controller = new();
-
-    public void Load()
-    {
-        _controller.Load();
-        IsActive = true;
-    }
-    public void Update(float delta) => _controller.Update(wnd, delta);
-    public void Resize(int newWidth, int newHeight) => _controller.Resize(newWidth, newHeight);
-    public bool IsActive { get; set; }
-    public void TextInput(char c) => _controller.TextInput(c);
-
-    public void Dispose()
-    {
-        throw new NotImplementedException();
     }
 }
