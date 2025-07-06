@@ -4,7 +4,7 @@ namespace Snooper.Rendering.Systems;
 
 public class DeferredRenderSystem : RenderSystem
 {
-    public override uint Order => 21;
+    public override uint Order => 23;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
 
     public override void Load()
@@ -22,12 +22,12 @@ in VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
     mat3 TBN;
-    vec3 vColor;
+    vec3 vDebugColor;
 } fs_in;
 
 void main()
 {
-    vec3 color = fs_in.vColor;
+    vec3 color = fs_in.vDebugColor;
     if (uDebugColorMode == 4)
     {
         color = mix(vec3(0.25), vec3(1.0), vec3(

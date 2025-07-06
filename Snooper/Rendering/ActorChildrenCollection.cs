@@ -34,7 +34,7 @@ public class ActorChildrenCollection : IDictionary<FGuid, Actor>, IEnumerable<Ac
     public bool Remove(Actor actor)
     {
         var removed = _dict.Remove(actor.Guid);
-        if (removed) CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, actor));
+        if (removed) CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, actor));
         return removed;
     }
     

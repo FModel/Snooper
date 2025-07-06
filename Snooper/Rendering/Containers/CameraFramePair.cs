@@ -10,6 +10,8 @@ public class CameraFramePair(CameraComponent camera) : IResizable
 {
     private const int DefaultWidthHeight = 1;
 
+    public bool IsOpen = true;
+
     public CameraComponent Camera { get; } = camera;
 
     private readonly GeometryBuffer _geometry = new(DefaultWidthHeight, DefaultWidthHeight);
@@ -18,8 +20,10 @@ public class CameraFramePair(CameraComponent camera) : IResizable
     private readonly CombinedFramebuffer _combined = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly FxaaFramebuffer _fxaa = new(DefaultWidthHeight, DefaultWidthHeight);
 
-    public void Generate(int width, int height)
+    public void Generate(int pairIndex, int width, int height)
     {
+        Camera.PairIndex = pairIndex;
+        
         _geometry.Generate();
         _ssao.Generate();
         _forward.Generate();
@@ -103,6 +107,14 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _fxaa.Render(_ => _combined.Bind(TextureUnit.Texture0));
     }
 
+    public void RenderToScreen(int width, int height)
+    {
+        FullQuadFramebuffer framebuffer = Camera.bFXAA ? _fxaa : _combined;
+        GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, framebuffer);
+        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0);
+        GL.BlitFramebuffer(0, 0, framebuffer.Width, framebuffer.Height, 0, 0, width, height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+    }
+
     public void Resize(int newWidth, int newHeight)
     {
         _geometry.Resize(newWidth, newHeight);
@@ -112,7 +124,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _fxaa.Resize(newWidth, newHeight);
     }
 
-    public IntPtr[] GetPointers() =>
+    public IntPtr[] GetFramebuffers() =>
     [
         .._geometry.GetTexturePointers(),
         _ssao.GetPointer(),

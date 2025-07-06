@@ -3,11 +3,13 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Programs;
 
-public class ShaderProgram(string vertex, string fragment, string? geometry = null) : Program
+public class ShaderProgram(string vertex, string fragment) : Program
 {
     public string Vertex { get; set; } = vertex;
     public string Fragment { get; set; } = fragment;
-    public string? Geometry { get; set; } = geometry;
+    public string? Geometry { get; set; }
+    public string? TessellationControl { get; set; }
+    public string? TessellationEvaluation { get; set; }
 
     private readonly List<int> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
@@ -19,6 +21,8 @@ public class ShaderProgram(string vertex, string fragment, string? geometry = nu
         _shaderHandles.Add(CompileShader(ShaderType.VertexShader, Vertex));
         _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, Fragment));
         if (!string.IsNullOrEmpty(Geometry)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, Geometry));
+        if (!string.IsNullOrEmpty(TessellationControl)) _shaderHandles.Add(CompileShader(ShaderType.TessControlShader, TessellationControl));
+        if (!string.IsNullOrEmpty(TessellationEvaluation)) _shaderHandles.Add(CompileShader(ShaderType.TessEvaluationShader, TessellationEvaluation));
     }
 
     public override void Link()
@@ -57,6 +61,11 @@ public class ShaderProgram(string vertex, string fragment, string? geometry = nu
     public void SetUniform(string name, int value)
     {
         GL.Uniform1(GetUniformLocation(name), value);
+    }
+    
+    public void SetUniform(string name, int count, int[] values)
+    {
+        GL.Uniform1(GetUniformLocation(name), count, values);
     }
 
     public unsafe void SetUniform(string name, Matrix4x4 value) => UniformMatrix4(name, (float*) &value);

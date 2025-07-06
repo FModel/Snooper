@@ -8,19 +8,21 @@ namespace Snooper.Rendering.Components.Camera;
 [DefaultActorSystem(typeof(CameraSystem))]
 public sealed class CameraComponent : ActorComponent
 {
+    internal int PairIndex = -1;
+    internal bool IsActive = false;
+    
     public Matrix4x4 ViewMatrix = Matrix4x4.Identity;
     public Matrix4x4 ProjectionMatrix = Matrix4x4.Identity;
     public Matrix4x4 ViewProjectionMatrix = Matrix4x4.Identity;
-    public bool IsActive = false;
 
     public CameraType Mode;
     public bool bFXAA = true;
     public bool bSSAO = false;
     public float SsaoRadius = 0.150f;
     public float SsaoBias = 0.05f;
-    public float MovementSpeed = 10f;
+    public float MovementSpeed = 100f;
     public float FieldOfView = 60.0f;
-    public float FarPlaneDistance = 200f;
+    public float FarPlaneDistance = 10000f;
     public float NearPlaneDistance = 0.1f;
     public Vector2 ViewportSize = new(16, 9);
 
@@ -84,22 +86,23 @@ public sealed class CameraComponent : ActorComponent
 
         if (keyboard.IsKeyDown(Keys.X))
         {
-            FieldOfView += 1.0f;
+            FieldOfView = Math.Clamp(FieldOfView + 0.5f, 1.0f, 89.0f);
         }
         if (keyboard.IsKeyDown(Keys.C))
         {
-            FieldOfView -= 1.0f;
+            FieldOfView = Math.Clamp(FieldOfView - 0.5f, 1.0f, 89.0f);
         }
     }
 
-    public void Update(Vector2 mouseDelta)
+    public void Update(Vector2 mouseDelta) => Update(mouseDelta.X, mouseDelta.Y);
+    public void Update(float deltaX, float deltaY)
     {
         if (Actor is null) return;
 
         const float sensitivity = 0.001f;
 
-        var yawRotation = Quaternion.CreateFromAxisAngle(-Vector3.UnitY, mouseDelta.X * sensitivity);
-        var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, mouseDelta.Y * sensitivity);
+        var yawRotation = Quaternion.CreateFromAxisAngle(-Vector3.UnitY, deltaX * sensitivity);
+        var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, deltaY * sensitivity);
 
         Actor.Transform.Rotation = Quaternion.Normalize(yawRotation * Actor.Transform.Rotation * pitchRotation);
     }

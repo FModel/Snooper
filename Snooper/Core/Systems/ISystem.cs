@@ -2,9 +2,11 @@
 
 namespace Snooper.Core.Systems;
 
-public interface IGameSystem : IDisposable
+public interface ISystem<in T> : IDisposable
 {
     public void Load();
     public void Update(float delta);
-    public void Render(CameraComponent camera);
+    public void Render(T generic);
 }
+
+public interface IGameSystem : ISystem<CameraComponent>;

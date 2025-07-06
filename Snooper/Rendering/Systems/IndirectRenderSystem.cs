@@ -1,4 +1,5 @@
-﻿using Snooper.Core.Containers;
+﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
@@ -7,12 +8,16 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent>(int initialDrawCapacity) : ActorSystem<TComponent>, IMemorySizeProvider where TComponent : TPrimitiveComponent<TVertex> where TVertex : unmanaged
+public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData>(int initialDrawCapacity, PrimitiveType type)
+    : ActorSystem<TComponent>, IMemorySizeProvider
+    where TVertex : unmanaged
+    where TComponent : TPrimitiveComponent<TVertex, TInstanceData>
+    where TInstanceData : unmanaged, IPerInstanceData
 {
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
 
-    protected readonly IndirectResources<TVertex> Resources = new(initialDrawCapacity);
+    protected readonly IndirectResources<TVertex, TInstanceData> Resources = new(initialDrawCapacity, type);
     protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
 
     public override void Load()

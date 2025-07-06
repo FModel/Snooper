@@ -1,6 +1,7 @@
 ﻿using System.Collections.Specialized;
 using System.Reflection;
-using CUE4Parse.UE4.Objects.Core.Misc;
+using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Hardware;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
 
@@ -14,6 +15,7 @@ public abstract class ActorManager : IGameSystem
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     // private readonly HashSet<FGuid> _actors = [];
 
+    public ContextInfo Context { get; private set; }
     public bool DebugMode = false;
     public bool DrawBoundingBoxes = false;
     public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.PerMaterial;
@@ -32,6 +34,7 @@ public abstract class ActorManager : IGameSystem
 
     public virtual void Load()
     {
+        Context = new ContextInfo();
         DequeueSystems();
     }
 
@@ -47,10 +50,14 @@ public abstract class ActorManager : IGameSystem
     [Obsolete("Use Render(CameraComponent camera, ActorSystemType systemType) instead.")]
     public void Render(CameraComponent camera) => Render(camera, ActorSystemType.Forward);
     protected void Render(CameraComponent camera, ActorSystemType systemType)
-    {
+    { 
+        var queries = new[] {QueryTarget.TimeElapsed, QueryTarget.PrimitivesGenerated};
+        
         foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
         {
+            system.Profiler.BeginQuery(queries);
             system.Render(camera);
+            system.Profiler.EndQuery();
         }
     }
 

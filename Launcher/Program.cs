@@ -1,10 +1,12 @@
 ﻿using System.Numerics;
+using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
 using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
@@ -18,6 +20,7 @@ using Snooper;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
@@ -30,6 +33,7 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 OodleHelper.Initialize();
+ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
@@ -52,11 +56,26 @@ provider.SubmitKey(new FGuid(), new FAesKey(key));
 provider.PostMount();
 
 var snooper = new SnooperWindow(144, 1500, 900, false);
-// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
-// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
-// snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(200, 0, 0)));
-// snooper.Run();
-// return;
+var scene = new Actor(Guid.NewGuid(), "Scene");
+
+var grid = new Actor(Guid.NewGuid(), "Grid");
+grid.Components.Add(new GridComponent());
+scene.Children.Add(grid);
+
+var camera = new Actor(Guid.NewGuid(), "Camera");
+camera.Transform.Position -= Vector3.UnitZ * 5;
+camera.Transform.Position += Vector3.UnitY * 1.5f;
+camera.Components.Add(new CameraComponent());
+scene.Children.Add(camera);
+
+#if VL
+snooper.AddToScene(scene);
+snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
+snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
+snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(200, 0, 0)));
+snooper.Run();
+return;
+#endif
 
 var dictionary = new Dictionary<UActorComponent, Actor>();
 switch (provider.ProjectName)
@@ -75,11 +94,13 @@ switch (provider.ProjectName)
     }
     case "FortniteGame":
     {
-        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
+        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
+        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
         break;
     }
 }
 
+snooper.AddToScene(scene);
 snooper.Run();
 
 void AddWorldToScene(UWorld world, Actor? parent = null)
@@ -91,6 +112,14 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
     foreach (var actorPtr in actors)
     {
         if (!actorPtr.TryLoad(out AActor actor)) continue;
+
+        if (actor is ALandscapeProxy landscape && actor.TryGetValue(out USceneComponent root, "RootComponent"))
+        {
+            parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform()));
+            // parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform(), true));
+            // break;
+        }
+        // continue;
         
         if (actor.TryGetValue(out UStaticMeshComponent smComponent, "StaticMeshComponent"))
         {
@@ -113,7 +142,10 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
             // world position is determined by its UStaticMeshComponent which acts as an attachment point
             // the current implementation adds a new actor instance if the actor's parent already has the child we want to add
             // because worlds can share the same UStaticMeshComponent, the world position should be determined by the last instance of the UStaticMeshComponent
-            // but it is currently not possible for child actors to have an instanced parent relation 
+            // but it is currently not possible for child actors to have an instanced parent relation
+            // ---
+            // BTW this is the same problem with landscapes, multiple actors can share the same landscape GUID
+            // ---
             // pseudo code:
             // var attach = relation.Transform.WorldMatrix;
             // if (relation.InstancedTransforms.LocalMatrices.Count > 0)
@@ -126,17 +158,18 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
                 AddWorldToScene(additionalWorld, relation);
             }
 #else
+            var transform = smComponent.GetRelativeTransform();
             foreach (var additionalWorld in additionalWorlds)
             {
-                var relation = new Actor(Guid.NewGuid(), additionalWorld.Name, smComponent.GetRelativeTransform());
+                var relation = new Actor(Guid.NewGuid(), additionalWorld.Name, transform);
                 AddWorldToScene(additionalWorld, relation);
-                snooper.AddToScene(relation);
+                scene.Children.Add(relation);
             }
 #endif
         }
     }
     
-    if (add) snooper.AddToScene(parent);
+    if (add) scene.Children.Add(parent);
 }
 
 void AddToScene(UActorComponent? component, Actor parent)

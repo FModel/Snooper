@@ -1,16 +1,18 @@
 ﻿using OpenTK.Windowing.Desktop;
+using Snooper.Core.Containers;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
 
 namespace Snooper.Core.Systems;
 
-public sealed class SceneSystem(GameWindow wnd) : ActorManager
+public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
 {
-    public List<CameraFramePair> Pairs { get; } = [];
+    protected GameWindow Window { get; } = wnd;
+    protected List<CameraFramePair> Pairs { get; } = [];
 
     private CameraComponent? _activeCamera;
-    public CameraComponent? ActiveCamera
+    protected CameraComponent? ActiveCamera
     {
         get => _activeCamera;
         set
@@ -55,13 +57,20 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
 
     public override void Update(float delta)
     {
-        _activeCamera?.Update(wnd.KeyboardState, delta);
-
+        // removed closed cameras from the scene
+        for (var i = 0; i < Pairs.Count; i++)
+        {
+            if (Pairs[i] is { IsOpen: false, Camera.Actor: not null } pair)
+            {
+                _rootActor?.Children.Remove(pair.Camera.Actor);
+            }
+        }
+        
         DequeuePairs(1);
         base.Update(delta);
     }
 
-    public void Render()
+    public virtual void Render()
     {
         foreach (var pair in Pairs)
         {
@@ -87,9 +96,9 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
     {
         base.RemoveComponent(component, actor);
 
-        if (component is CameraComponent cameraComponent && Pairs.Find(x => x.Camera == cameraComponent) is var camera)
+        if (component is CameraComponent cameraComponent)
         {
-            Pairs.Remove(camera);
+            Pairs.Remove(Pairs[cameraComponent.PairIndex]);
         }
     }
 
@@ -100,10 +109,16 @@ public sealed class SceneSystem(GameWindow wnd) : ActorManager
         while (_pairsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
             var pair = _pairsToLoad.Dequeue();
-            pair.Generate(wnd.ClientSize.X, wnd.ClientSize.Y);
+            pair.Generate(Pairs.Count, Window.ClientSize.X, Window.ClientSize.Y);
 
             Pairs.Add(pair);
             count++;
         }
+    }
+
+    public virtual void Resize(int newWidth, int newHeight)
+    {
+        foreach (var pair in Pairs)
+            pair.Resize(newWidth, newHeight);
     }
 }

@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-        <DefineConstants>VL</DefineConstants>
+        <DefineConstants>FN</DefineConstants>
 <!--        <DefineConstants>RELATIONAL_WORLDS</DefineConstants>-->
     </PropertyGroup>
 

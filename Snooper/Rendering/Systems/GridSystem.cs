@@ -5,7 +5,7 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public class GridSystem : PrimitiveSystem<GridComponent>
+public class GridSystem() : PrimitiveSystem<GridComponent>(1)
 {
     public override uint Order => 1;
 
@@ -73,7 +73,7 @@ vec4 grid(vec3 fragPos, float scale)
     float line = min(grid.x, grid.y) / 2.0;
     float minimumz = min(derivative.y, 1) * 0.1;
     float minimumx = min(derivative.x, 1) * 0.1;
-    vec4 color = vec4(0.1, 0.1, 0.1, 1.0 - min(line, 0.75));
+    vec4 color = vec4(0.1, 0.1, 0.1, 1.0 - min(line, 1.0));
     if(abs(fragPos.x) < minimumx)
     color.z = 1.0;
     if(abs(fragPos.z) < minimumz)
@@ -117,7 +117,7 @@ void main()
 }
 """);
 
-    protected override void PreRender(CameraComponent camera)
+    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
         Shader.Use();
         Shader.SetUniform("view", camera.ViewMatrix);
@@ -128,7 +128,7 @@ void main()
         GL.DepthMask(false);
     }
     
-    protected override void PostRender(CameraComponent camera)
+    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
     {
         GL.DepthMask(true);
     }
