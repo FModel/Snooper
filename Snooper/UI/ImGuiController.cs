@@ -42,8 +42,8 @@ public class ImGuiController : IResizable
         Resize(width, height);
         _fontTexture = new ImGuiFontTexture();
         _vao = new VertexArray();
-        _ebo = new ElementArrayBuffer<ushort>(1500);
-        _vbo = new ArrayBuffer<ImDrawVert>(1000);
+        _ebo = new ElementArrayBuffer<ushort>(2250);
+        _vbo = new ArrayBuffer<ImDrawVert>(1500);
         _shader = new ShaderProgram(
 @"#version 460 core
 

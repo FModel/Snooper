@@ -57,6 +57,7 @@ provider.PostMount();
 
 var snooper = new SnooperWindow(144, 1500, 900, false);
 var scene = new Actor(Guid.NewGuid(), "Scene");
+scene.Children.Add(new SkyboxActor());
 
 var grid = new Actor(Guid.NewGuid(), "Grid");
 grid.Components.Add(new GridComponent());

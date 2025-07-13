@@ -36,6 +36,7 @@ public partial class SnooperWindow : GameWindow
             Title = "Snooper"
         })
     {
+        ActorManager.RegisterSystemFactory<SkyboxSystem>();
         ActorManager.RegisterSystemFactory<GridSystem>();
         ActorManager.RegisterSystemFactory<TransformSystem>();
         ActorManager.RegisterSystemFactory<CameraSystem>();

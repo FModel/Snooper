@@ -100,7 +100,7 @@ public sealed class TransformComponent() : ActorComponent
     {
         if (ImGui.CollapsingHeader("Transform"))
         {
-            ImGui.DragFloat3("Position", ref Position);
+            ImGui.DragFloat3("Position", ref Position, 0.1f);
 
             ImGui.Text($"Rotation: {Rotation}");
             ImGui.Text($"Scale: {Scale}");

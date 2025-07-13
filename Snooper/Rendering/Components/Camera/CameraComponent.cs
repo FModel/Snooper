@@ -20,9 +20,9 @@ public sealed class CameraComponent : ActorComponent
     public bool bSSAO = false;
     public float SsaoRadius = 0.150f;
     public float SsaoBias = 0.05f;
-    public float MovementSpeed = 100f;
+    public float MovementSpeed = 1f;
     public float FieldOfView = 60.0f;
-    public float FarPlaneDistance = 10000f;
+    public float FarPlaneDistance = 500f;
     public float NearPlaneDistance = 0.1f;
     public Vector2 ViewportSize = new(16, 9);
 

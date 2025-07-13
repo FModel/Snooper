@@ -9,6 +9,7 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Primitives;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.UI.Systems;
 
@@ -70,6 +71,13 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                         drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
                     }
                 }
+                
+                const string label1 = "Press F10 to toggle interface";
+                drawList.AddText(
+                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label1).X - margin, pos.Y + margin),
+                    ImGui.GetColorU32(ImGuiCol.Text),
+                    label1
+                );
 
                 var framerate = ImGui.GetIO().Framerate;
                 drawList.AddText(
@@ -78,11 +86,11 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms)"
                 );
 
-                const string label = "Previewed content may differ from final version saved or used in-game.";
+                const string label2 = "Previewed content may differ from final version saved or used in-game.";
                 drawList.AddText(
-                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label).X - margin, pos.Y + size.Y - frameHeight),
+                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label2).X - margin, pos.Y + size.Y - frameHeight),
                     ImGui.GetColorU32(ImGuiCol.TextDisabled),
-                    label
+                    label2
                 );
             }
             ImGui.End();
@@ -192,6 +200,11 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                             new Vector2(0, 25));
                         
                         ImGui.TreePop();
+                    }
+
+                    if (system is SkyboxSystem skybox)
+                    {
+                        skybox.DrawControls();
                     }
                 }
             }
