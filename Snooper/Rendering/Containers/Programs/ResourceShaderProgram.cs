@@ -13,7 +13,7 @@ public class ResourceShaderProgram : ShaderProgram
         
     }
 
-    public override int CompileShader(ShaderType type, string file)
+    protected override int CompileShader(ShaderType type, string file)
     {
         using var stream = _assembly.GetManifestResourceStream($"{_assembly.GetName().Name}.Resources.{file}");
         using var reader = new StreamReader(stream);

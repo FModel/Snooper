@@ -63,7 +63,7 @@ public class IndirectResources<TVertex, TInstanceData>(int initialDrawCapacity, 
             var materialSection = materialSections[i];
             metadata.DrawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
             {
-                Count = (uint)materialSection.IndexCount,
+                IndexCount = (uint)materialSection.IndexCount,
                 InstanceCount = (uint)instanceData.Length,
                 FirstIndex = (uint)(firstIndex + materialSection.FirstIndex),
                 BaseVertex = (uint)baseVertex,

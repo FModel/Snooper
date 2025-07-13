@@ -1,5 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
-using Snooper.Core.Systems;
+using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
@@ -10,23 +10,7 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent>(500) // 500 because
     public override uint Order => 100;
     protected override bool AllowDerivation => true;
     protected override bool IsRenderable => ActorManager?.DrawBoundingBoxes ?? false;
-
-    public override void Load()
-    {
-        Shader.Fragment =
-"""
-#version 460 core
-
-out vec4 FragColor;
-
-void main()
-{
-    FragColor = vec4(vec3(0.75), 1.0);
-}
-""";
-
-        base.Load();
-    }
+    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default.vert", "debug.frag");
 
     public override void Update(float delta)
     {

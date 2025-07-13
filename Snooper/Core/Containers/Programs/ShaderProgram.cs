@@ -8,13 +8,13 @@ public class ShaderProgram(string vertex, string fragment) : Program
     public string Vertex { get; set; } = vertex;
     public string Fragment { get; set; } = fragment;
     public string? Geometry { get; set; }
-    public string? TessellationControl { get; set; }
-    public string? TessellationEvaluation { get; set; }
+    public string? TessellationControl { get; init; }
+    public string? TessellationEvaluation { get; init; }
 
     private readonly List<int> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
 
-    public override void Generate()
+    public sealed override void Generate()
     {
         base.Generate();
 
@@ -25,7 +25,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
         if (!string.IsNullOrEmpty(TessellationEvaluation)) _shaderHandles.Add(CompileShader(ShaderType.TessEvaluationShader, TessellationEvaluation));
     }
 
-    public override void Link()
+    public sealed override void Link()
     {
         foreach (var shaderHandle in _shaderHandles)
         {
@@ -42,7 +42,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
         }
     }
 
-    public virtual int CompileShader(ShaderType type, string content)
+    protected virtual int CompileShader(ShaderType type, string content)
     {
         var handle = GL.CreateShader(type);
         GL.ShaderSource(handle, content);

@@ -43,7 +43,7 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
 [StructLayout(LayoutKind.Sequential)]
 public struct DrawElementsIndirectCommand
 {
-    public uint Count;
+    public uint IndexCount;
     public uint InstanceCount;
     public uint FirstIndex;
     public uint BaseVertex;
