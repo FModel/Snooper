@@ -63,10 +63,9 @@ var grid = new Actor(Guid.NewGuid(), "Grid");
 grid.Components.Add(new GridComponent());
 scene.Children.Add(grid);
 
-var camera = new Actor(Guid.NewGuid(), "Camera");
+var camera = new CameraActor("Camera");
 camera.Transform.Position -= Vector3.UnitZ * 5;
 camera.Transform.Position += Vector3.UnitY * 1.5f;
-camera.Components.Add(new CameraComponent());
 scene.Children.Add(camera);
 
 #if VL

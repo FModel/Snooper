@@ -9,7 +9,6 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Primitives;
-using Snooper.Rendering.Systems;
 
 namespace Snooper.UI.Systems;
 
@@ -97,28 +96,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
         ImGui.PopStyleVar();
 
-        var camera = ActiveCamera;
-        if (camera != null)
-        {
-            if (ImGui.Begin("Controls"))
-            {
-                ImGui.Text($"Current camera: {camera.Actor?.Name}");
-                ImGui.Separator();
-
-                ImGui.Checkbox("FXAA", ref camera.bFXAA);
-                ImGui.Checkbox("SSAO", ref camera.bSSAO);
-                ImGui.BeginDisabled(!camera.bSSAO);
-                ImGui.SliderFloat("Radius", ref camera.SsaoRadius, 0.01f, 1.0f);
-                ImGui.SliderFloat("Bias", ref camera.SsaoBias, 0.0f, 0.1f);
-                ImGui.EndDisabled();
-
-                ImGui.DragFloat("Speed", ref camera.MovementSpeed, 0.1f, 1f, 100f);
-                ImGui.DragFloat("Near Plane", ref camera.NearPlaneDistance, 0.001f, 0.001f, camera.FarPlaneDistance - 1);
-                ImGui.DragFloat("Far Plane", ref camera.FarPlaneDistance, 0.1f , camera.NearPlaneDistance + 1, 1000.0f);
-            }
-            ImGui.End();
-        }
-
         if (RootActor is { } root && ImGui.Begin("Scene Hierarchy"))
         {
             foreach (var child in root.Children)
@@ -134,8 +111,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     cube.Components.Add(new PrimitiveComponent(new Cube()));
                     cube.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
 
-                    var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
-                    cube.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
+                    var forwardVector = Vector3.Transform(Vector3.UnitZ, ActiveCamera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
+                    cube.Transform.Position = (ActiveCamera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
                     root.Children.Add(cube);
                 }
                 if (ImGui.MenuItem("Add Sphere"))
@@ -144,8 +121,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
                     sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
 
-                    var forwardVector = Vector3.Transform(Vector3.UnitZ, camera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
-                    sphere.Transform.Position = (camera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
+                    var forwardVector = Vector3.Transform(Vector3.UnitZ, ActiveCamera?.Actor?.Transform.Rotation ?? Quaternion.Identity);
+                    sphere.Transform.Position = (ActiveCamera?.Actor?.Transform.Position ?? Vector3.Zero) + forwardVector * 3;
                     root.Children.Add(sphere);
                 }
                 if (ImGui.MenuItem("Add Camera"))
@@ -200,11 +177,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                             new Vector2(0, 25));
                         
                         ImGui.TreePop();
-                    }
-
-                    if (system is SkyboxSystem skybox)
-                    {
-                        skybox.DrawControls();
                     }
                 }
             }

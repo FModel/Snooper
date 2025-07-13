@@ -3,11 +3,12 @@ using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Transforms;
 
 [DefaultActorSystem(typeof(TransformSystem))]
-public sealed class TransformComponent() : ActorComponent
+public sealed class TransformComponent() : ActorComponent, IControllableComponent
 {
     private Matrix4x4 _localMatrix = Matrix4x4.Identity;
     public Matrix4x4 LocalMatrix
@@ -96,14 +97,11 @@ public sealed class TransformComponent() : ActorComponent
     
     public static implicit operator TransformComponent(FTransform transform) => new(transform);
 
-    public void DrawInterface()
+    public void DrawControls()
     {
-        if (ImGui.CollapsingHeader("Transform"))
-        {
-            ImGui.DragFloat3("Position", ref Position, 0.1f);
+        ImGui.DragFloat3("Position", ref Position, 0.1f);
 
-            ImGui.Text($"Rotation: {Rotation}");
-            ImGui.Text($"Scale: {Scale}");
-        }
+        ImGui.Text($"Rotation: {Rotation}");
+        ImGui.Text($"Scale: {Scale}");
     }
 }

@@ -1,9 +1,8 @@
-﻿using System.Numerics;
-using ImGuiNET;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Skybox;
 
 namespace Snooper.Rendering.Systems;
 
@@ -13,6 +12,8 @@ namespace Snooper.Rendering.Systems;
 public class SkyboxSystem() : PrimitiveSystem<CubeComponent>(1)
 {
     public override uint Order => 1;
+    protected override bool AllowDerivation => true;
+
     protected override ShaderProgram Shader { get; }  = new(
 """
 #version 460 core
@@ -173,15 +174,7 @@ void main()
     FragColor = vec4(color, 1.0);
 }
 """);
-    
-    private Planet _planet = new()
-    {
-        Position = Vector3.One,
-        Intensity = 22.0f,
-        Radius = 6371e3f,
-        AtmosphereRadius = 6471e3f
-    };
-    
+
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
         var view = camera.ViewMatrix;
@@ -193,10 +186,17 @@ void main()
         Shader.SetUniform("uViewMatrix", view);
         Shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
 
-        Shader.SetUniform("uPlanetPos", _planet.Position);
-        Shader.SetUniform("uPlanetIntensity", _planet.Intensity);
-        Shader.SetUniform("uPlanetRadius", _planet.Radius);
-        Shader.SetUniform("uPlanetAtmosphereRadius", _planet.AtmosphereRadius);
+        switch (_component)
+        {
+            case AtmosphericComponent atmospheric:
+            {
+                Shader.SetUniform("uPlanetPos", atmospheric.Sun.Position);
+                Shader.SetUniform("uPlanetIntensity", atmospheric.Sun.Intensity);
+                Shader.SetUniform("uPlanetRadius", atmospheric.Sun.Radius);
+                Shader.SetUniform("uPlanetAtmosphereRadius", atmospheric.Sun.AtmosphereRadius);
+                break;
+            }
+        }
         
         GL.DepthFunc(DepthFunction.Lequal);
         GL.DepthMask(false);
@@ -208,24 +208,25 @@ void main()
         GL.DepthFunc(DepthFunction.Less);
     }
 
-    public void DrawControls()
+    protected override void OnActorComponentAdded(CubeComponent component)
     {
-        if (ImGui.TreeNode("Atmosphere Settings"))
+        base.OnActorComponentAdded(component);
+        
+        if (_component is not null)
+            throw new InvalidOperationException("Only one SkyboxComponent can be added to the system at a time.");
+        
+        _component = component;
+    }
+
+    protected override void OnActorComponentRemoved(CubeComponent component)
+    {
+        base.OnActorComponentRemoved(component);
+        
+        if (_component == component)
         {
-            ImGui.DragFloat3("Sun Direction", ref _planet.Position, 0.01f, -1.0f, 2.0f);
-            ImGui.DragFloat("Sun Intensity", ref _planet.Intensity, 0.1f, 0.0f);
-            ImGui.DragFloat("Sun Radius", ref _planet.Radius, 1e3f, 0.0f);
-            ImGui.DragFloat("Atmosphere Radius", ref _planet.AtmosphereRadius, 1e3f, _planet.Radius + 1e3f);
-            
-            ImGui.TreePop();
+            _component = null;
         }
     }
     
-    private struct Planet
-    {
-        public Vector3 Position;
-        public float Intensity;
-        public float Radius;
-        public float AtmosphereRadius;
-    }
+    private CubeComponent? _component;
 }

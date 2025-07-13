@@ -115,17 +115,11 @@ public class Actor
         if (open)
         {
             ImGui.Text($"Visible Instances: {VisibleInstances}");
-            
-            Transform.DrawInterface();
-            
-            // if (Components.Count > 0)
-            // {
-            //     ImGui.SeparatorText($"{Components.Count} Components");
-            //     foreach (var component in Components)
-            //     {
-            //         ImGui.Text($"- {component.GetType().Name}");
-            //     }
-            // }
+
+            foreach (var component in Components)
+            {
+                component.DrawInterface();
+            }
             
             var count = Children.Count;
             if (count > 0)

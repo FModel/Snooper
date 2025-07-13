@@ -1,12 +1,14 @@
 ﻿using System.Numerics;
+using ImGuiNET;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Camera;
 
 [DefaultActorSystem(typeof(CameraSystem))]
-public sealed class CameraComponent : ActorComponent
+public sealed class CameraComponent : ActorComponent, IControllableComponent
 {
     internal int PairIndex = -1;
     internal bool IsActive = false;
@@ -94,7 +96,6 @@ public sealed class CameraComponent : ActorComponent
         }
     }
 
-    public void Update(Vector2 mouseDelta) => Update(mouseDelta.X, mouseDelta.Y);
     public void Update(float deltaX, float deltaY)
     {
         if (Actor is null) return;
@@ -105,6 +106,20 @@ public sealed class CameraComponent : ActorComponent
         var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, deltaY * sensitivity);
 
         Actor.Transform.Rotation = Quaternion.Normalize(yawRotation * Actor.Transform.Rotation * pitchRotation);
+    }
+
+    public void DrawControls()
+    {
+        ImGui.Checkbox("FXAA", ref bFXAA);
+        ImGui.Checkbox("SSAO", ref bSSAO);
+        ImGui.BeginDisabled(!bSSAO);
+        ImGui.SliderFloat("Radius", ref SsaoRadius, 0.01f, 1.0f);
+        ImGui.SliderFloat("Bias", ref SsaoBias, 0.0f, 0.1f);
+        ImGui.EndDisabled();
+
+        ImGui.DragFloat("Speed", ref MovementSpeed, 0.1f, 1f, 100f);
+        ImGui.DragFloat("Near Plane", ref NearPlaneDistance, 0.001f, 0.001f, FarPlaneDistance - 1);
+        ImGui.DragFloat("Far Plane", ref FarPlaneDistance, 0.1f , NearPlaneDistance + 1, 1000.0f);
     }
 
     public Vector2 ProjectToScreen(Vector3 worldPosition)

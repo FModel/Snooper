@@ -56,7 +56,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override void Load() => DequeueComponents();
     public override void Update(float delta) => DequeueComponents(5);
 
-    public override void ProcessActorComponent(ActorComponent component, Actor actor)
+    public sealed override void ProcessActorComponent(ActorComponent component, Actor actor)
     {
         if (component is not TComponent actorComponent)
             throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));

@@ -1,6 +1,37 @@
-﻿namespace Snooper.Rendering;
+﻿using ImGuiNET;
+using Snooper.UI;
 
-public abstract class ActorComponent
+namespace Snooper.Rendering;
+
+public abstract partial class ActorComponent
 {
     public Actor? Actor;
+    
+    private string? _displayName;
+    public string DisplayName
+    {
+        get
+        {
+            if (_displayName is null)
+            {
+                var type = GetType().Name[..^"Component".Length];
+                _displayName = UpperCaseToSpace().Replace(type, " $1");
+            }
+            
+            return _displayName;
+        }
+    }
+
+    internal void DrawInterface()
+    {
+        if (this is not IControllableComponent controllable) return;
+        
+        if (ImGui.CollapsingHeader($"{DisplayName} Controls"))
+        {
+            controllable.DrawControls();
+        }
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]
+    private static partial System.Text.RegularExpressions.Regex UpperCaseToSpace();
 }

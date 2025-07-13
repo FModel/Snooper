@@ -1,11 +1,19 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using Snooper.Core;
+using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
+
+public struct PerInstanceLandscapeData : IPerInstanceData
+{
+    public Matrix4x4 Matrix { get; set; }
+    public long Heightmap { get; set; }
+    public Vector2 ScaleBias { get; set; }
+}
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
 public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLandscapeData>
