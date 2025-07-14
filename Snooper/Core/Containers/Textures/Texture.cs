@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using CUE4Parse.UE4.Objects.Core.Misc;
+using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Textures;
 
@@ -6,6 +7,7 @@ public abstract class Texture(TextureTarget target) : HandledObject, IBind, IRes
 {
     public abstract GetPName Name { get; }
 
+    public FGuid Guid { get; protected init; }
     public int PreviousHandle { get; private set; }
     public int Width { get; private set; }
     public int Height { get; private set; }
@@ -16,6 +18,7 @@ public abstract class Texture(TextureTarget target) : HandledObject, IBind, IRes
 
     protected Texture(int width, int height, TextureTarget target, PixelInternalFormat internalFormat, PixelFormat format, PixelType type) : this(target)
     {
+        Guid = System.Guid.NewGuid();
         Width = width;
         Height = height;
         InternalFormat = internalFormat;

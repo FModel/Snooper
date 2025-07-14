@@ -4,7 +4,7 @@ using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Textures;
 
-namespace Snooper.Rendering.Containers.Buffers;
+namespace Snooper.Rendering.Containers.Framebuffers;
 
 public class FullQuadFramebuffer(
     int originalWidth, int originalHeight,

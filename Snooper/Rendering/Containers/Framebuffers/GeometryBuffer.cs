@@ -3,7 +3,7 @@ using Snooper.Core.Containers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
-namespace Snooper.Rendering.Containers.Buffers;
+namespace Snooper.Rendering.Containers.Framebuffers;
 
 public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 {
@@ -17,46 +17,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
     private readonly Texture2D _color = new(originalWidth, originalHeight);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
-    private readonly ShaderProgram _shader = new(
-"""
-#version 460 core
-layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aTexCoords;
-
-out vec2 vTexCoords;
-
-void main()
-{
-    gl_Position = vec4(aPos, 0.0, 1.0);
-    vTexCoords = aTexCoords;
-}
-""",
-"""
-#version 460 core
-
-in vec2 vTexCoords;
-
-uniform sampler2D gPosition;
-uniform sampler2D gNormal;
-uniform sampler2D gColor;
-uniform sampler2D ssao;
-
-uniform bool useSsao;
-
-out vec4 FragColor;
-
-void main()
-{
-    vec3 position = texture(gPosition, vTexCoords).rgb;
-    vec3 normal = texture(gNormal, vTexCoords).rgb;
-    vec4 color = texture(gColor, vTexCoords);
-    float ao = useSsao ? texture(ssao, vTexCoords).r : 1.0;
-
-    float brightness = 0.7 + 0.3 * normal.z;
-
-    FragColor = vec4(color.rgb * brightness * ao, color.a);
-}
-""");
+    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/light.frag");
 
     public override void Generate()
     {

@@ -1,7 +1,7 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 
-namespace Snooper.Rendering.Containers.Buffers;
+namespace Snooper.Rendering.Containers.Framebuffers;
 
 public class ForwardFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight)
 {

@@ -48,16 +48,18 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLa
 
     public sealed override MeshMaterialSection[] MaterialSections { get; protected init; } = [new(0, 0, Settings.TessellationIndicesPerQuad)];
 
-    protected override void ApplyInstanceData(PerInstanceLandscapeData[] data)
+    protected override bool ApplyInstanceData(PerInstanceLandscapeData[] data)
     {
         Heightmap.Generate();
         Heightmap.MakeResident();
-            
+
         for (var i = 0; i < data.Length; i++)
         {
             data[i].Heightmap = Heightmap;
             data[i].ScaleBias = ScaleBias;
         }
+
+        return true;
     }
 
     protected override void CopyCachedData(PerInstanceLandscapeData[] data, PerInstanceLandscapeData[] cached)

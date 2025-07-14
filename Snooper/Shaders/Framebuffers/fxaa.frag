@@ -1,28 +1,4 @@
-﻿using System.Numerics;
-using Snooper.Core.Containers.Programs;
-
-namespace Snooper.Rendering.Containers.Buffers;
-
-public class FxaaFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight)
-{
-    private readonly ShaderProgram _shader = new(
-"""
-#version 460 core
-layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aTexCoords;
-
-out vec2 vTexCoords;
-
-void main()
-{
-    gl_Position = vec4(aPos, 0.0, 1.0);
-    vTexCoords = aTexCoords;
-}
-""",
-"""
-#version 460 core
-
-#define FXAA_REDUCE_MIN   (1.0/128.0)
+﻿#define FXAA_REDUCE_MIN   (1.0/128.0)
 #define FXAA_REDUCE_MUL   (1.0/8.0)
 #define FXAA_SPAN_MAX     8.0
 
@@ -61,40 +37,19 @@ vec3 fxaa(sampler2D tex, vec2 uv, vec2 invRes)
     dir = clamp(dir * rcpDirMin * invRes, -FXAA_SPAN_MAX * invRes, FXAA_SPAN_MAX * invRes);
 
     vec3 rgbA = 0.5 * (
-        texture(tex, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
-        texture(tex, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+    texture(tex, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
+    texture(tex, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
     vec3 rgbB = rgbA * 0.5 + 0.25 * (
-        texture(tex, uv + dir * -0.5).rgb +
-        texture(tex, uv + dir * 0.5).rgb);
+    texture(tex, uv + dir * -0.5).rgb +
+    texture(tex, uv + dir * 0.5).rgb);
 
     float lumaB = dot(rgbB, luma);
     if ((lumaB < lumaMin) || (lumaB > lumaMax))
-        return rgbA;
+    return rgbA;
     return rgbB;
 }
 
 void main()
 {
     FragColor = vec4(fxaa(combinedTexture, vTexCoords, inverseScreenSize), 1.0);
-}
-""");
-
-    public override void Generate()
-    {
-        base.Generate();
-
-        _shader.Generate();
-        _shader.Link();
-    }
-
-    public void Render(Action<ShaderProgram>? callback = null)
-    {
-        base.Render(() =>
-        {
-            _shader.Use();
-            _shader.SetUniform("combinedTexture", 0);
-            _shader.SetUniform("inverseScreenSize", new Vector2(1.0f / Width, 1.0f / Height));
-            callback?.Invoke(_shader);
-        });
-    }
 }

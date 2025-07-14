@@ -1,6 +1,8 @@
 ﻿using System.Collections.Specialized;
 using System.Reflection;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers.Textures;
 using Snooper.Core.Hardware;
 using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
@@ -15,7 +17,6 @@ public abstract class ActorManager : IGameSystem
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     // private readonly HashSet<FGuid> _actors = [];
 
-    public ContextInfo Context { get; private set; }
     public bool DebugMode = false;
     public bool DrawBoundingBoxes = false;
     public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.PerMaterial;
@@ -30,16 +31,31 @@ public abstract class ActorManager : IGameSystem
         _registeredFactories.Add(typeof(T), factory);
     }
 
+    public ContextInfo Context { get; private set; }
+    public Dictionary<string, Texture> Icons { get; } = new();
+    public Dictionary<FGuid, Texture> Textures { get; } = new();
     public SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
         Context = new ContextInfo();
+        
+        var icons = new[] {"bone.png", "cube.png", "mountain.png", "sphere.png", "sun.png", "video.png"};
+        foreach (var icon in icons)
+        {
+            var texture = new EmbeddedTexture2D(icon);
+            texture.Generate();
+                
+            Icons.Add(icon[..^4], texture);
+        }
+        
         DequeueSystems();
     }
 
     public virtual void Update(float delta)
     {
+        MainThreadQueue.Dequeue(1);
+        
         DequeueSystems(1);
         foreach (var system in Systems.Values)
         {

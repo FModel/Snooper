@@ -5,12 +5,12 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public interface IVertexData : TPrimitiveData<Vertex>;
 
-public struct Vertex
+public readonly struct Vertex
 {
-    public Vector3 Position;
-    public Vector3 Normal;
-    public Vector3 Tangent;
-    public Vector2 TexCoord;
+    public readonly Vector3 Position;
+    public readonly Vector3 Normal;
+    public readonly Vector3 Tangent;
+    public readonly Vector2 TexCoord;
 
     public Vertex(Vector3 position, Vector3 normal, Vector3 tangent, Vector2 texCoord)
     {
@@ -21,11 +21,11 @@ public struct Vertex
     }
 }
 
-public struct MeshMaterialSection
+public readonly struct MeshMaterialSection
 {
-    public int MaterialIndex;
-    public int FirstIndex;
-    public int IndexCount;
+    public readonly int MaterialIndex;
+    public readonly int FirstIndex;
+    public readonly int IndexCount;
 
     public MeshMaterialSection(int materialIndex, int firstIndex, int indexCount)
     {

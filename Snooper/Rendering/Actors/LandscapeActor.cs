@@ -17,4 +17,6 @@ public class LandscapeActor : Actor
         Components.Add(CullingComponent);
         Components.Add(MeshComponent);
     }
+    
+    internal override string Icon => "mountain";
 }

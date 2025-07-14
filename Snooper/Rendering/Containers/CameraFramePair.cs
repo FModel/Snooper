@@ -2,7 +2,7 @@
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Containers.Buffers;
+using Snooper.Rendering.Containers.Framebuffers;
 
 namespace Snooper.Rendering.Containers;
 

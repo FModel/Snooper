@@ -12,7 +12,7 @@ public class SkeletalMeshComponent : MeshComponent
 
     private readonly CSkeletalMesh _mesh;
 
-    public SkeletalMeshComponent(USkeletalMesh owner, CSkeletalMesh mesh) : base(mesh.LODs[0])
+    public SkeletalMeshComponent(USkeletalMesh owner, CSkeletalMesh mesh) : base(mesh.LODs[0], owner.Materials)
     {
         _mesh = mesh;
 

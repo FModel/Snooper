@@ -12,7 +12,7 @@ public class BindlessTexture(Texture texture) : ArbHandledObject
     
     public void MakeResident()
     {
-        if (!IsResident)
+        if (!IsResident())
         {
             GL.Arb.MakeTextureHandleResident(Handle);
         }
@@ -20,13 +20,13 @@ public class BindlessTexture(Texture texture) : ArbHandledObject
     
     public void MakeNonResident()
     {
-        if (IsResident)
+        if (IsResident())
         {
             GL.Arb.MakeTextureHandleNonResident(Handle);
         }
     }
-    
-    public bool IsResident => GL.Arb.IsTextureHandleResident(Handle);
+
+    private bool IsResident() => GL.Arb.IsTextureHandleResident(Handle);
     
     public override void Dispose()
     {

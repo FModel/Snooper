@@ -14,11 +14,13 @@ public class Texture2D(
 {
     public override GetPName Name => GetPName.TextureBinding2D;
 
-    private readonly UTexture2D? _owner;
+    private readonly UTexture? _owner;
 
-    public Texture2D(UTexture2D texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, GetInternalFormat(texture))
+    public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, GetInternalFormat(texture))
     {
         _owner = texture;
+        
+        Guid = texture.LightingGuid;
     }
 
     public override void Generate()
@@ -48,7 +50,7 @@ public class Texture2D(
         }
     }
     
-    private static PixelInternalFormat GetInternalFormat(UTexture2D texture)
+    private static PixelInternalFormat GetInternalFormat(UTexture texture)
     {
         return texture.Format switch
         {

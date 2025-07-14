@@ -13,4 +13,6 @@ public class SkyboxActor : Actor
         
         Components.Add(SkyboxComponent);
     }
+
+    internal override string Icon => "sun";
 }

@@ -63,4 +63,6 @@ public class MeshActor : Actor
         Components.Add(CullingComponent);
         Components.Add(MeshComponent);
     }
+
+    internal override string Icon => MeshComponent is StaticMeshComponent ? "cube" : "bone";
 }

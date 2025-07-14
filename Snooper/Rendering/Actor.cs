@@ -70,7 +70,6 @@ public class Actor
     
     public Matrix4x4[] GetWorldMatrices()
     {
-        // TODO: this is called a lot, find a way to optimize it
         var relation = Transform.Relation?.WorldMatrix ?? Matrix4x4.Identity;
         var matrices = new Matrix4x4[1 + InstancedTransforms.LocalMatrices.Count];
         matrices[0] = Transform.WorldMatrix;
@@ -88,54 +87,8 @@ public class Actor
     private int _frameCounter;
     private bool _condition;
     
-    private readonly int _id = Random.Shared.Next();
-    private readonly Vector2 _iconSize = new(10);
-    internal void DrawInterface()
-    {
-        ImGui.PushID(_id);
-        
-        ImGui.Image(0, _iconSize, Vector2.UnitY, Vector2.UnitX, Vector4.Zero, Vector4.One);
-        ImGui.SameLine();
-
-        if (!_condition && IsDirty) _condition = true;
-        if (_condition)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0f, 0f, 1));
-            _frameCounter++;
-        }
-        var open = ImGui.TreeNodeEx(Name, ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick);
-        if (_condition) ImGui.PopStyleColor();
-
-        if (_frameCounter >= FrameLimit)
-        {
-            _frameCounter = 0;
-            _condition = false;
-        }
-        
-        if (open)
-        {
-            ImGui.Text($"Visible Instances: {VisibleInstances}");
-
-            foreach (var component in Components)
-            {
-                component.DrawInterface();
-            }
-            
-            var count = Children.Count;
-            if (count > 0)
-            {
-                ImGui.SeparatorText($"{count} Child{(count > 1 ? "ren" : "")}");
-                foreach (var child in Children)
-                {
-                    child.DrawInterface();
-                }
-            }
-            
-            ImGui.TreePop();
-        }
-        
-        ImGui.PopID();
-    }
+    internal readonly int Id = Random.Shared.Next();
+    internal virtual string Icon => "cube";
 
     private void AddInternal(Actor actor)
     {

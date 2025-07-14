@@ -48,8 +48,8 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData>(TPrimitiveData
         
         if (_cachedInstanceData is null)
         {
-            ApplyInstanceData(data);
-            _cachedInstanceData = data;
+            if (ApplyInstanceData(data))
+                _cachedInstanceData = data;
         }
         else
         {
@@ -59,9 +59,9 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData>(TPrimitiveData
         return data;
     }
 
-    protected virtual void ApplyInstanceData(TInstanceData[] data)
+    protected virtual bool ApplyInstanceData(TInstanceData[] data)
     {
-        
+        return false;
     }
 
     protected virtual void CopyCachedData(TInstanceData[] data, TInstanceData[] cached)

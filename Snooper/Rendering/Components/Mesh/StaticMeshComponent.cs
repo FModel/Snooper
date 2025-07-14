@@ -11,14 +11,14 @@ public class StaticMeshComponent : MeshComponent
 
     private readonly CStaticMesh _mesh;
 
-    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(mesh.LODs[0])
+    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(mesh.LODs[0], owner.Materials)
     {
         _mesh = mesh;
 
         ScreenSizes = owner.RenderData?.ScreenSize ?? [];
     }
     
-    public StaticMeshComponent(ALandscapeProxy owner, CStaticMesh mesh) : base(mesh.LODs[0])
+    public StaticMeshComponent(ALandscapeProxy owner, CStaticMesh mesh) : base(mesh.LODs[0], [owner.LandscapeMaterial.ResolvedObject])
     {
         _mesh = mesh;
 
