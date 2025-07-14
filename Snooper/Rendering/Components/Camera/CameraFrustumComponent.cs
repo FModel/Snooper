@@ -21,7 +21,7 @@ public class CameraFrustumComponent(CameraComponent cameraComponent) : DebugComp
         ];
     }
 
-    public override void Update(IndirectResources<Vector3, PerInstanceData> resources)
+    public override void Update(IndirectResources<Vector3, PerInstanceData, PerDrawData> resources)
     {
         base.Update(resources);
 

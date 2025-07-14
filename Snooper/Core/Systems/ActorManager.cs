@@ -19,7 +19,7 @@ public abstract class ActorManager : IGameSystem
 
     public bool DebugMode = false;
     public bool DrawBoundingBoxes = false;
-    public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.PerMaterial;
+    public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.None;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new()
     {

@@ -16,7 +16,7 @@ public struct PerInstanceLandscapeData : IPerInstanceData
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
-public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLandscapeData>
+public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLandscapeData, PerDrawData>
 {
     public readonly int SizeQuads;
     public readonly BindlessTexture Heightmap;

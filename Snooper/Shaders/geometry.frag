@@ -4,15 +4,15 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
 
-struct PerInstanceData
+struct PerDrawData
 {
-    mat4 Matrix;
     sampler2D Diffuse;
+    sampler2D Normal;
 };
 
-layout(std430, binding = 0) restrict readonly buffer PerInstanceDataBuffer
+layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
 {
-    PerInstanceData uInstanceDataBuffer[];
+    PerDrawData uDrawDataBuffer[];
 };
 
 uniform int uDebugColorMode;
@@ -28,7 +28,7 @@ in VS_OUT {
 void main()
 {
     vec3 color = fs_in.vDebugColor;
-    if (uDebugColorMode == 0) color = texture(uInstanceDataBuffer[mIndex].Diffuse, fs_in.vTexCoords).rgb;
+    if (uDebugColorMode == 0) color = texture(uDrawDataBuffer[mIndex].Diffuse, fs_in.vTexCoords).rgb;
     if (uDebugColorMode == 4)
     {
         color = mix(vec3(0.25), vec3(1.0), vec3(

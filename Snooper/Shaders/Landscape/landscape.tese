@@ -14,7 +14,7 @@ layout(std430, binding = 0) restrict readonly buffer PerInstanceDataBuffer
     PerInstanceData uInstanceDataBuffer[];
 };
 
-layout(std430, binding = 1) restrict readonly buffer LandscapeScales
+layout(std430, binding = 2) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };

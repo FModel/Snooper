@@ -2,13 +2,14 @@
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
+using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceLandscapeData>(100, PrimitiveType.Patches)
+public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceLandscapeData, PerDrawData>(100, PrimitiveType.Patches)
 {
     public override uint Order => 21;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
@@ -51,6 +52,6 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     {
         base.PreRender(camera, batchIndex);
     
-        _scales.Bind(1);
+        _scales.Bind(2);
     }
 }

@@ -8,11 +8,12 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
-    : IndirectRenderSystem<TVertex, TComponent, TInstanceData>(initialDrawCapacity, type)
+public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TDrawData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
+    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TDrawData>(initialDrawCapacity, type)
     where TVertex : unmanaged
-    where TComponent : TPrimitiveComponent<TVertex, TInstanceData>
+    where TComponent : TPrimitiveComponent<TVertex, TInstanceData, TDrawData>
     where TInstanceData : unmanaged, IPerInstanceData
+    where TDrawData : unmanaged, IPerDrawData
 {
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
@@ -52,7 +53,9 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData>(int in
     }
 }
 
-public class PrimitiveSystem<TComponent>(int initialDrawCapacity) : PrimitiveSystem<Vector3, TComponent, PerInstanceData>(initialDrawCapacity) where TComponent : TPrimitiveComponent<Vector3, PerInstanceData>
+public class PrimitiveSystem<TComponent>(int initialDrawCapacity)
+    : PrimitiveSystem<Vector3, TComponent, PerInstanceData, PerDrawData>(initialDrawCapacity)
+    where TComponent : TPrimitiveComponent<Vector3, PerInstanceData, PerDrawData>
 {
     protected override int BatchCount => int.MaxValue;
     protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>

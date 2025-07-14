@@ -8,16 +8,17 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData>(int initialDrawCapacity, PrimitiveType type)
+public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TDrawData>(int initialDrawCapacity, PrimitiveType type)
     : ActorSystem<TComponent>, IMemorySizeProvider
     where TVertex : unmanaged
-    where TComponent : TPrimitiveComponent<TVertex, TInstanceData>
+    where TComponent : TPrimitiveComponent<TVertex, TInstanceData, TDrawData>
     where TInstanceData : unmanaged, IPerInstanceData
+    where TDrawData : unmanaged, IPerDrawData
 {
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
 
-    protected readonly IndirectResources<TVertex, TInstanceData> Resources = new(initialDrawCapacity, type);
+    protected readonly IndirectResources<TVertex, TInstanceData, TDrawData> Resources = new(initialDrawCapacity, type);
     protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
 
     public override void Load()

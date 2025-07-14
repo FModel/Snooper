@@ -7,13 +7,15 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class IndirectResources<TVertex, TInstanceData>(int initialDrawCapacity, PrimitiveType type)
+public class IndirectResources<TVertex, TInstanceData, TDrawData>(int initialDrawCapacity, PrimitiveType type)
     : IBind, IMemorySizeProvider
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
+    where TDrawData : unmanaged, IPerDrawData
 {
     private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<TDrawData> _drawData = new(initialDrawCapacity);
 
     private readonly VertexArray _vao = new();
     public readonly ElementArrayBuffer<uint> EBO = new(initialDrawCapacity * 200);
@@ -25,6 +27,7 @@ public class IndirectResources<TVertex, TInstanceData>(int initialDrawCapacity, 
     {
         _commands.Generate();
         _instanceData.Generate();
+        _drawData.Generate();
         
         _vao.Generate();
         EBO.Generate();
@@ -74,7 +77,17 @@ public class IndirectResources<TVertex, TInstanceData>(int initialDrawCapacity, 
         return metadata;
     }
 
-    public void Update(TPrimitiveComponent<TVertex, TInstanceData> component)
+    public void Add(IndirectDrawMetadata metadata, TDrawData[] drawData)
+    {
+        _drawData.Bind();
+        for (var i = 0; i < drawData.Length; i++)
+        {
+            _drawData.Insert(metadata.DrawIds[i], drawData[i]);
+        }
+        _drawData.Unbind();
+    }
+
+    public void Update(TPrimitiveComponent<TVertex, TInstanceData, TDrawData> component)
     {
         if (!component.Actor.IsDirty) return;
         
@@ -104,13 +117,16 @@ public class IndirectResources<TVertex, TInstanceData>(int initialDrawCapacity, 
     public void Remove(IndirectDrawMetadata metadata)
     {
         _commands.Current.Bind();
-        _instanceData.Bind();
-
         _commands.Current.RemoveRange(metadata.DrawIds);
-        _instanceData.Remove(metadata.BaseInstance);
-
         _commands.Current.Unbind();
+
+        _instanceData.Bind();
+        _instanceData.Remove(metadata.BaseInstance);
         _instanceData.Unbind();
+
+        _drawData.Bind();
+        _drawData.RemoveRange(metadata.DrawIds);
+        _drawData.Unbind();
     }
 
     public void Render() => RenderBatch(IntPtr.Zero, Count);
@@ -118,6 +134,7 @@ public class IndirectResources<TVertex, TInstanceData>(int initialDrawCapacity, 
     {
         _commands.Current.Bind();
         _instanceData.Bind(0);
+        _drawData.Bind(1);
         _vao.Bind();
 
         var batchCount = Math.Min(batchSize, Count - (int)offset);
@@ -136,6 +153,7 @@ public class IndirectResources<TVertex, TInstanceData>(int initialDrawCapacity, 
         builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}>:");
         builder.AppendLine($"    Commands:     {_commands.Current.GetFormattedSpace()}");
         builder.AppendLine($"    InstanceData: {_instanceData.GetFormattedSpace()}");
+        builder.AppendLine($"    DrawData:     {_drawData.GetFormattedSpace()}");
         builder.AppendLine($"    Indices:      {EBO.GetFormattedSpace()}");
         builder.AppendLine($"    Vertices:     {VBO.GetFormattedSpace()}");
         return builder.ToString();

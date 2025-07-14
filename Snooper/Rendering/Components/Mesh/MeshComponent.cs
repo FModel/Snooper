@@ -2,8 +2,6 @@
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
-using CUE4Parse.UE4.Assets.Exports.Texture;
-using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -11,71 +9,54 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
-public struct PerInstanceMeshData : IPerInstanceData
+public struct PerDrawMeshData : IPerDrawData
 {
-    public Matrix4x4 Matrix { get; set; }
-    public long Diffuse { get; set; }
-    public Vector2 _padding;
+    public long DiffuseTexture { get; set; }
+    public long NormalTexture { get; set; }
 }
 
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceMeshData>
+public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
-    public abstract int LodCount { get; }
-    public abstract float[] ScreenSizes { get; }
-
-    public readonly CMaterialParams2 MaterialParameters;
-    
     public sealed override MeshMaterialSection[] MaterialSections { get; protected init; }
 
-    protected MeshComponent(CBaseMeshLod lod, ResolvedObject[] materials) : base(new Geometry(lod))
+    protected MeshComponent(CBaseMeshLod lod, ResolvedObject?[] materials) : base(new Geometry(lod))
     {
-        MaterialSections = new MeshMaterialSection[lod.Sections.Value.Length];
+        var length = lod.Sections.Value.Length;
+
+        MaterialSections = new MeshMaterialSection[length];
         for (var i = 0; i < MaterialSections.Length; i++)
         {
             var s = lod.Sections.Value[i];
-            var materialIndex = s.MaterialIndex;
-            MaterialSections[i] = new MeshMaterialSection(materialIndex, s.FirstIndex, s.NumFaces * 3);
-        }
-
-        var section = MaterialSections.MaxBy(x => x.IndexCount);
-        MaterialParameters = new CMaterialParams2();
-        
-        if (section.MaterialIndex >= 0 && section.MaterialIndex < materials.Length)
-        {
-            if (materials[section.MaterialIndex].TryLoad(out var m) && m is UMaterialInterface material)
+            
+            MaterialSections[i] = new MeshMaterialSection(s.MaterialIndex, s.FirstIndex, s.NumFaces * 3);
+            MaterialSections[i].ParseMaterialAsync(materials, () =>
             {
-                material.GetParams(MaterialParameters, EMaterialFormat.FirstLayer);
+                if (Interlocked.Decrement(ref length) == 0)
+                {
+                    DrawDataDirty = true;
+                }
+            });
+        }
+    }
+
+    protected override void ApplyDrawData(PerDrawMeshData[] data)
+    {
+        for (var i = 0; i < data.Length; i++)
+        {
+            var section = MaterialSections[i];
+            if (!section.Parameters.TryGetTexture2d(out var texture, CMaterialParams2.FallbackDiffuse) &&
+                !section.Parameters.TryGetFirstTexture2d(out texture))
+            {
+                continue;
             }
-        }
-        else
-        {
-            Log.Warning("MeshComponent: Material index {0} out of bounds for mesh {1}", section.MaterialIndex, Actor?.Name);
-        }
-    }
 
-    protected override bool ApplyInstanceData(PerInstanceMeshData[] data)
-    {
-        MaterialParameters.TryGetTexture2d(out var diffuse, CMaterialParams2.FallbackDiffuse);
-        if (diffuse is null) MaterialParameters.TryGetFirstTexture2d(out diffuse);
-        
-        var bindless = new BindlessTexture(new Texture2D(diffuse));
-        bindless.Generate();
-        bindless.MakeResident();
-        
-        for (var i = 0; i < data.Length; i++)
-        {
-            data[i].Diffuse = bindless;
-        }
-
-        return true;
-    }
-
-    protected override void CopyCachedData(PerInstanceMeshData[] data, PerInstanceMeshData[] cached)
-    {
-        for (var i = 0; i < data.Length; i++)
-        {
-            data[i].Diffuse = cached[i].Diffuse;
+            var bindless = new BindlessTexture(new Texture2D(texture));
+            bindless.Generate();
+            bindless.MakeResident();
+            
+            data[i].DiffuseTexture = bindless;
+            data[i].NormalTexture = 0;
         }
     }
 

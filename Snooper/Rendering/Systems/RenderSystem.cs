@@ -7,7 +7,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstanceMeshData>(500)
+public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstanceData, PerDrawMeshData>(500)
 {
     public override uint Order => 22;
     protected override bool AllowDerivation => true;
