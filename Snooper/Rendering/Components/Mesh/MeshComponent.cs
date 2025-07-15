@@ -13,6 +13,11 @@ public struct PerDrawMeshData : IPerDrawData
 {
     public long DiffuseTexture { get; set; }
     public long NormalTexture { get; set; }
+    
+    public void SetDefault()
+    {
+        throw new NotImplementedException();
+    }
 }
 
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
@@ -34,31 +39,31 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
             {
                 if (Interlocked.Decrement(ref length) == 0)
                 {
-                    DrawDataDirty = true;
+                    // DrawDataDirty = true;
                 }
             });
         }
     }
 
-    protected override void ApplyDrawData(PerDrawMeshData[] data)
-    {
-        for (var i = 0; i < data.Length; i++)
-        {
-            var section = MaterialSections[i];
-            if (!section.Parameters.TryGetTexture2d(out var texture, CMaterialParams2.FallbackDiffuse) &&
-                !section.Parameters.TryGetFirstTexture2d(out texture))
-            {
-                continue;
-            }
-
-            var bindless = new BindlessTexture(new Texture2D(texture));
-            bindless.Generate();
-            bindless.MakeResident();
-            
-            data[i].DiffuseTexture = bindless;
-            data[i].NormalTexture = 0;
-        }
-    }
+    // protected override void ApplyDrawData(PerDrawMeshData[] data)
+    // {
+    //     for (var i = 0; i < data.Length; i++)
+    //     {
+    //         var section = MaterialSections[i];
+    //         if (!section.Parameters.TryGetTexture2d(out var texture, CMaterialParams2.FallbackDiffuse) &&
+    //             !section.Parameters.TryGetFirstTexture2d(out texture))
+    //         {
+    //             continue;
+    //         }
+    //     
+    //         var bindless = new BindlessTexture(texture);
+    //         bindless.Generate();
+    //         bindless.MakeResident();
+    //         
+    //         data[i].DiffuseTexture = bindless;
+    //         data[i].NormalTexture = 0;
+    //     }
+    // }
 
     protected abstract IVertexData GetPrimitive(int index);
     

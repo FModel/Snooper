@@ -16,11 +16,10 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData, TDrawData>(TPr
     public abstract MeshMaterialSection[] MaterialSections { get; protected init; }
     
     public IndirectDrawMetadata DrawMetadata = new();
-    public bool DrawDataDirty = false;
     
-    public void Generate(IndirectResources<TVertex, TInstanceData, TDrawData> resources)
+    public virtual void Generate(IndirectResources<TVertex, TInstanceData, TDrawData> resources)
     {
-        if (!primitive.IsValid) return;
+        if (!primitive.IsValid) throw new InvalidOperationException("Primitive data is not valid.");
         DrawMetadata = resources.Add(primitive, MaterialSections, GetPerInstanceData());
     }
 
@@ -29,11 +28,6 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData, TDrawData>(TPr
         if (DrawMetadata.BaseInstance < 0)
         {
             Generate(resources);
-        }
-        else if (DrawDataDirty)
-        {
-            resources.Add(DrawMetadata, GetPerDrawData());
-            DrawDataDirty = false;
         }
         else
         {
@@ -71,17 +65,6 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData, TDrawData>(TPr
         return false;
     }
     protected virtual void CopyCachedData(TInstanceData[] data, TInstanceData[] cached)
-    {
-        
-    }
-    
-    public TDrawData[] GetPerDrawData()
-    {
-        var data = new TDrawData[MaterialSections.Length];
-        ApplyDrawData(data);
-        return data;
-    }
-    protected virtual void ApplyDrawData(TDrawData[] data)
     {
         
     }

@@ -54,7 +54,7 @@ public abstract class ActorManager : IGameSystem
 
     public virtual void Update(float delta)
     {
-        MainThreadQueue.Dequeue(1);
+        MainThreadDispatcher.Dequeue(1);
         
         DequeueSystems(1);
         foreach (var system in Systems.Values)

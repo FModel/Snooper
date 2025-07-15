@@ -3,11 +3,13 @@ using Serilog;
 
 namespace Snooper.Core;
 
-public static class MainThreadQueue
+public static class MainThreadDispatcher
 {
     private static readonly ConcurrentQueue<Action> _lazyQueue = [];
     
-    public static void AddToLazyQueue(Action action)
+    public static bool IsEmpty => _lazyQueue.IsEmpty;
+    
+    public static void Enqueue(Action action)
     {
         _lazyQueue.Enqueue(action);
     }
@@ -25,7 +27,7 @@ public static class MainThreadQueue
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error executing action from MainThreadQueue");
+                    Log.Error(ex, "Error executing action from MainThreadDispatcher");
                 }
                 finally
                 {
@@ -33,5 +35,23 @@ public static class MainThreadQueue
                 }
             }
         }
+    }
+    
+    public static Task RunAsync(Action action)
+    {
+        var tcs = new TaskCompletionSource();
+        Enqueue(() =>
+        {
+            try
+            {
+                action();
+                tcs.SetResult();
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+        return tcs.Task;
     }
 }

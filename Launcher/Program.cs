@@ -119,7 +119,7 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
             // parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform(), true));
             // break;
         }
-        // continue;
+        continue;
         
         if (actor.TryGetValue(out UStaticMeshComponent smComponent, "StaticMeshComponent"))
         {

@@ -73,18 +73,17 @@ public class IndirectResources<TVertex, TInstanceData, TDrawData>(int initialDra
                 BaseInstance = (uint)baseInstance
             });
         }
-
-        return metadata;
-    }
-
-    public void Add(IndirectDrawMetadata metadata, TDrawData[] drawData)
-    {
+        
         _drawData.Bind();
-        for (var i = 0; i < drawData.Length; i++)
+        var fallback = new TDrawData();
+        fallback.SetDefault();
+        for (var i = 0; i < materialSections.Length; i++)
         {
-            _drawData.Insert(metadata.DrawIds[i], drawData[i]);
+            _drawData.Add(fallback);
         }
         _drawData.Unbind();
+
+        return metadata;
     }
 
     public void Update(TPrimitiveComponent<TVertex, TInstanceData, TDrawData> component)
@@ -97,6 +96,13 @@ public class IndirectResources<TVertex, TInstanceData, TDrawData>(int initialDra
         
         _instanceData.Update(component.DrawMetadata.BaseInstance, component.GetPerInstanceData());
         component.Actor.MarkClean();
+    }
+    
+    public void UpdateDrawData(int drawId, TDrawData drawData)
+    {
+        _drawData.Bind();
+        _drawData.Update(drawId, drawData);
+        _drawData.Unbind();
     }
 
     public void UpdateVertices(int drawId, TVertex[] vertices)

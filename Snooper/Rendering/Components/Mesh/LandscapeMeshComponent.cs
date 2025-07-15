@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -8,18 +9,30 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
-public struct PerInstanceLandscapeData : IPerInstanceData
+public struct PerDrawLandscapeData : IPerDrawData
 {
-    public Matrix4x4 Matrix { get; set; }
     public long Heightmap { get; set; }
     public Vector2 ScaleBias { get; set; }
+    
+    public void SetDefault()
+    {
+        var texture = new ColorTexture(FColor.Gray);
+        texture.Generate();
+        
+        var heightmap = new BindlessTexture(texture);
+        heightmap.Generate();
+        heightmap.MakeResident();
+        
+        Heightmap = heightmap;
+        ScaleBias = Vector2.Zero;
+    }
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
-public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLandscapeData, PerDrawData>
+public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceData, PerDrawLandscapeData>
 {
     public readonly int SizeQuads;
-    public readonly BindlessTexture Heightmap;
+    public readonly Texture2D Heightmap;
     public readonly Vector2 ScaleBias;
     public readonly Vector2[] Scales;
     
@@ -31,7 +44,7 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLa
         }
         
         SizeQuads = component.ComponentSizeQuads + 1;
-        Heightmap = new BindlessTexture(new Texture2D(heightmap));
+        Heightmap = new Texture2D(heightmap);
 
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
         ScaleBias = new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W);
@@ -48,27 +61,20 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceLa
 
     public sealed override MeshMaterialSection[] MaterialSections { get; protected init; } = [new(0, 0, Settings.TessellationIndicesPerQuad)];
 
-    protected override bool ApplyInstanceData(PerInstanceLandscapeData[] data)
+    public override void Generate(IndirectResources<Vector2, PerInstanceData, PerDrawLandscapeData> resources)
     {
+        base.Generate(resources);
+        
+        Heightmap.OnTextureReady += () =>
+        {
+            Heightmap.MakeBindless();
+            resources.UpdateDrawData(DrawMetadata.DrawIds[0], new PerDrawLandscapeData
+            {
+                Heightmap = Heightmap.Bindless,
+                ScaleBias = ScaleBias
+            });
+        };
         Heightmap.Generate();
-        Heightmap.MakeResident();
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            data[i].Heightmap = Heightmap;
-            data[i].ScaleBias = ScaleBias;
-        }
-
-        return true;
-    }
-
-    protected override void CopyCachedData(PerInstanceLandscapeData[] data, PerInstanceLandscapeData[] cached)
-    {
-        for (var i = 0; i < data.Length; i++)
-        {
-            data[i].Heightmap = cached[i].Heightmap;
-            data[i].ScaleBias = cached[i].ScaleBias;
-        }
     }
 
     private readonly struct Geometry : TPrimitiveData<Vector2>

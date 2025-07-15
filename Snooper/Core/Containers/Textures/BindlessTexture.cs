@@ -6,15 +6,14 @@ public class BindlessTexture(Texture texture) : ArbHandledObject
 {
     public override void Generate()
     {
-        texture.Generate();
-        Handle = GL.Arb.GetTextureHandle(texture);
+        ArbHandle = GL.Arb.GetTextureHandle(texture);
     }
     
     public void MakeResident()
     {
         if (!IsResident())
         {
-            GL.Arb.MakeTextureHandleResident(Handle);
+            GL.Arb.MakeTextureHandleResident(ArbHandle);
         }
     }
     
@@ -22,15 +21,14 @@ public class BindlessTexture(Texture texture) : ArbHandledObject
     {
         if (IsResident())
         {
-            GL.Arb.MakeTextureHandleNonResident(Handle);
+            GL.Arb.MakeTextureHandleNonResident(ArbHandle);
         }
     }
 
-    private bool IsResident() => GL.Arb.IsTextureHandleResident(Handle);
+    private bool IsResident() => GL.Arb.IsTextureHandleResident(ArbHandle);
     
     public override void Dispose()
     {
         MakeNonResident();
-        texture.Dispose();
     }
 }

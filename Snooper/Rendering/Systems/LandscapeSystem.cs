@@ -9,7 +9,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceLandscapeData, PerDrawData>(100, PrimitiveType.Patches)
+public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerDrawLandscapeData>(100, PrimitiveType.Patches)
 {
     public override uint Order => 21;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;

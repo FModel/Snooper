@@ -13,6 +13,8 @@ public class Texture2D(
     : Texture(width, height, TextureTarget.Texture2D, internalFormat, format, type)
 {
     public override GetPName Name => GetPName.TextureBinding2D;
+    
+    public event Action? OnTextureReady;
 
     private readonly UTexture? _owner;
 
@@ -25,29 +27,55 @@ public class Texture2D(
 
     public override void Generate()
     {
-        base.Generate();
-        if (_owner is null) return;
-        
-        Bind();
-        
-        var bitmap = _owner.Decode();
-        GL.TexImage2D(Target, 0, InternalFormat, Width, Height, 0, Format, Type, bitmap.Data);
-        
-        if (_owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap)
+        if (_owner is null)
         {
-            GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-            GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-            GL.TexParameter(Target, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-            GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+            base.Generate();
+            return;
         }
-        else
+
+        Task.Run(() =>
         {
-            GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
-            GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-            GL.TexParameter(Target, TextureParameterName.TextureBaseLevel, 0);
-            GL.TexParameter(Target, TextureParameterName.TextureMaxLevel, 8);
-            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
-        }
+            var decoded = _owner.Decode();
+            if (decoded is null)
+                throw new InvalidOperationException("Failed to decode texture data.");
+            
+            MainThreadDispatcher.Enqueue(() =>
+            {
+                base.Generate();
+                
+                Bind();
+                GL.TexImage2D(Target, 0, InternalFormat, Width, Height, 0, Format, Type, decoded.Data);
+        
+                if (_owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap)
+                {
+                    GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+                    GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+                    GL.TexParameter(Target, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+                    GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+                }
+                else
+                {
+                    GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
+                    GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+                    GL.TexParameter(Target, TextureParameterName.TextureBaseLevel, 0);
+                    GL.TexParameter(Target, TextureParameterName.TextureMaxLevel, 8);
+                    GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+                }
+                
+                OnTextureReady?.Invoke();
+            });
+        });
+    }
+
+    public BindlessTexture? Bindless;
+    public void MakeBindless()
+    {
+        if (Handle == 0)
+            throw new InvalidOperationException("Texture must be generated before making it bindless.");
+
+        Bindless = new BindlessTexture(this);
+        Bindless.Generate();
+        Bindless.MakeResident();
     }
     
     private static PixelInternalFormat GetInternalFormat(UTexture texture)
@@ -57,5 +85,11 @@ public class Texture2D(
             EPixelFormat.PF_B8G8R8A8 => PixelInternalFormat.Rgba8,
             _ => PixelInternalFormat.Rgb
         };
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        Bindless?.Dispose();
     }
 }
