@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
-using CUE4Parse.UE4.Assets.Exports.Material;
+using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -11,61 +11,69 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public struct PerDrawMeshData : IPerDrawData
 {
-    public long DiffuseTexture { get; set; }
-    public long NormalTexture { get; set; }
-    
-    public void SetDefault()
-    {
-        throw new NotImplementedException();
-    }
+    public bool IsReady { get; init; }
+    public long Diffuse { get; init; }
+    public long Normal { get; init; }
 }
 
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
-    public sealed override MeshMaterialSection[] MaterialSections { get; protected init; }
+    public sealed override PrimitiveSection[] Sections { get; protected init; }
 
     protected MeshComponent(CBaseMeshLod lod, ResolvedObject?[] materials) : base(new Geometry(lod))
     {
-        var length = lod.Sections.Value.Length;
-
-        MaterialSections = new MeshMaterialSection[length];
-        for (var i = 0; i < MaterialSections.Length; i++)
+        Sections = new PrimitiveSection[lod.Sections.Value.Length];
+        for (var i = 0; i < Sections.Length; i++)
         {
             var s = lod.Sections.Value[i];
-            
-            MaterialSections[i] = new MeshMaterialSection(s.MaterialIndex, s.FirstIndex, s.NumFaces * 3);
-            MaterialSections[i].ParseMaterialAsync(materials, () =>
+            Sections[i] = new PrimitiveSection(s.FirstIndex, s.NumFaces * 3)
             {
-                if (Interlocked.Decrement(ref length) == 0)
-                {
-                    // DrawDataDirty = true;
-                }
-            });
+                DrawDataContainer = new DrawDataContainer(new ColorTexture(FColor.Gray), new ColorTexture(FColor.Gray))
+            };
         }
     }
 
-    // protected override void ApplyDrawData(PerDrawMeshData[] data)
-    // {
-    //     for (var i = 0; i < data.Length; i++)
-    //     {
-    //         var section = MaterialSections[i];
-    //         if (!section.Parameters.TryGetTexture2d(out var texture, CMaterialParams2.FallbackDiffuse) &&
-    //             !section.Parameters.TryGetFirstTexture2d(out texture))
-    //         {
-    //             continue;
-    //         }
-    //     
-    //         var bindless = new BindlessTexture(texture);
-    //         bindless.Generate();
-    //         bindless.MakeResident();
-    //         
-    //         data[i].DiffuseTexture = bindless;
-    //         data[i].NormalTexture = 0;
-    //     }
-    // }
-
     protected abstract IVertexData GetPrimitive(int index);
+    
+    private class DrawDataContainer(Texture diffuse, Texture normal) : IDrawDataContainer
+    {
+        private long _diffuse;
+        private long _normal;
+        
+        public Dictionary<string, Texture> GetTextures() => new()
+        {
+            ["Diffuse"] = diffuse,
+            ["Normal"] = normal
+        };
+
+        public void SetBindlessTexture(string key, BindlessTexture bindless)
+        {
+            switch (key)
+            {
+                case "Diffuse":
+                    _diffuse = bindless;
+                    break;
+                case "Normal":
+                    _normal = bindless;
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown texture key: {key}");
+            }
+        }
+
+        public void FinalizeGpuData()
+        {
+            Raw = new PerDrawMeshData
+            {
+                IsReady = true,
+                Diffuse = _diffuse,
+                Normal = _normal
+            };
+        }
+
+        public IPerDrawData? Raw { get; private set; }
+    }
     
     protected readonly struct Geometry : IVertexData
     {

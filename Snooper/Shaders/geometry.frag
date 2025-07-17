@@ -6,6 +6,7 @@ layout (location = 2) out vec4 gColor;
 
 struct PerDrawData
 {
+    bool IsReady;
     sampler2D Diffuse;
     sampler2D Normal;
 };
@@ -27,9 +28,14 @@ in VS_OUT {
 
 void main()
 {
+    PerDrawData drawData = uDrawDataBuffer[mIndex];
+    
     vec3 color = fs_in.vDebugColor;
-    if (uDebugColorMode == 0) color = texture(uDrawDataBuffer[mIndex].Diffuse, fs_in.vTexCoords).rgb;
-    if (uDebugColorMode == 4)
+    if (uDebugColorMode == 0 && drawData.IsReady)
+    {
+        color = texture(drawData.Diffuse, fs_in.vTexCoords).rgb;
+    }
+    else if (uDebugColorMode == 4)
     {
         color = mix(vec3(0.25), vec3(1.0), vec3(
             float((gl_PrimitiveID * 61u) % 255u) / 255.0,

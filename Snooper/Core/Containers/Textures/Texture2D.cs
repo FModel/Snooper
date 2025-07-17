@@ -13,8 +13,6 @@ public class Texture2D(
     : Texture(width, height, TextureTarget.Texture2D, internalFormat, format, type)
 {
     public override GetPName Name => GetPName.TextureBinding2D;
-    
-    public event Action? OnTextureReady;
 
     private readonly UTexture? _owner;
 
@@ -62,20 +60,9 @@ public class Texture2D(
                     GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
                 }
                 
-                OnTextureReady?.Invoke();
+                OnTextureReadyForBindless();
             });
         });
-    }
-
-    public BindlessTexture? Bindless;
-    public void MakeBindless()
-    {
-        if (Handle == 0)
-            throw new InvalidOperationException("Texture must be generated before making it bindless.");
-
-        Bindless = new BindlessTexture(this);
-        Bindless.Generate();
-        Bindless.MakeResident();
     }
     
     private static PixelInternalFormat GetInternalFormat(UTexture texture)
@@ -85,11 +72,5 @@ public class Texture2D(
             EPixelFormat.PF_B8G8R8A8 => PixelInternalFormat.Rgba8,
             _ => PixelInternalFormat.Rgb
         };
-    }
-
-    public override void Dispose()
-    {
-        base.Dispose();
-        Bindless?.Dispose();
     }
 }

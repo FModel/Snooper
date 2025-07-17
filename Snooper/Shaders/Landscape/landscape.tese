@@ -9,6 +9,7 @@ struct PerInstanceData
 
 struct PerDrawData
 {
+    bool IsReady;
     sampler2D Heightmap;
     vec2 ScaleBias;
 };
@@ -45,15 +46,37 @@ out TE_OUT {
 
 void main()
 {
+    float u = gl_TessCoord.x;
+    float v = gl_TessCoord.y;
+    
+    vec4 p00 = gl_in[0].gl_Position;
+    vec4 p01 = gl_in[1].gl_Position;
+    vec4 p10 = gl_in[2].gl_Position;
+    vec4 p11 = gl_in[3].gl_Position;
+
+    vec4 p0 = (p01 - p00) * u + p00;
+    vec4 p1 = (p11 - p10) * u + p10;
+    vec4 p = (p1 - p0) * v + p0;
+
+    vec4 normal = normalize(vec4(cross((p10 - p00).xyz, (p01 - p00).xyz), 0));
+    mat4 matrix = uViewMatrix * uInstanceDataBuffer[tcInstanceIndex[0]].Matrix;
+    
     PerDrawData drawData = uDrawDataBuffer[tcDrawIndex[0]];
+    if (!drawData.IsReady)
+    {
+        te_out.vViewPos = vec3(0.0);
+        te_out.vHeight = 0.0;
+        te_out.TBN = mat3(1.0);
+        gl_Position = uProjectionMatrix * matrix * p;
+        return;
+    }
+    
     vec2 heightmapSize = textureSize(drawData.Heightmap, 0);
     vec2 texelSize = 1.0 / heightmapSize;
     vec2 componentUvSize = vec2(uSizeQuads) / heightmapSize;
     float quadFraction = 1.0 / uQuadCount;
 
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
-    float u = gl_TessCoord.x;
-    float v = gl_TessCoord.y;
     vec2 uv = drawData.ScaleBias + subPatchOffset * componentUvSize + vec2(u, v) * (componentUvSize * quadFraction);
     uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
 
@@ -67,20 +90,10 @@ void main()
     float ny = sqrt(1.0 - nx * nx + nz * nz);
     te_out.TBN = mat3(normalize(vec3(-nz, 0.0, nx)), normalize(vec3(0.0, nz, -ny)), normalize(vec3(nx, ny, nz)));
 
-    vec4 p00 = gl_in[0].gl_Position;
-    vec4 p01 = gl_in[1].gl_Position;
-    vec4 p10 = gl_in[2].gl_Position;
-    vec4 p11 = gl_in[3].gl_Position;
-
-    vec4 p0 = (p01 - p00) * u + p00;
-    vec4 p1 = (p11 - p10) * u + p10;
-    vec4 p = (p1 - p0) * v + p0;
-
     // displace point along normal
-    vec4 normal = normalize(vec4(cross((p10 - p00).xyz, (p01 - p00).xyz), 0));
     p += normal * te_out.vHeight;
 
-    vec4 viewPos = uViewMatrix * uInstanceDataBuffer[tcInstanceIndex[0]].Matrix * p;
+    vec4 viewPos = matrix * p;
     gl_Position = uProjectionMatrix * viewPos;
     te_out.vViewPos = viewPos.xyz;
 }

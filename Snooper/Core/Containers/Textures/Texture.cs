@@ -15,7 +15,7 @@ public abstract class Texture(TextureTarget target) : HandledObject, IBind, IRes
     public PixelInternalFormat InternalFormat { get; }
     public PixelFormat Format { get; }
     public PixelType Type { get; }
-
+    
     protected Texture(int width, int height, TextureTarget target, PixelInternalFormat internalFormat, PixelFormat format, PixelType type) : this(target)
     {
         Guid = System.Guid.NewGuid();
@@ -66,8 +66,16 @@ public abstract class Texture(TextureTarget target) : HandledObject, IBind, IRes
                 break;
         }
     }
+    
+    public event Action? TextureReadyForBindless;
+    protected virtual void OnTextureReadyForBindless()
+    {
+        TextureReadyForBindless?.Invoke();
+    }
 
     public IntPtr GetPointer() => Handle;
+
+    public override bool Equals(object? obj) => obj is Texture texture && Guid.Equals(texture.Guid);
 
     public override void Dispose()
     {

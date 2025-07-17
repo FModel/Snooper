@@ -9,18 +9,15 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
 
     public DrawElementsIndirectCommand this[int index] => GetData(index, 1)[0];
 
-    public void UpdateCount(int offset, uint value)
+    public void UpdateIndexCount(int offset, uint value)
     {
         GL.BufferSubData(Target, offset * Stride, 4, ref value);
     }
 
-    public void UpdateInstance(int[] offsets, uint instanceCount, uint baseInstance)
+    public void UpdateInstance(int offset, uint instanceCount, uint baseInstance)
     {
-        foreach (var offset in offsets)
-        {
-            GL.BufferSubData(Target, offset * Stride + 4, 4, ref instanceCount);
-            GL.BufferSubData(Target, offset * Stride + 16, 4, ref baseInstance);
-        }
+        GL.BufferSubData(Target, offset * Stride + 4, 4, ref instanceCount);
+        GL.BufferSubData(Target, offset * Stride + 16, 4, ref baseInstance);
     }
 
     public void UpdateFirstIndex(int offset, uint value)
@@ -33,10 +30,12 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
         GL.BufferSubData(Target, offset * Stride + 12, 4, ref value);
     }
 
-    public override void RemoveRange(int[] index)
+    public override void RemoveRange(int[] indices)
     {
-        UpdateInstance(index, 0, 0);
-        base.RemoveRange(index);
+        foreach (var index in indices)
+            UpdateInstance(index, 0, 0);
+        
+        base.RemoveRange(indices);
     }
 }
 

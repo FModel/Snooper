@@ -8,12 +8,12 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TDrawData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
-    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TDrawData>(initialDrawCapacity, type)
+public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
+    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerDrawData>(initialDrawCapacity, type)
     where TVertex : unmanaged
-    where TComponent : TPrimitiveComponent<TVertex, TInstanceData, TDrawData>
+    where TComponent : TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
     where TInstanceData : unmanaged, IPerInstanceData
-    where TDrawData : unmanaged, IPerDrawData
+    where TPerDrawData : unmanaged, IPerDrawData
 {
     public override uint Order => 20;
     protected override bool AllowDerivation => false;

@@ -17,7 +17,7 @@ public static class MainThreadDispatcher
     public static void Dequeue(int limit = 0)
     {
         var count = 0;
-        while (!_lazyQueue.IsEmpty && (limit == 0 || count < limit))
+        while (!IsEmpty && (limit == 0 || count < limit))
         {
             if (_lazyQueue.TryDequeue(out var action))
             {

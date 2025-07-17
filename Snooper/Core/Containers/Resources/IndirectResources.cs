@@ -7,15 +7,15 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class IndirectResources<TVertex, TInstanceData, TDrawData>(int initialDrawCapacity, PrimitiveType type)
+public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type)
     : IBind, IMemorySizeProvider
     where TVertex : unmanaged
-    where TInstanceData : unmanaged, IPerInstanceData
-    where TDrawData : unmanaged, IPerDrawData
+    where TInstanceData : unmanaged, IPerInstanceData 
+    where TPerDrawData : unmanaged, IPerDrawData
 {
     private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new(initialDrawCapacity);
-    private readonly ShaderStorageBuffer<TDrawData> _drawData = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<TPerDrawData> _drawData = new(initialDrawCapacity);
 
     private readonly VertexArray _vao = new();
     public readonly ElementArrayBuffer<uint> EBO = new(initialDrawCapacity * 200);
@@ -54,76 +54,77 @@ public class IndirectResources<TVertex, TInstanceData, TDrawData>(int initialDra
         VBO.Unbind();
     }
     
-    public IndirectDrawMetadata Add(TPrimitiveData<TVertex> primitive, MeshMaterialSection[] materialSections, TInstanceData[] instanceData)
+    public void Add(TPrimitiveData<TVertex> primitive, PrimitiveSection[] sections, TInstanceData[] instanceData)
     {
         var firstIndex = EBO.AddRange(primitive.Indices);
         var baseVertex = VBO.AddRange(primitive.Vertices);
         var baseInstance = _instanceData.AddRange(instanceData);
 
-        var metadata = new IndirectDrawMetadata { DrawIds = new int[materialSections.Length], BaseInstance = baseInstance };
-        for (var i = 0; i < materialSections.Length; i++)
+        foreach (var section in sections)
         {
-            var materialSection = materialSections[i];
-            metadata.DrawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
+            section.DrawMetadata.BaseInstance = baseInstance;
+            section.DrawMetadata.DrawId = _commands.Current.Add(new DrawElementsIndirectCommand
             {
-                IndexCount = (uint)materialSection.IndexCount,
+                IndexCount = (uint)section.IndexCount,
                 InstanceCount = (uint)instanceData.Length,
-                FirstIndex = (uint)(firstIndex + materialSection.FirstIndex),
+                FirstIndex = (uint)(firstIndex + section.FirstIndex),
                 BaseVertex = (uint)baseVertex,
                 BaseInstance = (uint)baseInstance
             });
         }
-        
+    }
+    
+    public void AllocateDrawData(int count)
+    {
         _drawData.Bind();
-        var fallback = new TDrawData();
-        fallback.SetDefault();
-        for (var i = 0; i < materialSections.Length; i++)
-        {
-            _drawData.Add(fallback);
-        }
+        _drawData.Allocate(count);
         _drawData.Unbind();
-
-        return metadata;
     }
 
-    public void Update(TPrimitiveComponent<TVertex, TInstanceData, TDrawData> component)
+    public void Update(TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
     {
-        if (!component.Actor.IsDirty) return;
+        if (!component.Actor.IsDirty || component.Sections.Length < 1) return;
         
-        var instanceCount = component.Actor.VisibleInstances.End.Value - component.Actor.VisibleInstances.Start.Value;
-        var baseInstance = component.DrawMetadata.BaseInstance + component.Actor.VisibleInstances.Start.Value;
-        _commands.Current.UpdateInstance(component.DrawMetadata.DrawIds, component.Actor.IsVisible ? (uint)instanceCount : 0u, (uint)baseInstance);
+        var metadata = component.Sections[0].DrawMetadata;
+        var visibleInstanceCount = component.Actor.VisibleInstances.End.Value - component.Actor.VisibleInstances.Start.Value;
+        var visibleBaseInstance = metadata.BaseInstance + component.Actor.VisibleInstances.Start.Value;
         
-        _instanceData.Update(component.DrawMetadata.BaseInstance, component.GetPerInstanceData());
+        var instanceCount = component.Actor.IsVisible ? visibleInstanceCount : 0;
+        foreach (var section in component.Sections)
+        {
+            _commands.Current.UpdateInstance(section.DrawMetadata.DrawId, (uint)instanceCount, (uint)visibleBaseInstance);
+        }
+        
+        _instanceData.Update(metadata.BaseInstance, component.GetPerInstanceData());
         component.Actor.MarkClean();
     }
     
-    public void UpdateDrawData(int drawId, TDrawData drawData)
+    public void Update(int drawId, TPerDrawData drawData)
     {
         _drawData.Bind();
         _drawData.Update(drawId, drawData);
         _drawData.Unbind();
     }
 
-    public void UpdateVertices(int drawId, TVertex[] vertices)
+    public void Update(int drawId, TVertex[] vertices)
     {
         var command = _commands.Current[drawId];
         VBO.Update((int) command.BaseVertex, vertices);
     }
 
-    public void UpdatePrimitive(int drawId, uint[] indices, TVertex[] vertices)
+    public void Update(int drawId, uint[] indices, TVertex[] vertices)
     {
         var command = _commands.Current[drawId];
         EBO.Update((int) command.FirstIndex, indices);
         VBO.Update((int) command.BaseVertex, vertices);
 
-        _commands.Current.UpdateCount(drawId, (uint) indices.Length);
+        _commands.Current.UpdateIndexCount(drawId, (uint) indices.Length);
     }
 
     public void Remove(IndirectDrawMetadata metadata)
     {
         _commands.Current.Bind();
-        _commands.Current.RemoveRange(metadata.DrawIds);
+        _commands.Current.Remove(metadata.DrawId);
         _commands.Current.Unbind();
 
         _instanceData.Bind();
@@ -131,7 +132,7 @@ public class IndirectResources<TVertex, TInstanceData, TDrawData>(int initialDra
         _instanceData.Unbind();
 
         _drawData.Bind();
-        _drawData.RemoveRange(metadata.DrawIds);
+        _drawData.Remove(metadata.DrawId);
         _drawData.Unbind();
     }
 
@@ -156,7 +157,7 @@ public class IndirectResources<TVertex, TInstanceData, TDrawData>(int initialDra
     public string GetFormattedSpace()
     {
         var builder = new StringBuilder();
-        builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}>:");
+        builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}, {typeof(TInstanceData).Name}>:");
         builder.AppendLine($"    Commands:     {_commands.Current.GetFormattedSpace()}");
         builder.AppendLine($"    InstanceData: {_instanceData.GetFormattedSpace()}");
         builder.AppendLine($"    DrawData:     {_drawData.GetFormattedSpace()}");

@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
-using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -11,30 +10,18 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public struct PerDrawLandscapeData : IPerDrawData
 {
+    public bool IsReady { get; set; }
     public long Heightmap { get; set; }
     public Vector2 ScaleBias { get; set; }
-    
-    public void SetDefault()
-    {
-        var texture = new ColorTexture(FColor.Gray);
-        texture.Generate();
-        
-        var heightmap = new BindlessTexture(texture);
-        heightmap.Generate();
-        heightmap.MakeResident();
-        
-        Heightmap = heightmap;
-        ScaleBias = Vector2.Zero;
-    }
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
 public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceData, PerDrawLandscapeData>
 {
     public readonly int SizeQuads;
-    public readonly Texture2D Heightmap;
-    public readonly Vector2 ScaleBias;
     public readonly Vector2[] Scales;
+    
+    public sealed override PrimitiveSection[] Sections { get; protected init; } = [new(0, Settings.TessellationIndicesPerQuad)];
     
     public LandscapeMeshComponent(ULandscapeComponent component) : base(new Geometry(component.ComponentSizeQuads))
     {
@@ -42,12 +29,11 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceDa
         {
             throw new InvalidOperationException("Landscape component does not have a valid heightmap.");
         }
+
+        Sections[0].DrawDataContainer = new DrawDataContainer(new Texture2D(heightmap), new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W));
         
         SizeQuads = component.ComponentSizeQuads + 1;
-        Heightmap = new Texture2D(heightmap);
-
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
-        ScaleBias = new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W);
         
         const int quadCount = Settings.TessellationQuadCount;
         for (var x = 0; x < quadCount; x++)
@@ -59,22 +45,35 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceDa
         }
     }
 
-    public sealed override MeshMaterialSection[] MaterialSections { get; protected init; } = [new(0, 0, Settings.TessellationIndicesPerQuad)];
-
-    public override void Generate(IndirectResources<Vector2, PerInstanceData, PerDrawLandscapeData> resources)
+    private class DrawDataContainer(Texture heightmap, Vector2 scaleBias) : IDrawDataContainer
     {
-        base.Generate(resources);
-        
-        Heightmap.OnTextureReady += () =>
+        private long _heightmap;
+
+        public Dictionary<string, Texture> GetTextures() => new()
         {
-            Heightmap.MakeBindless();
-            resources.UpdateDrawData(DrawMetadata.DrawIds[0], new PerDrawLandscapeData
-            {
-                Heightmap = Heightmap.Bindless,
-                ScaleBias = ScaleBias
-            });
+            ["Heightmap"] = heightmap
         };
-        Heightmap.Generate();
+
+        public void SetBindlessTexture(string key, BindlessTexture bindless)
+        {
+            _heightmap = key switch
+            {
+                "Heightmap" => bindless,
+                _ => throw new ArgumentException($"Unknown texture key: {key}")
+            };
+        }
+
+        public void FinalizeGpuData()
+        {
+            Raw = new PerDrawLandscapeData
+            {
+                IsReady = true,
+                Heightmap = _heightmap,
+                ScaleBias = scaleBias
+            };
+        }
+        
+        public IPerDrawData? Raw { get; private set; }
     }
 
     private readonly struct Geometry : TPrimitiveData<Vector2>

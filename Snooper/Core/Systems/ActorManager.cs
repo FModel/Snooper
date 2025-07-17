@@ -1,6 +1,5 @@
 ﻿using System.Collections.Specialized;
 using System.Reflection;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Textures;
 using Snooper.Core.Hardware;
@@ -21,11 +20,7 @@ public abstract class ActorManager : IGameSystem
     public bool DrawBoundingBoxes = false;
     public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.None;
 
-    public static void RegisterSystemFactory<T>() where T : ActorSystem, new()
-    {
-        _registeredFactories.Add(typeof(T), () => new T());
-    }
-
+    public static void RegisterSystemFactory<T>() where T : ActorSystem, new() => RegisterSystemFactory(() => new T());
     public static void RegisterSystemFactory<T>(Func<T> factory) where T : ActorSystem
     {
         _registeredFactories.Add(typeof(T), factory);
@@ -33,7 +28,6 @@ public abstract class ActorManager : IGameSystem
 
     public ContextInfo Context { get; private set; }
     public Dictionary<string, Texture> Icons { get; } = new();
-    public Dictionary<FGuid, Texture> Textures { get; } = new();
     public SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
@@ -54,13 +48,13 @@ public abstract class ActorManager : IGameSystem
 
     public virtual void Update(float delta)
     {
-        MainThreadDispatcher.Dequeue(1);
-        
         DequeueSystems(1);
         foreach (var system in Systems.Values)
         {
             system.Update(delta);
         }
+        
+        MainThreadDispatcher.Dequeue(1);
     }
 
     [Obsolete("Use Render(CameraComponent camera, ActorSystemType systemType) instead.")]
