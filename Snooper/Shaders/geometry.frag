@@ -43,9 +43,15 @@ void main()
             float((gl_PrimitiveID * 233u) % 255u) / 255.0
         ));
     }
+    
+    vec3 normal = vec3(0.0, 0.0, 1.0);
+    if (drawData.IsReady)
+    {
+        normal = texture(drawData.Normal, fs_in.vTexCoords).rgb * 2.0 - 1.0;
+    }
 
     gPosition = fs_in.vViewPos;
-    gNormal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
+    gNormal = normalize(fs_in.TBN * normal);
     gColor.rgb = color;
     gColor.a = 1.0;
 }

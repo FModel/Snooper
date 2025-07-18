@@ -116,10 +116,8 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
         if (actor is ALandscapeProxy landscape && actor.TryGetValue(out USceneComponent root, "RootComponent"))
         {
             parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform()));
-            // parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform(), true));
-            // break;
         }
-        continue;
+        // continue;
         
         if (actor.TryGetValue(out UStaticMeshComponent smComponent, "StaticMeshComponent"))
         {
@@ -194,6 +192,7 @@ void AddToScene(UActorComponent? component, Actor parent)
             }
             else
             {
+                staticMesh.OverrideMaterials(smComponent.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []));
                 actor = new MeshActor(staticMesh, transform);
             }
         }

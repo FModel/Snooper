@@ -1,5 +1,6 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Math;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
@@ -35,8 +36,15 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             // this is called when a managed texture has been decoded (async) and uploaded to the GPU
             // it gives back the bindless representation of the texture for TPerDrawData to use
             // at this point, TPerDrawData is still defaulted
+            
             section.DrawDataContainer?.FinalizeGpuData();
-            Resources.Update(section.DrawMetadata.DrawId, (TPerDrawData)section.DrawDataContainer.Raw); // TODO: watch out for casting issues
+            if (section.DrawDataContainer?.Raw is not TPerDrawData raw)
+            {
+                throw new InvalidOperationException($"Draw data container raw type {section.DrawDataContainer.Raw.GetType()} does not match expected type {typeof(TPerDrawData)}.");
+            }
+            
+            Log.Debug("Updating draw metadata for section {DrawId}.", section.DrawMetadata.DrawId);
+            Resources.Update(section.DrawMetadata.DrawId, raw);
         };
     }
 

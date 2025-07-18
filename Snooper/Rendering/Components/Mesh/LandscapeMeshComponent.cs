@@ -10,9 +10,10 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public struct PerDrawLandscapeData : IPerDrawData
 {
-    public bool IsReady { get; set; }
-    public long Heightmap { get; set; }
-    public Vector2 ScaleBias { get; set; }
+    public bool IsReady { get; init; }
+    public int Padding { get; init; }
+    public long Heightmap { get; init; }
+    public Vector2 ScaleBias { get; init; }
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
@@ -47,7 +48,7 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceDa
 
     private class DrawDataContainer(Texture heightmap, Vector2 scaleBias) : IDrawDataContainer
     {
-        private long _heightmap;
+        private BindlessTexture? _heightmap;
 
         public Dictionary<string, Texture> GetTextures() => new()
         {
@@ -65,6 +66,9 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceDa
 
         public void FinalizeGpuData()
         {
+            _heightmap!.Generate();
+            _heightmap.MakeResident();
+            
             Raw = new PerDrawLandscapeData
             {
                 IsReady = true,

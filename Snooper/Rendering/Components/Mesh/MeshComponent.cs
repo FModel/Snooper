@@ -1,7 +1,10 @@
 ﻿using System.Numerics;
+using System.Runtime.InteropServices;
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
+using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
+using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -12,6 +15,7 @@ namespace Snooper.Rendering.Components.Mesh;
 public struct PerDrawMeshData : IPerDrawData
 {
     public bool IsReady { get; init; }
+    public int Padding { get; init; }
     public long Diffuse { get; init; }
     public long Normal { get; init; }
 }
@@ -26,11 +30,36 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
         Sections = new PrimitiveSection[lod.Sections.Value.Length];
         for (var i = 0; i < Sections.Length; i++)
         {
-            var s = lod.Sections.Value[i];
-            Sections[i] = new PrimitiveSection(s.FirstIndex, s.NumFaces * 3)
+            var index = i;
+            var s = lod.Sections.Value[index];
+            Sections[index] = new PrimitiveSection(s.FirstIndex, s.NumFaces * 3);
+            
+            Task.Run(() =>
             {
-                DrawDataContainer = new DrawDataContainer(new ColorTexture(FColor.Gray), new ColorTexture(FColor.Gray))
-            };
+                var materialIndex = s.MaterialIndex;
+                if (materialIndex >= 0 && materialIndex < materials.Length)
+                {
+                    if (materials[materialIndex]?.TryLoad(out var m) == true && m is UMaterialInterface material)
+                    {
+                        var parameters = new CMaterialParams2();
+                        material.GetParams(parameters, EMaterialFormat.FirstLayer);
+
+                        if (parameters.TryGetTexture2d(out var diffuse, CMaterialParams2.Diffuse[0]) &&
+                            parameters.TryGetTexture2d(out var normal, CMaterialParams2.Normals[0]))
+                        {
+                            Sections[index].DrawDataContainer = new DrawDataContainer(new Texture2D(diffuse), new Texture2D(normal));
+                        }
+                    }
+                    else
+                    {
+                        Log.Warning("Material at index {MatIndex} is not valid or could not be loaded.", materialIndex);
+                    }
+                }
+                else
+                {
+                    Log.Warning("Material index {MatIndex} is out of bounds for mesh component with {MaterialsLength} materials.", materialIndex, materials.Length);
+                }
+            });
         }
     }
 
@@ -38,8 +67,8 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
     
     private class DrawDataContainer(Texture diffuse, Texture normal) : IDrawDataContainer
     {
-        private long _diffuse;
-        private long _normal;
+        private BindlessTexture? _diffuse;
+        private BindlessTexture? _normal;
         
         public Dictionary<string, Texture> GetTextures() => new()
         {
@@ -64,6 +93,12 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
 
         public void FinalizeGpuData()
         {
+            _diffuse!.Generate();
+            _normal!.Generate();
+            
+            _diffuse.MakeResident();
+            _normal.MakeResident();
+            
             Raw = new PerDrawMeshData
             {
                 IsReady = true,

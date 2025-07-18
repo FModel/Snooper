@@ -1,12 +1,11 @@
 ﻿using CUE4Parse_Conversion.Textures;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 
 namespace Snooper.Core.Containers.Textures;
 
-public class Texture2D(
-    int width,
-    int height,
+public class Texture2D(int width, int height,
     PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte)
@@ -16,7 +15,7 @@ public class Texture2D(
 
     private readonly UTexture? _owner;
 
-    public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, GetInternalFormat(texture))
+    public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY)
     {
         _owner = texture;
         
@@ -33,6 +32,8 @@ public class Texture2D(
 
         Task.Run(() =>
         {
+            Log.Debug("Decoding texture {Name} with format {Format} of size {Width}x{Height}.", _owner.Name, _owner.Format, Width, Height);
+            
             var decoded = _owner.Decode();
             if (decoded is null)
                 throw new InvalidOperationException("Failed to decode texture data.");
@@ -42,7 +43,8 @@ public class Texture2D(
                 base.Generate();
                 
                 Bind();
-                GL.TexImage2D(Target, 0, InternalFormat, Width, Height, 0, Format, Type, decoded.Data);
+                Resize(decoded);
+                Log.Debug("Texture {Name} uploaded to GPU.", _owner.Name);
         
                 if (_owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap)
                 {
@@ -63,14 +65,5 @@ public class Texture2D(
                 OnTextureReadyForBindless();
             });
         });
-    }
-    
-    private static PixelInternalFormat GetInternalFormat(UTexture texture)
-    {
-        return texture.Format switch
-        {
-            EPixelFormat.PF_B8G8R8A8 => PixelInternalFormat.Rgba8,
-            _ => PixelInternalFormat.Rgb
-        };
     }
 }

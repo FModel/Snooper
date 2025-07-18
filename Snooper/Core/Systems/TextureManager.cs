@@ -1,4 +1,5 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Misc;
+using Serilog;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
@@ -10,27 +11,35 @@ public class TextureManager : IGameSystem
     private readonly Dictionary<FGuid, Texture> _textures = [];
     private readonly Dictionary<FGuid, BindlessTexture> _bindless = [];
     
-    private readonly Dictionary<FGuid, (PrimitiveSection Section, string Key)> _textureToSection = [];
-    private readonly Dictionary<PrimitiveSection, int> _sectionPendingTextures = [];
+    private readonly Dictionary<FGuid, List<(int SectionId, string Key)>> _textureToSections = [];
+    private readonly Dictionary<int, (PrimitiveSection Section, int RemainingTextures)> _sectionPendingTextures = [];
     
     public event Action<PrimitiveSection>? OnSectionReady;
     
-    private void Add(Texture texture)
+    private void Add(PrimitiveSection section, string key, Texture texture)
     {
         ArgumentNullException.ThrowIfNull(texture);
-
-        if (_textures.ContainsKey(texture.Guid))
-        {
-            throw new InvalidOperationException($"Texture with GUID {texture.Guid} already exists.");
-        }
         
-        if (_texturesToLoad.Contains(texture))
+        var guid = texture.Guid;
+        var sectionId = section.SectionId;
+        
+        if (_textures.ContainsKey(guid) || _texturesToLoad.Contains(texture))
         {
+            if (!_textureToSections.TryGetValue(guid, out var list))
+            {
+                list = [];
+                _textureToSections[guid] = list;
+            }
+
+            // Avoid duplicate section+key pair
+            if (!list.Exists(entry => entry.SectionId == sectionId && entry.Key == key))
+                list.Add((sectionId, key));
+        
             return;
-            throw new InvalidOperationException($"Texture with GUID {texture.Guid} is already queued for loading.");
         }
         
         _texturesToLoad.Enqueue(texture);
+        _textureToSections[guid] = [(sectionId, key)];
     }
     
     public void AddRange(PrimitiveSection[] sections)
@@ -40,12 +49,11 @@ public class TextureManager : IGameSystem
             if (section.DrawDataContainer is null) continue;
             
             var textures = section.DrawDataContainer.GetTextures();
-            _sectionPendingTextures[section] = textures.Count;
+            _sectionPendingTextures[section.SectionId] = (section, textures.Count);
             
-            foreach (var (key, texture) in textures)
+            foreach (var kvp in textures)
             {
-                Add(texture);
-                _textureToSection[texture.Guid] = (section, key);
+                Add(section, kvp.Key, kvp.Value);
             }
         }
     }
@@ -67,27 +75,35 @@ public class TextureManager : IGameSystem
             var guid = texture.Guid;
             texture.TextureReadyForBindless += () =>
             {
-                var bindless = new BindlessTexture(texture);
-                bindless.Generate();
-                bindless.MakeResident();
-                _bindless[guid] = bindless;
+                Log.Debug("Texture {Name} with GUID {Guid} is ready for bindless usage.", texture.Name, guid);
                 
-                if (_textureToSection.TryGetValue(guid, out var mapping))
+                var bindless = new BindlessTexture(texture);
+                _bindless.Add(guid, bindless);
+            
+                if (_textureToSections.TryGetValue(guid, out var mappings))
                 {
-                    mapping.Section.DrawDataContainer?.SetBindlessTexture(mapping.Key, bindless);
-                    if (_sectionPendingTextures.TryGetValue(mapping.Section, out var count))
+                    foreach (var (sectionId, key) in mappings)
                     {
-                        count--;
-                        if (count <= 0)
+                        if (!_sectionPendingTextures.TryGetValue(sectionId, out var entry))
+                            continue;
+
+                        var (section, remaining) = entry;
+
+                        section.DrawDataContainer?.SetBindlessTexture(key, bindless);
+
+                        remaining--;
+                        if (remaining <= 0)
                         {
-                            _sectionPendingTextures.Remove(mapping.Section);
-                            OnSectionReady?.Invoke(mapping.Section);
+                            _sectionPendingTextures.Remove(sectionId);
+                            OnSectionReady?.Invoke(section);
                         }
                         else
                         {
-                            _sectionPendingTextures[mapping.Section] = count;
+                            _sectionPendingTextures[sectionId] = (section, remaining);
                         }
                     }
+
+                    _textureToSections.Remove(guid);
                 }
             };
             texture.Generate();
