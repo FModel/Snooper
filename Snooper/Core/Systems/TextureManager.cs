@@ -6,6 +6,9 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
 
+/// <summary>
+/// TODO: improve
+/// </summary>
 public class TextureManager : IGameSystem
 {
     private readonly Dictionary<FGuid, Texture> _textures = [];

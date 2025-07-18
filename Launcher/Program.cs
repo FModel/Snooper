@@ -69,12 +69,12 @@ camera.Transform.Position += Vector3.UnitY * 1.5f;
 scene.Children.Add(camera);
 
 #if VL
-snooper.AddToScene(scene);
-snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
-snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
-snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(200, 0, 0)));
-snooper.Run();
-return;
+// snooper.AddToScene(scene);
+// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
+// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
+// snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(200, 0, 0)));
+// snooper.Run();
+// return;
 #endif
 
 var dictionary = new Dictionary<UActorComponent, Actor>();
@@ -95,7 +95,9 @@ switch (provider.ProjectName)
     case "FortniteGame":
     {
         // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
-        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
+        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
+        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
+        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
         break;
     }
 }
@@ -199,7 +201,7 @@ void AddToScene(UActorComponent? component, Actor parent)
         else
         {
             actor = new Actor(Guid.NewGuid(), $"{component.Name} ({component.GetType().Name})", transform);
-            actor.Components.Add(new PrimitiveComponent(new Cube()));
+            // actor.Components.Add(new PrimitiveComponent(new Cube()));
             // actor.Transform.Scale = Vector3.One / 3;
         }
     }

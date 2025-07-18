@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-using System.Runtime.InteropServices;
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
@@ -34,12 +33,13 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
             var s = lod.Sections.Value[index];
             Sections[index] = new PrimitiveSection(s.FirstIndex, s.NumFaces * 3);
             
+            // TODO: do somewhere else
             Task.Run(() =>
             {
                 var materialIndex = s.MaterialIndex;
                 if (materialIndex >= 0 && materialIndex < materials.Length)
                 {
-                    if (materials[materialIndex]?.TryLoad(out var m) == true && m is UMaterialInterface material)
+                    if (materials[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
                     {
                         var parameters = new CMaterialParams2();
                         material.GetParams(parameters, EMaterialFormat.FirstLayer);
@@ -49,6 +49,12 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
                         {
                             Sections[index].DrawDataContainer = new DrawDataContainer(new Texture2D(diffuse), new Texture2D(normal));
                         }
+                        
+                        // if (Sections[index].DrawDataContainer is null && parameters.TryGetFirstTexture2d(out var fallback))
+                        // {
+                        //     Log.Warning("No valid textures found for material at index {MatIndex}.", materialIndex);
+                        //     Sections[index].DrawDataContainer = new DrawDataContainer(new Texture2D(fallback), new ColorTexture(FColor.Gray));
+                        // }
                     }
                     else
                     {

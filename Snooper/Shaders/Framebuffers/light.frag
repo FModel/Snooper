@@ -5,6 +5,7 @@ uniform sampler2D gNormal;
 uniform sampler2D gColor;
 uniform sampler2D ssao;
 
+uniform vec3 cameraPos;
 uniform bool useSsao;
 
 out vec4 FragColor;
@@ -12,11 +13,23 @@ out vec4 FragColor;
 void main()
 {
     vec3 position = texture(gPosition, vTexCoords).rgb;
-    vec3 normal = texture(gNormal, vTexCoords).rgb;
-    vec4 color = texture(gColor, vTexCoords);
+    vec3 normal = normalize(texture(gNormal, vTexCoords).rgb * 2.0 - 1.0);
+    vec3 baseColor = texture(gColor, vTexCoords).rgb;
     float ao = useSsao ? texture(ssao, vTexCoords).r : 1.0;
 
-    float brightness = 0.7 + 0.3 * normal.z;
+    // Hemispheric lighting (sky vs ground)
+    vec3 skyColor = vec3(1.0);     // white sky
+    vec3 groundColor = vec3(0.5);  // dark gray ground
 
-    FragColor = vec4(color.rgb * brightness * ao, color.a);
+    float ndotUp = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
+    vec3 hemiLight = mix(groundColor, skyColor, ndotUp);
+
+    // Distance fade to give sense of depth
+    float dist = length(cameraPos - position);
+    float depthFade = mix(1.0, 0.7, smoothstep(10.0, 100.0, dist));
+
+    // Combine
+    vec3 litColor = baseColor * hemiLight * ao * depthFade;
+
+    FragColor = vec4(litColor, 1.0);
 }
