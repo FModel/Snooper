@@ -13,7 +13,7 @@ out vec4 FragColor;
 void main()
 {
     vec3 position = texture(gPosition, vTexCoords).rgb;
-    vec3 normal = normalize(texture(gNormal, vTexCoords).rgb * 2.0 - 1.0);
+    vec3 normal = texture(gNormal, vTexCoords).rgb;
     vec3 baseColor = texture(gColor, vTexCoords).rgb;
     float ao = useSsao ? texture(ssao, vTexCoords).r : 1.0;
 

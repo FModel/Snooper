@@ -2,7 +2,6 @@
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Primitives;
 
 namespace Snooper.Core.Containers.Resources;
@@ -77,7 +76,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     public void AllocateDrawData(int count)
     {
         _drawData.Bind();
-        _drawData.Allocate(count);
+        _drawData.Allocate(new TPerDrawData[count]);
         _drawData.Unbind();
     }
 
@@ -101,6 +100,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     
     public void Update(int drawId, TPerDrawData drawData)
     {
+        if (!drawData.IsReady) throw new InvalidOperationException("Draw data is not ready.");
+        
         _drawData.Bind();
         _drawData.Update(drawId, drawData);
         _drawData.Unbind();

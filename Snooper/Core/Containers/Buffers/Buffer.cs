@@ -118,21 +118,6 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
 
         _bInitialized = true;
     }
-    public void Allocate(int length)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
-        if (_bInitialized)
-            throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
-
-        if (length > _capacity)
-            ResizeIfNeeded(length);
-
-        Allocate();
-        GL.BufferSubData(Target, 0, length * Stride, IntPtr.Zero);
-        Count = length;
-
-        _bInitialized = true;
-    }
 
     public int Add(T data)
     {
