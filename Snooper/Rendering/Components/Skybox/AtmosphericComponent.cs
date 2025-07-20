@@ -12,7 +12,7 @@ public struct Planet
     public float AtmosphereRadius;
 }
 
-public class AtmosphericComponent : CubeComponent, IControllableComponent
+public class AtmosphericComponent : CubeComponent
 {
     public Planet Sun = new()
     {
@@ -22,8 +22,10 @@ public class AtmosphericComponent : CubeComponent, IControllableComponent
         AtmosphereRadius = 6381e3f
     };
 
-    public void DrawControls()
+    public override void DrawControls()
     {
+        base.DrawControls();
+        
         ImGui.DragFloat3("Sun Direction", ref Sun.Position, 0.01f, -1.0f, 2.0f);
         ImGui.DragFloat("Sun Intensity", ref Sun.Intensity, 0.1f, 0.0f);
         ImGui.DragFloat("Sun Radius", ref Sun.Radius, 1e3f, 0.0f);

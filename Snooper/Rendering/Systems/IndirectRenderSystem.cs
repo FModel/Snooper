@@ -1,10 +1,7 @@
-﻿using CUE4Parse.UE4.Objects.Core.Math;
-using OpenTK.Graphics.OpenGL4;
-using Serilog;
+﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
-using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
@@ -43,7 +40,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
                 throw new InvalidOperationException($"Draw data container raw type {section.DrawDataContainer.Raw.GetType()} does not match expected type {typeof(TPerDrawData)}.");
             }
             
-            Log.Debug("Updating draw metadata for section {DrawId}.", section.DrawMetadata.DrawId);
             Resources.Update(section.DrawMetadata.DrawId, raw);
         };
     }
@@ -51,24 +47,20 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public override void Load()
     {
         base.Load();
-        
-        var allocation = 0;
 
-        // generate draw metadata for all components + add all textures to the texture manager
         Resources.Generate();
         Resources.Bind();
+        Resources.Allocate(_drawCount, _indices, _vertices);
+        
+        // generate draw metadata for all components + add all textures to the texture manager
         foreach (var component in Components)
         {
             component.Generate(Resources);
-            allocation += component.Sections.Length;
-            
             TextureManager.AddRange(component.Sections);
         }
         PointersFactory(Resources.VBO);
+        
         Resources.Unbind();
-
-        // allocate draw data for all sections (empty at this point)
-        if (allocation > 0) Resources.AllocateDrawData(allocation);
     }
 
     public override void Update(float delta)
@@ -89,6 +81,19 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public override void Render(CameraComponent camera)
     {
         Resources.Render();
+    }
+    
+    private int _drawCount;
+    private int _indices;
+    private int _vertices;
+
+    protected override void OnActorComponentAdded(TComponent component)
+    {
+        base.OnActorComponentAdded(component);
+        
+        _drawCount += component.Sections.Length;
+        _indices += component.Primitive.Indices.Length;
+        _vertices += component.Primitive.Vertices.Length;
     }
 
     protected override void OnActorComponentRemoved(TComponent component)

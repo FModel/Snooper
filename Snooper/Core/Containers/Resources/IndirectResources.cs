@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Primitives;
@@ -42,6 +43,19 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         EBO.Bind();
         VBO.Bind();
     }
+    
+    public void Allocate(int drawCount, int indices, int vertices)
+    {
+        _drawData.Bind();
+        _drawData.Allocate(new TPerDrawData[drawCount]);
+        _drawData.Unbind(); // instance ssbo is rebound here
+
+        _commands.Current.Allocate(new DrawElementsIndirectCommand[drawCount]);
+        _instanceData.Allocate(new TInstanceData[drawCount * 100]);
+        
+        EBO.Allocate(new uint[indices]);
+        VBO.Allocate(new TVertex[vertices]);
+    }
 
     public void Unbind()
     {
@@ -72,13 +86,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
             });
         }
     }
-    
-    public void AllocateDrawData(int count)
-    {
-        _drawData.Bind();
-        _drawData.Allocate(new TPerDrawData[count]);
-        _drawData.Unbind();
-    }
 
     public void Update(TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
     {
@@ -101,7 +108,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     public void Update(int drawId, TPerDrawData drawData)
     {
         if (!drawData.IsReady) throw new InvalidOperationException("Draw data is not ready.");
-        
+        Log.Debug("Updating draw data for draw ID {DrawId}.", drawId);
+
         _drawData.Bind();
         _drawData.Update(drawId, drawData);
         _drawData.Unbind();

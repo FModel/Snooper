@@ -1,4 +1,5 @@
 ﻿using Snooper.Core.Containers.Textures;
+using Snooper.UI;
 
 namespace Snooper.Core.Containers.Resources;
 
@@ -15,7 +16,7 @@ public struct PerDrawData : IPerDrawData
     public bool IsReady { get; set; }
 }
 
-public interface IDrawDataContainer
+public interface IDrawDataContainer : IControllableComponent
 {
     public IPerDrawData? Raw { get; }
     

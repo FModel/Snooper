@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -22,7 +23,7 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceDa
     public readonly int SizeQuads;
     public readonly Vector2[] Scales;
     
-    public sealed override PrimitiveSection[] Sections { get; protected init; } = [new(0, Settings.TessellationIndicesPerQuad)];
+    public sealed override PrimitiveSection[] Sections { get; } = [new(0, Settings.TessellationIndicesPerQuad)];
     
     public LandscapeMeshComponent(ULandscapeComponent component) : base(new Geometry(component.ComponentSizeQuads))
     {
@@ -66,7 +67,12 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceDa
 
         public void FinalizeGpuData()
         {
-            _heightmap!.Generate();
+            if (_heightmap is null)
+            {
+                throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
+            }
+            
+            _heightmap.Generate();
             _heightmap.MakeResident();
             
             Raw = new PerDrawLandscapeData
@@ -78,6 +84,14 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceDa
         }
         
         public IPerDrawData? Raw { get; private set; }
+        
+        public void DrawControls()
+        {
+            var largest = ImGui.GetContentRegionAvail();
+            largest.X -= ImGui.GetScrollX();
+            
+            ImGui.Image(heightmap.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
+        }
     }
 
     private readonly struct Geometry : TPrimitiveData<Vector2>

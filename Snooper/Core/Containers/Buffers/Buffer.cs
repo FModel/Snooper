@@ -114,7 +114,6 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
 
         Allocate();
         GL.BufferSubData(Target, 0, length * Stride, data);
-        Count = length;
 
         _bInitialized = true;
     }
@@ -124,6 +123,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         if (!_bInitialized)
         {
             Allocate(data);
+            Count = 1;
             return 0;
         }
 
@@ -146,6 +146,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         if (!_bInitialized)
         {
             Allocate(data);
+            Count = length;
             return 0;
         }
 

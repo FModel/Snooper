@@ -2,7 +2,7 @@
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
-using CUE4Parse.UE4.Objects.Core.Math;
+using ImGuiNET;
 using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
@@ -22,7 +22,7 @@ public struct PerDrawMeshData : IPerDrawData
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
-    public sealed override PrimitiveSection[] Sections { get; protected init; }
+    public sealed override PrimitiveSection[] Sections { get; }
 
     protected MeshComponent(CBaseMeshLod lod, ResolvedObject?[] materials) : base(new Geometry(lod))
     {
@@ -49,12 +49,6 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
                         {
                             Sections[index].DrawDataContainer = new DrawDataContainer(new Texture2D(diffuse), new Texture2D(normal));
                         }
-                        
-                        // if (Sections[index].DrawDataContainer is null && parameters.TryGetFirstTexture2d(out var fallback))
-                        // {
-                        //     Log.Warning("No valid textures found for material at index {MatIndex}.", materialIndex);
-                        //     Sections[index].DrawDataContainer = new DrawDataContainer(new Texture2D(fallback), new ColorTexture(FColor.Gray));
-                        // }
                     }
                     else
                     {
@@ -99,12 +93,16 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
 
         public void FinalizeGpuData()
         {
-            _diffuse!.Generate();
-            _normal!.Generate();
+            if (_diffuse is null || _normal is null)
+            {
+                throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
+            }
             
+            _diffuse.Generate();
             _diffuse.MakeResident();
+            _normal.Generate();
             _normal.MakeResident();
-            
+
             Raw = new PerDrawMeshData
             {
                 IsReady = true,
@@ -114,6 +112,17 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
         }
 
         public IPerDrawData? Raw { get; private set; }
+        
+        public void DrawControls()
+        {
+            var largest = ImGui.GetContentRegionAvail();
+            largest.X -= ImGui.GetScrollX();
+            largest.X /= 2;
+            
+            ImGui.Image(diffuse.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
+            ImGui.SameLine();
+            ImGui.Image(normal.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
+        }
     }
     
     protected readonly struct Geometry : IVertexData

@@ -156,57 +156,64 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             }
         }
         ImGui.End();
+
+        if (ImGui.Begin("Inspector"))
+        {
+            DrawActorInspector();
+        }
+        ImGui.End();
     }
+
+    private Actor? _selectedActor;
+    private readonly Vector2 _iconSize = new(20);
     
     private void DrawActorTree(Actor actor)
     {
         ImGui.PushID(actor.Id);
-
-        if (Icons.TryGetValue(actor.Icon, out var icon))
-        {
-            ImGui.Image(icon.GetPointer(), new Vector2(12), Vector2.UnitX, Vector2.UnitY);
-        }
-        else
-        {
-            ImGui.Image(0, new Vector2(12), Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
-        }
-        ImGui.SameLine();
-        
-        var open = ImGui.TreeNodeEx(actor.Name, ImGuiTreeNodeFlags.SpanFullWidth);
-        if (ImGui.BeginPopupContextItem("ActorContext"))
-        {
-            if (ImGui.MenuItem("Delete"))
-            {
-                actor.Parent?.Children.Remove(actor);
-            }
-            if (ImGui.BeginMenu("Add Child"))
-            {
-                DrawActorCreationMenu(actor);
-                ImGui.EndMenu();
-            }
-            ImGui.EndPopup();
-        }
         
         var count = actor.Children.Count;
-        var separator = $"{count} Child{(count > 1 ? "ren" : "")}";
-        if (open)
+        var isSelected = actor == _selectedActor;
+        var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick;
+        if (isSelected) flags |= ImGuiTreeNodeFlags.Selected;
+        if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
+        
+        ImGui.AlignTextToFramePadding();
+        var open = ImGui.TreeNodeEx("##tree", flags);
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+            _selectedActor = actor;
+        
+        ImGui.SameLine();
+        if (Icons.TryGetValue(actor.Icon, out var icon))
+            ImGui.Image(icon.GetPointer(), _iconSize, Vector2.UnitX, Vector2.UnitY);
+        else
+            ImGui.Image(0, _iconSize, Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
+        ImGui.SameLine();
+        ImGui.TextUnformatted(actor.Name);
+        
+        if (open && count > 0)
         {
-            ImGui.Text($"Visible Instances: {actor.VisibleInstances}");
-            
-            foreach (var component in actor.Components)
-                component.DrawInterface();
-            
-            if (count > 0)
-            {
-                ImGui.SeparatorText(separator);
-                foreach (var child in actor.Children)
-                    DrawActorTree(child);
-            }
+            foreach (var child in actor.Children)
+                DrawActorTree(child);
             
             ImGui.TreePop();
         }
         
         ImGui.PopID();
+    }
+
+    private void DrawActorInspector()
+    {
+        if (_selectedActor is null)
+        {
+            ImGui.TextUnformatted("No actor selected.");
+            return;
+        }
+        
+        ImGui.Text(_selectedActor.Name);
+        ImGui.Text($"Visible Instances: {_selectedActor.VisibleInstances}");
+
+        foreach (var component in _selectedActor.Components)
+            component.DrawInterface();
     }
     
     private void DrawActorCreationMenu(Actor parent)

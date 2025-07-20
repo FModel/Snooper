@@ -38,7 +38,7 @@ public class FullQuadFramebuffer(
 
         _vbo.Generate();
         _vbo.Bind();
-        _vbo.Allocate([
+        _vbo.AddRange([
             new Vector4(1.0f, -1.0f, 1.0f, 0.0f),
             new Vector4(-1.0f, -1.0f, 0.0f, 0.0f),
             new Vector4(-1.0f, 1.0f, 0.0f, 1.0f),
@@ -47,7 +47,7 @@ public class FullQuadFramebuffer(
 
         _ebo.Generate();
         _ebo.Bind();
-        _ebo.Allocate([0, 1, 2, 3, 0, 2]);
+        _ebo.AddRange([0, 1, 2, 3, 0, 2]);
 
         GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, _vbo.Stride, 0);
         GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, _vbo.Stride, 8);

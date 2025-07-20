@@ -69,12 +69,12 @@ camera.Transform.Position += Vector3.UnitY * 1.5f;
 scene.Children.Add(camera);
 
 #if VL
-// snooper.AddToScene(scene);
-// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
-// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
-// snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Cube.Cube"), new FTransform(new FVector(200, 0, 0)));
-// snooper.Run();
-// return;
+snooper.AddToScene(scene);
+snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
+snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
+snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100)));
+snooper.Run();
+return;
 #endif
 
 var dictionary = new Dictionary<UActorComponent, Actor>();
