@@ -5,7 +5,6 @@ uniform sampler2D gNormal;
 uniform sampler2D gColor;
 uniform sampler2D ssao;
 
-uniform vec3 cameraPos;
 uniform bool useSsao;
 
 out vec4 FragColor;
@@ -25,8 +24,7 @@ void main()
     vec3 hemiLight = mix(groundColor, skyColor, ndotUp);
 
     // Distance fade to give sense of depth
-    float dist = length(cameraPos - position);
-    float depthFade = mix(1.0, 0.7, smoothstep(10.0, 100.0, dist));
+    float depthFade = mix(1.0, 0.7, smoothstep(10.0, 100.0, length(position)));
 
     // Combine
     vec3 litColor = baseColor * hemiLight * ao * depthFade;

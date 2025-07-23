@@ -97,7 +97,9 @@ switch (provider.ProjectName)
         // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
         // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
         // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
-        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
+        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
+        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
+        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
         break;
     }
 }
@@ -121,9 +123,9 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
         }
         // continue;
         
-        if (actor.TryGetValue(out UStaticMeshComponent smComponent, "StaticMeshComponent"))
+        if (actor.TryGetValue(out UActorComponent rootComponent, "RootComponent"))
         {
-            AddToScene(smComponent, parent);
+            AddToScene(rootComponent, parent);
         }
         
         if (actor.TryGetValue(out UActorComponent[] components, "BlueprintCreatedComponents", "InstanceComponents"))
@@ -134,7 +136,7 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
             }
         }
         
-        if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
+        if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds") && rootComponent is USceneComponent sceneComponent)
         {
 #if RELATIONAL_WORLDS
             var relation = parent.Children[dictionary[smComponent].Guid];
@@ -158,7 +160,7 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
                 AddWorldToScene(additionalWorld, relation);
             }
 #else
-            var transform = smComponent.GetRelativeTransform();
+            var transform = sceneComponent.GetRelativeTransform();
             foreach (var additionalWorld in additionalWorlds)
             {
                 var relation = new Actor(Guid.NewGuid(), additionalWorld.Name, transform);

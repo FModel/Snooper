@@ -8,7 +8,7 @@ using Snooper.Rendering.Primitives;
 namespace Snooper.Core.Containers.Resources;
 
 public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type)
-    : IBind, IMemorySizeProvider
+    : IBind, IMemorySizeProvider, IDisposable
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData 
     where TPerDrawData : unmanaged, IPerDrawData
@@ -161,6 +161,17 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _commands.Current.Unbind();
 
         // _commands.Swap();
+    }
+    
+    public void Dispose()
+    {
+        _commands.Dispose();
+        _instanceData.Dispose();
+        _drawData.Dispose();
+        
+        _vao.Dispose();
+        EBO.Dispose();
+        VBO.Dispose();
     }
 
     public string GetFormattedSpace()

@@ -5,6 +5,7 @@ using CUE4Parse.UE4.Objects.Core.Math;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using Serilog;
 using Snooper.Core.Systems;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
@@ -48,6 +49,12 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<DebugSystem>();
         
         _interface = new LevelSystem(this);
+        
+        Closing += _ =>
+        {
+            _interface.Dispose();
+            Log.CloseAndFlush();
+        };
     }
 
     public void AddToScene(UObject actor) => AddToScene(actor, FTransform.Identity);

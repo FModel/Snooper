@@ -29,6 +29,7 @@ public class BindlessTexture(Texture texture) : ArbHandledObject
     
     public override void Dispose()
     {
-        MakeNonResident();
+        if (ArbHandle > 0)
+            MakeNonResident();
     }
 }

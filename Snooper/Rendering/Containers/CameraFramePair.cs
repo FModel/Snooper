@@ -42,7 +42,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
 
         render(Camera, ActorSystemType.Deferred);
 
-        if (Camera.bSSAO)
+        if (Camera.bAmbientOcclusion)
         {
             _ssao.Bind();
             GL.ClearColor(1, 1, 1, 1);
@@ -53,15 +53,12 @@ public class CameraFramePair(CameraComponent camera) : IResizable
                 _geometry.BindTextures(true, true, false);
                 shader.SetUniform("uProjectionMatrix", Camera.ProjectionMatrix);
                 shader.SetUniform("radius", Camera.SsaoRadius);
-                shader.SetUniform("bias", Camera.SsaoBias);
             });
         }
 
         _geometry.Render(shader =>
         {
-            shader.SetUniform("cameraPos", Camera.Actor.Transform.Position);
-            
-            if (!Camera.bSSAO) return;
+            if (!Camera.bAmbientOcclusion) return;
             _ssao.Bind(TextureUnit.Texture3);
             shader.SetUniform("useSsao", true);
             shader.SetUniform("ssao", 3);

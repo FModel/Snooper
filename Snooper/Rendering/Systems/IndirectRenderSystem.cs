@@ -103,6 +103,13 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         foreach (var section in component.Sections)
             Resources.Remove(section.DrawMetadata);
     }
+    
+    public override void Dispose()
+    {
+        base.Dispose();
+        Resources.Dispose();
+        TextureManager.Dispose();
+    }
 
     public string GetFormattedSpace() => Resources.GetFormattedSpace();
 }

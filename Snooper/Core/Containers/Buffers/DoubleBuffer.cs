@@ -1,6 +1,6 @@
 ﻿namespace Snooper.Core.Containers.Buffers;
 
-public class DoubleBuffer<TBuffer>(Func<TBuffer> factory) where TBuffer : HandledObject
+public class DoubleBuffer<TBuffer>(Func<TBuffer> factory) : IDisposable where TBuffer : HandledObject
 {
     private readonly TBuffer[] _buffers = [factory(), factory()];
     private int _frameCount;
@@ -15,6 +15,14 @@ public class DoubleBuffer<TBuffer>(Func<TBuffer> factory) where TBuffer : Handle
         foreach (var buffer in _buffers)
         {
             buffer.Generate();
+        }
+    }
+
+    public void Dispose()
+    {
+        foreach (var buffer in _buffers)
+        {
+            buffer.Dispose();
         }
     }
 }

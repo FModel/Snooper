@@ -19,10 +19,9 @@ public sealed class CameraComponent : ActorComponent, IControllableComponent
 
     public CameraType Mode;
     public bool bFXAA = true;
-    public bool bSSAO = false;
-    public float SsaoRadius = 0.150f;
-    public float SsaoBias = 0.05f;
-    public float MovementSpeed = 100f;
+    public bool bAmbientOcclusion = false;
+    public float SsaoRadius = 1.5f;
+    public float MovementSpeed = 1f;
     public float FieldOfView = 60.0f;
     public float FarPlaneDistance = 10000f;
     public float NearPlaneDistance = 0.1f;
@@ -111,10 +110,9 @@ public sealed class CameraComponent : ActorComponent, IControllableComponent
     public void DrawControls()
     {
         ImGui.Checkbox("FXAA", ref bFXAA);
-        ImGui.Checkbox("SSAO", ref bSSAO);
-        ImGui.BeginDisabled(!bSSAO);
-        ImGui.SliderFloat("Radius", ref SsaoRadius, 0.01f, 1.0f);
-        ImGui.SliderFloat("Bias", ref SsaoBias, 0.0f, 0.1f);
+        ImGui.Checkbox("HBAO", ref bAmbientOcclusion);
+        ImGui.BeginDisabled(!bAmbientOcclusion);
+        ImGui.SliderFloat("Radius", ref SsaoRadius, 0.01f, 5.0f);
         ImGui.EndDisabled();
 
         ImGui.DragFloat("Speed", ref MovementSpeed, 0.1f, 1f, 100f);

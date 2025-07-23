@@ -9,7 +9,7 @@ namespace Snooper.Core.Systems;
 /// <summary>
 /// TODO: improve
 /// </summary>
-public class TextureManager : IGameSystem
+public class TextureManager
 {
     private readonly Dictionary<FGuid, Texture> _textures = [];
     private readonly Dictionary<FGuid, BindlessTexture> _bindless = [];
@@ -61,9 +61,7 @@ public class TextureManager : IGameSystem
         }
     }
 
-    public void Load() => throw new NotImplementedException();
     public void Update(float delta) => DequeueTextures(1);
-    public void Render(CameraComponent camera) => throw new NotImplementedException();
     
     private readonly Queue<Texture> _texturesToLoad = [];
     private void DequeueTextures(int limit = 0)
@@ -118,12 +116,12 @@ public class TextureManager : IGameSystem
     
     public void Dispose()
     {
-        foreach (var texture in _textures.Values)
+        foreach (var texture in _bindless.Values)
         {
             texture.Dispose();
         }
         
-        foreach (var texture in _bindless.Values)
+        foreach (var texture in _textures.Values)
         {
             texture.Dispose();
         }

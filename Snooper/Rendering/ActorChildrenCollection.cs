@@ -24,6 +24,10 @@ public class ActorChildrenCollection : IDictionary<FGuid, Actor>, IEnumerable<Ac
             {
                 existing.InstancedTransforms.LocalMatrices.Add(matrix);
             }
+
+            // TODO: duplicate existing children for the new actor instance
+            // meaning instances must support pulling parent transforms from parent actor's instances
+            // currently, this is not supported
             return;
         }
         

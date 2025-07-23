@@ -65,10 +65,9 @@ public abstract class ActorManager : IGameSystem
         
         foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
         {
-            // TODO: queries leak 1mb each second, need to fix
-            // system.Profiler.BeginQuery(queries);
+            system.Profiler.BeginQuery(queries);
             system.Render(camera);
-            // system.Profiler.EndQuery();
+            system.Profiler.EndQuery();
         }
     }
 

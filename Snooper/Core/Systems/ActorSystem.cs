@@ -40,9 +40,10 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
 
     protected ActorDebugColorMode DebugColorMode => ActorManager?.DebugColorMode ?? ActorDebugColorMode.None;
 
-    public void Dispose()
+    public virtual void Dispose()
     {
-
+        Profiler.Dispose();
+        ActorManager = null;
     }
 }
 
@@ -81,6 +82,12 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     protected virtual void OnActorComponentRemoved(TComponent component)
     {
 
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        Components.Clear();
     }
 
     private readonly Queue<TComponent> _componentsToLoad = [];
