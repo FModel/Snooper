@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Diagnostics.CodeAnalysis;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using Serilog;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering;
 
@@ -19,15 +20,21 @@ public class ActorChildrenCollection : IDictionary<FGuid, Actor>, IEnumerable<Ac
             Log.Warning("Actor {Name} with GUID {Guid} already exists. Merging transforms.", actor.Name, actor.Guid);
 
             actor.Transform.UpdateLocalMatrix();
-            existing.InstancedTransforms.LocalMatrices.Add(actor.Transform.LocalMatrix);
-            foreach (var matrix in actor.InstancedTransforms.LocalMatrices)
+            existing.InstancedTransform.Transforms.Add(new InstancedTransform(actor.Transform.LocalMatrix));
+            var instanceIndex = existing.InstancedTransform.Transforms.Count - 1;
+            
+            // is this even used?
+            foreach (var matrix in actor.InstancedTransform.Transforms)
             {
-                existing.InstancedTransforms.LocalMatrices.Add(matrix);
+                existing.InstancedTransform.Transforms.Add(matrix);
             }
 
-            // TODO: duplicate existing children for the new actor instance
-            // meaning instances must support pulling parent transforms from parent actor's instances
-            // currently, this is not supported
+            // instance all known children so that they render on all the existing actor's instances
+            foreach (var child in existing.Children)
+            {
+                child.Transform.UpdateLocalMatrix();
+                child.InstancedTransform.Transforms.Add(new InstancedTransform(child.Transform.LocalMatrix, instanceIndex));
+            }
             return;
         }
         

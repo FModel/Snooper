@@ -41,10 +41,10 @@ public class Actor
         Components.CollectionChanged += OnComponentsCollectionChanged;
 
         Transform = transform ?? new TransformComponent();
-        InstancedTransforms = new InstancedTransformComponent();
+        InstancedTransform = new InstancedTransformComponent();
         
         Components.Add(Transform);
-        Components.Add(InstancedTransforms);
+        Components.Add(InstancedTransform);
     }
 
     public ActorComponentCollection Components { get; }
@@ -66,27 +66,48 @@ public class Actor
 
     public ActorManager? ActorManager { get; internal set; }
     public TransformComponent Transform { get; private set; }
-    public InstancedTransformComponent InstancedTransforms { get; }
+    public InstancedTransformComponent InstancedTransform { get; }
     
     public Matrix4x4[] GetWorldMatrices()
     {
-        var relation = Transform.Relation?.WorldMatrix ?? Matrix4x4.Identity;
-        var matrices = new Matrix4x4[1 + InstancedTransforms.LocalMatrices.Count];
+        var matrices = new Matrix4x4[1 + InstancedTransform.Transforms.Count];
         matrices[0] = Transform.WorldMatrix;
-        for (var i = 0; i < InstancedTransforms.LocalMatrices.Count; i++)
+        for (var i = 0; i < InstancedTransform.Transforms.Count; i++)
         {
-            matrices[i + 1] = InstancedTransforms.LocalMatrices[i] * relation;
+            matrices[i + 1] = GetInstanceWorldMatrix(i);
         }
         return matrices;
+    }
+
+    private Matrix4x4 GetInstanceWorldMatrix(int index)
+    {
+        if (index < 0 || index >= InstancedTransform.Transforms.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range of the instanced transforms.");
+        }
+        
+        var instance = InstancedTransform.Transforms[index];
+        
+        Matrix4x4 relation;
+        if (instance.ParentInstanceIndex >= 0 && Parent is not null)
+        {
+            relation = Parent.GetInstanceWorldMatrix(instance.ParentInstanceIndex);
+        }
+        else if (Transform.Relation is not null)
+        {
+            relation = Transform.Relation.WorldMatrix;
+        }
+        else
+        {
+            relation = Matrix4x4.Identity;
+        }
+        
+        return instance.LocalMatrix * relation;
     }
     
     internal void MarkDirty() => IsDirty = true;
     internal void MarkClean() => IsDirty = false;
 
-    private const int FrameLimit = 200;
-    private int _frameCounter;
-    private bool _condition;
-    
     internal readonly int Id = Random.Shared.Next();
     internal virtual string Icon => "cube";
 

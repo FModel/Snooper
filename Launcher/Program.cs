@@ -69,12 +69,12 @@ camera.Transform.Position += Vector3.UnitY * 1.5f;
 scene.Children.Add(camera);
 
 #if VL
-snooper.AddToScene(scene);
-snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
-snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
-snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100)));
-snooper.Run();
-return;
+// snooper.AddToScene(scene);
+// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
+// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
+// snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100)));
+// snooper.Run();
+// return;
 #endif
 
 var dictionary = new Dictionary<UActorComponent, Actor>();
@@ -82,7 +82,21 @@ switch (provider.ProjectName)
 {
     case "ShooterGame":
     {
-        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
+        // Ascent
+        // Bonsai
+        // Duality
+        // Foxtrot
+        // Infinity
+        // Jam
+        // Juliett
+        // Pitt
+        // Port
+        // Poveglia
+        // PovegliaV2
+        // Rook
+        // Triad
+        
+        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/PovegliaV2", Extension: "umap" });
         foreach (var file in files)
         {
             var parts = file.NameWithoutExtension.Split('_');
@@ -98,8 +112,8 @@ switch (provider.ProjectName)
         // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
         // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
         // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
-        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
-        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
+        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
+        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
         break;
     }
 }
@@ -123,6 +137,9 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
         }
         // continue;
         
+        // TODO: rework importer, currently we add actors depending on components
+        // ideally we should add all actors and then add components to them
+        // + we have duplicates here between landscape and root component
         if (actor.TryGetValue(out UActorComponent rootComponent, "RootComponent"))
         {
             AddToScene(rootComponent, parent);
@@ -138,28 +155,8 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
         
         if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds") && rootComponent is USceneComponent sceneComponent)
         {
-#if RELATIONAL_WORLDS
-            var relation = parent.Children[dictionary[smComponent].Guid];
-            // TODO:
-            // world position is determined by its UStaticMeshComponent which acts as an attachment point
-            // the current implementation adds a new actor instance if the actor's parent already has the child we want to add
-            // because worlds can share the same UStaticMeshComponent, the world position should be determined by the last instance of the UStaticMeshComponent
-            // but it is currently not possible for child actors to have an instanced parent relation
-            // ---
-            // BTW this is the same problem with landscapes, multiple actors can share the same landscape GUID
-            // ---
-            // pseudo code:
-            // var attach = relation.Transform.WorldMatrix;
-            // if (relation.InstancedTransforms.LocalMatrices.Count > 0)
-            // {
-            //     attach = relation.InstancedTransforms.LocalMatrices[^1] * relation.Transform.Relation.WorldMatrix;
-            // }
-            
-            foreach (var additionalWorld in additionalWorlds)
-            {
-                AddWorldToScene(additionalWorld, relation);
-            }
-#else
+            // this is a visual hack to add additional worlds to the scene
+            // technically additional worlds are children of the root component
             var transform = sceneComponent.GetRelativeTransform();
             foreach (var additionalWorld in additionalWorlds)
             {
@@ -167,7 +164,6 @@ void AddWorldToScene(UWorld world, Actor? parent = null)
                 AddWorldToScene(additionalWorld, relation);
                 scene.Children.Add(relation);
             }
-#endif
         }
     }
     
