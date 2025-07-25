@@ -100,8 +100,12 @@ public sealed class TransformComponent() : ActorComponent, IControllableComponen
     public void DrawControls()
     {
         ImGui.DragFloat3("Position", ref Position, 0.1f);
-
-        ImGui.Text($"Rotation: {Rotation}");
-        ImGui.Text($"Scale: {Scale}");
+        
+        ImGui.DragFloat("Rotation X", ref Rotation.X, 0.01f, 0, 1);
+        ImGui.DragFloat("Rotation Y", ref Rotation.Y, 0.01f, 0, 1);
+        ImGui.DragFloat("Rotation Z", ref Rotation.Z, 0.01f, 0, 1);
+        ImGui.DragFloat("Rotation W", ref Rotation.W, 0.01f, 0, 1);
+        
+        ImGui.DragFloat3("Scale", ref Scale, 0.01f, 0.01f, 100f);
     }
 }

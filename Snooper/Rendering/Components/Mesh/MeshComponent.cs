@@ -70,6 +70,8 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
         private BindlessTexture? _diffuse;
         private BindlessTexture? _normal;
         
+        public bool HasTextures => true;
+        
         public Dictionary<string, Texture> GetTextures() => new()
         {
             ["Diffuse"] = diffuse,

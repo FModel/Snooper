@@ -2,6 +2,7 @@
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -34,17 +35,20 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(
     public TPrimitiveData<TVertex> Primitive { get; } = primitive;
     public abstract PrimitiveSection[] Sections { get; }
     
-    public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources)
+    public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
-        if (!Primitive.IsValid) throw new InvalidOperationException("Primitive data is not valid.");
+        if (!Primitive.IsValid)
+            throw new InvalidOperationException("Primitive data is not valid.");
+        
         resources.Add(Primitive, Sections, GetPerInstanceData());
+        textureManager.AddRange(Sections);
     }
 
-    public virtual void Update(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources)
+    public virtual void Update(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
         if (!Sections[0].IsGenerated)
         {
-            Generate(resources);
+            Generate(resources, textureManager);
         }
         else
         {
@@ -107,8 +111,19 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(
     }
 }
 
-[DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent(IPrimitiveData primitive) : TPrimitiveComponent<Vector3, PerInstanceData, PerDrawData>(primitive)
+/// <summary>
+/// primitive component that uses a single section for the entire primitive data.
+/// </summary>
+public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive) : TPrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>(primitive)
+    where TVertex : unmanaged
+    where TPerDrawData : unmanaged, IPerDrawData
 {
     public sealed override PrimitiveSection[] Sections { get; } = [new(0, primitive.Indices.Length)];
 }
+
+/// <inheritdoc />
+public class PrimitiveComponent<TPerDrawData>(IPrimitiveData primitive) : PrimitiveComponent<Vector3, TPerDrawData>(primitive) where TPerDrawData : unmanaged, IPerDrawData;
+
+/// <inheritdoc />
+[DefaultActorSystem(typeof(PrimitiveSystem))]
+public class PrimitiveComponent(IPrimitiveData primitive) : PrimitiveComponent<PerDrawData>(primitive);

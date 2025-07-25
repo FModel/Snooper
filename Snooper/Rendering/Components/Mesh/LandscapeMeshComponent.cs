@@ -18,12 +18,10 @@ public struct PerDrawLandscapeData : IPerDrawData
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
-public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceData, PerDrawLandscapeData>
+public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandscapeData>
 {
     public readonly int SizeQuads;
     public readonly Vector2[] Scales;
-    
-    public sealed override PrimitiveSection[] Sections { get; } = [new(0, Settings.TessellationIndicesPerQuad)];
     
     public LandscapeMeshComponent(ULandscapeComponent component) : base(new Geometry(component.ComponentSizeQuads))
     {
@@ -50,6 +48,8 @@ public class LandscapeMeshComponent : TPrimitiveComponent<Vector2, PerInstanceDa
     private class DrawDataContainer(Texture heightmap, Vector2 scaleBias) : IDrawDataContainer
     {
         private BindlessTexture? _heightmap;
+        
+        public bool HasTextures => true;
 
         public Dictionary<string, Texture> GetTextures() => new()
         {

@@ -130,6 +130,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 var name = system.GetType().Name;
                 if (ImGui.CollapsingHeader($"{system.Order} - {name} ({system.SystemType})"))
                 {
+                    ImGui.TextUnformatted($"Time: {system.Time:F3} s");
+                    
                     if (ImGui.TreeNode($"x{system.ComponentsCount} {system.ComponentType?.Name}{(system.ComponentsCount > 1 ? "s" : "")}"))
                     {
                         if (system is IMemorySizeProvider provider)

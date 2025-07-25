@@ -19,8 +19,10 @@ public struct PerDrawData : IPerDrawData
 public interface IDrawDataContainer : IControllableComponent
 {
     public IPerDrawData? Raw { get; }
+    public bool HasTextures { get; }
     
     public Dictionary<string, Texture> GetTextures();
     public void SetBindlessTexture(string key, BindlessTexture bindless);
+    
     public void FinalizeGpuData();
 }

@@ -51,7 +51,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _drawData.Unbind(); // instance ssbo is rebound here
 
         _commands.Current.Allocate(new DrawElementsIndirectCommand[drawCount]);
-        _instanceData.Allocate(new TInstanceData[drawCount * 100]);
+        _instanceData.Allocate(new TInstanceData[drawCount * 10]);
         
         EBO.Allocate(new uint[indices]);
         VBO.Allocate(new TVertex[vertices]);

@@ -19,19 +19,19 @@ public abstract class ActorSystem(Type? componentType) : IGameSystem
     public Type? ComponentType { get; } = componentType;
     public SystemProfiler Profiler { get; } = new();
     public ActorManager? ActorManager { get; internal set; }
+    public float Time { get; private set; }
     
     public abstract ActorSystemType SystemType { get; }
     public abstract uint Order { get; }
     public abstract int ComponentsCount { get; }
 
     public abstract void Load();
-    public abstract void Update(float delta);
+    public virtual void Update(float delta) => Time += delta;
     public abstract void Render(CameraComponent camera);
     
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
     
     protected virtual bool AllowDerivation => true;
-    protected virtual bool IsRenderable => true;
     public bool Accepts(Type type)
     {
         if (!AllowDerivation) return ComponentType == type;
@@ -55,7 +55,11 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     protected HashSet<TComponent> Components { get; } = [];
 
     public override void Load() => DequeueComponents();
-    public override void Update(float delta) => DequeueComponents(5);
+    public override void Update(float delta)
+    {
+        base.Update(delta);
+        DequeueComponents(5);
+    }
 
     public sealed override void ProcessActorComponent(ActorComponent component, Actor actor)
     {
@@ -66,12 +70,18 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         {
             case false:
                 _componentsToLoad.Enqueue(actorComponent);
+                OnActorComponentEnqueued(actorComponent);
                 break;
             case true:
                 Components.Remove(actorComponent);
                 OnActorComponentRemoved(actorComponent);
                 break;
         }
+    }
+    
+    protected virtual void OnActorComponentEnqueued(TComponent component)
+    {
+
     }
 
     protected virtual void OnActorComponentAdded(TComponent component)

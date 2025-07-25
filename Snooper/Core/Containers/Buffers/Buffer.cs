@@ -204,16 +204,19 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
     public void Update(int index, T data) => Update(index, [data]);
     public void Update(int index, T[] data)
     {
-        if (data.Length == 0) return;
+        var length = data.Length;
+        if (length == 0) return;
         if (!_bInitialized) throw new InvalidOperationException("Buffer is not initialized. Use SetData method to initialize it.");
         ArgumentOutOfRangeException.ThrowIfNegative(index);
 
-        if (index >= _capacity)
+        var count = index + length;
+        if (count > _capacity)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Cannot update at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}. Consider resizing the buffer.");
+            throw new ArgumentOutOfRangeException(nameof(index), $"Cannot update at index {index} with size {length} in buffer {Handle} ({Name}) with capacity {_capacity}. Consider resizing the buffer.");
         }
 
-        GL.BufferSubData(Target, index * Stride, data.Length * Stride, data);
+        GL.BufferSubData(Target, index * Stride, length * Stride, data);
+        if (count > Count) Count = count;
     }
 
     public void Update(int count, nint data)

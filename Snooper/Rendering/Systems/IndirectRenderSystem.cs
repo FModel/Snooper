@@ -52,11 +52,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Bind();
         Resources.Allocate(_drawCount, _indices, _vertices);
         
-        // generate draw metadata for all components + add all textures to the texture manager
         foreach (var component in Components)
         {
-            component.Generate(Resources);
-            TextureManager.AddRange(component.Sections);
+            component.Generate(Resources, TextureManager);
         }
         PointersFactory(Resources.VBO);
         
@@ -73,7 +71,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Bind();
         foreach (var component in Components)
         {
-            component.Update(Resources);
+            component.Update(Resources, TextureManager);
         }
         Resources.Unbind();
     }
@@ -87,9 +85,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     private int _indices;
     private int _vertices;
 
-    protected override void OnActorComponentAdded(TComponent component)
+    protected override void OnActorComponentEnqueued(TComponent component)
     {
-        base.OnActorComponentAdded(component);
+        base.OnActorComponentEnqueued(component);
         
         _drawCount += component.Sections.Length;
         _indices += component.Primitive.Indices.Length;

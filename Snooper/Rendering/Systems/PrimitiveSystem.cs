@@ -18,6 +18,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
     protected abstract int BatchCount { get; }
+    protected virtual bool IsRenderable => true;
     protected virtual ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default");
 
     public override void Load()
@@ -26,6 +27,12 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
 
         Shader.Generate();
         Shader.Link();
+    }
+
+    public override void Update(float delta)
+    {
+        if (!IsRenderable) return;
+        base.Update(delta);
     }
 
     protected virtual void PreRender(CameraComponent camera, int batchIndex = 0)
@@ -53,9 +60,11 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
     }
 }
 
-public class PrimitiveSystem<TComponent>(int initialDrawCapacity)
-    : PrimitiveSystem<Vector3, TComponent, PerInstanceData, PerDrawData>(initialDrawCapacity)
-    where TComponent : TPrimitiveComponent<Vector3, PerInstanceData, PerDrawData>
+public class PrimitiveSystem<TComponent, TInstanceData, TPerDrawData>(int initialDrawCapacity)
+    : PrimitiveSystem<Vector3, TComponent, TInstanceData, TPerDrawData>(initialDrawCapacity)
+    where TComponent : TPrimitiveComponent<Vector3, TInstanceData, TPerDrawData>
+    where TInstanceData : unmanaged, IPerInstanceData
+    where TPerDrawData : unmanaged, IPerDrawData
 {
     protected override int BatchCount => int.MaxValue;
     protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>
@@ -65,4 +74,5 @@ public class PrimitiveSystem<TComponent>(int initialDrawCapacity)
     };
 }
 
+public class PrimitiveSystem<TComponent>(int initialDrawCapacity) : PrimitiveSystem<TComponent, PerInstanceData, PerDrawData>(initialDrawCapacity) where TComponent : TPrimitiveComponent<Vector3, PerInstanceData, PerDrawData>;
 public class PrimitiveSystem() : PrimitiveSystem<PrimitiveComponent>(10);

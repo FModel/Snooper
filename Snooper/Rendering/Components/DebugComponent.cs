@@ -1,22 +1,61 @@
 ﻿using System.Numerics;
+using ImGuiNET;
 using Snooper.Core;
+using Snooper.Core.Containers.Resources;
+using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components;
 
-[DefaultActorSystem(typeof(DebugSystem))]
-public class DebugComponent(IPrimitiveData primitive) : PrimitiveComponent(primitive)
+public struct PerDrawDebugData : IPerDrawData
 {
-    public DebugComponent(BoxCullingComponent box) : this(new Geometry(box))
-    {
+    public bool IsReady { get; init; }
+    public long Padding { get; init; }
+    public Vector3 Color { get; init; }
+}
 
+[DefaultActorSystem(typeof(DebugSystem))]
+public class DebugComponent(IPrimitiveData primitive) : PrimitiveComponent<PerDrawDebugData>(primitive)
+{
+    public DebugComponent(BoxCullingComponent box, Vector3? color = null) : this(new Geometry(box))
+    {
+        if (color != null)
+        {
+            Sections[0].DrawDataContainer = new DrawDataContainer(color.Value);
+        }
     }
 
-    public DebugComponent(SphereCullingComponent sphere) : this(new Geometry(sphere))
+    public DebugComponent(SphereCullingComponent sphere, Vector3? color = null) : this(new Geometry(sphere))
     {
+        if (color != null)
+        {
+            Sections[0].DrawDataContainer = new DrawDataContainer(color.Value);
+        }
+    }
+    
+    private class DrawDataContainer(Vector3 color) : IDrawDataContainer
+    {
+        public bool HasTextures => false;
+        public Dictionary<string, Texture> GetTextures() => throw new NotImplementedException();
+        public void SetBindlessTexture(string key, BindlessTexture bindless) => throw new NotImplementedException();
 
+        public void FinalizeGpuData()
+        {
+            Raw = new PerDrawDebugData
+            {
+                IsReady = true,
+                Color = color,
+            };
+        }
+        
+        public IPerDrawData? Raw { get; private set; }
+        
+        public void DrawControls()
+        {
+            ImGui.ColorButton("Debug Color", new Vector4(color, 1.0f), ImGuiColorEditFlags.NoPicker | ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoTooltip);
+        }
     }
 
     private readonly struct Geometry : IPrimitiveData

@@ -1,4 +1,5 @@
-﻿using Snooper.Core.Systems;
+﻿using System.Numerics;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Culling;
@@ -24,29 +25,24 @@ public class CullingSystem : ActorSystem<CullingComponent>
         Parallel.ForEach(Components, component => component.CheckForVisibility(frustum));
     }
 
-    protected override void OnActorComponentAdded(CullingComponent component)
+    protected override void OnActorComponentEnqueued(CullingComponent component)
     {
-        base.OnActorComponentAdded(component);
+        base.OnActorComponentEnqueued(component);
 
-        var added = component switch
+        switch (component)
         {
-            // SphereCullingComponent sphere => _debugComponents.TryAdd(component, new DebugComponent(sphere)),
-            BoxCullingComponent box => _debugComponents.TryAdd(component, new DebugComponent(box)),
-            _ => false
-        };
-
-        if (added) component.Actor?.Components.Add(_debugComponents[component]);
-    }
-
-    protected override void OnActorComponentRemoved(CullingComponent component)
-    {
-        base.OnActorComponentRemoved(component);
-
-        if (_debugComponents.Remove(component, out var debugComponent))
-        {
-            component.Actor?.Components.Remove(debugComponent);
+            case BoxCullingComponent box:
+            {
+                Vector3? color = null;
+                if (component.Actor?.Parent is { Parent: not null }) // just an example
+                {
+                    var id = component.Actor.Parent.Id;
+                    color = new Vector3((id & 0xFF) / 255f, ((id >> 8) & 0xFF) / 255f, ((id >> 16) & 0xFF) / 255f);
+                }
+                
+                component.Actor?.Components.Add(new DebugComponent(box, color));
+                break;
+            }
         }
     }
-
-    private readonly Dictionary<CullingComponent, DebugComponent> _debugComponents = [];
 }

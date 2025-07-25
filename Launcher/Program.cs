@@ -1,12 +1,10 @@
 ﻿using System.Numerics;
-using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
 using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
-using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
@@ -20,10 +18,6 @@ using Snooper;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Culling;
-using Snooper.Rendering.Components.Transforms;
-using Snooper.Rendering.Primitives;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
@@ -96,7 +90,7 @@ switch (provider.ProjectName)
         // Rook
         // Triad
         
-        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/PovegliaV2", Extension: "umap" });
+        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Jam", Extension: "umap" });
         foreach (var file in files)
         {
             var parts = file.NameWithoutExtension.Split('_');

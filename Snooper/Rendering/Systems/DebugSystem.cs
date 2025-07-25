@@ -1,22 +1,17 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Programs;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public class DebugSystem() : PrimitiveSystem<DebugComponent>(500) // 500 because RenderSystem is 500
+public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, PerDrawDebugData>(500) // 500 because RenderSystem is 500
 {
     public override uint Order => 100;
     protected override bool AllowDerivation => true;
     protected override bool IsRenderable => ActorManager?.DrawBoundingBoxes ?? false;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default.vert", "debug.frag");
-
-    public override void Update(float delta)
-    {
-        if (!IsRenderable) return;
-        base.Update(delta);
-    }
     
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
