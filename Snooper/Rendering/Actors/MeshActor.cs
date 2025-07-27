@@ -5,8 +5,6 @@ using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
-using CUE4Parse.UE4.Objects.Core.Math;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Components.Transforms;

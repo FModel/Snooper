@@ -23,51 +23,57 @@ public class BoxCullingComponent : CullingComponent
         Center = new Vector3(center.X, center.Z, center.Y);
         Extents = new Vector3(extents.X, extents.Z, extents.Y);
     }
+    
+    private const int CornerCount = 8;
 
     public override void CheckForVisibility(Plane[] frustum)
     {
         var minIndex = int.MaxValue;
         var maxIndex = int.MinValue;
+        
+        Span<Vector3> corners = stackalloc Vector3[CornerCount];
+        Span<Vector3> localCorners = stackalloc Vector3[CornerCount];
+        for (var j = 0; j < CornerCount; j++)
+        {
+            localCorners[j] = GetLocalCorner(j);
+        }
 
         var matrices = Actor.GetWorldMatrices();
         for (var i = 0; i < matrices.Length; i++)
         {
             var matrix = matrices[i];
-            var visible = false;
-            
-            var corners = new Vector3[8];
-            for (var j = 0; j < corners.Length; j++)
+            var visible = true;
+
+            for (var j = 0; j < CornerCount; j++)
             {
-                corners[j] = Vector3.Transform(GetLocalCorner(j), matrix);
+                corners[j] = Vector3.Transform(localCorners[j], matrix);
             }
-            
+
             foreach (var plane in frustum)
             {
-                var outsideCount = corners.Select(corner => Vector3.Dot(plane.Normal, corner) + plane.D).Count(distance => distance < 0f);
-                if (outsideCount == corners.Length)
+                var outside = 0;
+                for (var j = 0; j < CornerCount; j++)
+                {
+                    var distance = Vector3.Dot(plane.Normal, corners[j]) + plane.D;
+                    if (distance < 0f)
+                        outside++;
+                }
+
+                if (outside == CornerCount)
                 {
                     visible = false;
                     break;
                 }
-
-                visible = true;
             }
-            
+
             if (visible)
             {
-                minIndex = Math.Min(minIndex, i);
-                maxIndex = Math.Max(maxIndex, i);
+                if (i < minIndex) minIndex = i;
+                if (i > maxIndex) maxIndex = i;
             }
         }
 
-        if (minIndex == int.MaxValue || maxIndex == int.MinValue)
-        {
-            Actor.VisibleInstances = new Range(0, 0);
-        }
-        else
-        {
-            Actor.VisibleInstances = new Range(minIndex, maxIndex + 1);
-        }
+        Actor.VisibleInstances = minIndex <= maxIndex ? new Range(minIndex, maxIndex + 1) : new Range(0, 0);
     }
     
     private Vector3 GetLocalCorner(int i)

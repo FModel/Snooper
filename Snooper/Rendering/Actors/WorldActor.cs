@@ -52,7 +52,7 @@ public class WorldActor : Actor
 
     private Actor? CreateActor(FPackageIndex? ptr)
     {
-        if (ptr == null || !ptr.TryLoad(out UActorComponent component))
+        if (ptr == null || !ptr.TryLoad(out UActorComponent component) || component.ExportType == "ShadowProxyMeshComponent_C")
             return null;
         
         if (_parents.TryGetValue(ptr, out var existing))
