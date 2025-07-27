@@ -6,12 +6,12 @@ public class CameraActor : Actor
 {
     public CameraComponent CameraComponent { get; }
     
-    public CameraActor(string name) : base(System.Guid.NewGuid(), name)
+    public CameraActor(string name) : base(name)
     {
         CameraComponent = new CameraComponent();
         
         Components.Add(CameraComponent);
-        Components.Add(new CameraFrustumComponent(CameraComponent));
+        // Components.Add(new CameraFrustumComponent(CameraComponent));
     }
 
     internal override string Icon => "video";

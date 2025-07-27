@@ -18,7 +18,7 @@ public class MeshActor : Actor
     public CullingComponent CullingComponent { get; }
     public MeshComponent MeshComponent { get; }
     
-    public MeshActor(UStaticMesh staticMesh, TransformComponent? transform = null) : base(staticMesh.LightingGuid, staticMesh.Name, transform)
+    public MeshActor(UStaticMesh staticMesh, TransformComponent? transform = null) : base(staticMesh.Name, staticMesh.LightingGuid, transform)
     {
         if (!staticMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
@@ -32,15 +32,15 @@ public class MeshActor : Actor
         Components.Add(MeshComponent);
     }
     
-    public MeshActor(FTransform relation, UStaticMesh staticMesh, params FInstancedStaticMeshInstanceData[] transforms) : this(staticMesh, transforms[0].TransformData * relation)
+    public MeshActor(UStaticMesh staticMesh, params FInstancedStaticMeshInstanceData[] transforms) : this(staticMesh, transforms[0].TransformData)
     {
         for (var i = 1; i < transforms.Length; i++)
         {
-            InstancedTransform.AddLocalInstance(transforms[i].TransformData * relation);
+            InstancedTransform.AddLocalInstance(transforms[i].TransformData);
         }
     }
     
-    public MeshActor(ALandscapeProxy landscape, ULandscapeComponent component) : base(component.MapBuildDataId, component.Name, component.GetRelativeTransform())
+    public MeshActor(ALandscapeProxy landscape, ULandscapeComponent component) : base(component.Name, component.MapBuildDataId, component.GetRelativeTransform())
     {
         if (!landscape.TryConvert([component], ELandscapeExportFlags.Mesh, out var mesh, out _, out _))
             throw new ArgumentException("Failed to convert landscape mesh.", nameof(landscape));
@@ -52,7 +52,7 @@ public class MeshActor : Actor
         Components.Add(MeshComponent);
     }
 
-    public MeshActor(USkeletalMesh skeletalMesh, TransformComponent? transform = null) : base(new FGuid((uint) skeletalMesh.GetFullName().GetHashCode()), skeletalMesh.Name, transform)
+    public MeshActor(USkeletalMesh skeletalMesh, TransformComponent? transform = null) : base(skeletalMesh.Name, transform: transform)
     {
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));

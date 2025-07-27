@@ -213,6 +213,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         
         ImGui.Text(_selectedActor.Name);
         ImGui.Text($"Visible Instances: {_selectedActor.VisibleInstances}");
+        ImGui.Text($"Instances: {_selectedActor.InstancedTransform.Transforms.Count + 1}");
 
         foreach (var component in _selectedActor.Components)
             component.DrawInterface();
@@ -222,7 +223,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
     {
         if (ImGui.MenuItem("Add Cube"))
         {
-            var cube = new Actor(Guid.NewGuid(), "Cube");
+            var cube = new Actor("Cube");
             cube.Components.Add(new PrimitiveComponent(new Cube()));
             cube.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
 
@@ -232,7 +233,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
         if (ImGui.MenuItem("Add Sphere"))
         {
-            var sphere = new Actor(Guid.NewGuid(), "Sphere");
+            var sphere = new Actor("Sphere");
             sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
             sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
 

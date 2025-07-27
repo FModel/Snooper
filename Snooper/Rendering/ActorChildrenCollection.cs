@@ -22,11 +22,11 @@ public class ActorChildrenCollection : IDictionary<FGuid, Actor>, IEnumerable<Ac
             actor.Transform.UpdateLocalMatrix();
             existing.InstancedTransform.Transforms.Add(new InstancedTransform(actor.Transform.LocalMatrix));
             var instanceIndex = existing.InstancedTransform.Transforms.Count - 1;
-            
-            // is this even used?
-            foreach (var matrix in actor.InstancedTransform.Transforms)
+
+            // transfer instances from the new actor (to be discarded) to the existing one
+            foreach (var instancedTransform in actor.InstancedTransform.Transforms)
             {
-                existing.InstancedTransform.Transforms.Add(matrix);
+                existing.InstancedTransform.Transforms.Add(new InstancedTransform(instancedTransform.LocalMatrix));
             }
 
             // instance all known children so that they render on all the existing actor's instances

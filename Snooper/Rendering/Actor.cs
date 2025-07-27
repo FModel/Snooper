@@ -1,7 +1,6 @@
 ﻿using System.Collections.Specialized;
 using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Misc;
-using ImGuiNET;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Transforms;
 
@@ -29,9 +28,9 @@ public class Actor
     
     public bool IsVisible => VisibleInstances.Start.Value != VisibleInstances.End.Value;
 
-    public Actor(FGuid guid, string name, TransformComponent? transform = null)
+    public Actor(string name, FGuid? guid = null, TransformComponent? transform = null)
     {
-        Guid = guid;
+        Guid = guid ?? System.Guid.NewGuid();
         Name = name;
 
         Components = new ActorComponentCollection(this);
@@ -107,7 +106,7 @@ public class Actor
     
     internal void MarkDirty() => IsDirty = true;
     internal void MarkClean() => IsDirty = false;
-
+    
     internal readonly int Id = Random.Shared.Next();
     internal virtual string Icon => "cube";
 

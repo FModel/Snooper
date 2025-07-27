@@ -6,6 +6,7 @@ using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
+using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
@@ -50,10 +51,10 @@ provider.SubmitKey(new FGuid(), new FAesKey(key));
 provider.PostMount();
 
 var snooper = new SnooperWindow(144, 1500, 900, false);
-var scene = new Actor(Guid.NewGuid(), "Scene");
+var scene = new Actor("Scene");
 scene.Children.Add(new SkyboxActor());
 
-var grid = new Actor(Guid.NewGuid(), "Grid");
+var grid = new Actor("Grid");
 grid.Components.Add(new GridComponent());
 scene.Children.Add(grid);
 
@@ -62,16 +63,6 @@ camera.Transform.Position -= Vector3.UnitZ * 5;
 camera.Transform.Position += Vector3.UnitY * 1.5f;
 scene.Children.Add(camera);
 
-#if VL
-// snooper.AddToScene(scene);
-// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
-// snooper.AddToScene(provider.LoadPackageObject("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0)));
-// snooper.AddToScene(provider.LoadPackageObject("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100)));
-// snooper.Run();
-// return;
-#endif
-
-var dictionary = new Dictionary<UActorComponent, Actor>();
 switch (provider.ProjectName)
 {
     case "ShooterGame":
@@ -90,118 +81,34 @@ switch (provider.ProjectName)
         // Rook
         // Triad
         
-        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Jam", Extension: "umap" });
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0))));
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0))));
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
+        // break;
+        
+        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
         foreach (var file in files)
         {
             var parts = file.NameWithoutExtension.Split('_');
             if (parts.Length < 2 || parts[1] != "Art" || parts[^1] == "VFX") continue;
     
-            AddWorldToScene(provider.LoadPackageObject<UWorld>(file.PathWithoutExtension + "." + file.NameWithoutExtension));
+            scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>(file.PathWithoutExtension + "." + file.NameWithoutExtension)));
         }
         break;
     }
     case "FortniteGame":
     {
-        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
-        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
-        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
-        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
-        // AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
-        AddWorldToScene(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
+        var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
+
+        scene.Children.Add(world);
         break;
     }
 }
 
 snooper.AddToScene(scene);
 snooper.Run();
-
-void AddWorldToScene(UWorld world, Actor? parent = null)
-{
-    var add = parent is null;
-    parent ??= new Actor(Guid.NewGuid(), world.Name);
-    
-    var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
-    foreach (var actorPtr in actors)
-    {
-        if (!actorPtr.TryLoad(out AActor actor)) continue;
-
-        if (actor is ALandscapeProxy landscape && actor.TryGetValue(out USceneComponent root, "RootComponent"))
-        {
-            parent.Children.Add(new LandscapeProxyActor(landscape, root.GetRelativeTransform()));
-        }
-        // continue;
-        
-        // TODO: rework importer, currently we add actors depending on components
-        // ideally we should add all actors and then add components to them
-        // + we have duplicates here between landscape and root component
-        if (actor.TryGetValue(out UActorComponent rootComponent, "RootComponent"))
-        {
-            AddToScene(rootComponent, parent);
-        }
-        
-        if (actor.TryGetValue(out UActorComponent[] components, "BlueprintCreatedComponents", "InstanceComponents"))
-        {
-            foreach (var component in components)
-            {
-                AddToScene(component, parent);
-            }
-        }
-        
-        if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds") && rootComponent is USceneComponent sceneComponent)
-        {
-            // this is a visual hack to add additional worlds to the scene
-            // technically additional worlds are children of the root component
-            var transform = sceneComponent.GetRelativeTransform();
-            foreach (var additionalWorld in additionalWorlds)
-            {
-                var relation = new Actor(Guid.NewGuid(), additionalWorld.Name, transform);
-                AddWorldToScene(additionalWorld, relation);
-                scene.Children.Add(relation);
-            }
-        }
-    }
-    
-    if (add) scene.Children.Add(parent);
-}
-
-void AddToScene(UActorComponent? component, Actor parent)
-{
-    if (component is null) return;
-    
-    Actor actor;
-    if (component is USceneComponent sceneComponent)
-    {
-        var attach = sceneComponent.GetAttachParent();
-        if (attach is not null && dictionary.TryGetValue(attach, out var attachment))
-        {
-            parent = attachment;
-        }
-        
-        var transform = sceneComponent.GetRelativeTransform();
-        if (component is UStaticMeshComponent smComponent && smComponent.GetStaticMesh().TryLoad(out UStaticMesh staticMesh))
-        {
-            if (component is UInstancedStaticMeshComponent { PerInstanceSMData.Length: > 0 } instancedComponent)
-            {
-                actor = new MeshActor(transform, staticMesh, instancedComponent.PerInstanceSMData);
-            }
-            else
-            {
-                staticMesh.OverrideMaterials(smComponent.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []));
-                actor = new MeshActor(staticMesh, transform);
-            }
-        }
-        else
-        {
-            actor = new Actor(Guid.NewGuid(), $"{component.Name} ({component.GetType().Name})", transform);
-            // actor.Components.Add(new PrimitiveComponent(new Cube()));
-            // actor.Transform.Scale = Vector3.One / 3;
-        }
-    }
-    else
-    {
-        actor = new Actor(Guid.NewGuid(), $"{component.Name} ({component.GetType().Name})");
-    }
-
-    dictionary.TryAdd(component, actor);
-    parent.Children.Add(actor);
-}

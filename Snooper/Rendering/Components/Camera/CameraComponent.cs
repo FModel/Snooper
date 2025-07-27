@@ -22,7 +22,7 @@ public sealed class CameraComponent : ActorComponent, IControllableComponent
     public bool bAmbientOcclusion = false;
     public float SsaoRadius = 1.5f;
     public float MovementSpeed = 1f;
-    public float FieldOfView = 60.0f;
+    public float FieldOfView = 89.0f;
     public float FarPlaneDistance = 10000f;
     public float NearPlaneDistance = 0.1f;
     public Vector2 ViewportSize = new(16, 9);
@@ -116,6 +116,7 @@ public sealed class CameraComponent : ActorComponent, IControllableComponent
         ImGui.EndDisabled();
 
         ImGui.DragFloat("Speed", ref MovementSpeed, 0.1f, 1f, 100f);
+        ImGui.DragFloat("FOV", ref FieldOfView, 0.1f, 1.0f, 89.0f);
         ImGui.DragFloat("Near Plane", ref NearPlaneDistance, 0.001f, 0.001f, FarPlaneDistance - 1);
         ImGui.DragFloat("Far Plane", ref FarPlaneDistance, 0.1f , NearPlaneDistance + 1, 1000.0f);
     }

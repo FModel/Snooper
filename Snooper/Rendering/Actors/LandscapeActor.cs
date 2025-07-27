@@ -9,7 +9,7 @@ public class LandscapeActor : Actor
     public CullingComponent CullingComponent { get; }
     public LandscapeMeshComponent MeshComponent { get; }
     
-    public LandscapeActor(ULandscapeComponent component) : base(component.MapBuildDataId, component.Name, component.GetRelativeTransform())
+    public LandscapeActor(ULandscapeComponent component) : base(component.Name, component.MapBuildDataId, component.GetRelativeTransform())
     {
         CullingComponent = new BoxCullingComponent(component.CachedLocalBox);
         MeshComponent = new LandscapeMeshComponent(component);

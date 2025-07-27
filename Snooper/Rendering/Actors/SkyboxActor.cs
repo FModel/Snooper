@@ -7,7 +7,7 @@ public class SkyboxActor : Actor
 {
     public CubeComponent SkyboxComponent { get; }
     
-    public SkyboxActor() : base(System.Guid.NewGuid(), "Skybox")
+    public SkyboxActor() : base("Skybox")
     {
         SkyboxComponent = new AtmosphericComponent();
         
