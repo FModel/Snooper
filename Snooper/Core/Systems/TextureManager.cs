@@ -84,7 +84,7 @@ public class TextureManager : IGameSystem
             var guid = texture.Guid;
             texture.TextureReadyForBindless += () =>
             {
-                Log.Debug("Texture {Name} with GUID {Guid} is ready for bindless usage.", texture.Name, guid);
+                Log.Debug("Texture {Guid} is ready for bindless usage.", guid);
                 
                 var bindless = new BindlessTexture(texture);
                 _bindless.Add(guid, bindless);

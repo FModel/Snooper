@@ -3,12 +3,14 @@
 layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
+layout (location = 3) out vec4 gSpecular;
 
 struct PerDrawData
 {
     bool IsReady;
     sampler2D Diffuse;
     sampler2D Normal;
+    sampler2D Specular;
 };
 
 layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
@@ -31,9 +33,11 @@ void main()
     PerDrawData drawData = uDrawDataBuffer[mIndex];
     
     vec3 color = fs_in.vDebugColor;
+    vec3 spec = vec3(1.0);
     if (uDebugColorMode == 0 && drawData.IsReady)
     {
         color = texture(drawData.Diffuse, fs_in.vTexCoords).rgb;
+        spec = texture(drawData.Specular, fs_in.vTexCoords).rgb;
     }
     else if (uDebugColorMode == 4)
     {
@@ -53,5 +57,7 @@ void main()
     gPosition = fs_in.vViewPos;
     gNormal = normalize(fs_in.TBN * normal);
     gColor.rgb = color;
-    gColor.a = 1.0;
+    gColor.a = 1.0; // free space
+    gSpecular.rgb = spec.rgb;
+    gSpecular.a = 1.0; // free space
 }

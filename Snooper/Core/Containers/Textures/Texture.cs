@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 
 namespace Snooper.Core.Containers.Textures;
 
@@ -22,6 +23,13 @@ public abstract class Texture(
     public int Height { get; private set; } = height;
     public PixelInternalFormat InternalFormat { get; private set; } = internalFormat;
     public PixelFormat Format { get; private set; } = format;
+    public int[] SwizzleMask { get; protected set; } =
+    [
+        (int) PixelFormat.Red,
+        (int) PixelFormat.Green,
+        (int) PixelFormat.Blue,
+        (int) PixelFormat.Alpha
+    ];
 
     public override void Generate()
     {
@@ -61,6 +69,7 @@ public abstract class Texture(
         };
         
         Resize(texture.Width, texture.Height, texture.Data);
+        Log.Debug("Texture {Guid} uploaded to GPU with size {Width}x{Height}.", Guid, texture.Width, texture.Height);
     }
     public void Resize(int newWidth, int newHeight) => Resize<nint>(newWidth, newHeight, []);
     public void Resize<T8>(int newWidth, int newHeight, T8[] pixels) where T8 : unmanaged
@@ -78,6 +87,11 @@ public abstract class Texture(
                 GL.TexImage2DMultisample(TextureTargetMultisample.Texture2DMultisample, Settings.NumberOfSamples, InternalFormat, newWidth, newHeight, true);
                 break;
         }
+    }
+    
+    public void Swizzle()
+    {
+        GL.TexParameter(Target, TextureParameterName.TextureSwizzleRgba, SwizzleMask);
     }
     
     public event Action? TextureReadyForBindless;

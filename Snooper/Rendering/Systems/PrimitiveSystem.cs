@@ -11,7 +11,7 @@ namespace Snooper.Rendering.Systems;
 public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
     : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerDrawData>(initialDrawCapacity, type)
     where TVertex : unmanaged
-    where TComponent : TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
+    where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
@@ -45,7 +45,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
     public sealed override void Render(CameraComponent camera)
     {
         if (!IsRenderable) return;
-
+        
         for (var batchIndex = 0; batchIndex < Resources.Count; batchIndex += BatchCount)
         {
             PreRender(camera, batchIndex);
@@ -62,7 +62,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
 
 public class PrimitiveSystem<TComponent, TInstanceData, TPerDrawData>(int initialDrawCapacity)
     : PrimitiveSystem<Vector3, TComponent, TInstanceData, TPerDrawData>(initialDrawCapacity)
-    where TComponent : TPrimitiveComponent<Vector3, TInstanceData, TPerDrawData>
+    where TComponent : PrimitiveComponent<Vector3, TInstanceData, TPerDrawData>
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
@@ -74,5 +74,5 @@ public class PrimitiveSystem<TComponent, TInstanceData, TPerDrawData>(int initia
     };
 }
 
-public class PrimitiveSystem<TComponent>(int initialDrawCapacity) : PrimitiveSystem<TComponent, PerInstanceData, PerDrawData>(initialDrawCapacity) where TComponent : TPrimitiveComponent<Vector3, PerInstanceData, PerDrawData>;
+public class PrimitiveSystem<TComponent>(int initialDrawCapacity) : PrimitiveSystem<TComponent, PerInstanceData, PerDrawData>(initialDrawCapacity) where TComponent : PrimitiveComponent<Vector3, PerInstanceData, PerDrawData>;
 public class PrimitiveSystem() : PrimitiveSystem<PrimitiveComponent>(10);

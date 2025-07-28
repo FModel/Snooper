@@ -11,7 +11,7 @@ namespace Snooper.Rendering.Systems;
 public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerDrawData>
     : ActorSystem<TComponent>, IMemorySizeProvider
     where TVertex : unmanaged
-    where TComponent : TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
+    where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
     where TInstanceData : unmanaged, IPerInstanceData 
     where TPerDrawData : unmanaged, IPerDrawData
 {

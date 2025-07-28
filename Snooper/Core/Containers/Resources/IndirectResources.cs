@@ -87,7 +87,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         }
     }
 
-    public void Update(TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
+    public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
     {
         if (!component.Actor.IsDirty || component.Sections.Length < 1) return;
         

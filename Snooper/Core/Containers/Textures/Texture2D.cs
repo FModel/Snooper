@@ -32,7 +32,7 @@ public class Texture2D(int width, int height,
 
         Task.Run(() =>
         {
-            Log.Debug("Decoding texture {Name} with format {Format} of size {Width}x{Height}.", _owner.Name, _owner.Format, Width, Height);
+            Log.Debug("Decoding texture {Name} with format {Format}.", _owner.Name, _owner.Format);
             
             var decoded = _owner.Decode();
             if (decoded is null)
@@ -44,7 +44,7 @@ public class Texture2D(int width, int height,
                 
                 Bind();
                 Resize(decoded);
-                Log.Debug("Texture {Name} uploaded to GPU.", _owner.Name);
+                Swizzle();
         
                 if (_owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap)
                 {
@@ -65,5 +65,34 @@ public class Texture2D(int width, int height,
                 OnTextureReadyForBindless();
             });
         });
+    }
+
+    private void FixChannels(string game)
+    {
+        SwizzleMask = game switch
+        {
+            // R: Whatever (AO / S / E / ...)
+            // G: Roughness
+            // B: Metallic
+            "GAMEFACE" or "HK_PROJECT" or "COSMICSHAKE" or "PHOENIX" or "ATOMICHEART" or "MULTIVERSUS" or "BODYCAM" =>
+            [
+                (int)PixelFormat.Red, (int)PixelFormat.Blue, (int)PixelFormat.Green, (int)PixelFormat.Alpha
+            ],
+            // R: Metallic
+            // G: Roughness
+            // B: Whatever (AO / S / E / ...)
+            "SHOOTERGAME" or "DIVINEKNOCKOUT" or "MOONMAN" =>
+            [
+                (int)PixelFormat.Blue, (int)PixelFormat.Red, (int)PixelFormat.Green, (int)PixelFormat.Alpha
+            ],
+            // R: Roughness
+            // G: Metallic
+            // B: Whatever (AO / S / E / ...)
+            "CCFF7R" or "PJ033" =>
+            [
+                (int)PixelFormat.Blue, (int)PixelFormat.Green, (int)PixelFormat.Red, (int)PixelFormat.Alpha
+            ],
+            _ => SwizzleMask
+        };
     }
 }

@@ -26,7 +26,7 @@ public class PrimitiveSection(int firstIndex, int indexCount)
     public override int GetHashCode() => SectionId.GetHashCode();
 }
 
-public abstract class TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(TPrimitiveData<TVertex> primitive)
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(TPrimitiveData<TVertex> primitive)
     : ActorComponent, IControllableComponent
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
@@ -114,7 +114,7 @@ public abstract class TPrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(
 /// <summary>
 /// primitive component that uses a single section for the entire primitive data.
 /// </summary>
-public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive) : TPrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>(primitive)
+public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive) : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>(primitive)
     where TVertex : unmanaged
     where TPerDrawData : unmanaged, IPerDrawData
 {

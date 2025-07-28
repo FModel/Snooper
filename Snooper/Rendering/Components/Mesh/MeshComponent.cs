@@ -17,10 +17,11 @@ public struct PerDrawMeshData : IPerDrawData
     public int Padding { get; init; }
     public long Diffuse { get; init; }
     public long Normal { get; init; }
+    public long Specular { get; init; }
 }
 
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
+public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
     public sealed override PrimitiveSection[] Sections { get; }
 
@@ -45,9 +46,10 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
                         material.GetParams(parameters, EMaterialFormat.FirstLayer);
 
                         if (parameters.TryGetTexture2d(out var diffuse, CMaterialParams2.Diffuse[0]) &&
-                            parameters.TryGetTexture2d(out var normal, CMaterialParams2.Normals[0]))
+                            parameters.TryGetTexture2d(out var normal, CMaterialParams2.Normals[0]) &&
+                            parameters.TryGetTexture2d(out var specular, CMaterialParams2.SpecularMasks[0]))
                         {
-                            Sections[index].DrawDataContainer = new DrawDataContainer(new Texture2D(diffuse), new Texture2D(normal));
+                            Sections[index].DrawDataContainer = new DrawDataContainer(new Texture2D(diffuse), new Texture2D(normal), new Texture2D(specular));
                         }
                     }
                     else
@@ -65,17 +67,19 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
 
     protected abstract IVertexData GetPrimitive(int index);
     
-    private class DrawDataContainer(Texture diffuse, Texture normal) : IDrawDataContainer
+    private class DrawDataContainer(Texture diffuse, Texture normal, Texture specular) : IDrawDataContainer
     {
         private BindlessTexture? _diffuse;
         private BindlessTexture? _normal;
+        private BindlessTexture? _specular;
         
         public bool HasTextures => true;
         
         public Dictionary<string, Texture> GetTextures() => new()
         {
             ["Diffuse"] = diffuse,
-            ["Normal"] = normal
+            ["Normal"] = normal,
+            ["Specular"] = specular,
         };
 
         public void SetBindlessTexture(string key, BindlessTexture bindless)
@@ -88,6 +92,9 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
                 case "Normal":
                     _normal = bindless;
                     break;
+                case "Specular":
+                    _specular = bindless;
+                    break;
                 default:
                     throw new ArgumentException($"Unknown texture key: {key}");
             }
@@ -95,7 +102,7 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
 
         public void FinalizeGpuData()
         {
-            if (_diffuse is null || _normal is null)
+            if (_diffuse is null || _normal is null || _specular is null)
             {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
             }
@@ -104,12 +111,15 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
             _diffuse.MakeResident();
             _normal.Generate();
             _normal.MakeResident();
+            _specular.Generate();
+            _specular.MakeResident();
 
             Raw = new PerDrawMeshData
             {
                 IsReady = true,
                 Diffuse = _diffuse,
-                Normal = _normal
+                Normal = _normal,
+                Specular = _specular,
             };
         }
 
@@ -119,11 +129,13 @@ public abstract class MeshComponent : TPrimitiveComponent<Vertex, PerInstanceDat
         {
             var largest = ImGui.GetContentRegionAvail();
             largest.X -= ImGui.GetScrollX();
-            largest.X /= 2;
+            largest.X /= 3;
             
             ImGui.Image(diffuse.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
             ImGui.SameLine();
             ImGui.Image(normal.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
+            ImGui.SameLine();
+            ImGui.Image(specular.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
         }
     }
     

@@ -10,6 +10,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
     public string? Geometry { get; set; }
     public string? TessellationControl { get; init; }
     public string? TessellationEvaluation { get; init; }
+    public string? Compute { get; init; }
 
     private readonly List<int> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
@@ -18,11 +19,12 @@ public class ShaderProgram(string vertex, string fragment) : Program
     {
         base.Generate();
 
-        _shaderHandles.Add(CompileShader(ShaderType.VertexShader, Vertex));
-        _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, Fragment));
+        if (!string.IsNullOrEmpty(Vertex)) _shaderHandles.Add(CompileShader(ShaderType.VertexShader, Vertex));
+        if (!string.IsNullOrEmpty(Fragment)) _shaderHandles.Add(CompileShader(ShaderType.FragmentShader, Fragment));
         if (!string.IsNullOrEmpty(Geometry)) _shaderHandles.Add(CompileShader(ShaderType.GeometryShader, Geometry));
         if (!string.IsNullOrEmpty(TessellationControl)) _shaderHandles.Add(CompileShader(ShaderType.TessControlShader, TessellationControl));
         if (!string.IsNullOrEmpty(TessellationEvaluation)) _shaderHandles.Add(CompileShader(ShaderType.TessEvaluationShader, TessellationEvaluation));
+        if (!string.IsNullOrEmpty(Compute)) _shaderHandles.Add(CompileShader(ShaderType.ComputeShader, Compute));
     }
 
     public sealed override void Link()
@@ -102,6 +104,21 @@ public class ShaderProgram(string vertex, string fragment) : Program
     private void SetUniform4(string name, float x, float y, float z, float w)
     {
         GL.Uniform4(GetUniformLocation(name), x, y, z, w);
+    }
+    
+    public unsafe void SetUniform(string name, Plane[] value)
+    {
+        var length = value.Length;
+        var planes = stackalloc float[4 * length];
+        for (var i = 0; i < length; i++)
+        {
+            planes[i * 4] = value[i].Normal.X;
+            planes[i * 4 + 1] = value[i].Normal.Y;
+            planes[i * 4 + 2] = value[i].Normal.Z;
+            planes[i * 4 + 3] = value[i].D;
+        }
+
+        GL.Uniform4(GetUniformLocation(name), length, planes);
     }
 
     private int GetUniformLocation(string name)

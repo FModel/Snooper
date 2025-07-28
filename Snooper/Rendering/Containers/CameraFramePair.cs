@@ -50,7 +50,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
 
             _ssao.Render(shader =>
             {
-                _geometry.BindTextures(true, true, false);
+                _geometry.BindTextures(true, true);
                 shader.SetUniform("uProjectionMatrix", Camera.ProjectionMatrix);
                 shader.SetUniform("radius", Camera.SsaoRadius);
             });
@@ -59,9 +59,9 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _geometry.Render(shader =>
         {
             if (!Camera.bAmbientOcclusion) return;
-            _ssao.Bind(TextureUnit.Texture3);
+            _ssao.Bind(TextureUnit.Texture4);
             shader.SetUniform("useSsao", true);
-            shader.SetUniform("ssao", 3);
+            shader.SetUniform("ssao", 4);
         });
     }
 
