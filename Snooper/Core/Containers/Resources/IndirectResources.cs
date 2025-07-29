@@ -86,10 +86,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         var firstIndex = EBO.AddRange(primitive.Indices);
         var baseVertex = VBO.AddRange(primitive.Vertices);
         var baseInstance = _instanceData.AddRange(instanceData);
-        
-        _bounds.Bind();
-        _bounds.Add(bounding);
-        _bounds.Unbind();
 
         foreach (var section in sections)
         {
@@ -103,6 +99,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
                 BaseInstance = (uint)baseInstance
             });
         }
+        
+        _bounds.Bind();
+        bounding.DrawId = sections[0].DrawMetadata.DrawId;
+        bounding.InstanceCount = instanceData.Length;
+        bounding.SectionCount = sections.Length;
+        _bounds.Add(bounding);
+        _bounds.Unbind();
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
@@ -179,7 +182,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _commands.Current.Bind(2);
         
         const int groupSize = 64;
-        var dispatchCount = (Count + groupSize - 1) / groupSize;
+        var dispatchCount = (_bounds.Count + groupSize - 1) / groupSize;
         GL.DispatchCompute(dispatchCount, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
     }

@@ -1,8 +1,11 @@
 ﻿layout(local_size_x = 64) in;
 
 struct AABB {
-    vec3 min;
-    vec3 max;
+    vec3 center;
+    float drawId;
+    vec3 extents;
+    float instanceCount;
+    float sectionCount;
 };
 
 struct PerInstanceData {
@@ -31,42 +34,60 @@ layout(std430, binding = 2) buffer DrawCommandBuffer {
 
 uniform vec4 uFrustumPlanes[6];
 
-bool isAABBVisible(vec3 min, vec3 max)
+bool isAABBVisible(vec3 center, vec3 extents)
 {
+    bool isInside = true;
     for (int i = 0; i < 6; ++i)
     {
         vec4 plane = uFrustumPlanes[i];
         vec3 normal = plane.xyz;
         float d = plane.w;
-
-        // Compute the most positive vertex (farthest in normal direction)
-        vec3 p = vec3(
-            normal.x > 0.0 ? max.x : min.x,
-            normal.y > 0.0 ? max.y : min.y,
-            normal.z > 0.0 ? max.z : min.z
-        );
-
-        if (dot(normal, p) + d < 0.0)
+        
+        float r = dot(abs(normal), extents);
+        float s = dot(normal, center) + d;
+        if (s < -r)
         {
-            return false; // Completely outside
+            isInside = false;
+            break;
         }
     }
-    return true;
+    
+    return isInside;
 }
 
 void main()
 {
-    uint drawId = gl_GlobalInvocationID.x;
+    uint modelId = gl_GlobalInvocationID.x;
+    if (modelId >= bounds.length()) return;
+
+    AABB bound = bounds[modelId];
+    uint drawId = uint(bound.drawId);
     if (drawId >= commands.length()) return;
 
-    DrawElementsIndirectCommand cmd = commands[drawId];
-    AABB localAABB = bounds[cmd.baseInstance];
-
-    uint visibleCount = 0;
-    if (isAABBVisible(localAABB.min, localAABB.max))
+    uint instanceCount = uint(bound.instanceCount);
+    vec3 center = bound.center;
+    vec3 extents = bound.extents;
+    
+    uint sectionCount = uint(bound.sectionCount);
+    for (uint i = 0; i < sectionCount; ++i)
     {
-        visibleCount = 1;
-    }
+        DrawElementsIndirectCommand cmd = commands[drawId + i];
+        uint baseInstance = cmd.baseInstance;
 
-    commands[drawId].instanceCount = visibleCount;
+        uint visibleCount = 0;
+        for (uint j = 0; j < instanceCount; ++j)
+        {
+            mat4 modelMatrix = instances[baseInstance + j].Matrix;
+
+            vec3 transformedCenter = (modelMatrix * vec4(center, 1.0)).xyz;
+            vec3 transformedExtents = abs(mat3(modelMatrix) * extents);
+
+            if (isAABBVisible(transformedCenter, transformedExtents))
+            {
+                visibleCount++;
+            }
+        }
+
+        commands[drawId + i].instanceCount = visibleCount > 0 ? instanceCount : 0;
+    }
 }

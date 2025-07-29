@@ -27,17 +27,22 @@ public class PrimitiveSection(int firstIndex, int indexCount)
     public override int GetHashCode() => SectionId.GetHashCode();
 }
 
-public readonly struct AABB
+public struct AABB
 {
-    public readonly Vector3 Min;
-    public readonly Vector3 Max;
+    public readonly Vector3 Center;
+    public float DrawId;
+    public readonly Vector3 Extents;
+    public float InstanceCount;
+    public float SectionCount;
+    public float Padding1, Padding2, Padding3;
 
     public AABB(FBox box)
     {
         box *= Settings.GlobalScale;
+        box.GetCenterAndExtents(out var center, out var extents);
         
-        Min = new Vector3(box.Min.X, box.Min.Z, box.Min.Y);
-        Max = new Vector3(box.Max.X, box.Max.Z, box.Max.Y);
+        Center = new Vector3(center.X, center.Z, center.Y);
+        Extents = new Vector3(extents.X, extents.Z, extents.Y);
     }
     
     public static implicit operator AABB(FBox box) => new(box);
