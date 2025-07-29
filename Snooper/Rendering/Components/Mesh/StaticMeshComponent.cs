@@ -8,12 +8,12 @@ public class StaticMeshComponent : MeshComponent
 {
     private readonly CStaticMesh _mesh;
 
-    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(mesh.LODs[0], owner.Materials)
+    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(mesh.LODs[0], owner.Materials, mesh.BoundingBox)
     {
         _mesh = mesh;
     }
     
-    public StaticMeshComponent(ALandscapeProxy owner, CStaticMesh mesh) : base(mesh.LODs[0], [owner.LandscapeMaterial.ResolvedObject])
+    public StaticMeshComponent(ALandscapeProxy owner, CStaticMesh mesh) : base(mesh.LODs[0], [owner.LandscapeMaterial.ResolvedObject], mesh.BoundingBox)
     {
         _mesh = mesh;
     }

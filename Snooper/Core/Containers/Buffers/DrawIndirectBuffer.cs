@@ -6,6 +6,11 @@ namespace Snooper.Core.Containers.Buffers;
 public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<DrawElementsIndirectCommand>(capacity, BufferTarget.DrawIndirectBuffer, usageHint)
 {
     public override GetPName Name => GetPName.DrawIndirectBufferBinding;
+    
+    public void Bind(int index)
+    {
+        GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, Handle);
+    }
 
     public DrawElementsIndirectCommand this[int index] => GetData(index, 1)[0];
 

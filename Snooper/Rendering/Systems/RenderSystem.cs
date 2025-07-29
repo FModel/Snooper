@@ -27,6 +27,8 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
 
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
+        Resources.Cull(camera);
+        
         base.PreRender(camera, batchIndex);
         
         Shader.SetUniform("uDebugColorMode", (int)DebugColorMode);

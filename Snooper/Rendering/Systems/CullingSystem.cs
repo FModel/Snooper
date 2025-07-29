@@ -16,13 +16,13 @@ public class CullingSystem : ActorSystem<CullingComponent>
         if (!camera.IsActive) return;
         // TODO: do this OnUpdateFrame instead
         
-        var frustum = camera.GetWorldFrustumPlanes();
-        if (frustum.Length != 6)
-        {
-            throw new ArgumentException("Frustum must be defined by exactly six planes.");
-        }
-        
-        Parallel.ForEach(Components, component => component.CheckForVisibility(frustum));
+        // var frustum = camera.GetWorldFrustumPlanes();
+        // if (frustum.Length != 6)
+        // {
+        //     throw new ArgumentException("Frustum must be defined by exactly six planes.");
+        // }
+        //
+        // Parallel.ForEach(Components, component => component.CheckForVisibility(frustum));
     }
 
     protected override void OnActorComponentEnqueued(CullingComponent component)

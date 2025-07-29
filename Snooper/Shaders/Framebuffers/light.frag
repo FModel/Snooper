@@ -15,6 +15,7 @@ void main()
     vec3 position = texture(gPosition, vTexCoords).rgb;
     vec3 normal = texture(gNormal, vTexCoords).rgb;
     vec3 baseColor = texture(gColor, vTexCoords).rgb;
+    vec3 specularColor = texture(gColor, vTexCoords).rgb;
     float ao = useSsao ? texture(ssao, vTexCoords).r : 1.0;
 
     // Hemispheric lighting (sky vs ground)

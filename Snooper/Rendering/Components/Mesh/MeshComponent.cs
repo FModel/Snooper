@@ -2,6 +2,7 @@
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
+using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Serilog;
 using Snooper.Core;
@@ -25,7 +26,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 {
     public sealed override PrimitiveSection[] Sections { get; }
 
-    protected MeshComponent(CBaseMeshLod lod, ResolvedObject?[] materials) : base(new Geometry(lod))
+    protected MeshComponent(CBaseMeshLod lod, ResolvedObject?[] materials, FBox box) : base(new Geometry(lod), box)
     {
         Sections = new PrimitiveSection[lod.Sections.Value.Length];
         for (var i = 0; i < Sections.Length; i++)

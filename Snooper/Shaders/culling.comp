@@ -1,0 +1,72 @@
+﻿layout(local_size_x = 64) in;
+
+struct AABB {
+    vec3 min;
+    vec3 max;
+};
+
+struct PerInstanceData {
+    mat4 Matrix;
+};
+
+struct DrawElementsIndirectCommand {
+    uint count;
+    uint instanceCount;
+    uint firstIndex;
+    uint baseVertex;
+    uint baseInstance;
+};
+
+layout(std430, binding = 0) readonly buffer InstanceBuffer {
+    PerInstanceData instances[];
+};
+
+layout(std430, binding = 1) readonly buffer AABBBuffer {
+    AABB bounds[];
+};
+
+layout(std430, binding = 2) buffer DrawCommandBuffer {
+    DrawElementsIndirectCommand commands[];
+};
+
+uniform vec4 uFrustumPlanes[6];
+
+bool isAABBVisible(vec3 min, vec3 max)
+{
+    for (int i = 0; i < 6; ++i)
+    {
+        vec4 plane = uFrustumPlanes[i];
+        vec3 normal = plane.xyz;
+        float d = plane.w;
+
+        // Compute the most positive vertex (farthest in normal direction)
+        vec3 p = vec3(
+            normal.x > 0.0 ? max.x : min.x,
+            normal.y > 0.0 ? max.y : min.y,
+            normal.z > 0.0 ? max.z : min.z
+        );
+
+        if (dot(normal, p) + d < 0.0)
+        {
+            return false; // Completely outside
+        }
+    }
+    return true;
+}
+
+void main()
+{
+    uint drawId = gl_GlobalInvocationID.x;
+    if (drawId >= commands.length()) return;
+
+    DrawElementsIndirectCommand cmd = commands[drawId];
+    AABB localAABB = bounds[cmd.baseInstance];
+
+    uint visibleCount = 0;
+    if (isAABBVisible(localAABB.min, localAABB.max))
+    {
+        visibleCount = 1;
+    }
+
+    commands[drawId].instanceCount = visibleCount;
+}
