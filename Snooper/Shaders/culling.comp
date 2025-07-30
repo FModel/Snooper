@@ -79,10 +79,15 @@ void main()
     {
         mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].matrix;
 
-        vec3 transformedCenter = (modelMatrix * vec4(center, 1.0)).xyz;
-        vec3 transformedExtents = abs(mat3(modelMatrix) * extents);
+        vec3 worldCenter = (modelMatrix * vec4(center, 1.0)).xyz;
+        mat3 m = mat3(modelMatrix);
+        vec3 worldExtents = vec3(
+            dot(abs(m[0]), extents),
+            dot(abs(m[1]), extents),
+            dot(abs(m[2]), extents)
+        );
 
-        if (isVisible(transformedCenter, transformedExtents))
+        if (isVisible(worldCenter, worldExtents))
         {
             minVisible = min(minVisible, j);
             maxVisible = max(maxVisible, j);
