@@ -11,7 +11,6 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
 {
     public override uint Order => 22;
     protected override bool AllowDerivation => true;
-    protected override int BatchCount => int.MaxValue;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("mesh");
     protected override Action<ArrayBuffer<Vertex>> PointersFactory { get; } = buffer =>
     {
@@ -27,8 +26,6 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
 
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
-        Resources.Cull(camera);
-        
         base.PreRender(camera, batchIndex);
         
         Shader.SetUniform("uDebugColorMode", (int)DebugColorMode);

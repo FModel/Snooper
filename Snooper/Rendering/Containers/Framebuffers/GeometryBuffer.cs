@@ -87,10 +87,10 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 
         _fullQuad.Render(() =>
         {
-            BindTextures(true, true, true, true);
+            BindTextures(false, true, true, false);
 
             _shader.Use();
-            _shader.SetUniform("gPosition", 0);
+            // _shader.SetUniform("gPosition", 0);
             _shader.SetUniform("gNormal", 1);
             _shader.SetUniform("gColor", 2);
             // _shader.SetUniform("gSpecular", 3);

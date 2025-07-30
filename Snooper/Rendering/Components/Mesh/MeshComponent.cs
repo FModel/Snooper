@@ -8,6 +8,7 @@ using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;

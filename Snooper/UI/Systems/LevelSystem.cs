@@ -7,7 +7,6 @@ using Snooper.Core.Containers;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Culling;
 using Snooper.Rendering.Primitives;
 
 namespace Snooper.UI.Systems;
@@ -212,7 +211,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
         
         ImGui.Text(_selectedActor.Name);
-        ImGui.Text($"Visible Instances: {_selectedActor.VisibleInstances}");
         ImGui.Text($"Instances: {_selectedActor.InstancedTransform.Transforms.Count + 1}");
 
         foreach (var component in _selectedActor.Components)
@@ -225,7 +223,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         {
             var cube = new Actor("Cube");
             cube.Components.Add(new PrimitiveComponent(new Cube()));
-            cube.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
 
             PlaceInFrontOfCamera(cube);
             parent.Children.Add(cube);
@@ -235,7 +232,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         {
             var sphere = new Actor("Sphere");
             sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
-            sphere.Components.Add(new BoxCullingComponent(Vector3.Zero, Vector3.One / 2));
 
             PlaceInFrontOfCamera(sphere);
             parent.Children.Add(sphere);

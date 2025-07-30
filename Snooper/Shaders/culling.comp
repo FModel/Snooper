@@ -1,40 +1,43 @@
 ﻿layout(local_size_x = 64) in;
 
-struct AABB {
+struct CullingBounds
+{
     vec3 center;
-    float drawId;
     vec3 extents;
-    float instanceCount;
-    float sectionCount;
 };
 
-struct PerInstanceData {
-    mat4 Matrix;
+struct PerInstanceData
+{
+    mat4 matrix;
 };
 
-struct DrawElementsIndirectCommand {
+struct DrawElementsIndirectCommand
+{
     uint count;
     uint instanceCount;
     uint firstIndex;
     uint baseVertex;
     uint baseInstance;
+    uint originalInstanceCount;
+    uint originalBaseInstance;
+    uint modelId;
 };
 
-layout(std430, binding = 0) readonly buffer InstanceBuffer {
-    PerInstanceData instances[];
+layout(std430, binding = 0) readonly buffer PerInstanceDataBuffer {
+    PerInstanceData uInstanceDataBuffer[];
 };
 
-layout(std430, binding = 1) readonly buffer AABBBuffer {
-    AABB bounds[];
+layout(std430, binding = 1) readonly buffer CullingBoundsBuffer {
+    CullingBounds uModelBounds[];
 };
 
 layout(std430, binding = 2) buffer DrawCommandBuffer {
-    DrawElementsIndirectCommand commands[];
+    DrawElementsIndirectCommand uIndirectDrawCommands[];
 };
 
 uniform vec4 uFrustumPlanes[6];
 
-bool isAABBVisible(vec3 center, vec3 extents)
+bool isVisible(vec3 center, vec3 extents)
 {
     bool isInside = true;
     for (int i = 0; i < 6; ++i)
@@ -57,37 +60,48 @@ bool isAABBVisible(vec3 center, vec3 extents)
 
 void main()
 {
-    uint modelId = gl_GlobalInvocationID.x;
-    if (modelId >= bounds.length()) return;
+    uint drawId = gl_GlobalInvocationID.x;
+    if (drawId >= uIndirectDrawCommands.length()) return;
 
-    AABB bound = bounds[modelId];
-    uint drawId = uint(bound.drawId);
-    if (drawId >= commands.length()) return;
+    DrawElementsIndirectCommand cmd = uIndirectDrawCommands[drawId];
+    uint instanceCount = cmd.originalInstanceCount;
+    uint baseInstance = cmd.originalBaseInstance;
+    uint modelId = cmd.modelId;
 
-    uint instanceCount = uint(bound.instanceCount);
+    CullingBounds bound = uModelBounds[modelId];
     vec3 center = bound.center;
     vec3 extents = bound.extents;
+
+    uint minVisible = 0xFFFFFFFFu;
+    uint maxVisible = 0;
     
-    uint sectionCount = uint(bound.sectionCount);
-    for (uint i = 0; i < sectionCount; ++i)
+    for (uint j = 0; j < instanceCount; ++j)
     {
-        DrawElementsIndirectCommand cmd = commands[drawId + i];
-        uint baseInstance = cmd.baseInstance;
+        mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].matrix;
 
-        uint visibleCount = 0;
-        for (uint j = 0; j < instanceCount; ++j)
+        vec3 transformedCenter = (modelMatrix * vec4(center, 1.0)).xyz;
+        vec3 transformedExtents = abs(mat3(modelMatrix) * extents);
+
+        if (isVisible(transformedCenter, transformedExtents))
         {
-            mat4 modelMatrix = instances[baseInstance + j].Matrix;
-
-            vec3 transformedCenter = (modelMatrix * vec4(center, 1.0)).xyz;
-            vec3 transformedExtents = abs(mat3(modelMatrix) * extents);
-
-            if (isAABBVisible(transformedCenter, transformedExtents))
-            {
-                visibleCount++;
-            }
+            minVisible = min(minVisible, j);
+            maxVisible = max(maxVisible, j);
         }
+    }
 
-        commands[drawId + i].instanceCount = visibleCount > 0 ? instanceCount : 0;
+    if (minVisible <= maxVisible)
+    {
+        uint newBaseInstance = baseInstance + minVisible;
+        uint newInstanceCount = maxVisible - minVisible + 1;
+
+        if (cmd.baseInstance != newBaseInstance || cmd.instanceCount != newInstanceCount)
+        {
+            uIndirectDrawCommands[drawId].baseInstance = newBaseInstance;
+            uIndirectDrawCommands[drawId].instanceCount = newInstanceCount;
+        }
+    }
+    else if (cmd.instanceCount != 0)
+    {
+        uIndirectDrawCommands[drawId].instanceCount = 0;
     }
 }

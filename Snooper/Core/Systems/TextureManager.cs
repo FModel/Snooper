@@ -1,8 +1,8 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using Serilog;
 using Snooper.Core.Containers.Textures;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Systems;
 

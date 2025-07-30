@@ -29,27 +29,32 @@ public class WorldActor : Actor
                 continue;
             }
 
-            if (highres && actor.TryGetValue(out UWorldPartition partition, "WorldPartition") &&
-                partition.TryGetValue(out UObject hash, "RuntimeHash") &&
-                hash.TryGetValue(out FStructFallback[] grids, "StreamingGrids") && grids.Length > 0 &&
-                grids[0].TryGetValue(out FStructFallback[] levels, "GridLevels") && levels.Length > 0 &&
-                levels[0].TryGetValue(out FStructFallback[] layerCells, "LayerCells"))
+            if (highres)
             {
-                for (var i = 0; i < layerCells.Length; i++)
+                if (actor.TryGetValue(out UWorldPartition partition, "WorldPartition") &&
+                    partition.TryGetValue(out UObject hash, "RuntimeHash") &&
+                    hash.TryGetValue(out FStructFallback[] grids, "StreamingGrids") && grids.Length > 0 &&
+                    grids[0].TryGetValue(out FStructFallback[] levels, "GridLevels") && levels.Length > 0 &&
+                    levels[0].TryGetValue(out FStructFallback[] layerCells, "LayerCells"))
                 {
-                    if (layerCells[i].TryGetValue(out FPackageIndex[] gridCells, "GridCells") && gridCells.Length > 0 &&
-                        gridCells[0].TryLoad(out UObject cell) && cell.TryGetValue(out UObject level, "LevelStreaming"))
+                    for (var i = 0; i < layerCells.Length; i++)
                     {
-                        Children.Add(new WorldActor(level.Get<UWorld>("WorldAsset")));
-                    }
+                        if (layerCells[i].TryGetValue(out FPackageIndex[] gridCells, "GridCells") && gridCells.Length > 0 &&
+                            gridCells[0].TryLoad(out UObject cell) && cell.TryGetValue(out UObject level, "LevelStreaming"))
+                        {
+                            Children.Add(new WorldActor(level.Get<UWorld>("WorldAsset")));
+                        }
                     
-                    if (i > 25) break;
+                        // if (i > 25) break;
+                    }
                 }
-                break;
+
+                continue;
             }
 
-            // the first instance component is (always?) the root component, this avoids duplicating it
-            CreateActor(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", [root]));
+            // am I crazy or InstanceComponents[0] may or may not be the root component?
+            CreateActor(root);
+            CreateActor(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
             CreateActor(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
             
             if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))

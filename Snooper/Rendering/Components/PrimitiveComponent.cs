@@ -4,57 +4,21 @@ using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
 
-public class PrimitiveSection(int firstIndex, int indexCount)
-{
-    private static int _nextId = 0;
-    public readonly int SectionId = Interlocked.Increment(ref _nextId);
-    
-    public readonly int FirstIndex = firstIndex;
-    public readonly int IndexCount = indexCount;
-
-    public IndirectDrawMetadata DrawMetadata = new();
-    public IDrawDataContainer? DrawDataContainer;
-    
-    public bool IsGenerated => DrawMetadata.BaseInstance >= 0;
-
-    public override bool Equals(object? obj) => obj is PrimitiveSection section && section.SectionId.Equals(SectionId);
-    public override int GetHashCode() => SectionId.GetHashCode();
-}
-
-public struct AABB
-{
-    public readonly Vector3 Center;
-    public float DrawId;
-    public readonly Vector3 Extents;
-    public float InstanceCount;
-    public float SectionCount;
-    public float Padding1, Padding2, Padding3;
-
-    public AABB(FBox box)
-    {
-        box *= Settings.GlobalScale;
-        box.GetCenterAndExtents(out var center, out var extents);
-        
-        Center = new Vector3(center.X, center.Z, center.Y);
-        Extents = new Vector3(extents.X, extents.Z, extents.Y);
-    }
-    
-    public static implicit operator AABB(FBox box) => new(box);
-}
-
-public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(TPrimitiveData<TVertex> primitive, AABB bounding)
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds)
     : ActorComponent, IControllableComponent
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
     public TPrimitiveData<TVertex> Primitive { get; } = primitive;
+    public CullingBounds Bounds { get; } = bounds;
     public abstract PrimitiveSection[] Sections { get; }
     
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
@@ -62,11 +26,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(T
         if (!Primitive.IsValid)
             throw new InvalidOperationException("Primitive data is not valid.");
         
-        resources.Add(Primitive, Sections, GetPerInstanceData(), bounding);
+        resources.Add(Primitive, Sections, GetPerInstanceData(), Bounds);
         textureManager.AddRange(Sections);
     }
 
-    public virtual void Update(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
+    public void Update(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
         if (!Sections[0].IsGenerated)
         {
@@ -136,7 +100,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(T
 /// <summary>
 /// primitive component that uses a single section for the entire primitive data.
 /// </summary>
-public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive, AABB bounding) : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>(primitive, bounding)
+public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds) : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>(primitive, bounds)
     where TVertex : unmanaged
     where TPerDrawData : unmanaged, IPerDrawData
 {
@@ -144,8 +108,8 @@ public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> p
 }
 
 /// <inheritdoc />
-public class PrimitiveComponent<TPerDrawData>(IPrimitiveData primitive) : PrimitiveComponent<Vector3, TPerDrawData>(primitive, new FBox()) where TPerDrawData : unmanaged, IPerDrawData;
+public class PrimitiveComponent<TPerDrawData>(IPrimitiveData primitive, CullingBounds bounds) : PrimitiveComponent<Vector3, TPerDrawData>(primitive, bounds) where TPerDrawData : unmanaged, IPerDrawData;
 
 /// <inheritdoc />
 [DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent(IPrimitiveData primitive) : PrimitiveComponent<PerDrawData>(primitive);
+public class PrimitiveComponent(IPrimitiveData primitive) : PrimitiveComponent<PerDrawData>(primitive, new FBox());

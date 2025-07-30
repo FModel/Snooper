@@ -50,7 +50,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
         Resources.Generate();
         Resources.Bind();
-        Resources.Allocate(_drawCount, _indices, _vertices);
+        Resources.Allocate(_componentCount, _drawCount, _indices, _vertices);
         
         foreach (var component in Components)
         {
@@ -81,6 +81,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Render();
     }
     
+    private int _componentCount;
     private int _drawCount;
     private int _indices;
     private int _vertices;
@@ -89,6 +90,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     {
         base.OnActorComponentEnqueued(component);
         
+        _componentCount++;
         _drawCount += component.Sections.Length;
         _indices += component.Primitive.Indices.Length;
         _vertices += component.Primitive.Vertices.Length;
