@@ -12,8 +12,9 @@ public class EmbeddedTexture2D(string file) : Texture2D(24, 24, PixelInternalFor
     public override void Generate()
     {
         base.Generate();
+        if (FormatInfo is not TextureFormatInfo info) return;
         
-        ProcessPixels();
+        ProcessPixels(info);
         
         GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
         GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
@@ -22,7 +23,7 @@ public class EmbeddedTexture2D(string file) : Texture2D(24, 24, PixelInternalFor
         GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
     }
     
-    private void ProcessPixels()
+    private void ProcessPixels(TextureFormatInfo info)
     {
         var assemblyName = _assembly.GetName().Name;
         using var stream = _assembly.GetManifestResourceStream($"{assemblyName}.UI.Icons.{file.Replace('\\', '.').Replace('/', '.')}");
@@ -36,7 +37,7 @@ public class EmbeddedTexture2D(string file) : Texture2D(24, 24, PixelInternalFor
         {
             for (var y = 0; y < accessor.Height; y++)
             {
-                GL.TexSubImage2D(Target, 0, 0, y, accessor.Width, 1, Format, Type, accessor.GetRowSpan(y).ToArray());
+                GL.TexSubImage2D(Target, 0, 0, y, accessor.Width, 1, info.Format, info.Type, accessor.GetRowSpan(y).ToArray());
             }
         });
     }

@@ -1,8 +1,8 @@
-﻿using CUE4Parse_Conversion.Textures;
-using CUE4Parse.UE4.Assets.Exports.Texture;
+﻿using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
+using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Textures;
 
@@ -16,14 +16,13 @@ public abstract class Texture(
 
     public FGuid Guid { get; protected init; }
     public TextureTarget Target { get; } = target;
-    public PixelType Type { get; } = type;
     
     public int PreviousHandle { get; private set; }
     public int Width { get; private set; } = width;
     public int Height { get; private set; } = height;
-    public PixelInternalFormat InternalFormat { get; private set; } = internalFormat;
-    public PixelFormat Format { get; private set; } = format;
-    public int[] SwizzleMask { get; protected set; } =
+    public ITextureFormatInfo FormatInfo { get; private set; } = new TextureFormatInfo(internalFormat, format, type);
+
+    public int[] SwizzleMask { get; internal set; } =
     [
         (int) PixelFormat.Red,
         (int) PixelFormat.Green,
@@ -54,22 +53,11 @@ public abstract class Texture(
         GL.BindTexture(Target, PreviousHandle);
     }
 
-    protected void Resize(CTexture texture)
+    protected void Resize(EPixelFormat pixel, FTexture2DMipMap mip)
     {
-        InternalFormat = texture.PixelFormat switch
-        {
-            EPixelFormat.PF_G8 => PixelInternalFormat.R8,
-            _ => PixelInternalFormat.Rgba
-        };
-        Format = texture.PixelFormat switch
-        {
-            EPixelFormat.PF_G8 => PixelFormat.Red,
-            EPixelFormat.PF_B8G8R8A8 => PixelFormat.Bgra,
-            _ => PixelFormat.Rgba
-        };
-        
-        Resize(texture.Width, texture.Height, texture.Data);
-        Log.Debug("Texture {Guid} uploaded to GPU with size {Width}x{Height}.", Guid, texture.Width, texture.Height);
+        FormatInfo = pixel.GetTextureFormat();
+        Resize(mip.SizeX, mip.SizeY, mip.BulkData.Data);
+        Log.Debug("Texture {Guid} of format {Format} uploaded to GPU with size {Width}x{Height}.", Guid, pixel, Width, Height);
     }
     public void Resize(int newWidth, int newHeight) => Resize<nint>(newWidth, newHeight, []);
     public void Resize<T8>(int newWidth, int newHeight, T8[] pixels) where T8 : unmanaged
@@ -80,11 +68,14 @@ public abstract class Texture(
         Bind();
         switch (Target)
         {
-            case TextureTarget.Texture2D:
-                GL.TexImage2D(Target, 0, InternalFormat, newWidth, newHeight, 0, Format, Type, pixels);
+            case TextureTarget.Texture2D when FormatInfo is TextureFormatInfo info:
+                GL.TexImage2D(Target, 0, info.InternalFormat, newWidth, newHeight, 0, info.Format, info.Type, pixels);
                 break;
-            case TextureTarget.Texture2DMultisample:
-                GL.TexImage2DMultisample(TextureTargetMultisample.Texture2DMultisample, Settings.NumberOfSamples, InternalFormat, newWidth, newHeight, true);
+            case TextureTarget.Texture2D when FormatInfo is CompressedTextureFormatInfo compressed:
+                GL.CompressedTexImage2D(Target, 0, compressed.InternalFormat, Width, Height, 0, pixels.Length, pixels);
+                break;
+            case TextureTarget.Texture2DMultisample when FormatInfo is TextureFormatInfo info:
+                GL.TexImage2DMultisample(TextureTargetMultisample.Texture2DMultisample, Settings.NumberOfSamples, info.InternalFormat, newWidth, newHeight, true);
                 break;
         }
     }
@@ -95,7 +86,7 @@ public abstract class Texture(
     }
     
     public event Action? TextureReadyForBindless;
-    protected virtual void OnTextureReadyForBindless()
+    protected void OnTextureReadyForBindless()
     {
         TextureReadyForBindless?.Invoke();
     }

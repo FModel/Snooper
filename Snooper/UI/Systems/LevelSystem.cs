@@ -46,7 +46,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 var drawList = ImGui.GetWindowDrawList();
                 var pos = ImGui.GetItemRectMin();
 
-                if (DebugMode)
+                if (ShowFramebuffers)
                 {
                     var remainingPointers = framebuffers.Length - 1;
                     var miniSize = size;
@@ -117,7 +117,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             ImGui.Text($"Extensions: x{Context.DeviceInfo.ExtensionSupport.Extensions.Length}");
             
             ImGui.SeparatorText("Options");
-            ImGui.Checkbox("Debug Mode", ref DebugMode);
+            ImGui.Checkbox("Show Framebuffers", ref ShowFramebuffers);
             ImGui.Checkbox("Draw Bounding Boxes", ref DrawBoundingBoxes);
             var c = (int) DebugColorMode;
             ImGui.Combo("DebugColorMode", ref c, "None\0Per Actor\0Per Instance\0Per Material\0Per Primitive\0");

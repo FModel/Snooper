@@ -16,7 +16,7 @@ public abstract class ActorManager : IGameSystem
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     // private readonly HashSet<FGuid> _actors = [];
 
-    public bool DebugMode = false;
+    public bool ShowFramebuffers = false;
     public bool DrawBoundingBoxes = false;
     public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.None;
 
