@@ -21,7 +21,7 @@ public sealed class CameraComponent : ActorComponent, IControllableComponent
     public bool bFXAA = true;
     public bool bAmbientOcclusion = false;
     public float SsaoRadius = 1.5f;
-    public float MovementSpeed = 1f;
+    public float MovementSpeed = 10f;
     public float FieldOfView = 89.0f;
     public float FarPlaneDistance = 10000f;
     public float NearPlaneDistance = 0.1f;

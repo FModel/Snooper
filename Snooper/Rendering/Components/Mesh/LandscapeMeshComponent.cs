@@ -23,7 +23,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
     public readonly int SizeQuads;
     public readonly Vector2[] Scales;
     
-    public LandscapeMeshComponent(ULandscapeComponent component) : base(new Geometry(component.ComponentSizeQuads))
+    public LandscapeMeshComponent(ULandscapeComponent component) : base(new Geometry(component.ComponentSizeQuads), component.CachedLocalBox)
     {
         if (component.GetHeightmap() is not { } heightmap)
         {

@@ -11,7 +11,6 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
 {
     public override uint Order => 22;
     protected override bool AllowDerivation => true;
-    protected override int BatchCount => int.MaxValue;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("mesh");
     protected override Action<ArrayBuffer<Vertex>> PointersFactory { get; } = buffer =>
     {

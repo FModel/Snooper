@@ -13,7 +13,6 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 {
     public override uint Order => 21;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
-    protected override int BatchCount => int.MaxValue;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("Landscape/landscape")
     {
         TessellationControl = "Landscape/landscape.tesc",

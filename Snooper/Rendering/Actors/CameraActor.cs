@@ -11,7 +11,6 @@ public class CameraActor : Actor
         CameraComponent = new CameraComponent();
         
         Components.Add(CameraComponent);
-        // Components.Add(new CameraFrustumComponent(CameraComponent));
     }
 
     internal override string Icon => "video";

@@ -1,8 +1,8 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using Serilog;
 using Snooper.Core.Containers.Textures;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Systems;
 
@@ -68,7 +68,7 @@ public class TextureManager : IGameSystem
     }
 
     public void Load() => throw new NotImplementedException();
-    public void Update(float delta) => DequeueTextures(1);
+    public void Update(float delta) => DequeueTextures(2);
     public void Render(CameraComponent camera) => throw new NotImplementedException();
 
     private readonly Queue<Texture> _texturesToLoad = [];

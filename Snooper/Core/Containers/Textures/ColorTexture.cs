@@ -15,12 +15,12 @@ public class ColorTexture(FColor color) : Texture2D(1, 1)
     public override void Generate()
     {
         base.Generate();
-        if (_color is null) return;
+        if (_color is null || FormatInfo is not TextureFormatInfo info) return;
         
         Bind();
         
         var c = _color.Value;
-        GL.TexImage2D(Target, 0, InternalFormat, Width, Height, 0, Format, Type, ref c);
+        GL.TexImage2D(Target, 0, info.InternalFormat, Width, Height, 0, info.Format, info.Type, ref c);
         
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);

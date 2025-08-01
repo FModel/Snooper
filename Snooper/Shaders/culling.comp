@@ -1,0 +1,112 @@
+﻿layout(local_size_x = 64) in;
+
+struct CullingBounds
+{
+    vec3 center;
+    vec3 extents;
+};
+
+struct PerInstanceData
+{
+    mat4 matrix;
+};
+
+struct DrawElementsIndirectCommand
+{
+    uint count;
+    uint instanceCount;
+    uint firstIndex;
+    uint baseVertex;
+    uint baseInstance;
+    uint originalInstanceCount;
+    uint originalBaseInstance;
+    uint modelId;
+};
+
+layout(std430, binding = 0) readonly buffer PerInstanceDataBuffer {
+    PerInstanceData uInstanceDataBuffer[];
+};
+
+layout(std430, binding = 1) readonly buffer CullingBoundsBuffer {
+    CullingBounds uModelBounds[];
+};
+
+layout(std430, binding = 2) buffer DrawCommandBuffer {
+    DrawElementsIndirectCommand uIndirectDrawCommands[];
+};
+
+uniform vec4 uFrustumPlanes[6];
+
+bool isVisible(vec3 center, vec3 extents)
+{
+    bool isInside = true;
+    for (int i = 0; i < 6; ++i)
+    {
+        vec4 plane = uFrustumPlanes[i];
+        vec3 normal = plane.xyz;
+        float d = plane.w;
+        
+        float r = dot(abs(normal), extents);
+        float s = dot(normal, center) + d;
+        if (s < -r)
+        {
+            isInside = false;
+            break;
+        }
+    }
+    
+    return isInside;
+}
+
+void main()
+{
+    uint drawId = gl_GlobalInvocationID.x;
+    if (drawId >= uIndirectDrawCommands.length()) return;
+
+    DrawElementsIndirectCommand cmd = uIndirectDrawCommands[drawId];
+    uint instanceCount = cmd.originalInstanceCount;
+    uint baseInstance = cmd.originalBaseInstance;
+    uint modelId = cmd.modelId;
+
+    CullingBounds bound = uModelBounds[modelId];
+    vec3 center = bound.center;
+    vec3 extents = bound.extents;
+
+    uint minVisible = 0xFFFFFFFFu;
+    uint maxVisible = 0;
+    
+    for (uint j = 0; j < instanceCount; ++j)
+    {
+        mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].matrix;
+
+        vec3 worldCenter = (modelMatrix * vec4(center, 1.0)).xyz;
+        mat3 m = mat3(modelMatrix);
+        vec3 worldExtents = vec3(
+            dot(abs(m[0]), extents),
+            dot(abs(m[1]), extents),
+            dot(abs(m[2]), extents)
+        );
+
+        if (isVisible(worldCenter, worldExtents))
+        {
+            minVisible = min(minVisible, j);
+            maxVisible = max(maxVisible, j);
+        }
+    }
+
+    if (minVisible <= maxVisible)
+    {
+        uint newBaseInstance = baseInstance + minVisible;
+        uint newInstanceCount = maxVisible - minVisible + 1;
+
+        if (cmd.baseInstance != newBaseInstance || cmd.instanceCount != newInstanceCount)
+        {
+            uIndirectDrawCommands[drawId].baseInstance = newBaseInstance;
+            uIndirectDrawCommands[drawId].instanceCount = newInstanceCount;
+        }
+    }
+    else if (cmd.instanceCount != 0)
+    {
+        uIndirectDrawCommands[drawId].instanceCount = 0;
+    }
+}

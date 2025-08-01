@@ -10,23 +10,7 @@ public class Actor
 {
     public FGuid Guid { get; }
     public string Name { get; }
-    public bool IsDirty { get; private set; } // currently driven by the mesh being in/out of view, or by the transform being changed
-    
-    private Range _visibleInstances = new(0, 1);
-    public Range VisibleInstances
-    {
-        get => _visibleInstances;
-        set 
-        {
-            if (_visibleInstances.Equals(value))
-                return;
-            
-            _visibleInstances = value;
-            MarkDirty();
-        }
-    }
-    
-    public bool IsVisible => VisibleInstances.Start.Value != VisibleInstances.End.Value;
+    public bool IsDirty { get; private set; } // currently driven by the transform being changed
 
     public Actor(string name, FGuid? guid = null, TransformComponent? transform = null)
     {

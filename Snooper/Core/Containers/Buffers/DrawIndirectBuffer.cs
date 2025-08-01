@@ -1,11 +1,15 @@
-﻿using System.Runtime.InteropServices;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Buffers;
 
 public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<DrawElementsIndirectCommand>(capacity, BufferTarget.DrawIndirectBuffer, usageHint)
 {
     public override GetPName Name => GetPName.DrawIndirectBufferBinding;
+    
+    public void Bind(int index)
+    {
+        GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, Handle);
+    }
 
     public DrawElementsIndirectCommand this[int index] => GetData(index, 1)[0];
 
@@ -39,7 +43,6 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
     }
 }
 
-[StructLayout(LayoutKind.Sequential)]
 public struct DrawElementsIndirectCommand
 {
     public uint IndexCount;
@@ -47,4 +50,10 @@ public struct DrawElementsIndirectCommand
     public uint FirstIndex;
     public uint BaseVertex;
     public uint BaseInstance;
+    // end of struct for indirect draw commands
+    // anything extra can be used as ssbo data
+
+    public uint OriginalInstanceCount;
+    public uint OriginalBaseInstance;
+    public uint ModelId;
 }

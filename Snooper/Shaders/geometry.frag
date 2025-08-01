@@ -51,7 +51,9 @@ void main()
     vec3 normal = vec3(0.0, 0.0, 1.0);
     if (drawData.IsReady)
     {
-        normal = texture(drawData.Normal, fs_in.vTexCoords).rgb * 2.0 - 1.0;
+        vec2 xy = texture(drawData.Normal, fs_in.vTexCoords).rg * 2.0 - 1.0;
+        float z = sqrt(max(0.0, 1.0 - dot(xy, xy)));
+        normal = normalize(vec3(xy, z));
     }
 
     gPosition = fs_in.vViewPos;
