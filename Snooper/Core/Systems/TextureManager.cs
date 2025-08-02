@@ -68,7 +68,7 @@ public class TextureManager : IGameSystem
     }
 
     public void Load() => throw new NotImplementedException();
-    public void Update(float delta) => DequeueTextures(2);
+    public void Update(float delta) => DequeueTextures(1);
     public void Render(CameraComponent camera) => throw new NotImplementedException();
 
     private readonly Queue<Texture> _texturesToLoad = [];

@@ -63,7 +63,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
     protected override void OnActorComponentEnqueued(TComponent component)
     {
         base.OnActorComponentEnqueued(component);
-        if (this is DebugSystem) return; // infinite recursion if we don't check this
+        if (this is DebugSystem or SkyboxSystem or GridSystem) return;
 
         Vector3? color = null;
         if (component.Actor?.Parent is { Parent: not null }) // just an example

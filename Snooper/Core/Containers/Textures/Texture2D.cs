@@ -32,7 +32,6 @@ public class Texture2D(int width, int height,
         if (mip?.BulkData == null)
             throw new InvalidOperationException("Mip data is null.");
                 
-        Bind();
         Resize(_owner.Format, mip);
         Swizzle();
         

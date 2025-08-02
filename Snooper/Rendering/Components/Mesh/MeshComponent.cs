@@ -3,15 +3,23 @@ using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
-using ImGuiNET;
 using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
+
+public readonly struct Vertex(Vector3 position, Vector3 normal, Vector3 tangent, Vector2 texCoord)
+{
+    public readonly Vector3 Position = position;
+    public readonly Vector3 Normal = normal;
+    public readonly Vector3 Tangent = tangent;
+    public readonly Vector2 TexCoord = texCoord;
+}
 
 public struct PerDrawMeshData : IPerDrawData
 {
@@ -27,13 +35,13 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 {
     public sealed override PrimitiveSection[] Sections { get; }
 
-    protected MeshComponent(CBaseMeshLod lod, ResolvedObject?[] materials, FBox box) : base(new Geometry(lod), box)
+    protected MeshComponent(IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : base(CreateGeometry(levels), box)
     {
-        Sections = new PrimitiveSection[lod.Sections.Value.Length];
+        Sections = new PrimitiveSection[levels[0].Sections.Value.Length];
         for (var i = 0; i < Sections.Length; i++)
         {
             var index = i;
-            var s = lod.Sections.Value[index];
+            var s = levels[0].Sections.Value[index];
             Sections[index] = new PrimitiveSection(s.FirstIndex, s.NumFaces * 3);
             
             // TODO: do somewhere else
@@ -75,8 +83,16 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
     }
 
-    protected abstract IVertexData GetPrimitive(int index);
-    
+    private static TPrimitiveData<Vertex>[] CreateGeometry(IReadOnlyList<CBaseMeshLod> levels)
+    {
+        var geometries = new TPrimitiveData<Vertex>[levels.Count];
+        for (var i = 0; i < geometries.Length; i++)
+        {
+            geometries[i] = new Geometry(levels[i]);
+        }
+        return geometries;
+    }
+
     private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular) : IDrawDataContainer
     {
         private BindlessTexture? _diffuse;
@@ -160,8 +176,8 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             // ImGui.Image(specular.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
         }
     }
-    
-    protected readonly struct Geometry : IVertexData
+
+    private readonly struct Geometry : TPrimitiveData<Vertex>
     {
         public Vertex[] Vertices { get; }
         public uint[] Indices { get; }

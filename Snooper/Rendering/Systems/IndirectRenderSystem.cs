@@ -92,8 +92,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         
         _componentCount++;
         _drawCount += component.Sections.Length;
-        _indices += component.Primitive.Indices.Length;
-        _vertices += component.Primitive.Vertices.Length;
+        _indices += component.Primitives.Sum(x => x.Indices.Length);
+        _vertices += component.Primitives.Sum(x => x.Vertices.Length);
     }
 
     protected override void OnActorComponentRemoved(TComponent component)

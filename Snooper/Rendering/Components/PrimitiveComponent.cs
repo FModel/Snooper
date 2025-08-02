@@ -11,22 +11,22 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
 
-public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds)
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(TPrimitiveData<TVertex>[] primitives, CullingBounds bounds)
     : ActorComponent, IControllableComponent
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    public TPrimitiveData<TVertex> Primitive { get; } = primitive;
+    public TPrimitiveData<TVertex>[] Primitives { get; } = primitives;
     public CullingBounds Bounds { get; } = bounds;
     public abstract PrimitiveSection[] Sections { get; }
     
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
-        if (!Primitive.IsValid)
+        if (!Primitives[0].IsValid)
             throw new InvalidOperationException("Primitive data is not valid.");
         
-        resources.Add(Primitive, Sections, GetPerInstanceData(), Bounds);
+        resources.Add(Primitives, Sections, GetPerInstanceData(), Bounds);
         textureManager.AddRange(Sections);
     }
 
@@ -78,8 +78,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(T
 
     public virtual void DrawControls()
     {
-        ImGui.Text($"Vertices: {Primitive.Vertices.Length}");
-        ImGui.Text($"Indices: {Primitive.Indices.Length}");
+        ImGui.Text($"Vertices: {Primitives[0].Vertices.Length}");
+        ImGui.Text($"Indices: {Primitives[0].Indices.Length}");
         
         ImGui.SeparatorText($"{Sections.Length} Section{(Sections.Length > 1 ? "s" : "")}");
         foreach (var section in Sections)
@@ -100,7 +100,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(T
 /// <summary>
 /// primitive component that uses a single section for the entire primitive data.
 /// </summary>
-public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds) : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>(primitive, bounds)
+public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds) : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>([primitive], bounds)
     where TVertex : unmanaged
     where TPerDrawData : unmanaged, IPerDrawData
 {

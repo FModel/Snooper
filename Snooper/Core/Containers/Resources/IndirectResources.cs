@@ -2,7 +2,6 @@
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Primitive;
@@ -74,10 +73,16 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         VBO.Unbind();
     }
     
-    public void Add(TPrimitiveData<TVertex> primitive, PrimitiveSection[] sections, TInstanceData[] instanceData, CullingBounds bounds)
+    public void Add(TPrimitiveData<TVertex>[] primitives, PrimitiveSection[] sections, TInstanceData[] instanceData, CullingBounds bounds)
     {
-        var firstIndex = EBO.AddRange(primitive.Indices);
-        var baseVertex = VBO.AddRange(primitive.Vertices);
+        var firstIndex = EBO.AddRange(primitives[0].Indices);
+        var baseVertex = VBO.AddRange(primitives[0].Vertices);
+        for (var i = 1; i < primitives.Length; i++)
+        {
+            EBO.AddRange(primitives[i].Indices);
+            VBO.AddRange(primitives[i].Vertices);
+        }
+
         var baseInstance = _instanceData.AddRange(instanceData);
         var modelId = _culling.Add(bounds);
         
