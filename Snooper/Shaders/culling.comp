@@ -4,9 +4,18 @@ struct PrimitiveDescriptor
 {
     vec3 center;
     vec3 extents;
-    uvec4 count[2];
+    uint maxLod;
     uvec4 firstIndex[2];
     uvec4 baseVertex[2];
+    uvec4 sectionCount[2];
+    uvec4 sectionOffsets[2];
+};
+
+struct SectionDescriptor
+{
+    uint firstIndex;
+    uint count;
+    uint materialIndex;
 };
 
 struct PerInstanceData
@@ -24,6 +33,7 @@ struct DrawElementsIndirectCommand
     uint originalInstanceCount;
     uint originalBaseInstance;
     uint modelId;
+    uint sectionId;
 };
 
 layout(std430, binding = 0) readonly buffer PerInstanceDataBuffer {
@@ -36,6 +46,10 @@ layout(std430, binding = 1) readonly buffer DescriptorsBuffer {
 
 layout(std430, binding = 2) buffer DrawCommandBuffer {
     DrawElementsIndirectCommand uIndirectDrawCommands[];
+};
+
+layout(std430, binding = 3) buffer SectionDescriptorsBuffer {
+    SectionDescriptor uSectionDescriptors[];
 };
 
 uniform vec4 uFrustumPlanes[6];
@@ -70,31 +84,35 @@ void main()
     DrawElementsIndirectCommand cmd = uIndirectDrawCommands[drawId];
     uint instanceCount = cmd.originalInstanceCount;
     uint baseInstance = cmd.originalBaseInstance;
-    uint modelId = cmd.modelId;
 
-    PrimitiveDescriptor descriptor = uDescriptors[modelId];
-    vec3 center = descriptor.center;
-    vec3 extents = descriptor.extents;
+    PrimitiveDescriptor descriptor = uDescriptors[cmd.modelId];
 
     uint minVisible = 0xFFFFFFFFu;
     uint maxVisible = 0;
+    float closestDistance = 3.402823e+38;
     
     for (uint j = 0; j < instanceCount; ++j)
     {
         mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].matrix;
 
-        vec3 worldCenter = (modelMatrix * vec4(center, 1.0)).xyz;
+        vec3 worldCenter = (modelMatrix * vec4(descriptor.center, 1.0)).xyz;
         mat3 m = mat3(modelMatrix);
         vec3 worldExtents = vec3(
-            dot(abs(m[0]), extents),
-            dot(abs(m[1]), extents),
-            dot(abs(m[2]), extents)
+            dot(abs(m[0]), descriptor.extents),
+            dot(abs(m[1]), descriptor.extents),
+            dot(abs(m[2]), descriptor.extents)
         );
 
         if (isVisible(worldCenter, worldExtents))
         {
             minVisible = min(minVisible, j);
             maxVisible = max(maxVisible, j);
+
+            float dist = length(uCameraPosition - worldCenter);
+            if (dist < closestDistance)
+            {
+                closestDistance = dist;
+            }
         }
     }
 
@@ -109,22 +127,31 @@ void main()
             uIndirectDrawCommands[drawId].instanceCount = newInstanceCount;
         }
 
-        vec3 closestCenter = (uInstanceDataBuffer[baseInstance + minVisible].matrix * vec4(center, 1.0)).xyz;
-        float distance = length(uCameraPosition - closestCenter);
-
         uint lod = 0;
-        if (distance < 2.0)
+        if (closestDistance < 5.0)
             lod = 0;
-        else if (distance < 5.0)
+        else if (closestDistance < 10.0)
             lod = 1;
-        else if (distance < 10.0)
+        else if (closestDistance < 15.0)
             lod = 2;
         else
             lod = 3;
 
-        uIndirectDrawCommands[drawId].count = descriptor.count[lod / 4][lod % 4];
-        uIndirectDrawCommands[drawId].firstIndex = descriptor.firstIndex[lod / 4][lod % 4];
-        uIndirectDrawCommands[drawId].baseVertex = descriptor.baseVertex[lod / 4][lod % 4];
+        lod = clamp(lod, 0u, descriptor.maxLod);
+        uint lodGroup = lod / 4;
+        uint lodSub = lod % 4;
+
+        uint sectionCountThisLod = descriptor.sectionCount[lodGroup][lodSub];
+        if (cmd.sectionId >= sectionCountThisLod)
+        {
+            uIndirectDrawCommands[drawId].instanceCount = 0;
+            return;
+        }
+        
+        uint sectionIndex = descriptor.sectionOffsets[lodGroup][lodSub] + cmd.sectionId;
+        uIndirectDrawCommands[drawId].count = uSectionDescriptors[sectionIndex].count;
+        uIndirectDrawCommands[drawId].firstIndex = descriptor.firstIndex[lodGroup][lodSub] + uSectionDescriptors[sectionIndex].firstIndex;
+        uIndirectDrawCommands[drawId].baseVertex = descriptor.baseVertex[lodGroup][lodSub];
     }
     else if (cmd.instanceCount != 0)
     {

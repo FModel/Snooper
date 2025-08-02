@@ -33,22 +33,17 @@ public struct PerDrawMeshData : IPerDrawData
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
-    public sealed override PrimitiveSection[] Sections { get; }
-
     protected MeshComponent(IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : base(CreateGeometry(levels), box)
     {
-        Sections = new PrimitiveSection[levels[0].Sections.Value.Length];
         for (var i = 0; i < Sections.Length; i++)
         {
             var index = i;
-            var s = levels[0].Sections.Value[index];
-            Sections[index] = new PrimitiveSection(s.FirstIndex, s.NumFaces * 3);
             
             // TODO: do somewhere else
             Task.Run(() =>
             {
-                var materialIndex = s.MaterialIndex;
-                if (materialIndex >= 0 && materialIndex < materials.Length)
+                var materialIndex = Sections[index].MaterialIndex;
+                if (materialIndex < materials.Length)
                 {
                     if (materials[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
                     {
@@ -83,12 +78,19 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
     }
 
-    private static TPrimitiveData<Vertex>[] CreateGeometry(IReadOnlyList<CBaseMeshLod> levels)
+    private static LevelOfDetail<Vertex>[] CreateGeometry(IReadOnlyList<CBaseMeshLod> levels)
     {
-        var geometries = new TPrimitiveData<Vertex>[levels.Count];
+        var geometries = new LevelOfDetail<Vertex>[levels.Count];
         for (var i = 0; i < geometries.Length; i++)
         {
-            geometries[i] = new Geometry(levels[i]);
+            var sections = new PrimitiveSectionDescriptor[levels[i].Sections.Value.Length];
+            for (var j = 0; j < sections.Length; j++)
+            {
+                var section = levels[i].Sections.Value[j];
+                sections[j] = new PrimitiveSectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
+            }
+            
+            geometries[i] = new LevelOfDetail<Vertex>(new Geometry(levels[i]), sections);
         }
         return geometries;
     }

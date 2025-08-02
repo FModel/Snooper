@@ -6,9 +6,10 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class CullingResources(int initialDrawCapacity)
+public class CullingResources(int initialDrawCapacity) : IDisposable
 {
-    private readonly ShaderStorageBuffer<PrimitiveDescriptor> _descriptors = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<PrimitiveDescriptor> _primitives = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<PrimitiveSectionDescriptor> _sections = new(initialDrawCapacity);
     private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
     {
         Compute = "culling.comp"
@@ -16,24 +17,38 @@ public class CullingResources(int initialDrawCapacity)
     
     public void Generate()
     {
-        _descriptors.Generate();
+        _primitives.Generate();
+        _sections.Generate();
         
         _compute.Generate();
         _compute.Link();
     }
     
-    public void Allocate(int componentCount)
+    public void Allocate(int componentCount, int drawCount)
     {
-        _descriptors.Bind();
-        _descriptors.Allocate(new PrimitiveDescriptor[componentCount]);
-        _descriptors.Unbind();
+        _primitives.Bind();
+        _primitives.Allocate(new PrimitiveDescriptor[componentCount]);
+        _primitives.Unbind();
+        
+        _sections.Bind();
+        _sections.Allocate(new PrimitiveSectionDescriptor[drawCount]);
+        _sections.Unbind();
+    }
+    
+    public int Add(PrimitiveSectionDescriptor[] sections)
+    {
+        _sections.Bind();
+        var sectionOffset = _sections.AddRange(sections);
+        _sections.Unbind();
+        
+        return sectionOffset;
     }
 
     public int Add(PrimitiveDescriptor descriptor)
     {
-        _descriptors.Bind();
-        var modelId = _descriptors.Add(descriptor);
-        _descriptors.Unbind();
+        _primitives.Bind();
+        var modelId = _primitives.Add(descriptor);
+        _primitives.Unbind();
         
         return modelId;
     }
@@ -51,12 +66,20 @@ public class CullingResources(int initialDrawCapacity)
         _compute.SetUniform("uCameraPosition", camera.Actor.Transform.Position);
         
         instances.Bind(0);
-        _descriptors.Bind(1);
+        _primitives.Bind(1);
         commands.Bind(2);
+        _sections.Bind(3);
         
         const int groupSize = 64;
         var dispatchCount = (commands.Count + groupSize - 1) / groupSize;
         GL.DispatchCompute(dispatchCount, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit);
+    }
+
+    public void Dispose()
+    {
+        _primitives.Dispose();
+        _sections.Dispose();
+        _compute.Dispose();
     }
 }

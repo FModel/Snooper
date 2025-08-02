@@ -8,7 +8,7 @@ public struct CullingBounds
     public readonly Vector3 Center;
     public float Padding0;
     public readonly Vector3 Extents;
-    public float Padding1;
+    public uint MaxLevelOfDetail;
 
     public CullingBounds(FBox box)
     {

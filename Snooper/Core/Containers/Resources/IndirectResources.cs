@@ -5,7 +5,6 @@ using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Primitive;
-using Snooper.Rendering.Primitives;
 
 namespace Snooper.Core.Containers.Resources;
 
@@ -50,7 +49,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     
     public void Allocate(int componentCount, int drawCount, int indices, int vertices)
     {
-        _culling.Allocate(componentCount);
+        _culling.Allocate(componentCount, drawCount);
         
         _drawData.Bind();
         _drawData.Allocate(new TPerDrawData[drawCount]);
@@ -73,39 +72,42 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         VBO.Unbind();
     }
     
-    public void Add(TPrimitiveData<TVertex>[] primitives, PrimitiveSection[] sections, TInstanceData[] instanceData, CullingBounds bounds)
+    public void Add(LevelOfDetail<TVertex>[] levelOfDetails, PrimitiveSection[] sections, TInstanceData[] instanceData, CullingBounds bounds)
     {
         var (firstIndex, baseVertex, descriptor) = CreateDescriptor();
-        var baseInstance = _instanceData.AddRange(instanceData);
-        var modelId = _culling.Add(descriptor);
-        
-        var instanceCount = instanceData.Length;
-        foreach (var section in sections)
+        var baseInstance = (uint)_instanceData.AddRange(instanceData);
+        var modelId = (uint)_culling.Add(descriptor);
+        var instanceCount = (uint)instanceData.Length;
+
+        for (var i = 0u; i < sections.Length; i++)
         {
-            section.DrawMetadata.BaseInstance = baseInstance;
-            section.DrawMetadata.DrawId = _commands.Current.Add(new DrawElementsIndirectCommand
+            sections[i].DrawMetadata.BaseInstance = (int)baseInstance;
+            sections[i].DrawMetadata.DrawId = _commands.Current.Add(new DrawElementsIndirectCommand
             {
-                IndexCount = (uint)section.IndexCount,
-                InstanceCount = (uint)instanceCount,
-                FirstIndex = (uint)(firstIndex + section.FirstIndex),
-                BaseVertex = (uint)baseVertex,
-                BaseInstance = (uint)baseInstance,
-                OriginalInstanceCount = (uint)instanceCount,
-                OriginalBaseInstance = (uint)baseInstance,
-                ModelId = (uint)modelId,
+                IndexCount = levelOfDetails[0].SectionDescriptors[i].IndexCount,
+                InstanceCount = instanceCount,
+                FirstIndex = firstIndex + levelOfDetails[0].SectionDescriptors[i].FirstIndex,
+                BaseVertex = baseVertex,
+                BaseInstance = baseInstance,
+                OriginalInstanceCount = instanceCount,
+                OriginalBaseInstance = baseInstance,
+                ModelId = modelId,
+                SectionId = i,
             });
         }
 
         unsafe (uint, uint, PrimitiveDescriptor) CreateDescriptor()
         {
-            var descriptor = new PrimitiveDescriptor(bounds);
-            for (var i = 0; i < primitives.Length && i < 8; i++)
+            var d = new PrimitiveDescriptor(bounds);
+            d.Bounds.MaxLevelOfDetail = Math.Min((uint)levelOfDetails.Length, Settings.MaxNumberOfLods) - 1;
+            for (var i = 0; i < levelOfDetails.Length && i < Settings.MaxNumberOfLods; i++)
             {
-                descriptor.LOD_IndexCount[i] = (uint)primitives[i].Indices.Length;
-                descriptor.LOD_FirstIndex[i] = (uint)EBO.AddRange(primitives[i].Indices);
-                descriptor.LOD_BaseVertex[i] = (uint)VBO.AddRange(primitives[i].Vertices);
+                d.LOD_FirstIndex[i] = (uint)EBO.AddRange(levelOfDetails[i].Primitive.Indices);
+                d.LOD_BaseVertex[i] = (uint)VBO.AddRange(levelOfDetails[i].Primitive.Vertices);
+                d.LOD_SectionCount[i] = (uint)levelOfDetails[i].SectionDescriptors.Length;
+                d.LOD_SectionOffset[i] = (uint)_culling.Add(levelOfDetails[i].SectionDescriptors);
             }
-            return (descriptor.LOD_FirstIndex[0], descriptor.LOD_BaseVertex[0], descriptor);
+            return (d.LOD_FirstIndex[0], d.LOD_BaseVertex[0], d);
         }
     }
 
@@ -180,6 +182,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     {
         _commands.Dispose();
         _instanceData.Dispose();
+        _culling.Dispose();
         _drawData.Dispose();
         
         _vao.Dispose();

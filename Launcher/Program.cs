@@ -102,8 +102,9 @@ switch (provider.ProjectName)
     }
     case "FortniteGame":
     {
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Large/Bodies/M_LRG_Rumble/Meshes/M_LRG_Rumble.M_LRG_Rumble")));
-        break;
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Large/Bodies/M_LRG_Rumble/Meshes/M_LRG_Rumble.M_LRG_Rumble")));
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("FortniteGame/Content/Athena/Prototype/Terrain/Athena_Tree_Pine_01_.Athena_Tree_Pine_01_")));
+        // break;
         
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));

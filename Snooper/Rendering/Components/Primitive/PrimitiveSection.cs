@@ -2,16 +2,15 @@
 
 namespace Snooper.Rendering.Components.Primitive;
 
-public class PrimitiveSection(int firstIndex, int indexCount)
+public class PrimitiveSection(uint materialIndex)
 {
     private static int _nextId = 0;
     public readonly int SectionId = Interlocked.Increment(ref _nextId);
     
-    public readonly int FirstIndex = firstIndex;
-    public readonly int IndexCount = indexCount;
+    public readonly uint MaterialIndex = materialIndex;
 
     public IndirectDrawMetadata DrawMetadata = new();
-    public IDrawDataContainer? DrawDataContainer;
+    public IDrawDataContainer? DrawDataContainer = null;
     
     public bool IsGenerated => DrawMetadata.BaseInstance >= 0;
 

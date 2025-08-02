@@ -2,20 +2,15 @@
 
 public unsafe struct PrimitiveDescriptor(CullingBounds bounds)
 {
-    public readonly CullingBounds Bounds = bounds;
+    public CullingBounds Bounds = bounds;
     
-    public fixed uint LOD_IndexCount[8];
-    public fixed uint LOD_FirstIndex[8];
-    public fixed uint LOD_BaseVertex[8];
+    public fixed uint LOD_FirstIndex[Settings.MaxNumberOfLods];
+    public fixed uint LOD_BaseVertex[Settings.MaxNumberOfLods];
+    public fixed uint LOD_SectionCount[Settings.MaxNumberOfLods];
+    public fixed uint LOD_SectionOffset[Settings.MaxNumberOfLods];
 }
 
-public readonly struct PrimitiveLodDescriptor(uint firstIndex, uint baseVertex)
-{
-    public readonly uint FirstIndex = firstIndex;
-    public readonly uint BaseVertex = baseVertex;
-}
-
-public readonly struct PrimitiveSectionDescriptor(uint firstIndex, uint indexCount, uint materialIndex)
+public struct PrimitiveSectionDescriptor(uint firstIndex, uint indexCount, uint materialIndex)
 {
     public readonly uint FirstIndex = firstIndex;
     public readonly uint IndexCount = indexCount;

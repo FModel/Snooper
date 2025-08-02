@@ -2,6 +2,7 @@
 
 public static class Settings
 {
+    public const int MaxNumberOfLods = 8;
     public const int NumberOfSamples = 4;
     public const float GlobalScale = 0.01f;
 

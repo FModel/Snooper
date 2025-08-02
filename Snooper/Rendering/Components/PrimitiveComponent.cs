@@ -11,22 +11,32 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
 
-public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(TPrimitiveData<TVertex>[] primitives, CullingBounds bounds)
-    : ActorComponent, IControllableComponent
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : ActorComponent, IControllableComponent
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    public TPrimitiveData<TVertex>[] Primitives { get; } = primitives;
-    public CullingBounds Bounds { get; } = bounds;
-    public abstract PrimitiveSection[] Sections { get; }
+    public readonly LevelOfDetail<TVertex>[] LevelOfDetails;
+    public readonly CullingBounds Bounds;
+    public readonly PrimitiveSection[] Sections; // TODO: change name
+
+    protected PrimitiveComponent(LevelOfDetail<TVertex>[] levelOfDetails, CullingBounds bounds)
+    {
+        LevelOfDetails = levelOfDetails;
+        Bounds = bounds;
+        Sections = new PrimitiveSection[levelOfDetails[0].SectionDescriptors.Length];
+        for (var i = 0; i < Sections.Length; i++)
+        {
+            Sections[i] = new PrimitiveSection(levelOfDetails[0].SectionDescriptors[i].MaterialIndex);
+        }
+    }
     
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
-        if (!Primitives[0].IsValid)
+        if (!LevelOfDetails[0].Primitive.IsValid)
             throw new InvalidOperationException("Primitive data is not valid.");
         
-        resources.Add(Primitives, Sections, GetPerInstanceData(), Bounds);
+        resources.Add(LevelOfDetails, Sections, GetPerInstanceData(), Bounds);
         textureManager.AddRange(Sections);
     }
 
@@ -78,37 +88,53 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>(T
 
     public virtual void DrawControls()
     {
-        ImGui.Text($"Vertices: {Primitives[0].Vertices.Length}");
-        ImGui.Text($"Indices: {Primitives[0].Indices.Length}");
+        ImGui.Text($"Vertices: {LevelOfDetails[0].Primitive.Vertices.Length}");
+        ImGui.Text($"Indices: {LevelOfDetails[0].Primitive.Indices.Length}");
         
-        ImGui.SeparatorText($"{Sections.Length} Section{(Sections.Length > 1 ? "s" : "")}");
-        foreach (var section in Sections)
+        ImGui.SeparatorText("Descriptors");
+        ImGui.Text($"Level of Detail Count: {LevelOfDetails.Length}");
+        for (var i = 0; i < LevelOfDetails.Length; i++)
         {
-            ImGui.Text($"DrawID {section.DrawMetadata.DrawId}, FirstIndex: {section.FirstIndex}, IndexCount: {section.IndexCount}");
-            if (section.DrawDataContainer is not null)
+            ImGui.Text($"LOD {i}: {LevelOfDetails[i].Primitive.Vertices.Length} Vertices, {LevelOfDetails[i].Primitive.Indices.Length} Indices");
+            ImGui.Text($"Section Count: {LevelOfDetails[i].SectionDescriptors.Length}");
+            foreach (var section in LevelOfDetails[i].SectionDescriptors)
             {
-                section.DrawDataContainer.DrawControls();
+                ImGui.Text($"First Index: {section.FirstIndex}");
+                ImGui.Text($"Index Count: {section.IndexCount}");
+                ImGui.Text($"Material Index: {section.MaterialIndex}");
             }
-            else
-            {
-                ImGui.Text("No draw data container available.");
-            }
+            ImGui.Separator();
         }
+
+        // ImGui.SeparatorText($"{Sections.Length} Section{(Sections.Length > 1 ? "s" : "")}");
+        // foreach (var section in Sections)
+        // {
+        //     ImGui.Text($"DrawID {section.DrawMetadata.DrawId}");
+        //     ImGui.Text($"Material Index: {section.MaterialIndex}");
+        //     if (section.DrawDataContainer is not null)
+        //     {
+        //         section.DrawDataContainer.DrawControls();
+        //     }
+        //     else
+        //     {
+        //         ImGui.Text("No draw data container available.");
+        //     }
+        // }
     }
 }
 
 /// <summary>
 /// primitive component that uses a single section for the entire primitive data.
 /// </summary>
-public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds) : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>([primitive], bounds)
+public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds)
+    : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>([new LevelOfDetail<TVertex>(primitive)], bounds)
     where TVertex : unmanaged
-    where TPerDrawData : unmanaged, IPerDrawData
-{
-    public sealed override PrimitiveSection[] Sections { get; } = [new(0, primitive.Indices.Length)];
-}
+    where TPerDrawData : unmanaged, IPerDrawData;
 
 /// <inheritdoc />
-public class PrimitiveComponent<TPerDrawData>(IPrimitiveData primitive, CullingBounds bounds) : PrimitiveComponent<Vector3, TPerDrawData>(primitive, bounds) where TPerDrawData : unmanaged, IPerDrawData;
+public class PrimitiveComponent<TPerDrawData>(IPrimitiveData primitive, CullingBounds bounds)
+    : PrimitiveComponent<Vector3, TPerDrawData>(primitive, bounds)
+    where TPerDrawData : unmanaged, IPerDrawData;
 
 /// <inheritdoc />
 [DefaultActorSystem(typeof(PrimitiveSystem))]
