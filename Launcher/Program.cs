@@ -102,27 +102,12 @@ switch (provider.ProjectName)
     }
     case "FortniteGame":
     {
-        // var glider = new MeshActor(
-        //     provider.LoadPackageObject<USkeletalMesh>(
-        //         "FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Gadgets/Assets/VinderTech_GliderChute/Glider_Rumble_Female/Meshes/Rumble_Female_Glider.Rumble_Female_Glider"),
-        //     new FTransform(new FVector(-100, 0, 0)));
-        //
-        // glider.InstancedTransform.AddLocalInstance(new FTransform(new FVector(-300, 0, 0)));
-        // scene.Children.Add(glider);
-        //
-        // var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>(
-        //         "FortniteGame/Content/Characters/Player/Male/Large/Bodies/M_LRG_Rumble/Meshes/M_LRG_Rumble.M_LRG_Rumble"),
-        //     new FTransform(new FVector(100, 0, 0)));
-        //
-        // character.InstancedTransform.AddLocalInstance(new FTransform(new FVector(300, 0, 0)));
-        //
-        // scene.Children.Add(character);
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
-        // break;
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Large/Bodies/M_LRG_Rumble/Meshes/M_LRG_Rumble.M_LRG_Rumble")));
+        break;
         
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
-        var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
-        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
+        var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));

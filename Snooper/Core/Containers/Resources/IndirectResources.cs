@@ -75,16 +75,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     
     public void Add(TPrimitiveData<TVertex>[] primitives, PrimitiveSection[] sections, TInstanceData[] instanceData, CullingBounds bounds)
     {
-        var firstIndex = EBO.AddRange(primitives[0].Indices);
-        var baseVertex = VBO.AddRange(primitives[0].Vertices);
-        for (var i = 1; i < primitives.Length; i++)
-        {
-            EBO.AddRange(primitives[i].Indices);
-            VBO.AddRange(primitives[i].Vertices);
-        }
-
+        var (firstIndex, baseVertex, descriptor) = CreateDescriptor();
         var baseInstance = _instanceData.AddRange(instanceData);
-        var modelId = _culling.Add(bounds);
+        var modelId = _culling.Add(descriptor);
         
         var instanceCount = instanceData.Length;
         foreach (var section in sections)
@@ -101,6 +94,18 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
                 OriginalBaseInstance = (uint)baseInstance,
                 ModelId = (uint)modelId,
             });
+        }
+
+        unsafe (uint, uint, PrimitiveDescriptor) CreateDescriptor()
+        {
+            var descriptor = new PrimitiveDescriptor(bounds);
+            for (var i = 0; i < primitives.Length && i < 8; i++)
+            {
+                descriptor.LOD_IndexCount[i] = (uint)primitives[i].Indices.Length;
+                descriptor.LOD_FirstIndex[i] = (uint)EBO.AddRange(primitives[i].Indices);
+                descriptor.LOD_BaseVertex[i] = (uint)VBO.AddRange(primitives[i].Vertices);
+            }
+            return (descriptor.LOD_FirstIndex[0], descriptor.LOD_BaseVertex[0], descriptor);
         }
     }
 

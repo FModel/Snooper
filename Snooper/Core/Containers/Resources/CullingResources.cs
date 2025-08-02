@@ -8,7 +8,7 @@ namespace Snooper.Core.Containers.Resources;
 
 public class CullingResources(int initialDrawCapacity)
 {
-    private readonly ShaderStorageBuffer<CullingBounds> _bounds = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<PrimitiveDescriptor> _descriptors = new(initialDrawCapacity);
     private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
     {
         Compute = "culling.comp"
@@ -16,7 +16,7 @@ public class CullingResources(int initialDrawCapacity)
     
     public void Generate()
     {
-        _bounds.Generate();
+        _descriptors.Generate();
         
         _compute.Generate();
         _compute.Link();
@@ -24,16 +24,16 @@ public class CullingResources(int initialDrawCapacity)
     
     public void Allocate(int componentCount)
     {
-        _bounds.Bind();
-        _bounds.Allocate(new CullingBounds[componentCount]);
-        _bounds.Unbind();
+        _descriptors.Bind();
+        _descriptors.Allocate(new PrimitiveDescriptor[componentCount]);
+        _descriptors.Unbind();
     }
 
-    public int Add(CullingBounds bounds)
+    public int Add(PrimitiveDescriptor descriptor)
     {
-        _bounds.Bind();
-        var modelId = _bounds.Add(bounds);
-        _bounds.Unbind();
+        _descriptors.Bind();
+        var modelId = _descriptors.Add(descriptor);
+        _descriptors.Unbind();
         
         return modelId;
     }
@@ -48,9 +48,10 @@ public class CullingResources(int initialDrawCapacity)
         
         _compute.Use();
         _compute.SetUniform("uFrustumPlanes", frustum);
+        _compute.SetUniform("uCameraPosition", camera.Actor.Transform.Position);
         
         instances.Bind(0);
-        _bounds.Bind(1);
+        _descriptors.Bind(1);
         commands.Bind(2);
         
         const int groupSize = 64;

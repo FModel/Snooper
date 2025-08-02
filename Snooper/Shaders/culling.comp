@@ -1,9 +1,12 @@
 ﻿layout(local_size_x = 64) in;
 
-struct CullingBounds
+struct PrimitiveDescriptor
 {
     vec3 center;
     vec3 extents;
+    uvec4 count[2];
+    uvec4 firstIndex[2];
+    uvec4 baseVertex[2];
 };
 
 struct PerInstanceData
@@ -27,8 +30,8 @@ layout(std430, binding = 0) readonly buffer PerInstanceDataBuffer {
     PerInstanceData uInstanceDataBuffer[];
 };
 
-layout(std430, binding = 1) readonly buffer CullingBoundsBuffer {
-    CullingBounds uModelBounds[];
+layout(std430, binding = 1) readonly buffer DescriptorsBuffer {
+    PrimitiveDescriptor uDescriptors[];
 };
 
 layout(std430, binding = 2) buffer DrawCommandBuffer {
@@ -36,6 +39,7 @@ layout(std430, binding = 2) buffer DrawCommandBuffer {
 };
 
 uniform vec4 uFrustumPlanes[6];
+uniform vec3 uCameraPosition;
 
 bool isVisible(vec3 center, vec3 extents)
 {
@@ -68,9 +72,9 @@ void main()
     uint baseInstance = cmd.originalBaseInstance;
     uint modelId = cmd.modelId;
 
-    CullingBounds bound = uModelBounds[modelId];
-    vec3 center = bound.center;
-    vec3 extents = bound.extents;
+    PrimitiveDescriptor descriptor = uDescriptors[modelId];
+    vec3 center = descriptor.center;
+    vec3 extents = descriptor.extents;
 
     uint minVisible = 0xFFFFFFFFu;
     uint maxVisible = 0;
@@ -104,6 +108,23 @@ void main()
             uIndirectDrawCommands[drawId].baseInstance = newBaseInstance;
             uIndirectDrawCommands[drawId].instanceCount = newInstanceCount;
         }
+
+        vec3 closestCenter = (uInstanceDataBuffer[baseInstance + minVisible].matrix * vec4(center, 1.0)).xyz;
+        float distance = length(uCameraPosition - closestCenter);
+
+        uint lod = 0;
+        if (distance < 2.0)
+            lod = 0;
+        else if (distance < 5.0)
+            lod = 1;
+        else if (distance < 10.0)
+            lod = 2;
+        else
+            lod = 3;
+
+        uIndirectDrawCommands[drawId].count = descriptor.count[lod / 4][lod % 4];
+        uIndirectDrawCommands[drawId].firstIndex = descriptor.firstIndex[lod / 4][lod % 4];
+        uIndirectDrawCommands[drawId].baseVertex = descriptor.baseVertex[lod / 4][lod % 4];
     }
     else if (cmd.instanceCount != 0)
     {
