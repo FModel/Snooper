@@ -18,16 +18,16 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
 {
     public readonly LevelOfDetail<TVertex>[] LevelOfDetails;
     public readonly CullingBounds Bounds;
-    public readonly PrimitiveSection[] Sections; // TODO: change name
+    public readonly MaterialSection[] Materials; // we store materials for each section at lod 0
 
     protected PrimitiveComponent(LevelOfDetail<TVertex>[] levelOfDetails, CullingBounds bounds)
     {
         LevelOfDetails = levelOfDetails;
         Bounds = bounds;
-        Sections = new PrimitiveSection[levelOfDetails[0].SectionDescriptors.Length];
-        for (var i = 0; i < Sections.Length; i++)
+        Materials = new MaterialSection[levelOfDetails[0].SectionDescriptors.Length];
+        for (var i = 0; i < Materials.Length; i++)
         {
-            Sections[i] = new PrimitiveSection(levelOfDetails[0].SectionDescriptors[i].MaterialIndex);
+            Materials[i] = new MaterialSection(levelOfDetails[0].SectionDescriptors[i].MaterialIndex);
         }
     }
     
@@ -36,13 +36,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         if (!LevelOfDetails[0].Primitive.IsValid)
             throw new InvalidOperationException("Primitive data is not valid.");
         
-        resources.Add(LevelOfDetails, Sections, GetPerInstanceData(), Bounds);
-        textureManager.AddRange(Sections);
+        resources.Add(LevelOfDetails, Materials, GetPerInstanceData(), Bounds);
+        textureManager.AddRange(Materials);
     }
 
     public void Update(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
-        if (!Sections[0].IsGenerated)
+        if (!Materials[0].IsGenerated)
         {
             Generate(resources, textureManager);
         }

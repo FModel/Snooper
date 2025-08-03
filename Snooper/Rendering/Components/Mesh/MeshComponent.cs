@@ -35,14 +35,14 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 {
     protected MeshComponent(IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : base(CreateGeometry(levels), box)
     {
-        for (var i = 0; i < Sections.Length; i++)
+        for (var i = 0; i < Materials.Length; i++)
         {
             var index = i;
             
             // TODO: do somewhere else
             Task.Run(() =>
             {
-                var materialIndex = Sections[index].MaterialIndex;
+                var materialIndex = Materials[index].MaterialIndex;
                 if (materialIndex < materials.Length)
                 {
                     if (materials[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
@@ -55,14 +55,14 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                             parameters.TryGetTexture2d(out var normal, CMaterialParams2.Normals[0]);
                             parameters.TryGetTexture2d(out var specular, CMaterialParams2.SpecularMasks[0]);
 
-                            Sections[index].DrawDataContainer = new DrawDataContainer(
+                            Materials[index].DrawDataContainer = new DrawDataContainer(
                                 new Texture2D(diffuse),
                                 normal != null ? new Texture2D(normal) : null,
                                 specular != null ? new Texture2D(specular) : null);
                         }
                         else if (parameters.TryGetFirstTexture2d(out var fallback))
                         {
-                            Sections[index].DrawDataContainer = new DrawDataContainer(new Texture2D(fallback), null, null);
+                            Materials[index].DrawDataContainer = new DrawDataContainer(new Texture2D(fallback), null, null);
                         }
                     }
                     else

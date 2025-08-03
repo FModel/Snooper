@@ -95,15 +95,18 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
         ImGui.PopStyleVar();
 
-        if (RootActor is { } root && ImGui.Begin("Scene Hierarchy"))
+        if (ImGui.Begin("Scene Hierarchy"))
         {
-            foreach (var child in root.Children)
-                DrawActorTree(child);
-            
-            if (ImGui.BeginPopupContextWindow("SceneContext", ImGuiPopupFlags.MouseButtonRight))
+            if (RootActor is { } root)
             {
-                DrawActorCreationMenu(root);
-                ImGui.EndPopup();
+                foreach (var child in root.Children)
+                    DrawActorTree(child);
+            
+                if (ImGui.BeginPopupContextWindow("SceneContext", ImGuiPopupFlags.MouseButtonRight))
+                {
+                    DrawActorCreationMenu(root);
+                    ImGui.EndPopup();
+                }
             }
         }
         ImGui.End();
@@ -126,8 +129,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             ImGui.SeparatorText("Systems");
             foreach (var system in Systems.Values)
             {
-                var name = system.GetType().Name;
-                if (ImGui.CollapsingHeader($"{system.Order} - {name} ({system.SystemType})"))
+                if (ImGui.CollapsingHeader($"{system.Order} - {system.DisplayName} ({system.SystemType})"))
                 {
                     ImGui.TextUnformatted($"Time: {system.Time:F3} s");
                     
@@ -140,7 +142,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                         ImGui.TreePop();
                     }
                     
-                    if (ImGui.TreeNode($"{name}_profiler", "Profiler"))
+                    if (ImGui.TreeNode($"{system.DisplayName}_profiler", "Profiler"))
                     {
                         system.Profiler.PollResults();
 

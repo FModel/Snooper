@@ -30,7 +30,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             throw new InvalidOperationException("Landscape component does not have a valid heightmap.");
         }
 
-        Sections[0].DrawDataContainer = new DrawDataContainer(new Texture2D(heightmap), new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W));
+        Materials[0].DrawDataContainer = new DrawDataContainer(new Texture2D(heightmap), new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W));
         
         SizeQuads = component.ComponentSizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];

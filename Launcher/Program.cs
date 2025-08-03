@@ -86,7 +86,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
         // break;
         
-        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Juliett", Extension: "umap" });
+        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
         foreach (var file in files)
         {
             var parts = file.NameWithoutExtension.Split('_');
@@ -107,11 +107,11 @@ switch (provider.ProjectName)
         // break;
         
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
-        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
-        var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"), null, true);
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
-        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
+        var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
 
         scene.Children.Add(world);
         break;

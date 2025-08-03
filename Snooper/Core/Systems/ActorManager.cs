@@ -246,7 +246,7 @@ public abstract class ActorManager : IGameSystem
         }
     }
 
-    public void Dispose()
+    public virtual void Dispose()
     {
         foreach (var system in Systems.Values)
         {

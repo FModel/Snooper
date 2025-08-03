@@ -23,7 +23,7 @@ public class DebugComponent(IPrimitiveData primitive, CullingBounds bounds) : Pr
     {
         if (color != null)
         {
-            Sections[0].DrawDataContainer = new DrawDataContainer(color.Value);
+            Materials[0].DrawDataContainer = new DrawDataContainer(color.Value);
         }
     }
     

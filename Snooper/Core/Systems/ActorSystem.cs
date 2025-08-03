@@ -1,4 +1,5 @@
-﻿using Snooper.Rendering;
+﻿using Serilog;
+using Snooper.Rendering;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
@@ -14,16 +15,24 @@ public enum ActorSystemType
     Custom
 }
 
-public abstract class ActorSystem(Type? componentType) : IGameSystem
+public abstract class ActorSystem : IGameSystem
 {
-    public Type? ComponentType { get; } = componentType;
-    public SystemProfiler Profiler { get; } = new();
+    public readonly string DisplayName;
+    public readonly Type? ComponentType;
+    public readonly SystemProfiler Profiler;
     public ActorManager? ActorManager { get; internal set; }
     public float Time { get; private set; }
     
     public abstract ActorSystemType SystemType { get; }
     public abstract uint Order { get; }
     public abstract int ComponentsCount { get; }
+
+    protected ActorSystem(Type? componentType)
+    {
+        DisplayName = GetType().Name;
+        ComponentType = componentType;
+        Profiler = new SystemProfiler();
+    }
 
     public abstract void Load();
     public virtual void Update(float delta) => Time += delta;
@@ -73,6 +82,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
                 OnActorComponentEnqueued(actorComponent);
                 break;
             case true:
+                Log.Debug("Removing component {ComponentName} from actor {ActorName} in system {SystemName}.", actorComponent.DisplayName, actor.Name, DisplayName);
                 Components.Remove(actorComponent);
                 OnActorComponentRemoved(actorComponent);
                 break;
@@ -92,12 +102,6 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     protected virtual void OnActorComponentRemoved(TComponent component)
     {
 
-    }
-
-    public override void Dispose()
-    {
-        base.Dispose();
-        Components.Clear();
     }
 
     private readonly Queue<TComponent> _componentsToLoad = [];

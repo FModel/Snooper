@@ -67,13 +67,24 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         
         instances.Bind(0);
         _primitives.Bind(1);
-        commands.Bind(2);
-        _sections.Bind(3);
-        
+        _sections.Bind(2);
+        commands.Bind(3);
+
         const int groupSize = 64;
         var dispatchCount = (commands.Count + groupSize - 1) / groupSize;
         GL.DispatchCompute(dispatchCount, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit);
+    }
+
+    public void Remove(int index)
+    {
+        // _primitives.Bind();
+        // _primitives.Remove();
+        // _primitives.Unbind();
+        //
+        // _sections.Bind();
+        // _sections.Remove();
+        // _sections.Unbind();
     }
 
     public void Dispose()

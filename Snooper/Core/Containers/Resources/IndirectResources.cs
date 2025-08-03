@@ -72,17 +72,17 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         VBO.Unbind();
     }
     
-    public void Add(LevelOfDetail<TVertex>[] levelOfDetails, PrimitiveSection[] sections, TInstanceData[] instanceData, CullingBounds bounds)
+    public void Add(LevelOfDetail<TVertex>[] levelOfDetails, MaterialSection[] materials, TInstanceData[] instanceData, CullingBounds bounds)
     {
         var (firstIndex, baseVertex, descriptor) = CreateDescriptor();
         var baseInstance = (uint)_instanceData.AddRange(instanceData);
         var modelId = (uint)_culling.Add(descriptor);
         var instanceCount = (uint)instanceData.Length;
 
-        for (var i = 0u; i < sections.Length; i++)
+        for (var i = 0u; i < materials.Length; i++)
         {
-            sections[i].DrawMetadata.BaseInstance = (int)baseInstance;
-            sections[i].DrawMetadata.DrawId = _commands.Current.Add(new DrawElementsIndirectCommand
+            materials[i].DrawMetadata.BaseInstance = (int)baseInstance;
+            materials[i].DrawMetadata.DrawId = _commands.Current.Add(new DrawElementsIndirectCommand
             {
                 IndexCount = levelOfDetails[0].SectionDescriptors[i].IndexCount,
                 InstanceCount = instanceCount,
@@ -113,9 +113,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
     {
-        if (!component.Actor.IsDirty || component.Sections.Length < 1) return;
+        if (!component.Actor.IsDirty || component.Materials.Length < 1) return;
         
-        var metadata = component.Sections[0].DrawMetadata;
+        var metadata = component.Materials[0].DrawMetadata;
         _instanceData.Update(metadata.BaseInstance, component.GetPerInstanceData());
         component.Actor.MarkClean();
     }
@@ -147,17 +147,20 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
 
     public void Remove(IndirectDrawMetadata metadata)
     {
-        _commands.Current.Bind();
+        Log.Debug("Removing draw data for draw ID {DrawId}.", metadata.DrawId);
+        
+        Bind();
         _commands.Current.Remove(metadata.DrawId);
-        _commands.Current.Unbind();
-
-        _instanceData.Bind();
         _instanceData.Remove(metadata.BaseInstance);
-        _instanceData.Unbind();
+        // EBO.Remove();
+        // VBO.Remove();
+        Unbind();
 
         _drawData.Bind();
         _drawData.Remove(metadata.DrawId);
         _drawData.Unbind();
+        
+        // _culling.Remove();
     }
 
     public void Cull(CameraComponent camera) => _culling.Cull(camera, _instanceData, _commands.Current);
