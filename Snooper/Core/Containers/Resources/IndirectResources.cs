@@ -98,15 +98,23 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
 
         unsafe (uint, uint, PrimitiveDescriptor) CreateDescriptor()
         {
+            var maxLod = 0u;
             var d = new PrimitiveDescriptor(bounds);
-            d.Bounds.MaxLevelOfDetail = Math.Min((uint)levelOfDetails.Length, Settings.MaxNumberOfLods) - 1;
             for (var i = 0; i < levelOfDetails.Length && i < Settings.MaxNumberOfLods; i++)
             {
+                if (!levelOfDetails[i].Primitive.IsValid)
+                {
+                    continue;
+                    // throw new InvalidOperationException("Primitive data is not valid.");
+                }
+                
                 d.LOD_FirstIndex[i] = (uint)EBO.AddRange(levelOfDetails[i].Primitive.Indices);
                 d.LOD_BaseVertex[i] = (uint)VBO.AddRange(levelOfDetails[i].Primitive.Vertices);
                 d.LOD_SectionCount[i] = (uint)levelOfDetails[i].SectionDescriptors.Length;
                 d.LOD_SectionOffset[i] = (uint)_culling.Add(levelOfDetails[i].SectionDescriptors);
+                maxLod++;
             }
+            d.Bounds.MaxLevelOfDetail = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
             return (d.LOD_FirstIndex[0], d.LOD_BaseVertex[0], d);
         }
     }

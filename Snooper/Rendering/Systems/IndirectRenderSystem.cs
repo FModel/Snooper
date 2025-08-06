@@ -9,7 +9,7 @@ using Snooper.Rendering.Components.Camera;
 namespace Snooper.Rendering.Systems;
 
 public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerDrawData>
-    : ActorSystem<TComponent>, IMemorySizeProvider
+    : ActorSystem<TComponent>, ITexturedSystem, IMemorySizeProvider
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
     where TInstanceData : unmanaged, IPerInstanceData 
@@ -21,7 +21,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
 
     protected readonly IndirectResources<TVertex, TInstanceData, TPerDrawData> Resources;
-    protected readonly TextureManager TextureManager;
+    public TextureManager TextureManager { get; }
 
     protected IndirectRenderSystem(int initialDrawCapacity, PrimitiveType type)
     {
@@ -51,6 +51,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Generate();
         Resources.Bind();
         Resources.Allocate(_componentCount, _drawCount, _indices, _vertices);
+        
+        TextureManager.Load();
         
         foreach (var component in Components)
         {

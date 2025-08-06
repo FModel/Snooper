@@ -11,6 +11,27 @@ namespace Snooper.Core.Systems;
 /// </summary>
 public class TextureManager : IGameSystem
 {
+    public int NumberOfTextures => _textures.Count;
+    public int NumberOfBindlessTextures => _bindless.Count;
+    public int NumberOfTexturesToLoad => _texturesToLoad.Count;
+    public bool IsLoadingTextures => _bLoaded && NumberOfTexturesToLoad > 0;
+    public float LoadingProgress
+    {
+        get
+        {
+            if (!IsLoadingTextures)
+                return 1f;
+
+            var loaded = _textures.Count;
+            var pending = _texturesToLoad.Count;
+            var total = loaded + pending;
+            if (total == 0)
+                return 1f;
+
+            return (float)loaded / total;
+        }
+    }
+    
     private readonly Dictionary<FGuid, Texture> _textures = [];
     private readonly Dictionary<FGuid, BindlessTexture> _bindless = [];
     
@@ -67,7 +88,8 @@ public class TextureManager : IGameSystem
         }
     }
 
-    public void Load() => throw new NotImplementedException();
+    private bool _bLoaded;
+    public void Load() => _bLoaded = true;
     public void Update(float delta) => DequeueTextures(1);
     public void Render(CameraComponent camera) => throw new NotImplementedException();
 

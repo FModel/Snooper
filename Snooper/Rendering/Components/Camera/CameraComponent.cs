@@ -29,6 +29,8 @@ public sealed class CameraComponent : ActorComponent, IControllableComponent
 
     public float FieldOfViewRadians => MathF.PI / 180.0f * FieldOfView;
     public float AspectRatio => ViewportSize.X / ViewportSize.Y;
+    
+    private Vector3 _velocity = Vector3.Zero;
 
     public void Update()
     {
@@ -51,48 +53,31 @@ public sealed class CameraComponent : ActorComponent, IControllableComponent
 
     public void Update(KeyboardState keyboard, float time)
     {
-        if (!keyboard.IsAnyKeyDown || Actor is null) return;
+        if (Actor is null) return;
+        
+        var input = Vector3.Zero;
+        if (keyboard.IsKeyDown(Keys.W)) input.Z += 1;
+        if (keyboard.IsKeyDown(Keys.S)) input.Z -= 1;
+        if (keyboard.IsKeyDown(Keys.A)) input.X -= 1;
+        if (keyboard.IsKeyDown(Keys.D)) input.X += 1;
+        if (keyboard.IsKeyDown(Keys.E)) input.Y += 1;
+        if (keyboard.IsKeyDown(Keys.Q)) input.Y -= 1;
+        if (input != Vector3.Zero) input = Vector3.Normalize(input);
 
-        var multiplier = keyboard.IsKeyDown(Keys.LeftShift) ? 2f : 1f;
-        var moveSpeed = MovementSpeed * multiplier * time;
+        var forward = Vector3.Transform(Vector3.UnitZ, Actor.Transform.Rotation);
+        var right   = Vector3.Transform(-Vector3.UnitX, Actor.Transform.Rotation);
+        var up      = Vector3.Transform(Vector3.UnitY, Actor.Transform.Rotation);
 
-        var moveAxis = Vector3.Transform(Vector3.UnitZ, Actor.Transform.Rotation) * moveSpeed;
-        var panAxis = Vector3.Transform(-Vector3.UnitX, Actor.Transform.Rotation) * moveSpeed;
-        var up = Vector3.Transform(Vector3.UnitY, Actor.Transform.Rotation) * moveSpeed;
+        var speed = MovementSpeed * (keyboard.IsKeyDown(Keys.LeftShift) ? 2f : 1f);
+        var direction = (input.X * right + input.Y * up + input.Z * forward) * speed;
 
-        if (keyboard.IsKeyDown(Keys.W))
-        {
-            Actor.Transform.Position += moveAxis;
-        }
-        if (keyboard.IsKeyDown(Keys.S))
-        {
-            Actor.Transform.Position -= moveAxis;
-        }
-        if (keyboard.IsKeyDown(Keys.A))
-        {
-            Actor.Transform.Position -= panAxis;
-        }
-        if (keyboard.IsKeyDown(Keys.D))
-        {
-            Actor.Transform.Position += panAxis;
-        }
-        if (keyboard.IsKeyDown(Keys.E))
-        {
-            Actor.Transform.Position += up;
-        }
-        if (keyboard.IsKeyDown(Keys.Q))
-        {
-            Actor.Transform.Position -= up;
-        }
+        const float smoothing = 12f; // higher = snappier
+        _velocity = Vector3.Lerp(_velocity, direction, 1f - MathF.Exp(-smoothing * time));
 
-        if (keyboard.IsKeyDown(Keys.X))
-        {
-            FieldOfView = Math.Clamp(FieldOfView + 0.5f, 1.0f, 89.0f);
-        }
-        if (keyboard.IsKeyDown(Keys.C))
-        {
-            FieldOfView = Math.Clamp(FieldOfView - 0.5f, 1.0f, 89.0f);
-        }
+        Actor.Transform.Position += _velocity * time;
+
+        if (keyboard.IsKeyDown(Keys.X)) FieldOfView = Math.Clamp(FieldOfView + 0.5f, 1.0f, 89.0f);
+        if (keyboard.IsKeyDown(Keys.C)) FieldOfView = Math.Clamp(FieldOfView - 0.5f, 1.0f, 89.0f);
     }
 
     public void Update(float deltaX, float deltaY)

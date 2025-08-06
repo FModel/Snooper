@@ -8,13 +8,14 @@ namespace Snooper.Rendering.Containers.Framebuffers;
 public class SsaoFramebuffer(int originalWidth, int originalHeight)
     : FullQuadFramebuffer(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red, PixelType.Float)
 {
+    private const int ScaleRatio = 2;
     private const int NoiseSize = 4;
 
     private readonly FullQuadFramebuffer _blur = new(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red, PixelType.Float);
     private readonly Texture2D _ssaoNoise = new(NoiseSize, NoiseSize, PixelInternalFormat.Rgba32f, PixelFormat.Rgb, PixelType.Float);
 
-    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/ssao.frag");
-    private readonly ShaderProgram _blurShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/ssao_blur.frag");
+    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/ssao.vert", "Framebuffers/ssao.frag");
+    private readonly ShaderProgram _blurShader = new EmbeddedShaderProgram("Framebuffers/ssao.vert", "Framebuffers/ssao_blur.frag");
 
     private readonly Vector3[] _kernel = new Vector3[64];
     private readonly Vector3[] _noise = new Vector3[16];
@@ -71,6 +72,7 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight)
 
             _shader.Use();
             callback?.Invoke(_shader);
+            _shader.SetUniform("uScaleRatio", ScaleRatio);
             _shader.SetUniform("noiseScale", new Vector2(Width / NoiseSize, Height / NoiseSize));
             for (var i = 0; i < _kernel.Length; i++)
             {
@@ -90,12 +92,15 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight)
             base.Bind(TextureUnit.Texture0);
 
             _blurShader.Use();
+            _blurShader.SetUniform("uScaleRatio", ScaleRatio);
             _blurShader.SetUniform("ssaoInput", 0);
         });
     }
 
     public override void Resize(int newWidth, int newHeight)
     {
+        newWidth /= ScaleRatio;
+        newHeight /= ScaleRatio;
         base.Resize(newWidth, newHeight);
         _blur.Resize(newWidth, newHeight);
     }

@@ -12,6 +12,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
     
     protected bool Enabled { get; private set; } = true;
+    protected NotificationManager Notifications { get; } = new();
 
     public override void Load()
     {
@@ -21,7 +22,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
 
     public override void Update(float delta)
     {
-        var pressed = Window.KeyboardState.IsKeyPressed(Keys.F10);
+        var pressed = Window.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
         
         if (Enabled)
@@ -58,7 +59,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
             RenderInterface();
             _controller.Render();
         }
-        else if (ActiveCamera is not null)
+        else if (ActiveCamera is not null && ActiveCamera.PairIndex < Pairs.Count)
         {
             Pairs[ActiveCamera.PairIndex].RenderToScreen(Window.ClientSize.X, Window.ClientSize.Y);
         }

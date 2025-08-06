@@ -33,9 +33,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
-        if (!LevelOfDetails[0].Primitive.IsValid)
-            throw new InvalidOperationException("Primitive data is not valid.");
-        
         resources.Add(LevelOfDetails, Materials, GetPerInstanceData(), Bounds);
         textureManager.AddRange(Materials);
     }
