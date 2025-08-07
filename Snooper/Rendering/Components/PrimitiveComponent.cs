@@ -16,7 +16,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    public readonly LevelOfDetail<TVertex>[] LevelOfDetails;
+    public LevelOfDetail<TVertex>[] LevelOfDetails;
     public readonly CullingBounds Bounds;
     public readonly MaterialSection[] Materials; // we store materials for each section at lod 0
 
@@ -35,6 +35,9 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         resources.Add(LevelOfDetails, Materials, GetPerInstanceData(), Bounds);
         textureManager.AddRange(Materials);
+        
+        Array.Clear(LevelOfDetails);
+        LevelOfDetails = null; // TODO: keep some info for imgui
     }
 
     public void Update(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
@@ -85,23 +88,23 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
 
     public virtual void DrawControls()
     {
-        ImGui.Text($"Vertices: {LevelOfDetails[0].Primitive.Vertices.Length}");
-        ImGui.Text($"Indices: {LevelOfDetails[0].Primitive.Indices.Length}");
-        
-        ImGui.SeparatorText("Descriptors");
-        ImGui.Text($"Level of Detail Count: {LevelOfDetails.Length}");
-        for (var i = 0; i < LevelOfDetails.Length; i++)
-        {
-            ImGui.Text($"LOD {i}: {LevelOfDetails[i].Primitive.Vertices.Length} Vertices, {LevelOfDetails[i].Primitive.Indices.Length} Indices");
-            ImGui.Text($"Section Count: {LevelOfDetails[i].SectionDescriptors.Length}");
-            foreach (var section in LevelOfDetails[i].SectionDescriptors)
-            {
-                ImGui.Text($"First Index: {section.FirstIndex}");
-                ImGui.Text($"Index Count: {section.IndexCount}");
-                ImGui.Text($"Material Index: {section.MaterialIndex}");
-            }
-            ImGui.Separator();
-        }
+        // ImGui.Text($"Vertices: {LevelOfDetails[0].Primitive.Vertices.Length}");
+        // ImGui.Text($"Indices: {LevelOfDetails[0].Primitive.Indices.Length}");
+        //
+        // ImGui.SeparatorText("Descriptors");
+        // ImGui.Text($"Level of Detail Count: {LevelOfDetails.Length}");
+        // for (var i = 0; i < LevelOfDetails.Length; i++)
+        // {
+        //     ImGui.Text($"LOD {i}: {LevelOfDetails[i].Primitive.Vertices.Length} Vertices, {LevelOfDetails[i].Primitive.Indices.Length} Indices");
+        //     ImGui.Text($"Section Count: {LevelOfDetails[i].SectionDescriptors.Length}");
+        //     foreach (var section in LevelOfDetails[i].SectionDescriptors)
+        //     {
+        //         ImGui.Text($"First Index: {section.FirstIndex}");
+        //         ImGui.Text($"Index Count: {section.IndexCount}");
+        //         ImGui.Text($"Material Index: {section.MaterialIndex}");
+        //     }
+        //     ImGui.Separator();
+        // }
 
         // ImGui.SeparatorText($"{Sections.Length} Section{(Sections.Length > 1 ? "s" : "")}");
         // foreach (var section in Sections)

@@ -21,7 +21,7 @@ public class MeshActor : Actor
         if (staticMesh.RenderData?.Bounds is null)
             throw new ArgumentException("Static mesh does not have render data or bounds.", nameof(staticMesh));
 
-        MeshComponent = new StaticMeshComponent(staticMesh, mesh);
+        using (mesh) MeshComponent = new StaticMeshComponent(staticMesh, mesh);
         
         Components.Add(MeshComponent);
     }
@@ -39,7 +39,7 @@ public class MeshActor : Actor
         if (!landscape.TryConvert([component], ELandscapeExportFlags.Mesh, out var mesh, out _, out _))
             throw new ArgumentException("Failed to convert landscape mesh.", nameof(landscape));
             
-        MeshComponent = new StaticMeshComponent(landscape, mesh);
+        using (mesh) MeshComponent = new StaticMeshComponent(landscape, mesh);
         
         Components.Add(MeshComponent);
     }
@@ -49,7 +49,7 @@ public class MeshActor : Actor
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
 
-        MeshComponent = new SkeletalMeshComponent(skeletalMesh, mesh);
+        using (mesh) MeshComponent = new SkeletalMeshComponent(skeletalMesh, mesh);
         
         Components.Add(MeshComponent);
     }

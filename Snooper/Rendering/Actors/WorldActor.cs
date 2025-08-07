@@ -19,7 +19,7 @@ public class WorldActor : Actor
         for (var i = 0; i < world.StreamingLevels.Length; i++)
         {
             Process(world.StreamingLevels[i]);
-            if (i > 2) break; // TODO: optimize
+            if (i > 5) break; // TODO: optimize
         }
         
         var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
@@ -57,6 +57,8 @@ public class WorldActor : Actor
                 }
             }
         }
+        
+        _parents.Clear();
     }
 
     private void Process(FPackageIndex? ptr)
@@ -70,10 +72,11 @@ public class WorldActor : Actor
             }
             case UWorldPartitionRuntimeHashSet set:
             {
-                var hlod = set.RuntimeStreamingData.OrderBy(x => x.LoadingRange).ElementAt(2);
+                var hlod = set.RuntimeStreamingData.OrderBy(x => x.LoadingRange).ElementAt(1);
                 for (var i = 0; i < hlod.SpatiallyLoadedCells.Length; i++)
                 {
                     Process(hlod.SpatiallyLoadedCells[i]); // UWorldPartitionRuntimeLevelStreamingCell
+                    if (i > 250) break; // TODO: optimize
                 }
                 break;
             }
@@ -82,7 +85,7 @@ public class WorldActor : Actor
                 for (var i = 0; i < spatial.StreamingGrids[0].GridLevels[0].LayerCells.Length; i++)
                 {
                     Process(spatial.StreamingGrids[0].GridLevels[0].LayerCells[i].GridCells[0]); // UWorldPartitionRuntimeLevelStreamingCell
-                    if (i > 10) break; // TODO: optimize
+                    if (i > 50) break; // TODO: optimize
                 }
                 break;
             }

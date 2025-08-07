@@ -11,13 +11,13 @@ public class Texture2D(int width, int height,
 {
     public override GetPName Name => GetPName.TextureBinding2D;
 
-    private readonly UTexture? _owner;
+    private UTexture? _owner;
 
     public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY)
     {
         _owner = texture;
         
-        Guid = texture.LightingGuid;
+        Guid = _owner.LightingGuid;
     }
 
     public override void Generate()
@@ -50,7 +50,8 @@ public class Texture2D(int width, int height,
             GL.TexParameter(Target, TextureParameterName.TextureMaxLevel, 8);
             GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
         }
-                
+
         OnTextureReadyForBindless();
+        _owner = null;
     }
 }
