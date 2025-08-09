@@ -32,9 +32,23 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         
         if (ActiveCamera is null && Pairs.Count > 0)
             ActiveCamera = Pairs[0].Camera;
-        
-        if (pressed && Enabled == false && ActiveCamera is not null)
-            ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+
+        if (ActiveCamera is not null)
+        {
+            if (pressed && !Enabled)
+                ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+            
+            if (Window.IsKeyPressed(Keys.PageUp))
+            {
+                ActiveCamera.MovementSpeed += 10f;
+                Notifications.PushNotification("Camera", $"Movement speed increased to {ActiveCamera.MovementSpeed}.");
+            }
+            else if (Window.IsKeyPressed(Keys.PageDown))
+            {
+                ActiveCamera.MovementSpeed = MathF.Max(1, ActiveCamera.MovementSpeed - 10f);
+                Notifications.PushNotification("Camera", $"Movement speed decreased to {ActiveCamera.MovementSpeed}.");
+            }
+        }
         
         ActiveCamera?.Update(Window.KeyboardState, delta);
         if (Window.CursorState == CursorState.Grabbed)

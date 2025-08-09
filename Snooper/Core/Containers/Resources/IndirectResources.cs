@@ -110,6 +110,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
                 
                 d.LOD_FirstIndex[i] = (uint)EBO.AddRange(levelOfDetails[i].Primitive.Indices);
                 d.LOD_BaseVertex[i] = (uint)VBO.AddRange(levelOfDetails[i].Primitive.Vertices);
+                d.LOD_ScreenSize[i] = levelOfDetails[i].ScreenSize;
                 d.LOD_SectionCount[i] = (uint)levelOfDetails[i].SectionDescriptors.Length;
                 d.LOD_SectionOffset[i] = (uint)_culling.Add(levelOfDetails[i].SectionDescriptors);
                 

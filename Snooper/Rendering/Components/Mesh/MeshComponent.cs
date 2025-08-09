@@ -89,7 +89,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 sections[j] = new PrimitiveSectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
             }
             
-            geometries[i] = new LevelOfDetail<Vertex>(new Geometry(levels[i]), sections);
+            geometries[i] = new LevelOfDetail<Vertex>(new Geometry(levels[i]), levels[i].ScreenSize, sections);
         }
         return geometries;
     }
