@@ -123,8 +123,6 @@ switch (provider.ProjectName)
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"), null, true);
         var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"), null, true);
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
-        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
-        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Figment/Figment_S05_Map/Content/Athena_Terrain_S05.Athena_Terrain_S05"), null, true);
 

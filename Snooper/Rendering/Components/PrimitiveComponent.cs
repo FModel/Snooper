@@ -35,9 +35,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         resources.Add(LevelOfDetails, Materials, GetPerInstanceData(), Bounds);
         textureManager.AddRange(Materials);
-        
-        Array.Clear(LevelOfDetails);
-        LevelOfDetails = null; // TODO: keep some info for imgui
     }
 
     public void Update(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
@@ -132,10 +129,10 @@ public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> p
     where TPerDrawData : unmanaged, IPerDrawData;
 
 /// <inheritdoc />
-public class PrimitiveComponent<TPerDrawData>(IPrimitiveData primitive, CullingBounds bounds)
+public class PrimitiveComponent<TPerDrawData>(PrimitiveData primitive, CullingBounds bounds)
     : PrimitiveComponent<Vector3, TPerDrawData>(primitive, bounds)
     where TPerDrawData : unmanaged, IPerDrawData;
 
 /// <inheritdoc />
 [DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent(IPrimitiveData primitive) : PrimitiveComponent<PerDrawData>(primitive, new FBox());
+public class PrimitiveComponent(PrimitiveData primitive) : PrimitiveComponent<PerDrawData>(primitive, new FBox());

@@ -43,36 +43,35 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             Task.Run(() =>
             {
                 var materialIndex = Materials[index].MaterialIndex;
-                if (materialIndex < materials.Length)
+                if (materials[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
                 {
-                    if (materials[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
-                    {
-                        var parameters = new CMaterialParams2();
-                        material.GetParams(parameters, EMaterialFormat.FirstLayer);
+                    var parameters = new CMaterialParams2();
+                    material.GetParams(parameters, EMaterialFormat.FirstLayer);
 
-                        if (parameters.TryGetTexture2d(out var diffuse, CMaterialParams2.Diffuse[0]))
+                    for (var j = 0; j < CMaterialParams2.Diffuse.Length; j++)
+                    {
+                        if (parameters.TryGetTexture2d(out var diffuse, CMaterialParams2.Diffuse[j]))
                         {
-                            parameters.TryGetTexture2d(out var normal, CMaterialParams2.Normals[0]);
-                            parameters.TryGetTexture2d(out var specular, CMaterialParams2.SpecularMasks[0]);
+                            parameters.TryGetTexture2d(out var normal, CMaterialParams2.Normals[j]);
+                            parameters.TryGetTexture2d(out var specular, CMaterialParams2.SpecularMasks[j]);
 
                             Materials[index].DrawDataContainer = new DrawDataContainer(
                                 new Texture2D(diffuse),
                                 normal != null ? new Texture2D(normal) : null,
                                 specular != null ? new Texture2D(specular) : null);
-                        }
-                        else if (parameters.TryGetFirstTexture2d(out var fallback))
-                        {
-                            Materials[index].DrawDataContainer = new DrawDataContainer(new Texture2D(fallback), null, null);
+                            
+                            break;
                         }
                     }
-                    else
+
+                    if (Materials[index].DrawDataContainer == null && parameters.TryGetFirstTexture2d(out var fallback))
                     {
-                        Log.Warning("Material at index {MatIndex} is not valid or could not be loaded.", materialIndex);
+                        Materials[index].DrawDataContainer = new DrawDataContainer(new Texture2D(fallback), null, null);
                     }
                 }
                 else
                 {
-                    Log.Warning("Material index {MatIndex} is out of bounds for mesh component with {MaterialsLength} materials.", materialIndex, materials.Length);
+                    Log.Warning("Material at index {MatIndex} is not valid or could not be loaded.", materialIndex);
                 }
             });
         }
@@ -179,11 +178,8 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
     }
 
-    private readonly struct Geometry : TPrimitiveData<Vertex>
+    private class Geometry : PrimitiveData<Vertex>
     {
-        public Vertex[] Vertices { get; }
-        public uint[] Indices { get; }
-        
         public Geometry(CBaseMeshLod lod)
         {
             var vertices = lod switch

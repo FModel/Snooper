@@ -31,7 +31,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
         }
 
         Materials[0].DrawDataContainer = new DrawDataContainer(new Texture2D(heightmap), new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W));
-        
+
         SizeQuads = component.ComponentSizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
         
@@ -94,11 +94,8 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
         }
     }
 
-    private readonly struct Geometry : TPrimitiveData<Vector2>
+    private class Geometry : PrimitiveData<Vector2>
     {
-        public Vector2[] Vertices { get; }
-        public uint[] Indices { get; }
-
         public Geometry(int sizeQuads)
         {
             const int quadCount = Settings.TessellationQuadCount;

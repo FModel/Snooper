@@ -5,8 +5,8 @@ public class DoubleBuffer<TBuffer>(Func<TBuffer> factory) : IDisposable where TB
     private readonly TBuffer[] _buffers = [factory(), factory()];
     private int _frameCount;
 
-    public TBuffer Current => _buffers[_frameCount % 2];
-    public TBuffer Next => _buffers[(_frameCount + 1) % 2];
+    public TBuffer Previous => _buffers[_frameCount % 2];
+    public TBuffer Current => _buffers[(_frameCount + 1) % 2];
 
     public void Swap() => _frameCount++;
 

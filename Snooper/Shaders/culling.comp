@@ -7,6 +7,7 @@ struct PrimitiveDescriptor
     uint maxLod;
     uvec4 firstIndex[2]; // EBO offsets for each LOD
     uvec4 baseVertex[2]; // VBO offsets for each LOD
+    uvec4 screenSize[2];
     uvec4 sectionCount[2]; // number of sections for each LOD
     uvec4 sectionOffset[2]; // section offsets for each LOD in SectionDescriptorsBuffer
 };

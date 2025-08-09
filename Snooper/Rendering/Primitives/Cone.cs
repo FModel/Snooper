@@ -2,11 +2,8 @@
 
 namespace Snooper.Rendering.Primitives;
 
-public struct Cone : IPrimitiveData
+public class Cone : PrimitiveData
 {
-    public Vector3[] Vertices { get; }
-    public uint[] Indices { get; }
-
     public Cone(int sectors = 36, float height = 1.0f, float radius = 1.0f)
     {
         List<Vector3> vertices = [];

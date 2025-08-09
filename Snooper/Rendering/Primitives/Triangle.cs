@@ -2,17 +2,17 @@
 
 namespace Snooper.Rendering.Primitives;
 
-public struct Triangle() : IPrimitiveData
+public class Triangle : PrimitiveData
 {
-    public Vector3[] Vertices { get; } =
-    [
-        new(-0.5f, -0.5f, 0.0f),
-        new(0.5f, -0.5f, 0.0f),
-        new(0.0f,  0.5f, 0.0f)
-    ];
+    public Triangle()
+    {
+        Vertices =
+        [
+            new Vector3(-0.5f, -0.5f, 0.0f),
+            new Vector3(0.5f, -0.5f, 0.0f),
+            new Vector3(0.0f, 0.5f, 0.0f)
+        ];
 
-    public uint[] Indices { get; } =
-    [
-        0, 1, 2
-    ];
+        Indices = [0, 1, 2];
+    }
 }

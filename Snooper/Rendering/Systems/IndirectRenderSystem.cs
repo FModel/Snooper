@@ -20,7 +20,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     
     protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
 
-    protected readonly IndirectResources<TVertex, TInstanceData, TPerDrawData> Resources;
+    protected IndirectResources<TVertex, TInstanceData, TPerDrawData> Resources { get; }
     public TextureManager TextureManager { get; }
 
     protected IndirectRenderSystem(int initialDrawCapacity, PrimitiveType type)
@@ -93,11 +93,11 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.OnActorComponentEnqueued(component);
         
         _componentCount++;
+        _drawCount += component.LevelOfDetails[0].SectionDescriptors.Length;
         foreach (var lod in component.LevelOfDetails)
         {
-            _drawCount += lod.SectionDescriptors.Length;
-            _indices += lod.Primitive.Indices.Length;
-            _vertices += lod.Primitive.Vertices.Length;
+            _indices += lod.Primitive.Indices?.Length ?? 0;
+            _vertices += lod.Primitive.Vertices?.Length ?? 0;
         }
     }
 

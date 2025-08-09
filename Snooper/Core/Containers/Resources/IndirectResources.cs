@@ -21,8 +21,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     private readonly CullingResources _culling = new(initialDrawCapacity);
 
     private readonly VertexArray _vao = new();
-    public readonly ElementArrayBuffer<uint> EBO = new(initialDrawCapacity * 200);
-    public readonly ArrayBuffer<TVertex> VBO = new(initialDrawCapacity * 100);
+    public readonly ElementArrayBuffer<uint> EBO = new(initialDrawCapacity * 2000);
+    public readonly ArrayBuffer<TVertex> VBO = new(initialDrawCapacity * 1000);
     
     public void Generate()
     {
@@ -112,7 +112,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
                 d.LOD_BaseVertex[i] = (uint)VBO.AddRange(levelOfDetails[i].Primitive.Vertices);
                 d.LOD_SectionCount[i] = (uint)levelOfDetails[i].SectionDescriptors.Length;
                 d.LOD_SectionOffset[i] = (uint)_culling.Add(levelOfDetails[i].SectionDescriptors);
+                
                 maxLod++;
+                levelOfDetails[i].Dispose();
             }
             d.Bounds.MaxLevelOfDetail = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
             return (d.LOD_FirstIndex[0], d.LOD_BaseVertex[0], d);
@@ -136,21 +138,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _drawData.Bind();
         _drawData.Update(drawId, drawData);
         _drawData.Unbind();
-    }
-
-    public void Update(int drawId, TVertex[] vertices)
-    {
-        var command = _commands.Current[drawId];
-        VBO.Update((int) command.BaseVertex, vertices);
-    }
-
-    public void Update(int drawId, uint[] indices, TVertex[] vertices)
-    {
-        var command = _commands.Current[drawId];
-        EBO.Update((int) command.FirstIndex, indices);
-        VBO.Update((int) command.BaseVertex, vertices);
-
-        _commands.Current.UpdateIndexCount(drawId, (uint) indices.Length);
     }
 
     public void Remove(IndirectDrawMetadata metadata)
