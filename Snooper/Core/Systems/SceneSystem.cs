@@ -121,4 +121,10 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
         foreach (var pair in Pairs)
             pair.Resize(newWidth, newHeight);
     }
+
+    public override void Dispose()
+    {
+        RootActor = null;
+        base.Dispose();
+    }
 }

@@ -32,23 +32,28 @@ ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-36.10-CL-43486998-Windows_oo.usmap";
-const string key = "0xA43F7FD912C317930F9AABA5075F0ABCF4EE8A7102582636330BECC449D54560";
+const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-37.00-CL-44501951-Windows_oo.usmap";
+const string key = "0x20E23FDB8EF3D9503F6012072BAF4090EA6363A5E4BFBB457608C731914D8E83";
 var version = new VersionContainer(EGame.GAME_UE5_6);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\Valorant_11_2.usmap";
 const string key = "0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6";
 var version = new VersionContainer(EGame.GAME_Valorant);
+#elif GTA
+const string dir = "D:\\Games\\GTA Vice City - Definitive Edition\\Gameface\\Content\\Paks";
+const string mapping = "";
+const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
+var version = new VersionContainer(EGame.GAME_GTATheTrilogyDefinitiveEdition);
 #endif
-var provider = new DefaultFileProvider(dir, SearchOption.TopDirectoryOnly, version)
-{
-#if FN
-        MappingsContainer = new FileUsmapTypeMappingsProvider(mapping)
-#endif
-};
+
+var provider = new DefaultFileProvider(dir, SearchOption.TopDirectoryOnly, version);
+if (!string.IsNullOrEmpty(mapping))
+    provider.MappingsContainer = new FileUsmapTypeMappingsProvider(mapping);
 provider.Initialize();
 provider.SubmitKey(new FGuid(), new FAesKey(key));
 provider.PostMount();
+provider.LoadVirtualPaths();
 
 var snooper = new SnooperWindow(144, 1500, 900, false);
 var scene = new Actor("Scene");
@@ -86,7 +91,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
         // break;
         
-        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Juliett", Extension: "umap" });
+        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
         foreach (var file in files)
         {
             var parts = file.NameWithoutExtension.Split('_');
@@ -100,32 +105,27 @@ switch (provider.ProjectName)
         }
         break;
     }
+    case "Gameface":
+    {
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("Gameface/Content/ViceCity/Characters/Peds/SK_hmotr.SK_hmotr")));
+        // break;
+        
+        var world = new WorldActor(provider.LoadPackageObject<UWorld>("Gameface/Content/ViceCity/Maps/VCWorld/VCWorld.VCWorld"));
+        
+        scene.Children.Add(world);
+        break;
+    }
     case "FortniteGame":
     {
-        // var glider = new MeshActor(
-        //     provider.LoadPackageObject<USkeletalMesh>(
-        //         "FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Gadgets/Assets/VinderTech_GliderChute/Glider_Rumble_Female/Meshes/Rumble_Female_Glider.Rumble_Female_Glider"),
-        //     new FTransform(new FVector(-100, 0, 0)));
-        //
-        // glider.InstancedTransform.AddLocalInstance(new FTransform(new FVector(-300, 0, 0)));
-        // scene.Children.Add(glider);
-        //
-        // var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>(
-        //         "FortniteGame/Content/Characters/Player/Male/Large/Bodies/M_LRG_Rumble/Meshes/M_LRG_Rumble.M_LRG_Rumble"),
-        //     new FTransform(new FVector(100, 0, 0)));
-        //
-        // character.InstancedTransform.AddLocalInstance(new FTransform(new FVector(300, 0, 0)));
-        //
-        // scene.Children.Add(character);
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Large/Bodies/M_LRG_Rumble/Meshes/M_LRG_Rumble.M_LRG_Rumble")));
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
         // break;
         
-        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"));
-        var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"), null, true);
+        var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain"), null, true);
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7I1F34J21MNNF9A96V9PGFNVE.Hermes_Terrain"));
-        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/PirateAdventure/Content/PA_3DLabTrackA.PA_3DLabTrackA"));
-        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/Levels/GoldRush/Content/DelMar_Racing_ProjectA.DelMar_Racing_ProjectA"));
         // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency"));
+        // var world = new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Figment/Figment_S05_Map/Content/Athena_Terrain_S05.Athena_Terrain_S05"), null, true);
 
         scene.Children.Add(world);
         break;

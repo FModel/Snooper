@@ -11,20 +11,41 @@ namespace Snooper.Core.Systems;
 /// </summary>
 public class TextureManager : IGameSystem
 {
+    public int NumberOfTextures => _textures.Count;
+    public int NumberOfBindlessTextures => _bindless.Count;
+    public int NumberOfTexturesToLoad => _texturesToLoad.Count;
+    public bool IsLoadingTextures => _bLoaded && NumberOfTexturesToLoad > 0;
+    public float LoadingProgress
+    {
+        get
+        {
+            if (!IsLoadingTextures)
+                return 1f;
+
+            var loaded = _textures.Count;
+            var pending = _texturesToLoad.Count;
+            var total = loaded + pending;
+            if (total == 0)
+                return 1f;
+
+            return (float)loaded / total;
+        }
+    }
+    
     private readonly Dictionary<FGuid, Texture> _textures = [];
     private readonly Dictionary<FGuid, BindlessTexture> _bindless = [];
     
     private readonly Dictionary<FGuid, List<(int SectionId, string Key)>> _textureToSections = [];
-    private readonly Dictionary<int, (PrimitiveSection Section, int RemainingTextures)> _sectionPendingTextures = [];
+    private readonly Dictionary<int, (MaterialSection Section, int RemainingTextures)> _sectionPendingTextures = [];
     
-    public event Action<PrimitiveSection>? OnSectionReady;
+    public event Action<MaterialSection>? OnMaterialReady;
     
-    private void Add(PrimitiveSection section, string key, Texture texture)
+    private void Add(MaterialSection material, string key, Texture texture)
     {
         ArgumentNullException.ThrowIfNull(texture);
         
         var guid = texture.Guid;
-        var sectionId = section.SectionId;
+        var sectionId = material.SectionId;
         
         if (_textures.ContainsKey(guid) || _texturesToLoad.Contains(texture))
         {
@@ -45,30 +66,31 @@ public class TextureManager : IGameSystem
         _textureToSections[guid] = [(sectionId, key)];
     }
     
-    public void AddRange(PrimitiveSection[] sections)
+    public void AddRange(MaterialSection[] materials)
     {
-        foreach (var section in sections)
+        foreach (var material in materials)
         {
-            if (section.DrawDataContainer is null) continue;
+            if (material.DrawDataContainer is null) continue;
             
-            if (!section.DrawDataContainer.HasTextures)
+            if (!material.DrawDataContainer.HasTextures)
             {
-                OnSectionReady?.Invoke(section);
+                OnMaterialReady?.Invoke(material);
                 continue;
             }
             
-            var textures = section.DrawDataContainer.GetTextures();
-            _sectionPendingTextures[section.SectionId] = (section, textures.Count);
+            var textures = material.DrawDataContainer.GetTextures();
+            _sectionPendingTextures[material.SectionId] = (material, textures.Count);
             
             foreach (var kvp in textures)
             {
-                Add(section, kvp.Key, kvp.Value);
+                Add(material, kvp.Key, kvp.Value);
             }
         }
     }
 
-    public void Load() => throw new NotImplementedException();
-    public void Update(float delta) => DequeueTextures(2);
+    private bool _bLoaded;
+    public void Load() => _bLoaded = true;
+    public void Update(float delta) => DequeueTextures(1);
     public void Render(CameraComponent camera) => throw new NotImplementedException();
 
     private readonly Queue<Texture> _texturesToLoad = [];
@@ -104,7 +126,7 @@ public class TextureManager : IGameSystem
                         if (remaining <= 0)
                         {
                             _sectionPendingTextures.Remove(sectionId);
-                            OnSectionReady?.Invoke(section);
+                            OnMaterialReady?.Invoke(section);
                         }
                         else
                         {

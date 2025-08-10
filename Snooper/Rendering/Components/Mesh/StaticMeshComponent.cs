@@ -8,15 +8,13 @@ public class StaticMeshComponent : MeshComponent
 {
     private readonly CStaticMesh _mesh;
 
-    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(mesh.LODs[0], owner.Materials, mesh.BoundingBox)
+    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(mesh.LODs, owner.Materials, mesh.BoundingBox)
     {
         _mesh = mesh;
     }
     
-    public StaticMeshComponent(ALandscapeProxy owner, CStaticMesh mesh) : base(mesh.LODs[0], [owner.LandscapeMaterial.ResolvedObject], mesh.BoundingBox)
+    public StaticMeshComponent(ALandscapeProxy owner, CStaticMesh mesh) : base(mesh.LODs, [owner.LandscapeMaterial.ResolvedObject], mesh.BoundingBox)
     {
         _mesh = mesh;
     }
-
-    protected override IVertexData GetPrimitive(int index) => new Geometry(_mesh.LODs[index]);
 }

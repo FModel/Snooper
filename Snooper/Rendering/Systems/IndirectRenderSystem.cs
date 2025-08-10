@@ -9,7 +9,7 @@ using Snooper.Rendering.Components.Camera;
 namespace Snooper.Rendering.Systems;
 
 public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerDrawData>
-    : ActorSystem<TComponent>, IMemorySizeProvider
+    : ActorSystem<TComponent>, ITexturedSystem, IMemorySizeProvider
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
     where TInstanceData : unmanaged, IPerInstanceData 
@@ -20,27 +20,27 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     
     protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
 
-    protected readonly IndirectResources<TVertex, TInstanceData, TPerDrawData> Resources;
-    protected readonly TextureManager TextureManager;
+    protected IndirectResources<TVertex, TInstanceData, TPerDrawData> Resources { get; }
+    public TextureManager TextureManager { get; }
 
     protected IndirectRenderSystem(int initialDrawCapacity, PrimitiveType type)
     {
         Resources = new IndirectResources<TVertex, TInstanceData, TPerDrawData>(initialDrawCapacity, type);
         
         TextureManager = new TextureManager();
-        TextureManager.OnSectionReady += section =>
+        TextureManager.OnMaterialReady += material =>
         {
             // this is called when a managed texture has been decoded (async) and uploaded to the GPU
             // it gives back the bindless representation of the texture for TPerDrawData to use
             // at this point, TPerDrawData is still defaulted
             
-            section.DrawDataContainer?.FinalizeGpuData();
-            if (section.DrawDataContainer?.Raw is not TPerDrawData raw)
+            material.DrawDataContainer?.FinalizeGpuData();
+            if (material.DrawDataContainer?.Raw is not TPerDrawData raw)
             {
-                throw new InvalidOperationException($"Draw data container raw type {section.DrawDataContainer.Raw.GetType()} does not match expected type {typeof(TPerDrawData)}.");
+                throw new InvalidOperationException($"Draw data container raw type {material.DrawDataContainer.Raw.GetType()} does not match expected type {typeof(TPerDrawData)}.");
             }
             
-            Resources.Update(section.DrawMetadata.DrawId, raw);
+            Resources.Update(material.DrawMetadata.DrawId, raw);
         };
     }
 
@@ -51,6 +51,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Generate();
         Resources.Bind();
         Resources.Allocate(_componentCount, _drawCount, _indices, _vertices);
+        
+        TextureManager.Load();
         
         foreach (var component in Components)
         {
@@ -91,17 +93,23 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.OnActorComponentEnqueued(component);
         
         _componentCount++;
-        _drawCount += component.Sections.Length;
-        _indices += component.Primitive.Indices.Length;
-        _vertices += component.Primitive.Vertices.Length;
+        _drawCount += component.LevelOfDetails[0].SectionDescriptors.Length;
+        foreach (var lod in component.LevelOfDetails)
+        {
+            _indices += lod.Primitive.Indices?.Length ?? 0;
+            _vertices += lod.Primitive.Vertices?.Length ?? 0;
+        }
     }
 
     protected override void OnActorComponentRemoved(TComponent component)
     {
         base.OnActorComponentRemoved(component);
 
-        foreach (var section in component.Sections)
-            Resources.Remove(section.DrawMetadata);
+        foreach (var material in component.Materials)
+        {
+            if (!material.IsGenerated) continue;
+            Resources.Remove(material.DrawMetadata);
+        }
     }
     
     public override void Dispose()

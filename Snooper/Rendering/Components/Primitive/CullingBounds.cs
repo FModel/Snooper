@@ -6,9 +6,9 @@ namespace Snooper.Rendering.Components.Primitive;
 public struct CullingBounds
 {
     public readonly Vector3 Center;
-    public float Padding0;
+    public readonly float SphereRadius;
     public readonly Vector3 Extents;
-    public float Padding1;
+    public uint MaxLevelOfDetail;
 
     public CullingBounds(FBox box)
     {
@@ -17,6 +17,7 @@ public struct CullingBounds
         
         Center = new Vector3(center.X, center.Z, center.Y);
         Extents = new Vector3(extents.X, extents.Z, extents.Y);
+        SphereRadius = extents.Size();
     }
     
     public static implicit operator CullingBounds(FBox box) => new(box);

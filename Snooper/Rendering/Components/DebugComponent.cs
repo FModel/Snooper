@@ -17,13 +17,13 @@ public struct PerDrawDebugData : IPerDrawData
 }
 
 [DefaultActorSystem(typeof(DebugSystem))]
-public class DebugComponent(IPrimitiveData primitive, CullingBounds bounds) : PrimitiveComponent<PerDrawDebugData>(primitive, bounds)
+public class DebugComponent(PrimitiveData primitive, CullingBounds bounds) : PrimitiveComponent<PerDrawDebugData>(primitive, bounds)
 {
     public DebugComponent(CullingBounds bounds, Vector3? color = null) : this(new Geometry(bounds), bounds)
     {
         if (color != null)
         {
-            Sections[0].DrawDataContainer = new DrawDataContainer(color.Value);
+            Materials[0].DrawDataContainer = new DrawDataContainer(color.Value);
         }
     }
     
@@ -50,17 +50,14 @@ public class DebugComponent(IPrimitiveData primitive, CullingBounds bounds) : Pr
         }
     }
 
-    private readonly struct Geometry : IPrimitiveData
+    private class Geometry : PrimitiveData
     {
-        public Vector3[] Vertices { get; }
-        public uint[] Indices { get; }
-        
         public Geometry(CullingBounds bounds) : this(bounds.Center, bounds.Extents)
         {
             
         }
-        
-        public Geometry(Vector3 center, Vector3 extents)
+
+        private Geometry(Vector3 center, Vector3 extents)
         {
             Vertices =
             [

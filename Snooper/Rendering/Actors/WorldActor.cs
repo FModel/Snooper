@@ -6,7 +6,6 @@ using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
-using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Components.Transforms;
@@ -17,10 +16,16 @@ public class WorldActor : Actor
 {
     public WorldActor(UWorld world, TransformComponent? transform = null, bool highres = false) : base(world.Name, transform: transform)
     {
+        for (var i = 0; i < world.StreamingLevels.Length; i++)
+        {
+            Process(world.StreamingLevels[i]);
+            if (i > 5) break; // TODO: optimize
+        }
+        
         var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
         foreach (var ptr in actors)
         {
-            if (ptr == null || !ptr.TryLoad(out AActor actor))
+            if (ptr == null || !ptr.TryLoad(out UObject actor))
                 continue;
             
             var root = actor.GetOrDefault<FPackageIndex?>("RootComponent");
@@ -33,24 +38,7 @@ public class WorldActor : Actor
 
             if (highres)
             {
-                if (actor.TryGetValue(out UWorldPartition partition, "WorldPartition") &&
-                    partition.TryGetValue(out UObject hash, "RuntimeHash") &&
-                    hash.TryGetValue(out FStructFallback[] grids, "StreamingGrids") && grids.Length > 0 &&
-                    grids[0].TryGetValue(out FStructFallback[] levels, "GridLevels") && levels.Length > 0 &&
-                    levels[0].TryGetValue(out FStructFallback[] layerCells, "LayerCells"))
-                {
-                    for (var i = 0; i < layerCells.Length; i++)
-                    {
-                        if (layerCells[i].TryGetValue(out FPackageIndex[] gridCells, "GridCells") && gridCells.Length > 0 &&
-                            gridCells[0].TryLoad(out UObject cell) && cell.TryGetValue(out UObject level, "LevelStreaming"))
-                        {
-                            Children.Add(new WorldActor(level.Get<UWorld>("WorldAsset")));
-                        }
-                    
-                        // if (i > 25) break;
-                    }
-                }
-
+                Process(actor.GetOrDefault<FPackageIndex?>("WorldPartition"));
                 continue;
             }
 
@@ -67,6 +55,49 @@ public class WorldActor : Actor
                 {
                     Children.Add(new WorldActor(additionalWorld, scene?.GetRelativeTransform()));
                 }
+            }
+        }
+        
+        _parents.Clear();
+    }
+
+    private void Process(FPackageIndex? ptr)
+    {
+        switch (ptr?.Load())
+        {
+            case UWorldPartition partition:
+            {
+                Process(partition.RuntimeHash); // UWorldPartitionRuntimeHash
+                break;
+            }
+            case UWorldPartitionRuntimeHashSet set:
+            {
+                var hlod = set.RuntimeStreamingData.OrderBy(x => x.LoadingRange).ElementAt(1);
+                for (var i = 0; i < hlod.SpatiallyLoadedCells.Length; i++)
+                {
+                    Process(hlod.SpatiallyLoadedCells[i]); // UWorldPartitionRuntimeLevelStreamingCell
+                    if (i > 250) break; // TODO: optimize
+                }
+                break;
+            }
+            case UWorldPartitionRuntimeSpatialHash spatial when spatial.StreamingGrids[0].GridLevels.Length > 0:
+            {
+                for (var i = 0; i < spatial.StreamingGrids[0].GridLevels[0].LayerCells.Length; i++)
+                {
+                    Process(spatial.StreamingGrids[0].GridLevels[0].LayerCells[i].GridCells[0]); // UWorldPartitionRuntimeLevelStreamingCell
+                    if (i > 50) break; // TODO: optimize
+                }
+                break;
+            }
+            case UWorldPartitionRuntimeLevelStreamingCell cell:
+            {
+                Process(cell.LevelStreaming); // UWorldPartitionLevelStreamingDynamic
+                break;
+            }
+            case ULevelStreaming { WorldAsset: { } world }:
+            {
+                Children.Add(new WorldActor(world.Load<UWorld>()));
+                break;
             }
         }
     }
@@ -96,6 +127,8 @@ public class WorldActor : Actor
             var transform = sceneComponent.GetRelativeTransform();
             if (component is UStaticMeshComponent staticMeshComponent && staticMeshComponent.GetStaticMesh().TryLoad(out UStaticMesh staticMesh))
             {
+                if (staticMesh.Name.EndsWith("_SingleCluster")) return null;
+                
                 staticMesh.OverrideMaterials(staticMeshComponent.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []));
                 
                 if (component is UInstancedStaticMeshComponent { PerInstanceSMData.Length: > 0 } instancedComponent)

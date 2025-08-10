@@ -1,9 +1,23 @@
 ﻿layout(local_size_x = 64) in;
 
-struct CullingBounds
+struct PrimitiveDescriptor
 {
     vec3 center;
+    float sphereRadius;
     vec3 extents;
+    uint maxLod;
+    uvec4 firstIndex[2]; // EBO offsets for each LOD
+    uvec4 baseVertex[2]; // VBO offsets for each LOD
+    vec4 screenSize[2];
+    uvec4 sectionCount[2]; // number of sections for each LOD
+    uvec4 sectionOffset[2]; // section offsets for each LOD in SectionDescriptorsBuffer
+};
+
+struct SectionDescriptor
+{
+    uint firstIndex;
+    uint count;
+    uint materialIndex;
 };
 
 struct PerInstanceData
@@ -11,7 +25,7 @@ struct PerInstanceData
     mat4 matrix;
 };
 
-struct DrawElementsIndirectCommand
+struct DrawElementsIndirectCommand // 1 draw command per section per model in LOD 0
 {
     uint count;
     uint instanceCount;
@@ -20,22 +34,33 @@ struct DrawElementsIndirectCommand
     uint baseInstance;
     uint originalInstanceCount;
     uint originalBaseInstance;
-    uint modelId;
+    uint modelId; // model offset in PrimitiveDescriptorsBuffer
+    uint sectionId; // section index in the current model (0-X)
 };
 
-layout(std430, binding = 0) readonly buffer PerInstanceDataBuffer {
+layout(std430, binding = 0) readonly buffer PerInstanceDataBuffer
+{
     PerInstanceData uInstanceDataBuffer[];
 };
 
-layout(std430, binding = 1) readonly buffer CullingBoundsBuffer {
-    CullingBounds uModelBounds[];
+layout(std430, binding = 1) readonly buffer PrimitiveDescriptorsBuffer
+{
+    PrimitiveDescriptor uPrimitiveDescriptors[];
 };
 
-layout(std430, binding = 2) buffer DrawCommandBuffer {
+layout(std430, binding = 2) buffer SectionDescriptorsBuffer
+{
+    SectionDescriptor uSectionDescriptors[];
+};
+
+layout(std430, binding = 3) buffer DrawCommandBuffer
+{
     DrawElementsIndirectCommand uIndirectDrawCommands[];
 };
 
 uniform vec4 uFrustumPlanes[6];
+uniform mat4 uProjectionMatrix;
+uniform vec3 uCameraPosition;
 
 bool isVisible(vec3 center, vec3 extents)
 {
@@ -54,8 +79,17 @@ bool isVisible(vec3 center, vec3 extents)
             break;
         }
     }
-    
     return isInside;
+}
+
+bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
+{
+    return
+        a.baseInstance == b.baseInstance &&
+        a.instanceCount == b.instanceCount &&
+        a.count == b.count &&
+        a.firstIndex == b.firstIndex &&
+        a.baseVertex == b.baseVertex;
 }
 
 void main()
@@ -64,49 +98,92 @@ void main()
     if (drawId >= uIndirectDrawCommands.length()) return;
 
     DrawElementsIndirectCommand cmd = uIndirectDrawCommands[drawId];
+    PrimitiveDescriptor primitive = uPrimitiveDescriptors[cmd.modelId];
     uint instanceCount = cmd.originalInstanceCount;
     uint baseInstance = cmd.originalBaseInstance;
-    uint modelId = cmd.modelId;
-
-    CullingBounds bound = uModelBounds[modelId];
-    vec3 center = bound.center;
-    vec3 extents = bound.extents;
 
     uint minVisible = 0xFFFFFFFFu;
     uint maxVisible = 0;
-    
+    float closestDistance = 3.402823e+38;
     for (uint j = 0; j < instanceCount; ++j)
     {
         mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].matrix;
 
-        vec3 worldCenter = (modelMatrix * vec4(center, 1.0)).xyz;
+        vec3 worldCenter = (modelMatrix * vec4(primitive.center, 1.0)).xyz;
         mat3 m = mat3(modelMatrix);
         vec3 worldExtents = vec3(
-            dot(abs(m[0]), extents),
-            dot(abs(m[1]), extents),
-            dot(abs(m[2]), extents)
+            dot(abs(m[0]), primitive.extents),
+            dot(abs(m[1]), primitive.extents),
+            dot(abs(m[2]), primitive.extents)
         );
-
+        
         if (isVisible(worldCenter, worldExtents))
         {
             minVisible = min(minVisible, j);
             maxVisible = max(maxVisible, j);
+
+            float dist = length(uCameraPosition - worldCenter);
+            if (dist < closestDistance)
+            {
+                closestDistance = dist;
+            }
         }
     }
 
+    DrawElementsIndirectCommand newCmd = cmd;
     if (minVisible <= maxVisible)
     {
-        uint newBaseInstance = baseInstance + minVisible;
-        uint newInstanceCount = maxVisible - minVisible + 1;
-
-        if (cmd.baseInstance != newBaseInstance || cmd.instanceCount != newInstanceCount)
+        newCmd.baseInstance = baseInstance + minVisible;
+        newCmd.instanceCount = maxVisible - minVisible + 1;
+        
+        // if primitive has at least 2 lods, switch based on screen size
+        if (primitive.maxLod > 0)
         {
-            uIndirectDrawCommands[drawId].baseInstance = newBaseInstance;
-            uIndirectDrawCommands[drawId].instanceCount = newInstanceCount;
+            float screenRadius = primitive.sphereRadius * uProjectionMatrix[1][1] / closestDistance;
+            float screenSize = screenRadius * 2.0;
+
+            uint chosenLod = 0u;
+            for (uint i = 1u; i <= primitive.maxLod; ++i)
+            {
+                float threshold = primitive.screenSize[i / 4u][i % 4u];
+                if (screenSize < threshold)
+                {
+                    chosenLod = i;
+                    break;
+                }
+            }
+
+            uint lod = clamp(chosenLod, 0u, primitive.maxLod);
+            uint lodGroup = lod / 4u;
+            uint lodSub = lod % 4u;
+
+            uint sectionCount = primitive.sectionCount[lodGroup][lodSub];
+            if (cmd.sectionId >= sectionCount)
+            {
+                newCmd.instanceCount = 0;
+            }
+            else
+            {
+                uint sectionOffset = primitive.sectionOffset[lodGroup][lodSub] + cmd.sectionId;
+                SectionDescriptor section = uSectionDescriptors[sectionOffset];
+                
+                newCmd.count = section.count;
+                newCmd.firstIndex = primitive.firstIndex[lodGroup][lodSub] + section.firstIndex;
+                newCmd.baseVertex = primitive.baseVertex[lodGroup][lodSub];
+            }
         }
     }
-    else if (cmd.instanceCount != 0)
+    else
     {
-        uIndirectDrawCommands[drawId].instanceCount = 0;
+        newCmd.instanceCount = 0;
+    }
+    
+    if (!equals(cmd, newCmd))
+    {
+        uIndirectDrawCommands[drawId].count         = newCmd.count;
+        uIndirectDrawCommands[drawId].instanceCount = newCmd.instanceCount;
+        uIndirectDrawCommands[drawId].firstIndex    = newCmd.firstIndex;
+        uIndirectDrawCommands[drawId].baseVertex    = newCmd.baseVertex;
+        uIndirectDrawCommands[drawId].baseInstance  = newCmd.baseInstance;
     }
 }

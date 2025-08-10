@@ -12,6 +12,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
     
     protected bool Enabled { get; private set; } = true;
+    protected NotificationManager Notifications { get; } = new();
 
     public override void Load()
     {
@@ -21,7 +22,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
 
     public override void Update(float delta)
     {
-        var pressed = Window.KeyboardState.IsKeyPressed(Keys.F10);
+        var pressed = Window.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
         
         if (Enabled)
@@ -31,9 +32,23 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         
         if (ActiveCamera is null && Pairs.Count > 0)
             ActiveCamera = Pairs[0].Camera;
-        
-        if (pressed && Enabled == false && ActiveCamera is not null)
-            ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+
+        if (ActiveCamera is not null)
+        {
+            if (pressed && !Enabled)
+                ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+            
+            if (Window.IsKeyPressed(Keys.PageUp))
+            {
+                ActiveCamera.MovementSpeed += 10f;
+                Notifications.PushNotification("Camera", $"Movement speed increased to {ActiveCamera.MovementSpeed}.");
+            }
+            else if (Window.IsKeyPressed(Keys.PageDown))
+            {
+                ActiveCamera.MovementSpeed = MathF.Max(1, ActiveCamera.MovementSpeed - 10f);
+                Notifications.PushNotification("Camera", $"Movement speed decreased to {ActiveCamera.MovementSpeed}.");
+            }
+        }
         
         ActiveCamera?.Update(Window.KeyboardState, delta);
         if (Window.CursorState == CursorState.Grabbed)
@@ -58,7 +73,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
             RenderInterface();
             _controller.Render();
         }
-        else if (ActiveCamera is not null)
+        else if (ActiveCamera is not null && ActiveCamera.PairIndex < Pairs.Count)
         {
             Pairs[ActiveCamera.PairIndex].RenderToScreen(Window.ClientSize.X, Window.ClientSize.Y);
         }

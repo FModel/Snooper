@@ -56,4 +56,5 @@ public struct DrawElementsIndirectCommand
     public uint OriginalInstanceCount;
     public uint OriginalBaseInstance;
     public uint ModelId;
+    public uint SectionId;
 }

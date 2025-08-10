@@ -8,15 +8,25 @@ using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Primitives;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.UI.Systems;
 
 public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 {
+    private bool _once;
+    
     protected override void RenderInterface()
     {
         ImGui.DockSpaceOverViewport();
         
+        Notifications.DrawNotifications();
+        if (!_once)
+        {
+            NotifyOnFirstRender();
+            _once = true;
+        }
+
         ImGui.ShowDemoWindow();
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
@@ -95,15 +105,18 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
         ImGui.PopStyleVar();
 
-        if (RootActor is { } root && ImGui.Begin("Scene Hierarchy"))
+        if (ImGui.Begin("Scene Hierarchy"))
         {
-            foreach (var child in root.Children)
-                DrawActorTree(child);
-            
-            if (ImGui.BeginPopupContextWindow("SceneContext", ImGuiPopupFlags.MouseButtonRight))
+            if (RootActor is { } root)
             {
-                DrawActorCreationMenu(root);
-                ImGui.EndPopup();
+                foreach (var child in root.Children)
+                    DrawActorTree(child);
+            
+                if (ImGui.BeginPopupContextWindow("SceneContext", ImGuiPopupFlags.MouseButtonRight))
+                {
+                    DrawActorCreationMenu(root);
+                    ImGui.EndPopup();
+                }
             }
         }
         ImGui.End();
@@ -126,8 +139,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             ImGui.SeparatorText("Systems");
             foreach (var system in Systems.Values)
             {
-                var name = system.GetType().Name;
-                if (ImGui.CollapsingHeader($"{system.Order} - {name} ({system.SystemType})"))
+                if (ImGui.CollapsingHeader($"{system.Order} - {system.DisplayName} ({system.SystemType})"))
                 {
                     ImGui.TextUnformatted($"Time: {system.Time:F3} s");
                     
@@ -140,7 +152,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                         ImGui.TreePop();
                     }
                     
-                    if (ImGui.TreeNode($"{name}_profiler", "Profiler"))
+                    if (ImGui.TreeNode($"{system.DisplayName}_profiler", "Profiler"))
                     {
                         system.Profiler.PollResults();
 
@@ -163,6 +175,74 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             DrawActorInspector();
         }
         ImGui.End();
+    }
+
+    private void NotifyOnFirstRender()
+    {
+        var systems = Systems.Values.OfType<ITexturedSystem>().Where(s => s.TextureManager.IsLoadingTextures).ToArray();
+        if (systems.Length == 0)
+            return;
+
+        foreach (var system in systems)
+        {
+            Notifications.PushNotification("Loading textures, please wait...", $"{system.GetType().Name}: {system.TextureManager.NumberOfTexturesToLoad} textures", 1, () => system.TextureManager.LoadingProgress);
+        }
+    }
+
+    private bool _loadingTexturesOpen = true;
+    private void DrawLoadingTexturesProgress()
+    {
+        var systems = Systems.Values.OfType<ITexturedSystem>().Where(s => s.TextureManager.IsLoadingTextures).ToArray();
+        if (systems.Length == 0)
+            return;
+        
+        ImGui.OpenPopup("Loading Textures");
+        
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(viewport.Pos);
+        ImGui.SetNextWindowSize(viewport.Size);
+
+        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+                                       ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoTitleBar |
+                                       ImGuiWindowFlags.NoScrollbar;
+        
+        if (ImGui.BeginPopupModal("Loading Textures", ref _loadingTexturesOpen, flags))
+        {
+            const float contentWidth = 400;
+            const string loadingText = "Loading textures, please wait...";
+            
+            var lineHeight = ImGui.CalcTextSize(loadingText).Y;
+            var progressBarHeight = ImGui.GetFrameHeight();
+            var spacing = ImGui.GetStyle().ItemSpacing.Y;
+            var buttonHeight = ImGui.GetFrameHeight();
+
+            var contentHeight = systems.Length * (lineHeight + progressBarHeight + spacing) + buttonHeight * 1.5f;
+
+            var centerX = (ImGui.GetWindowWidth() - contentWidth) * 0.5f;
+            var centerY = (ImGui.GetWindowHeight() - contentHeight) * 0.5f;
+
+            ImGui.SetCursorPos(new Vector2(centerX, centerY));
+
+            ImGui.BeginGroup();
+            {
+                ImGui.TextUnformatted(loadingText);
+                ImGui.Separator();
+                ImGui.Spacing();
+                foreach (var system in systems)
+                {
+                    ImGui.TextUnformatted(system.GetType().Name);
+                    ImGui.ProgressBar(system.TextureManager.LoadingProgress, new Vector2(contentWidth, 0));
+                    ImGui.Spacing();
+                }
+                ImGui.Spacing();
+                ImGui.SetCursorPosX(centerX + (contentWidth - 100) * 0.5f);
+                if (ImGui.Button("Let me in!", new Vector2(100, 0)))
+                    _loadingTexturesOpen = false;
+            }
+            ImGui.EndGroup();
+
+            ImGui.EndPopup();
+        }
     }
 
     private Actor? _selectedActor;

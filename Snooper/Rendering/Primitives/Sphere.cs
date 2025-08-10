@@ -2,11 +2,8 @@
 
 namespace Snooper.Rendering.Primitives;
 
-public struct Sphere : IPrimitiveData
+public class Sphere : PrimitiveData
 {
-    public Vector3[] Vertices { get; }
-    public uint[] Indices { get; }
-
     public Sphere(int sectors = 36, int stacks = 18, float radius = 1.0f)
     {
         List<Vector3> vertices = [];

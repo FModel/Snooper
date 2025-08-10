@@ -7,10 +7,8 @@ public class SkeletalMeshComponent : MeshComponent
 {
     private readonly CSkeletalMesh _mesh;
 
-    public SkeletalMeshComponent(USkeletalMesh owner, CSkeletalMesh mesh) : base(mesh.LODs[0], owner.Materials, mesh.BoundingBox)
+    public SkeletalMeshComponent(USkeletalMesh owner, CSkeletalMesh mesh) : base(mesh.LODs, owner.Materials, mesh.BoundingBox)
     {
         _mesh = mesh;
     }
-
-    protected override IVertexData GetPrimitive(int index) => new Geometry(_mesh.LODs[index]);
 }

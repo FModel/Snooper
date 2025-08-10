@@ -2,11 +2,8 @@
 
 namespace Snooper.Rendering.Primitives;
 
-public readonly struct Plane : IPrimitiveData
+public class Plane : PrimitiveData
 {
-    public Vector3[] Vertices { get; }
-    public uint[] Indices { get; }
-
     public Plane(Vector3 normal)
     {
         var plane = new System.Numerics.Plane(normal, 0);
