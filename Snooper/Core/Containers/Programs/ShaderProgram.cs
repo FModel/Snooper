@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Programs;
 
@@ -58,6 +59,12 @@ public class ShaderProgram(string vertex, string fragment) : Program
         }
 
         return handle;
+    }
+    
+    public void SetUniform(string name, string value)
+    {
+        var nameData = value.PackString();
+        GL.Uniform1(GetUniformLocation(name), nameData.Length, nameData);
     }
 
     public void SetUniform(string name, int value)

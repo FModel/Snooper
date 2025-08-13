@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Snooper.Extensions;
 
@@ -45,5 +46,22 @@ public static class StringExtensions
 
         var ratio = double.CreateChecked(value) / double.CreateChecked(total) * 100;
         return $"{ratio:F2}%";
+    }
+    
+    public static uint[] PackString(this string value)
+    {
+        var nameData = new uint[8];
+        var bytes = Encoding.UTF8.GetBytes(value);
+        for (var i = 0; i < 8; i++)
+        {
+            uint packed = 0;
+            for (var b = 0; b < 4; b++)
+            {
+                var idx = i * 4 + b;
+                packed |= (idx < bytes.Length ? (uint)bytes[idx] : 0) << (8 * b);
+            }
+            nameData[i] = packed;
+        }
+        return nameData;
     }
 }

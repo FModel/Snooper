@@ -27,7 +27,9 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     };
     
     private readonly ShaderStorageBuffer<Vector2> _scales = new(100 * Settings.TessellationQuadCountTotal);
+    private readonly List<string> _layers = [];
     private ColorMode _colorMode = ColorMode.Heightmap;
+    private int _selectedLayer;
 
     public override void Load()
     {
@@ -40,6 +42,11 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         foreach (var component in Components)
         {
             _scales.AddRange(component.Scales);
+            foreach (var layer in component.Layers)
+            {
+                if (!_layers.Contains(layer.Name))
+                    _layers.Add(layer.Name);
+            }
             sizeQuads = Math.Max(sizeQuads, component.SizeQuads);
         }
         _scales.Unbind();
@@ -55,6 +62,10 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         base.PreRender(camera, batchIndex);
     
         Shader.SetUniform("uColorMode", (uint)_colorMode);
+        if (_colorMode == ColorMode.Weightmap)
+        {
+            Shader.SetUniform("uLayerName", _layers.Count > _selectedLayer ? _layers[_selectedLayer] : string.Empty);
+        }
         
         _scales.Bind(2);
     }
@@ -63,7 +74,16 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     {
         var c = (int) _colorMode;
         ImGui.Combo("Color Mode", ref c, "Heightmap\0Weightmap\0");
+        if (_layers.Count == 0)
+        {
+            c = (int) ColorMode.Heightmap; // Default to Heightmap if no layers are available
+        }
         _colorMode = (ColorMode) c;
+        
+        if (_colorMode == ColorMode.Weightmap)
+        {
+            ImGui.Combo("Weightmap Layer", ref _selectedLayer, _layers.ToArray(), _layers.Count);
+        }
     }
 }
 

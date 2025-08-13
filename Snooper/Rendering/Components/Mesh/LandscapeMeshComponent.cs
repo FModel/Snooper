@@ -1,11 +1,10 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
-using CUE4Parse.UE4.Assets.Exports.Material;
-using CUE4Parse.Utils;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
+using Snooper.Extensions;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -32,6 +31,7 @@ public unsafe struct PerDrawLandscapeData : IPerDrawData
     
     public fixed uint Layer_TextureIndex[16]; // if you need more, pack your shit
     public fixed uint Layer_ChannelIndex[16];
+    public fixed uint Layer_Name[16 * 8];
     public fixed float Layer_DebugColor[16 * 4];
 }
 
@@ -40,6 +40,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
 {
     public readonly int SizeQuads;
     public readonly Vector2[] Scales;
+    public readonly WeightmapLayerInfo[] Layers;
     
     public LandscapeMeshComponent(ULandscapeComponent component) : base(new Geometry(component.ComponentSizeQuads), component.CachedLocalBox)
     {
@@ -94,12 +95,14 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             layers.Add(layer);
         }
         
+        Layers = layers.ToArray();
+        
         Materials[0].DrawDataContainer = new DrawDataContainer(
             new Texture2D(heightmap),
             new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
             weightmaps,
             new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W),
-            layers.ToArray());
+            Layers);
 
         SizeQuads = component.ComponentSizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
@@ -203,6 +206,12 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
                     data.Layer_DebugColor[i * 4 + 1] = color.Y;
                     data.Layer_DebugColor[i * 4 + 2] = color.Z;
                     data.Layer_DebugColor[i * 4 + 3] = color.W;
+
+                    var str = layers[i].Name.PackString();
+                    for (var j = 0; j < 8; j++)
+                    {
+                        data.Layer_Name[i * 8 + j] = j < str.Length ? str[j] : 0;
+                    }
                 }
             }
 

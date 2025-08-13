@@ -20,6 +20,7 @@ struct PerDrawData
     
     uint TextureIndex[16];
     uint ChannelIndex[16];
+    uint Layer_Name[16 * 8];
     vec4 DebugColor[16];
 };
 
@@ -47,12 +48,25 @@ uniform float uGlobalScale;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform uint uColorMode;
+uniform uint uLayerName[8];
 
 out TE_OUT {
     vec3 vViewPos;
     mat3 TBN;
     vec3 vColor;
 } te_out;
+
+bool comparePackedName(uint layerName[8], uint targetName[8])
+{
+    for (int i = 0; i < 8; i++)
+    {
+        if (layerName[i] != targetName[i])
+        {
+            return false;
+        }
+    }
+    return true;
+}
 
 vec3 getColorFromHeight(float height)
 {
@@ -101,10 +115,15 @@ vec3 getColorFromWeightmap(PerDrawData drawData)
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
     
     vec3 blendColor = vec3(0.0);
-    float totalWeight = 0.0;
-
+    float gray = 0.0;
     for (int i = 0; i < int(drawData.LayerCount); ++i)
     {
+        uint layerPacked[8];
+        for (int j = 0; j < 8; j++)
+        {
+            layerPacked[j] = drawData.Layer_Name[i * 8 + j];
+        }
+
         uint texIndex = drawData.TextureIndex[i];
         vec2 weightmapSize = textureSize(drawData.Weightmaps[texIndex], 0);
         vec2 texelSize = 1.0 / weightmapSize;
@@ -116,18 +135,18 @@ vec3 getColorFromWeightmap(PerDrawData drawData)
         float weight = texture(drawData.Weightmaps[texIndex], uv2)[drawData.ChannelIndex[i]];
         if (weight <= 0.0) continue;
 
-        float alpha = drawData.DebugColor[i].a;
-        float priority = weight * alpha;
-
-        blendColor += drawData.DebugColor[i].rgb * priority;
-        totalWeight += priority;
+        if (comparePackedName(layerPacked, uLayerName))
+        {
+            float alpha = drawData.DebugColor[i].a;
+            blendColor += drawData.DebugColor[i].rgb * weight * alpha;
+        }
+        else
+        {
+            gray += weight;
+        }
     }
 
-    if (totalWeight > 0.0)
-    {
-        blendColor /= totalWeight;
-    }
-    
+    blendColor += vec3(gray) * 0.05;
     return blendColor;
 }
 
