@@ -1,6 +1,6 @@
 ﻿namespace Snooper.UI;
 
-public interface IControllableComponent
+public interface IControllable
 {
     public void DrawControls();
 }

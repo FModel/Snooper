@@ -13,10 +13,10 @@ public interface IPerDrawData
 
 public struct PerDrawData : IPerDrawData
 {
-    public bool IsReady { get; set; }
+    public bool IsReady { get; init; }
 }
 
-public interface IDrawDataContainer : IControllableComponent
+public interface IDrawDataContainer : IControllable, IDisposable
 {
     public IPerDrawData? Raw { get; }
     public bool HasTextures { get; }

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -6,10 +7,11 @@ using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Systems;
 
-public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerDrawLandscapeData>(100, PrimitiveType.Patches)
+public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerDrawLandscapeData>(100, PrimitiveType.Patches), IControllable
 {
     public override uint Order => 21;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
@@ -25,6 +27,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     };
     
     private readonly ShaderStorageBuffer<Vector2> _scales = new(100 * Settings.TessellationQuadCountTotal);
+    private ColorMode _colorMode = ColorMode.Heightmap;
 
     public override void Load()
     {
@@ -51,6 +54,21 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     {
         base.PreRender(camera, batchIndex);
     
+        Shader.SetUniform("uColorMode", (uint)_colorMode);
+        
         _scales.Bind(2);
     }
+
+    public void DrawControls()
+    {
+        var c = (int) _colorMode;
+        ImGui.Combo("Color Mode", ref c, "Heightmap\0Weightmap\0");
+        _colorMode = (ColorMode) c;
+    }
+}
+
+public enum ColorMode : byte
+{
+    Heightmap,
+    Weightmap
 }

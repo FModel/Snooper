@@ -24,10 +24,10 @@ public readonly struct Vertex(Vector3 position, Vector3 normal, Vector3 tangent,
 public struct PerDrawMeshData : IPerDrawData
 {
     public bool IsReady { get; init; }
-    public int Padding { get; init; }
-    public long Diffuse { get; init; }
-    public long Normal { get; init; }
-    public long Specular { get; init; }
+    public uint Padding { get; init; }
+    public ulong Diffuse { get; init; }
+    public ulong Normal { get; init; }
+    public ulong Specular { get; init; }
 }
 
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
@@ -157,8 +157,8 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             {
                 IsReady = true,
                 Diffuse = _diffuse,
-                Normal = _normal ?? 0L,
-                Specular = _specular ?? 0L,
+                Normal = _normal ?? 0UL,
+                Specular = _specular ?? 0UL,
             };
         }
 
@@ -175,6 +175,19 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             // ImGui.Image(normal.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
             // ImGui.SameLine();
             // ImGui.Image(specular.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
+        }
+
+        public void Dispose()
+        {
+            _diffuse?.Dispose();
+            _normal?.Dispose();
+            _specular?.Dispose();
+            
+            _diffuse = null;
+            _normal = null;
+            _specular = null;
+            
+            Raw = null;
         }
     }
 

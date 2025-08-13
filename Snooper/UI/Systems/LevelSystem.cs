@@ -165,6 +165,15 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                         
                         ImGui.TreePop();
                     }
+
+                    if (system is IControllable controllable)
+                    {
+                        if (ImGui.TreeNode($"{system.DisplayName}_controls", "Controls"))
+                        {
+                            controllable.DrawControls();
+                            ImGui.TreePop();
+                        }
+                    }
                 }
             }
         }

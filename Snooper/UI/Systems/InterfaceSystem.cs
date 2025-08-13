@@ -11,6 +11,9 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
 {
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
     
+    private const float KeyDownCooldown = 0.2f;
+    private float _keyDownTimer;
+    
     protected bool Enabled { get; private set; } = true;
     protected NotificationManager Notifications { get; } = new();
 
@@ -22,6 +25,8 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
 
     public override void Update(float delta)
     {
+        _keyDownTimer -= delta;
+        
         var pressed = Window.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
         
@@ -37,16 +42,21 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         {
             if (pressed && !Enabled)
                 ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
-            
-            if (Window.IsKeyPressed(Keys.PageUp))
+
+            if (_keyDownTimer <= 0)
             {
-                ActiveCamera.MovementSpeed += 10f;
-                Notifications.PushNotification("Camera", $"Movement speed increased to {ActiveCamera.MovementSpeed}.");
-            }
-            else if (Window.IsKeyPressed(Keys.PageDown))
-            {
-                ActiveCamera.MovementSpeed = MathF.Max(1, ActiveCamera.MovementSpeed - 10f);
-                Notifications.PushNotification("Camera", $"Movement speed decreased to {ActiveCamera.MovementSpeed}.");
+                if (Window.IsKeyDown(Keys.PageUp))
+                {
+                    ActiveCamera.MovementSpeed += 10f;
+                    Notifications.PushNotification("Camera", $"Movement speed increased to {ActiveCamera.MovementSpeed}.");
+                    _keyDownTimer = KeyDownCooldown;
+                }
+                else if (Window.IsKeyDown(Keys.PageDown))
+                {
+                    ActiveCamera.MovementSpeed = MathF.Max(1, ActiveCamera.MovementSpeed - 10f);
+                    Notifications.PushNotification("Camera", $"Movement speed decreased to {ActiveCamera.MovementSpeed}.");
+                    _keyDownTimer = KeyDownCooldown;
+                }
             }
         }
         

@@ -8,15 +8,35 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
 
+[Flags]
+public enum WorldActorType
+{
+    Components        = 1 << 1,
+    Landscape         = 1 << 2,
+    WorldPartition    = 1 << 3,
+    LevelStreaming    = 1 << 4,
+    AdditionalWorlds  = 1 << 5,
+
+    BaseResolution    = Components | Landscape | AdditionalWorlds, // loads whatever components this world has, including landscape but excluding world partition and level streaming
+    HighResolution    = Landscape | WorldPartition | LevelStreaming, // loads only landscape from this world and parse partition and level streaming at BaseResolution
+}
+
 public class WorldActor : Actor
 {
-    public WorldActor(UWorld world, TransformComponent? transform = null, bool highres = false) : base(world.Name, transform: transform)
+    public WorldActor(UWorld world, TransformComponent? transform = null, WorldActorType type = WorldActorType.BaseResolution) : base(world.Name, transform: transform)
     {
-        for (var i = 0; i < world.StreamingLevels.Length; i++)
+        var compoments = type.Includes(WorldActorType.Components);
+        var landscape = type.Includes(WorldActorType.Landscape);
+        var partition = type.Includes(WorldActorType.WorldPartition);
+        var streaming = type.Includes(WorldActorType.LevelStreaming);
+        var additional = type.Includes(WorldActorType.AdditionalWorlds);
+
+        for (var i = 0; streaming && i < world.StreamingLevels.Length; i++)
         {
             Process(world.StreamingLevels[i]);
             if (i > 5) break; // TODO: optimize
@@ -30,30 +50,33 @@ public class WorldActor : Actor
             
             var root = actor.GetOrDefault<FPackageIndex?>("RootComponent");
             var scene = root?.Load<USceneComponent>();
-            if (actor is ALandscapeProxy landscape)
+            if (landscape && actor is ALandscapeProxy proxy)
             {
-                Children.Add(new LandscapeProxyActor(landscape, scene?.GetRelativeTransform()));
+                Children.Add(new LandscapeProxyActor(proxy, scene?.GetRelativeTransform()));
                 continue;
             }
 
-            if (highres)
+            if (partition)
             {
                 Process(actor.GetOrDefault<FPackageIndex?>("WorldPartition"));
                 continue;
             }
 
-            // am I crazy or InstanceComponents[0] may or may not be the root component?
-            CreateActor(root);
-            CreateActor(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
-            CreateActor(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+            if (compoments)
+            {
+                // am I crazy or InstanceComponents[0] may or may not be the root component?
+                CreateActor(root);
+                CreateActor(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
+                CreateActor(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+            }
             
-            if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
+            if (additional && actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
             {
                 // this is a visual hack to add additional worlds to the scene
                 // technically additional worlds are children of the root component
                 foreach (var additionalWorld in additionalWorlds)
                 {
-                    Children.Add(new WorldActor(additionalWorld, scene?.GetRelativeTransform()));
+                    Children.Add(new WorldActor(additionalWorld, scene?.GetRelativeTransform(), WorldActorType.Components));
                 }
             }
         }
@@ -76,7 +99,7 @@ public class WorldActor : Actor
                 for (var i = 0; i < hlod.SpatiallyLoadedCells.Length; i++)
                 {
                     Process(hlod.SpatiallyLoadedCells[i]); // UWorldPartitionRuntimeLevelStreamingCell
-                    if (i > 250) break; // TODO: optimize
+                    if (i > 150) break; // TODO: optimize
                 }
                 break;
             }

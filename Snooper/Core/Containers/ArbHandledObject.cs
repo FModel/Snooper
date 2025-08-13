@@ -7,5 +7,5 @@ public abstract class ArbHandledObject : IDisposable
     public abstract void Generate();
     public abstract void Dispose();
 
-    public static implicit operator long(ArbHandledObject @object) => @object.ArbHandle;
+    public static implicit operator ulong(ArbHandledObject @object) => (ulong)@object.ArbHandle;
 }

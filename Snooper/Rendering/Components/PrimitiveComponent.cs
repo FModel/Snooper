@@ -11,7 +11,7 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
 
-public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : ActorComponent, IControllableComponent
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : ActorComponent, IControllable
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
@@ -103,20 +103,20 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         //     ImGui.Separator();
         // }
 
-        // ImGui.SeparatorText($"{Sections.Length} Section{(Sections.Length > 1 ? "s" : "")}");
-        // foreach (var section in Sections)
-        // {
-        //     ImGui.Text($"DrawID {section.DrawMetadata.DrawId}");
-        //     ImGui.Text($"Material Index: {section.MaterialIndex}");
-        //     if (section.DrawDataContainer is not null)
-        //     {
-        //         section.DrawDataContainer.DrawControls();
-        //     }
-        //     else
-        //     {
-        //         ImGui.Text("No draw data container available.");
-        //     }
-        // }
+        ImGui.SeparatorText($"{Materials.Length} Material{(Materials.Length > 1 ? "s" : "")}");
+        foreach (var material in Materials)
+        {
+            ImGui.Text($"DrawID {material.DrawMetadata.DrawId}");
+            ImGui.Text($"Material Index: {material.MaterialIndex}");
+            if (material.DrawDataContainer is not null)
+            {
+                material.DrawDataContainer.DrawControls();
+            }
+            else
+            {
+                ImGui.Text("No draw data container available.");
+            }
+        }
     }
 }
 

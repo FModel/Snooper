@@ -1,5 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+using CUE4Parse.UE4.Assets.Exports.Material;
+using CUE4Parse.Utils;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
@@ -9,12 +11,28 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
-public struct PerDrawLandscapeData : IPerDrawData
+public struct WeightmapLayerInfo
+{
+    public uint ChannelIndex;
+    public uint TextureIndex;
+    public string Name;
+    public Vector4 DebugColor;
+}
+
+public unsafe struct PerDrawLandscapeData : IPerDrawData
 {
     public bool IsReady { get; init; }
-    public int Padding { get; init; }
-    public long Heightmap { get; init; }
-    public Vector2 ScaleBias { get; init; }
+    public uint LayerCount;
+
+    public ulong Heightmap;
+    public fixed ulong Weightmaps[8];
+    
+    public Vector2 HeightmapScaleBias;
+    public Vector2 WeightmapScaleBias;
+    
+    public fixed uint Layer_TextureIndex[16]; // if you need more, pack your shit
+    public fixed uint Layer_ChannelIndex[16];
+    public fixed float Layer_DebugColor[16 * 4];
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
@@ -30,7 +48,58 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             throw new InvalidOperationException("Landscape component does not have a valid heightmap.");
         }
 
-        Materials[0].DrawDataContainer = new DrawDataContainer(new Texture2D(heightmap), new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W));
+        var textures = component.GetWeightmapTextures();
+        var weightmaps = new Texture[textures.Length];
+        for (var i = 0; i < weightmaps.Length; i++)
+        {
+            weightmaps[i] = new Texture2D(textures[i]);
+        }
+        
+        var allocations = component.WeightmapLayerAllocations;
+        var layers = new List<WeightmapLayerInfo>();
+        for (var i = 0; i < allocations.Length; i++)
+        {
+            if (!allocations[i].LayerInfo.TryLoad(out ULandscapeLayerInfoObject info)) continue;
+
+            var layer = new WeightmapLayerInfo
+            {
+                ChannelIndex = allocations[i].WeightmapTextureChannel,
+                TextureIndex = allocations[i].WeightmapTextureIndex,
+                Name = info.LayerName.Text,
+                DebugColor = info.LayerUsageDebugColor
+            };
+
+            // var name = info.LayerName.Text.SubstringBefore('_');
+            // layer.DebugColor = name switch
+            // {
+            //     "Grass"   => new Vector4(0.05f, 0.60f, 0.05f, 0.3f),  // low priority
+            //     "Mud"     => new Vector4(0.45f, 0.25f, 0.10f, 0.5f),  // medium-low priority
+            //     "Sand"    => new Vector4(0.95f, 0.85f, 0.55f, 1.0f),  // highest priority
+            //     "Snow"    => new Vector4(0.95f, 0.98f, 1.00f, 0.3f),  // low priority
+            //     "Rock"    => new Vector4(0.55f, 0.55f, 0.60f, 0.6f),  // medium priority
+            //     "Water"   => new Vector4(0.05f, 0.35f, 0.95f, 1.0f),  // medium-high priority
+            //     "Gravel"  => new Vector4(0.65f, 0.65f, 0.65f, 0.5f),  // medium-low priority
+            //     "Road"    => new Vector4(0.20f, 0.20f, 0.20f, 0.9f),  // very high priority
+            //     "Forest"  => new Vector4(0.00f, 0.45f, 0.00f, 0.5f),  // medium-low priority
+            //     "Flowers" => new Vector4(1.00f, 0.40f, 0.20f, 0.3f),  // low priority
+            //     "Asphalt" => new Vector4(0.10f, 0.10f, 0.10f, 1.0f),  // highest priority
+            //     "Mountain" => new Vector4(0.60f, 0.60f, 0.60f, 0.5f), // medium priority
+            //     "Dirt"    => new Vector4(0.55f, 0.45f, 0.35f, 0.5f),  // medium-low priority
+            //     "CraterOvergrowth" => new Vector4(0.30f, 0.50f, 0.30f, 0.3f), // low priority
+            //     "Crater" => new Vector4(0.50f, 0.50f, 0.50f, 0.5f), // medium priority
+            //     "Arid" => new Vector4(0.70f, 0.60f, 0.50f, 0.5f), // medium-low priority
+            //     _         => layer.DebugColor/* with { W = 0.1f }*/
+            // };
+
+            layers.Add(layer);
+        }
+        
+        Materials[0].DrawDataContainer = new DrawDataContainer(
+            new Texture2D(heightmap),
+            new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
+            weightmaps,
+            new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W),
+            layers.ToArray());
 
         SizeQuads = component.ComponentSizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
@@ -45,29 +114,47 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
         }
     }
 
-    private class DrawDataContainer(Texture heightmap, Vector2 scaleBias) : IDrawDataContainer
+    private class DrawDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, WeightmapLayerInfo[] layers) : IDrawDataContainer
     {
         private BindlessTexture? _heightmap;
+        private BindlessTexture?[]? _weightmaps = new BindlessTexture[weightmaps.Length];
         
         public bool HasTextures => true;
 
-        public Dictionary<string, Texture> GetTextures() => new()
+        public Dictionary<string, Texture> GetTextures()
         {
-            ["Heightmap"] = heightmap
-        };
+            var textures = new Dictionary<string, Texture>
+            {
+                { "Heightmap", heightmap }
+            };
+
+            for (var i = 0; i < weightmaps.Length; i++)
+            {
+                textures[$"Weightmap_{i}"] = weightmaps[i];
+            }
+
+            return textures;
+        }
 
         public void SetBindlessTexture(string key, BindlessTexture bindless)
         {
-            _heightmap = key switch
+            var parts = key.Split('_');
+            switch (parts[0])
             {
-                "Heightmap" => bindless,
-                _ => throw new ArgumentException($"Unknown texture key: {key}")
-            };
+                case "Heightmap":
+                    _heightmap = bindless;
+                    break;
+                case "Weightmap" when _weightmaps is not null && parts.Length == 2 && int.TryParse(parts[1], out var index):
+                    _weightmaps[index] = bindless;
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown texture key: {key}");
+            }
         }
 
         public void FinalizeGpuData()
         {
-            if (_heightmap is null)
+            if (_heightmap is null || _weightmaps?.Length != weightmaps.Length)
             {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
             }
@@ -75,22 +162,88 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             _heightmap.Generate();
             _heightmap.MakeResident();
             
-            Raw = new PerDrawLandscapeData
+            var data = new PerDrawLandscapeData
             {
                 IsReady = true,
+                
                 Heightmap = _heightmap,
-                ScaleBias = scaleBias
+                HeightmapScaleBias = heightmapScaleBias,
+                
+                LayerCount = (uint)layers.Length,
+                WeightmapScaleBias = weightmapScaleBias,
             };
+
+            unsafe
+            {
+                for (var i = 0; i < 8; i++)
+                {
+                    if (i >= _weightmaps.Length) break;
+                    
+                    var weightmap = _weightmaps[i];
+                    if (weightmap is null)
+                    {
+                        throw new InvalidOperationException($"Weightmap at index {i} is not set.");
+                    }
+                    
+                    weightmap.Generate();
+                    weightmap.MakeResident();
+                    
+                    data.Weightmaps[i] = weightmap;
+                }
+                
+                for (var i = 0; i < 16; i++)
+                {
+                    if (i >= layers.Length) break;
+                    
+                    data.Layer_TextureIndex[i] = layers[i].TextureIndex;
+                    data.Layer_ChannelIndex[i] = layers[i].ChannelIndex;
+                    
+                    var color = layers[i].DebugColor;
+                    data.Layer_DebugColor[i * 4] = color.X;
+                    data.Layer_DebugColor[i * 4 + 1] = color.Y;
+                    data.Layer_DebugColor[i * 4 + 2] = color.Z;
+                    data.Layer_DebugColor[i * 4 + 3] = color.W;
+                }
+            }
+
+            Raw = data;
         }
         
         public IPerDrawData? Raw { get; private set; }
         
         public void DrawControls()
         {
-            var largest = ImGui.GetContentRegionAvail();
-            largest.X -= ImGui.GetScrollX();
+            ImGui.SeparatorText("Layers");
             
-            ImGui.Image(heightmap.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
+            for (var i = 0; i < layers.Length; i++)
+            {
+                ImGui.Text($"Layer {i}: {layers[i].Name}");
+                ImGui.Text($"Texture Index: {layers[i].TextureIndex}");
+                ImGui.SameLine();
+                ImGui.Text($"Channel Index: {layers[i].ChannelIndex}");
+                ImGui.SameLine();
+                ImGui.PushID(i);
+                ImGui.ColorButton("Debug Color", layers[i].DebugColor);
+                ImGui.PopID();
+            }
+        }
+
+        public void Dispose()
+        {
+            _heightmap?.Dispose();
+            _heightmap = null;
+            
+            if (_weightmaps is not null)
+            {
+                for (var i = 0; i < _weightmaps.Length; i++)
+                {
+                    _weightmaps[i]?.Dispose();
+                }
+                Array.Clear(_weightmaps);
+                _weightmaps = null;
+            }
+            
+            Raw = null;
         }
     }
 

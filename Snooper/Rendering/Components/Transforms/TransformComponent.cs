@@ -8,7 +8,7 @@ using Snooper.UI;
 namespace Snooper.Rendering.Components.Transforms;
 
 [DefaultActorSystem(typeof(TransformSystem))]
-public sealed class TransformComponent() : ActorComponent, IControllableComponent
+public sealed class TransformComponent() : ActorComponent, IControllable
 {
     private Matrix4x4 _localMatrix = Matrix4x4.Identity;
     public Matrix4x4 LocalMatrix

@@ -12,7 +12,7 @@ namespace Snooper.Rendering.Components;
 public struct PerDrawDebugData : IPerDrawData
 {
     public bool IsReady { get; init; }
-    public long Padding { get; init; }
+    public ulong Padding { get; init; }
     public Vector3 Color { get; init; }
 }
 
@@ -47,6 +47,11 @@ public class DebugComponent(PrimitiveData primitive, CullingBounds bounds) : Pri
         public void DrawControls()
         {
             ImGui.ColorButton("Debug Color", new Vector4(color, 1.0f), ImGuiColorEditFlags.NoPicker | ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoTooltip);
+        }
+
+        public void Dispose()
+        {
+            Raw = null;
         }
     }
 

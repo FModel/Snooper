@@ -8,7 +8,7 @@ using Snooper.UI;
 namespace Snooper.Rendering.Components.Camera;
 
 [DefaultActorSystem(typeof(CameraSystem))]
-public sealed class CameraComponent : ActorComponent, IControllableComponent
+public sealed class CameraComponent : ActorComponent, IControllable
 {
     internal int PairIndex = -1;
     internal bool IsActive = false;

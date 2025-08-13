@@ -24,7 +24,7 @@ public abstract partial class ActorComponent
 
     internal void DrawInterface()
     {
-        if (this is not IControllableComponent controllable) return;
+        if (this is not IControllable controllable) return;
         
         if (ImGui.CollapsingHeader($"{DisplayName} Controls"))
         {

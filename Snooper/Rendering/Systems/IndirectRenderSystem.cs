@@ -41,6 +41,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             }
             
             Resources.Update(material.DrawMetadata.DrawId, raw);
+            material.DrawDataContainer?.Dispose();
         };
     }
 
