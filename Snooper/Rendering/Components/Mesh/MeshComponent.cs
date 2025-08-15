@@ -3,10 +3,12 @@ using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
+using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
@@ -24,10 +26,11 @@ public readonly struct Vertex(Vector3 position, Vector3 normal, Vector3 tangent,
 public struct PerDrawMeshData : IPerDrawData
 {
     public bool IsReady { get; init; }
-    public uint Padding { get; init; }
-    public ulong Diffuse { get; init; }
-    public ulong Normal { get; init; }
-    public ulong Specular { get; init; }
+    public uint Padding;
+    public ulong Diffuse;
+    public ulong Normal;
+    public ulong Specular;
+    public Vector2 Roughness;
 }
 
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
@@ -54,11 +57,38 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                         {
                             parameters.TryGetTexture2d(out var normal, CMaterialParams2.Normals[j]);
                             parameters.TryGetTexture2d(out var specular, CMaterialParams2.SpecularMasks[j]);
+                            
+                            var roughness = Vector2.UnitY;
+                            if (parameters.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
+                                roughness.X = roughnessMin;
+                            if (parameters.TryGetScalar(out var roughnessMax, "RoughnessMax", "SpecRoughnessMax"))
+                                roughness.Y = roughnessMax;
+
+                            var s = specular != null ? new Texture2D(specular) : null;
+                            if (s != null)
+                            {
+                                if ((parameters.TryGetSwitch(out var srg, "SwizzleRoughnessToGreen") && srg) ||
+                                    parameters.Textures.ContainsKey("SRM"))
+                                {
+                                    s.SwizzleMask =
+                                    [
+                                        (int) PixelFormat.Red,
+                                        (int) PixelFormat.Blue,
+                                        (int) PixelFormat.Green,
+                                        (int) PixelFormat.Alpha
+                                    ];
+                                }
+                                else
+                                {
+                                    s.SwizzlePerGame(specular.Owner.Provider.ProjectName.ToUpperInvariant());
+                                }
+                            }
 
                             Materials[index].DrawDataContainer = new DrawDataContainer(
                                 new Texture2D(diffuse),
                                 normal != null ? new Texture2D(normal) : null,
-                                specular != null ? new Texture2D(specular) : null);
+                                s,
+                                roughness);
                             
                             break;
                         }
@@ -94,7 +124,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         return geometries;
     }
 
-    private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular) : IDrawDataContainer
+    private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular, Vector2? roughness = null) : IDrawDataContainer
     {
         private BindlessTexture? _diffuse;
         private BindlessTexture? _normal;
@@ -159,6 +189,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 Diffuse = _diffuse,
                 Normal = _normal ?? 0UL,
                 Specular = _specular ?? 0UL,
+                Roughness = roughness ?? Vector2.UnitY
             };
         }
 

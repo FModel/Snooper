@@ -5,7 +5,11 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Snooper.Core.Containers.Textures;
 
-public class EmbeddedTexture2D(string file) : Texture2D(24, 24, PixelInternalFormat.Rgba8)
+public class EmbeddedTexture2D(string file,
+    int width = 24, int height = 24,
+    PixelInternalFormat internalFormat = PixelInternalFormat.Rgba8,
+    PixelFormat format = PixelFormat.Rgba,
+    PixelType type = PixelType.UnsignedByte) : Texture2D(width, height, internalFormat, format, type)
 {
     private readonly Assembly _assembly = Assembly.GetExecutingAssembly();
 
@@ -26,7 +30,7 @@ public class EmbeddedTexture2D(string file) : Texture2D(24, 24, PixelInternalFor
     private void ProcessPixels(TextureFormatInfo info)
     {
         var assemblyName = _assembly.GetName().Name;
-        using var stream = _assembly.GetManifestResourceStream($"{assemblyName}.UI.Icons.{file.Replace('\\', '.').Replace('/', '.')}");
+        using var stream = _assembly.GetManifestResourceStream($"{assemblyName}.UI.Textures.{file.Replace('\\', '.').Replace('/', '.')}");
         if (stream == null)
             throw new FileNotFoundException($"Embedded texture file '{file}' not found in assembly '{assemblyName}'.");
         

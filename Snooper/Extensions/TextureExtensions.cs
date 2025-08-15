@@ -20,7 +20,7 @@ public static class TextureExtensions
             // R: Metallic
             // G: Roughness
             // B: Whatever (AO / S / E / ...)
-            "SHOOTERGAME" or "DIVINEKNOCKOUT" or "MOONMAN" =>
+            "DIVINEKNOCKOUT" or "MOONMAN" =>
             [
                 (int)PixelFormat.Blue, (int)PixelFormat.Red, (int)PixelFormat.Green, (int)PixelFormat.Alpha
             ],
@@ -33,15 +33,14 @@ public static class TextureExtensions
             ],
             _ => texture.SwizzleMask
         };
-        texture.Swizzle();
     }
     
-    public static ITextureFormatInfo GetTextureFormat(this EPixelFormat format)
+    public static ITextureFormatInfo GetTextureFormat(this EPixelFormat format, bool srgb)
     {
         var compressed = format.IsCompressed();
-        if (compressed) return new CompressedTextureFormatInfo(format.GetCompressedFormat());
+        if (compressed) return new CompressedTextureFormatInfo(format.GetCompressedFormat(srgb));
         
-        var (internalFormat, pixelFormat, pixelType) = format.GetUncompressedFormats();
+        var (internalFormat, pixelFormat, pixelType) = format.GetUncompressedFormats(srgb);
         return new TextureFormatInfo(internalFormat, pixelFormat, pixelType);
     }
     
@@ -66,10 +65,15 @@ public static class TextureExtensions
             _ => true
         };
     
-    private static (PixelInternalFormat, PixelFormat, PixelType) GetUncompressedFormats(this EPixelFormat format)
+    private static (PixelInternalFormat, PixelFormat, PixelType) GetUncompressedFormats(this EPixelFormat format, bool srgb)
     {
         return format switch
         {
+            EPixelFormat.PF_B8G8R8A8 when srgb => (
+                PixelInternalFormat.Srgb8Alpha8,
+                PixelFormat.Bgra,
+                PixelType.UnsignedByte
+            ),
             EPixelFormat.PF_B8G8R8A8 => (
                 PixelInternalFormat.Rgba8,
                 PixelFormat.Bgra,
@@ -139,10 +143,13 @@ public static class TextureExtensions
         };
     }
     
-    private static InternalFormat GetCompressedFormat(this EPixelFormat format)
+    private static InternalFormat GetCompressedFormat(this EPixelFormat format, bool srgb)
     {
         return format switch
         {
+            EPixelFormat.PF_DXT1 when srgb => InternalFormat.CompressedSrgbAlphaS3tcDxt1Ext,
+            EPixelFormat.PF_DXT3 when srgb => InternalFormat.CompressedSrgbAlphaS3tcDxt3Ext,
+            EPixelFormat.PF_DXT5 when srgb => InternalFormat.CompressedSrgbAlphaS3tcDxt5Ext,
             EPixelFormat.PF_DXT1 => InternalFormat.CompressedRgbaS3tcDxt1Ext,
             EPixelFormat.PF_DXT3 => InternalFormat.CompressedRgbaS3tcDxt3Ext,
             EPixelFormat.PF_DXT5 => InternalFormat.CompressedRgbaS3tcDxt5Ext,
@@ -151,12 +158,20 @@ public static class TextureExtensions
             EPixelFormat.PF_BC6H => InternalFormat.CompressedRgbBptcUnsignedFloat,
             EPixelFormat.PF_BC7 => InternalFormat.CompressedRgbaBptcUnorm,
         
+            EPixelFormat.PF_ASTC_4x4 when srgb => (InternalFormat)All.CompressedSrgb8Alpha8Astc4X4,
+            EPixelFormat.PF_ASTC_6x6 when srgb => (InternalFormat)All.CompressedSrgb8Alpha8Astc6X6,
+            EPixelFormat.PF_ASTC_8x8 when srgb => (InternalFormat)All.CompressedSrgb8Alpha8Astc8X8,
+            EPixelFormat.PF_ASTC_10x10 when srgb => (InternalFormat)All.CompressedSrgb8Alpha8Astc10X10,
+            EPixelFormat.PF_ASTC_12x12 when srgb => (InternalFormat)All.CompressedSrgb8Alpha8Astc12X12,
             EPixelFormat.PF_ASTC_4x4 => (InternalFormat)All.CompressedRgbaAstc4X4,
             EPixelFormat.PF_ASTC_6x6 => (InternalFormat)All.CompressedRgbaAstc6X6,
             EPixelFormat.PF_ASTC_8x8 => (InternalFormat)All.CompressedRgbaAstc8X8,
             EPixelFormat.PF_ASTC_10x10 => (InternalFormat)All.CompressedRgbaAstc10X10,
             EPixelFormat.PF_ASTC_12x12 => (InternalFormat)All.CompressedRgbaAstc12X12,
             
+            // EPixelFormat.PF_ETC1 when srgb => (InternalFormat)All.CompressedSrgb8Etc2,
+            EPixelFormat.PF_ETC2_RGB when srgb => (InternalFormat)All.CompressedSrgb8Etc2,
+            EPixelFormat.PF_ETC2_RGBA when srgb => (InternalFormat)All.CompressedSrgb8Alpha8Etc2Eac,
             // EPixelFormat.PF_ETC1 => (InternalFormat)All.CompressedRgb8Etc2,
             EPixelFormat.PF_ETC2_RGB => (InternalFormat)All.CompressedRgb8Etc2,
             EPixelFormat.PF_ETC2_RGBA => (InternalFormat)All.CompressedRgba8Etc2Eac,

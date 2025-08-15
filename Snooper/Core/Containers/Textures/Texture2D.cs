@@ -31,8 +31,8 @@ public class Texture2D(int width, int height,
         var mip = _owner.GetFirstMip();
         if (mip?.BulkData == null)
             throw new InvalidOperationException("Mip data is null.");
-                
-        Resize(_owner.Format, mip);
+
+        Resize(_owner.Format, mip, _owner.SRGB);
         Swizzle();
         
         if (_owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap)

@@ -10,10 +10,10 @@ struct PerInstanceData
 struct PerDrawData
 {
     bool IsReady;
-    uint LayerCount;
+    uint LayerWeightCounts;
 
     sampler2D Heightmap;
-    sampler2D Weightmaps[8];
+    sampler2D Weightmaps[4];
 
     vec2 HeightmapScaleBias;
     vec2 WeightmapScaleBias;
@@ -114,35 +114,45 @@ vec3 getColorFromWeightmap(PerDrawData drawData)
     float quadFraction = 1.0 / uQuadCount;
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
     
+    int layerCount = int(drawData.LayerWeightCounts & 0xFFFFu);
+    int weightmapCount = int((drawData.LayerWeightCounts >> 16) & 0xFFFFu);
+    
     vec3 blendColor = vec3(0.0);
     float gray = 0.0;
-    for (int i = 0; i < int(drawData.LayerCount); ++i)
+    
+    for (int i = 0; i < weightmapCount; ++i)
     {
-        uint layerPacked[8];
-        for (int j = 0; j < 8; j++)
-        {
-            layerPacked[j] = drawData.Layer_Name[i * 8 + j];
-        }
-
-        uint texIndex = drawData.TextureIndex[i];
-        vec2 weightmapSize = textureSize(drawData.Weightmaps[texIndex], 0);
+        vec2 weightmapSize = textureSize(drawData.Weightmaps[i], 0);
         vec2 texelSize = 1.0 / weightmapSize;
         vec2 weightmapUvSize = vec2(uSizeQuads) / weightmapSize;
 
         vec2 uv2 = drawData.WeightmapScaleBias + subPatchOffset * weightmapUvSize + gl_TessCoord.xy * (weightmapUvSize * quadFraction);
         uv2 = uv2 * (1.0 - texelSize) + 0.5 * texelSize;
-
-        float weight = texture(drawData.Weightmaps[texIndex], uv2)[drawData.ChannelIndex[i]];
-        if (weight <= 0.0) continue;
-
-        if (comparePackedName(layerPacked, uLayerName))
+        
+        vec4 weightmapColor = texture(drawData.Weightmaps[i], uv2);
+        
+        for (int j = 0; j < layerCount; ++j)
         {
-            float alpha = drawData.DebugColor[i].a;
-            blendColor += drawData.DebugColor[i].rgb * weight * alpha;
-        }
-        else
-        {
-            gray += weight;
+            if (i != drawData.TextureIndex[j]) continue;
+            
+            float weight = weightmapColor[drawData.ChannelIndex[j]];
+            if (weight <= 0.0) continue;
+
+            uint layerPacked[8];
+            for (int k = 0; k < 8; k++)
+            {
+                layerPacked[k] = drawData.Layer_Name[j * 8 + k];
+            }
+
+            if (comparePackedName(layerPacked, uLayerName))
+            {
+                float alpha = drawData.DebugColor[j].a;
+                blendColor += drawData.DebugColor[j].rgb * weight * alpha;
+            }
+            else
+            {
+                gray += weight;
+            }
         }
     }
 
@@ -211,4 +221,5 @@ void main()
     {
         te_out.vColor = getColorFromWeightmap(drawData);
     }
+    te_out.vColor = pow(te_out.vColor, vec3(2.2)); // to srgb
 }

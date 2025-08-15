@@ -21,10 +21,10 @@ public struct WeightmapLayerInfo
 public unsafe struct PerDrawLandscapeData : IPerDrawData
 {
     public bool IsReady { get; init; }
-    public uint LayerCount;
+    public uint LayerWeightCounts;
 
     public ulong Heightmap;
-    public fixed ulong Weightmaps[8];
+    public fixed ulong Weightmaps[4];
     
     public Vector2 HeightmapScaleBias;
     public Vector2 WeightmapScaleBias;
@@ -62,37 +62,13 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
         {
             if (!allocations[i].LayerInfo.TryLoad(out ULandscapeLayerInfoObject info)) continue;
 
-            var layer = new WeightmapLayerInfo
+            layers.Add(new WeightmapLayerInfo
             {
                 ChannelIndex = allocations[i].WeightmapTextureChannel,
                 TextureIndex = allocations[i].WeightmapTextureIndex,
                 Name = info.LayerName.Text,
                 DebugColor = info.LayerUsageDebugColor
-            };
-
-            // var name = info.LayerName.Text.SubstringBefore('_');
-            // layer.DebugColor = name switch
-            // {
-            //     "Grass"   => new Vector4(0.05f, 0.60f, 0.05f, 0.3f),  // low priority
-            //     "Mud"     => new Vector4(0.45f, 0.25f, 0.10f, 0.5f),  // medium-low priority
-            //     "Sand"    => new Vector4(0.95f, 0.85f, 0.55f, 1.0f),  // highest priority
-            //     "Snow"    => new Vector4(0.95f, 0.98f, 1.00f, 0.3f),  // low priority
-            //     "Rock"    => new Vector4(0.55f, 0.55f, 0.60f, 0.6f),  // medium priority
-            //     "Water"   => new Vector4(0.05f, 0.35f, 0.95f, 1.0f),  // medium-high priority
-            //     "Gravel"  => new Vector4(0.65f, 0.65f, 0.65f, 0.5f),  // medium-low priority
-            //     "Road"    => new Vector4(0.20f, 0.20f, 0.20f, 0.9f),  // very high priority
-            //     "Forest"  => new Vector4(0.00f, 0.45f, 0.00f, 0.5f),  // medium-low priority
-            //     "Flowers" => new Vector4(1.00f, 0.40f, 0.20f, 0.3f),  // low priority
-            //     "Asphalt" => new Vector4(0.10f, 0.10f, 0.10f, 1.0f),  // highest priority
-            //     "Mountain" => new Vector4(0.60f, 0.60f, 0.60f, 0.5f), // medium priority
-            //     "Dirt"    => new Vector4(0.55f, 0.45f, 0.35f, 0.5f),  // medium-low priority
-            //     "CraterOvergrowth" => new Vector4(0.30f, 0.50f, 0.30f, 0.3f), // low priority
-            //     "Crater" => new Vector4(0.50f, 0.50f, 0.50f, 0.5f), // medium priority
-            //     "Arid" => new Vector4(0.70f, 0.60f, 0.50f, 0.5f), // medium-low priority
-            //     _         => layer.DebugColor/* with { W = 0.1f }*/
-            // };
-
-            layers.Add(layer);
+            });
         }
         
         Layers = layers.ToArray();
@@ -172,13 +148,13 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
                 Heightmap = _heightmap,
                 HeightmapScaleBias = heightmapScaleBias,
                 
-                LayerCount = (uint)layers.Length,
+                LayerWeightCounts = (uint)((weightmaps.Length << 16) | (layers.Length & 0xFFFF)),
                 WeightmapScaleBias = weightmapScaleBias,
             };
 
             unsafe
             {
-                for (var i = 0; i < 8; i++)
+                for (var i = 0; i < 4; i++)
                 {
                     if (i >= _weightmaps.Length) break;
                     

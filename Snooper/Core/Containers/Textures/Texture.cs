@@ -53,9 +53,9 @@ public abstract class Texture(
         GL.BindTexture(Target, PreviousHandle);
     }
 
-    protected void Resize(EPixelFormat pixel, FTexture2DMipMap mip)
+    protected void Resize(EPixelFormat pixel, FTexture2DMipMap mip, bool srgb)
     {
-        FormatInfo = pixel.GetTextureFormat();
+        FormatInfo = pixel.GetTextureFormat(srgb);
         Resize(mip.SizeX, mip.SizeY, mip.BulkData.Data);
         Log.Debug("Texture {Guid} of format {Format} uploaded to GPU with size {Width}x{Height}.", Guid, pixel, Width, Height);
     }

@@ -58,6 +58,8 @@ public class CameraFramePair(CameraComponent camera) : IResizable
 
         _geometry.Render(shader =>
         {
+            shader.SetUniform("uViewMatrix", Camera.ViewMatrix);
+            
             if (!Camera.bAmbientOcclusion) return;
             _ssao.Bind(TextureUnit.Texture4);
             shader.SetUniform("useSsao", true);
