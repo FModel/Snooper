@@ -14,6 +14,8 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     private const float KeyDownCooldown = 0.1f;
     private float _keyDownTimer;
     
+    private WindowState _pWindowState;
+    
     protected bool Enabled { get; private set; } = true;
     protected NotificationManager Notifications { get; } = new();
 
@@ -29,9 +31,19 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         
         var pressed = Window.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
-        
+
         if (Window.IsKeyPressed(Keys.F))
-            Window.WindowState = Window.WindowState == WindowState.Fullscreen ? WindowState.Normal : WindowState.Fullscreen;
+        {
+            if (Window.WindowState == WindowState.Fullscreen)
+            {
+                Window.WindowState = _pWindowState;
+            }
+            else
+            {
+                _pWindowState = Window.WindowState;
+                Window.WindowState = WindowState.Fullscreen;
+            }
+        }
         
         if (Enabled)
             _controller.Update(Window, delta);

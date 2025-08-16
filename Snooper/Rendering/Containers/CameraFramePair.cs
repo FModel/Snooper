@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using System.Numerics;
+using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
@@ -58,11 +59,30 @@ public class CameraFramePair(CameraComponent camera) : IResizable
 
         _geometry.Render(shader =>
         {
-            shader.SetUniform("uViewMatrix", Camera.ViewMatrix);
-            
+            shader.SetUniform("uLightCount", 3);
+            shader.SetUniform("uLightDirs",
+            [
+                Vector3.TransformNormal(new Vector3(0.5f, 0.7f, 0.5f), Camera.ViewMatrix), // Key light: above and to the right
+                Vector3.TransformNormal(new Vector3(-0.7f, 0.4f, 0.3f), Camera.ViewMatrix), // Fill light: softer, from left/front
+                Vector3.TransformNormal(new Vector3(0.0f, 0.6f, -0.8f), Camera.ViewMatrix) // Back light: behind and above
+            ]);
+            shader.SetUniform("uLightColors",
+            [
+                new Vector3(1.0f, 0.95f, 0.85f), // Key: warm white
+                new Vector3(0.6f, 0.7f, 1.0f),   // Fill: cooler tone
+                new Vector3(1.0f, 1.0f, 1.0f)    // Back: neutral white
+            ]);
+            shader.SetUniform("uLightIntensity",
+            [
+                1.0f, // Key strongest
+                0.5f, // Fill softer
+                0.8f  // Back medium
+            ]);
+
+            shader.SetUniform("useSsao", Camera.bAmbientOcclusion);
             if (!Camera.bAmbientOcclusion) return;
+            
             _ssao.Bind(TextureUnit.Texture4);
-            shader.SetUniform("useSsao", true);
             shader.SetUniform("ssao", 4);
         });
     }

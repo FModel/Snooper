@@ -1,13 +1,16 @@
 ﻿in vec2 vTexCoords;
 
-uniform sampler2D gPosition;
-uniform sampler2D gNormal;
-uniform sampler2D gColor;
-uniform sampler2D gSpecular;
+uniform sampler2D gPosition; // view space position
+uniform sampler2D gNormal; // view space normal
+uniform sampler2D gColor; // albedo color (RGB: albedo, A: unused atm)
+uniform sampler2D gSpecular; // specular color (R: unused atm, G: metallic, B: roughness, A: unused atm)
 uniform sampler2D ssao;
 
 uniform bool useSsao;
-uniform mat4 uViewMatrix;
+uniform int uLightCount;
+uniform vec3 uLightDirs[3]; // in world space
+uniform vec3 uLightColors[3];
+uniform float uLightIntensity[3];
 
 out vec4 FragColor;
 
@@ -50,10 +53,8 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 
 void main()
 {
-    mat3 viewMat = mat3(uViewMatrix);
-    
     vec3 position = texture(gPosition, vTexCoords).rgb;
-    vec3 normal = viewMat * texture(gNormal, vTexCoords).rgb;
+    vec3 normal = texture(gNormal, vTexCoords).rgb;
     vec3 albedo = texture(gColor, vTexCoords).rgb;
     vec3 specs = texture(gSpecular, vTexCoords).rgb;
     float ao = useSsao ? texture(ssao, vTexCoords).r : 1.0;
@@ -76,20 +77,13 @@ void main()
     float roughness = specs.b;
 
     vec3 V = normalize(-position);
+    float NdotV = max(dot(normal, V), 0.001);
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
-    vec3 lightDirs[3] = vec3[3](
-        normalize(viewMat * vec3(0.5, 1.0, 0.3)),  // Key light
-        normalize(viewMat * vec3(-0.3, 0.5, 0.8)), // Fill light
-        normalize(viewMat * vec3(0.0, -0.5, -1.0))  // Back light
-    );
-    float lightIntensity[3] = float[3](1.0, 0.2, 0.2);
-    vec3 lightColors = vec3(1.0, 0.95, 0.9);
-
     vec3 totalLight = vec3(0.0);
-    for (int i = 0; i < 3 ; i++)
+    for (int i = 0; i < uLightCount; i++)
     {
-        vec3 L = lightDirs[i];
+        vec3 L = uLightDirs[i];
         vec3 H = normalize(V + L);
         float NdotL = max(dot(normal, L), 0.0);
 
@@ -97,13 +91,13 @@ void main()
         float D = DistributionGGX(normal, H, roughness);
         float G = GeometrySmith(normal, V, L, roughness);
 
-        vec3 spec = (D * G * F) / (4.0 * max(dot(normal, V), 0.001) * NdotL + 0.001);
+        vec3 spec = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
         vec3 kS = F;
         vec3 kD = vec3(1.0) - kS;
         kD *= 1.0 - metallic;
         vec3 diff = kD * albedo / PI;
 
-        totalLight += (diff + spec) * lightColors * NdotL * lightIntensity[i];
+        totalLight += (diff + spec) * uLightColors[i] * NdotL * uLightIntensity[i];
     }
     
     vec3 color = totalLight + ambient;

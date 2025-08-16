@@ -94,6 +94,11 @@ public class ShaderProgram(string vertex, string fragment) : Program
     {
         GL.Uniform1(GetUniformLocation(name), value);
     }
+    
+    public void SetUniform(string name, float[] values)
+    {
+        GL.Uniform1(GetUniformLocation(name), values.Length, values);
+    }
 
     public void SetUniform(string name, Vector2 value) => SetUniform2(name, value.X, value.Y);
     private void SetUniform2(string name, float x, float y)
@@ -105,6 +110,20 @@ public class ShaderProgram(string vertex, string fragment) : Program
     private void SetUniform3(string name, float x, float y, float z)
     {
         GL.Uniform3(GetUniformLocation(name), x, y, z);
+    }
+
+    public unsafe void SetUniform(string name, Vector3[] values)
+    {
+        var length = values.Length;
+        var vectors = stackalloc float[3 * length];
+        for (var i = 0; i < length; i++)
+        {
+            vectors[i * 3] = values[i].X;
+            vectors[i * 3 + 1] = values[i].Y;
+            vectors[i * 3 + 2] = values[i].Z;
+        }
+
+        GL.Uniform3(GetUniformLocation(name), length, vectors);
     }
 
     public void SetUniform(string name, Vector4 value) => SetUniform4(name, value.X, value.Y, value.Z, value.W);

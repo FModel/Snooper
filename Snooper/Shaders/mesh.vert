@@ -40,7 +40,7 @@ void main()
 
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
-    vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
+    vs_out.TBN = mat3(uViewMatrix) * mat3(T, normalize(cross(N, T)), N);
 
     vs_out.vDebugColor = vec3(0.75);
     if (uDebugColorMode == 0) return;

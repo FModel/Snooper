@@ -174,8 +174,7 @@ public class WorldActor : Actor
             else
             {
                 a = new Actor($"{component.Name} ({component.GetType().Name})", transform: transform);
-                // a.Components.Add(new PrimitiveComponent(new Cube()));
-                // actor.Transform.Scale = Vector3.One / 3;
+                // a.Components.Add(new Components.PrimitiveComponent(new Primitives.Cube()));
             }
         }
         else

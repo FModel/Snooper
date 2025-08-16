@@ -94,7 +94,6 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
             _shader.SetUniform("gNormal", 1);
             _shader.SetUniform("gColor", 2);
             _shader.SetUniform("gSpecular", 3);
-            _shader.SetUniform("useSsao", false);
             callback.Invoke(_shader);
         });
     }

@@ -73,7 +73,7 @@ public sealed class TransformComponent() : ActorComponent, IControllable
 
     public void UpdateLocalMatrix()
     {
-        LocalMatrix = Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Rotation) * Matrix4x4.CreateTranslation(Position);
+        LocalMatrix = Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(Rotation)) * Matrix4x4.CreateTranslation(Position);
     }
 
     public void UpdateWorldMatrix(bool recursive = true)
@@ -100,12 +100,12 @@ public sealed class TransformComponent() : ActorComponent, IControllable
     public void DrawControls()
     {
         ImGui.DragFloat3("Position", ref Position, 0.1f);
-        
-        ImGui.DragFloat("Rotation X", ref Rotation.X, 0.01f, 0, 1);
-        ImGui.DragFloat("Rotation Y", ref Rotation.Y, 0.01f, 0, 1);
-        ImGui.DragFloat("Rotation Z", ref Rotation.Z, 0.01f, 0, 1);
-        ImGui.DragFloat("Rotation W", ref Rotation.W, 0.01f, 0, 1);
-        
+
+        ImGui.DragFloat("Rotation W", ref Rotation.W, .005f, 0f, 0f, "%.3f rad");
+        ImGui.DragFloat("Rotation X", ref Rotation.X, .005f, 0f, 0f, "%.3f rad");
+        ImGui.DragFloat("Rotation Y", ref Rotation.Y, .005f, 0f, 0f, "%.3f rad");
+        ImGui.DragFloat("Rotation Z", ref Rotation.Z, .005f, 0f, 0f, "%.3f rad");
+
         ImGui.DragFloat3("Scale", ref Scale, 0.01f, 0.01f, 100f);
     }
 }

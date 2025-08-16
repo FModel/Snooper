@@ -181,7 +181,7 @@ void main()
     if (!drawData.IsReady)
     {
         te_out.vViewPos = vec3(0.0);
-        te_out.TBN = mat3(1.0);
+        te_out.TBN = mat3(uViewMatrix);
         te_out.vColor = vec3(1.0);
         gl_Position = uProjectionMatrix * matrix * p;
         return;
@@ -204,7 +204,7 @@ void main()
     float nx = 2.0 * color.b - 1.0;
     float nz = 2.0 * color.a - 1.0;
     float ny = sqrt(1.0 - nx * nx + nz * nz);
-    te_out.TBN = mat3(normalize(vec3(-nz, 0.0, nx)), normalize(vec3(0.0, nz, -ny)), normalize(vec3(nx, ny, nz)));
+    te_out.TBN = mat3(uViewMatrix) * mat3(normalize(vec3(-nz, 0.0, nx)), normalize(vec3(0.0, nz, -ny)), normalize(vec3(nx, ny, nz)));
 
     // displace point along normal
     p += normal * height;
