@@ -26,13 +26,14 @@ public readonly struct Vertex(Vector3 position, Vector3 normal, Vector3 tangent,
 public struct PerDrawMeshData : IPerDrawData
 {
     public bool IsReady { get; init; }
-    public uint Padding;
+    public uint IsTranslucent;
     public ulong Diffuse;
     public ulong Normal;
     public ulong Specular;
     public Vector2 Roughness;
 }
 
+[DefaultActorSystem(typeof(RenderSystem))]
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
@@ -88,7 +89,8 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                                 new Texture2D(diffuse),
                                 normal != null ? new Texture2D(normal) : null,
                                 s,
-                                roughness);
+                                roughness,
+                                parameters.BlendMode is EBlendMode.BLEND_Translucent or EBlendMode.BLEND_Masked);
                             
                             break;
                         }
@@ -124,13 +126,14 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         return geometries;
     }
 
-    private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular, Vector2? roughness = null) : IDrawDataContainer
+    private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular, Vector2? roughness = null, bool translucent = false) : IDrawDataContainer
     {
         private BindlessTexture? _diffuse;
         private BindlessTexture? _normal;
         private BindlessTexture? _specular;
         
         public bool HasTextures => true;
+        public bool IsTranslucent { get; } = translucent;
 
         public Dictionary<string, Texture> GetTextures()
         {
@@ -186,6 +189,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             Raw = new PerDrawMeshData
             {
                 IsReady = true,
+                IsTranslucent = IsTranslucent ? 1u : 0,
                 Diffuse = _diffuse,
                 Normal = _normal ?? 0UL,
                 Specular = _specular ?? 0UL,

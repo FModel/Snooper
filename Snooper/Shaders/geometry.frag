@@ -8,6 +8,7 @@ layout (location = 3) out vec4 gSpecular;
 struct PerDrawData
 {
     bool IsReady;
+    uint IsTranslucent;
     sampler2D Diffuse;
     sampler2D Normal;
     sampler2D Specular;

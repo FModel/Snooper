@@ -20,6 +20,7 @@ public interface IDrawDataContainer : IControllable, IDisposable
 {
     public IPerDrawData? Raw { get; }
     public bool HasTextures { get; }
+    public bool IsTranslucent { get; }
     
     public Dictionary<string, Texture> GetTextures();
     public void SetBindlessTexture(string key, BindlessTexture bindless);

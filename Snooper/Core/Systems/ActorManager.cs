@@ -169,10 +169,23 @@ public abstract class ActorManager : IGameSystem
             }
         }
     }
+    
+    private IEnumerable<DefaultActorSystemAttribute> CollectActorSystemAttributes(Type type)
+    {
+        // walk up until we find the first class with attributes
+        for (var t = type; t != null; t = t.BaseType)
+        {
+            var attrs = t.GetCustomAttributes<DefaultActorSystemAttribute>(false).ToArray();
+            if (attrs.Length > 0)
+                return attrs; // stop at the first hit
+        }
+
+        return [];
+    }
 
     private void CollectNewActorSystems(Type componentType)
     {
-        var actorSystemAttributes = componentType.GetCustomAttributes<DefaultActorSystemAttribute>();
+        var actorSystemAttributes = CollectActorSystemAttributes(componentType);
         foreach (var actorSystemAttribute in actorSystemAttributes)
         {
             var addNewSystem = _systemsToLoad.All(IsSystemNotOfType(actorSystemAttribute.Type)) && Systems.Values.All(IsSystemNotOfType(actorSystemAttribute.Type));
@@ -184,7 +197,7 @@ public abstract class ActorManager : IGameSystem
                     system.ActorManager = this;
 
                     _systemsToLoad.Enqueue(system);
-                    return;
+                    continue;
                 }
 
                 throw new InvalidOperationException($"{actorSystemAttribute.Type.Name} is not yet registered");
@@ -239,6 +252,11 @@ public abstract class ActorManager : IGameSystem
         while (_systemsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
             var system = _systemsToLoad.Dequeue();
+            if (system.EnqueuedComponentsCount == 0)
+            {
+                system.Dispose();
+                continue;
+            }
             system.Load();
             
             Systems.Add(system.Order, system);

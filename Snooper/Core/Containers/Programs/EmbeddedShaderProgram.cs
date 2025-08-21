@@ -15,7 +15,7 @@ public class EmbeddedShaderProgram(string vertex, string fragment) : ShaderProgr
     protected override int CompileShader(ShaderType type, string file)
     {
         var content = GetFileContent(file);
-        ResolveIncludes(ref content, Path.GetDirectoryName(file));
+        ResolveIncludes(ref content);
         
         return base.CompileShader(type, "#version 460 core\n\n" + content);
     }
@@ -31,7 +31,7 @@ public class EmbeddedShaderProgram(string vertex, string fragment) : ShaderProgr
         return reader.ReadToEnd();
     }
     
-    private void ResolveIncludes(ref string content, string? basePath = null)
+    private void ResolveIncludes(ref string content)
     {
         const string include = "#include";
         
@@ -41,8 +41,6 @@ public class EmbeddedShaderProgram(string vertex, string fragment) : ShaderProgr
             if (line.StartsWith(include))
             {
                 var includeFile = line[include.Length..].Trim().Trim('"');
-                if (basePath != null) includeFile = Path.Combine(basePath, includeFile);
-                
                 var includeContent = GetFileContent(includeFile);
                 ResolveIncludes(ref includeContent);
                 content = content.Replace(line, includeContent);

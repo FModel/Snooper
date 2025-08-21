@@ -11,6 +11,7 @@ public class MaterialSection(uint materialIndex)
 
     public IndirectDrawMetadata DrawMetadata = new();
     public IDrawDataContainer? DrawDataContainer = null;
+    public bool IsTranslucent => DrawDataContainer?.IsTranslucent ?? false;
     
     public bool IsGenerated => DrawMetadata.BaseInstance >= 0;
 

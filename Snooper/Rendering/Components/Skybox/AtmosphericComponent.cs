@@ -1,5 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using Snooper.Core;
+using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Skybox;
@@ -12,6 +14,7 @@ public struct Planet
     public float AtmosphereRadius;
 }
 
+[DefaultActorSystem(typeof(SkyboxSystem))]
 public class AtmosphericComponent : CubeComponent
 {
     public Planet Sun = new()

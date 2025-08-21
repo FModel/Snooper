@@ -311,7 +311,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         if (ImGui.MenuItem("Add Cube"))
         {
             var cube = new Actor("Cube");
-            cube.Components.Add(new PrimitiveComponent(new Cube()));
+            cube.Components.Add(new CubeComponent());
 
             PlaceInFrontOfCamera(cube);
             parent.Children.Add(cube);

@@ -16,9 +16,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    public LevelOfDetail<TVertex>[] LevelOfDetails;
+    public readonly LevelOfDetail<TVertex>[] LevelOfDetails;
     public readonly CullingBounds Bounds;
     public readonly MaterialSection[] Materials; // we store materials for each section at lod 0
+
+    public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
     protected PrimitiveComponent(LevelOfDetail<TVertex>[] levelOfDetails, CullingBounds bounds)
     {

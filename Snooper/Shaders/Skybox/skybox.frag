@@ -1,4 +1,4 @@
-﻿#include "atmosphere.glsl"
+﻿#include "Skybox/atmosphere.glsl"
 
 in vec3 vTexCoords;
 

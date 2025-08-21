@@ -26,6 +26,7 @@ public abstract class ActorSystem : IGameSystem
     public abstract ActorSystemType SystemType { get; }
     public abstract uint Order { get; }
     public abstract int ComponentsCount { get; }
+    public abstract int EnqueuedComponentsCount { get; }
 
     protected ActorSystem(Type? componentType)
     {
@@ -60,6 +61,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 {
     public override ActorSystemType SystemType => ActorSystemType.Forward;
     public override int ComponentsCount => Components.Count;
+    public override int EnqueuedComponentsCount => _componentsToLoad.Count;
     
     protected HashSet<TComponent> Components { get; } = [];
 
@@ -74,6 +76,9 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     {
         if (component is not TComponent actorComponent)
             throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));
+        
+        if (!CanProcessActorComponent(actorComponent))
+            return;
 
         switch (Components.Contains(actorComponent))
         {
@@ -87,6 +92,11 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
                 OnActorComponentRemoved(actorComponent);
                 break;
         }
+    }
+    
+    protected virtual bool CanProcessActorComponent(TComponent component)
+    {
+        return true;
     }
     
     protected virtual void OnActorComponentEnqueued(TComponent component)

@@ -30,6 +30,7 @@ public class DebugComponent(PrimitiveData primitive, CullingBounds bounds) : Pri
     private class DrawDataContainer(Vector3 color) : IDrawDataContainer
     {
         public bool HasTextures => false;
+        public bool IsTranslucent => false;
         public Dictionary<string, Texture> GetTextures() => throw new NotImplementedException();
         public void SetBindlessTexture(string key, BindlessTexture bindless) => throw new NotImplementedException();
 

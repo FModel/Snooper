@@ -99,6 +99,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
         private BindlessTexture?[]? _weightmaps = new BindlessTexture[weightmaps.Length];
         
         public bool HasTextures => true;
+        public bool IsTranslucent => false;
 
         public Dictionary<string, Texture> GetTextures()
         {
