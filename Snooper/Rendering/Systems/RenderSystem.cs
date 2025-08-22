@@ -31,7 +31,7 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
         Shader.SetUniform("uDebugColorMode", (int)DebugColorMode);
     }
 
-    protected override bool CanProcessActorComponent(MeshComponent component)
+    protected override bool CanEnqueueActorComponent(MeshComponent component)
     {
         return component.IsTranslucent;
     }

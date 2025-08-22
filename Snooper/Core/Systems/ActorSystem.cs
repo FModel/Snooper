@@ -77,12 +77,9 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         if (component is not TComponent actorComponent)
             throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));
         
-        if (!CanProcessActorComponent(actorComponent))
-            return;
-
         switch (Components.Contains(actorComponent))
         {
-            case false:
+            case false when CanEnqueueActorComponent(actorComponent):
                 _componentsToLoad.Enqueue(actorComponent);
                 OnActorComponentEnqueued(actorComponent);
                 break;
@@ -94,7 +91,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         }
     }
     
-    protected virtual bool CanProcessActorComponent(TComponent component)
+    protected virtual bool CanEnqueueActorComponent(TComponent component)
     {
         return true;
     }

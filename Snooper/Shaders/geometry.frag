@@ -13,6 +13,7 @@ struct PerDrawData
     sampler2D Normal;
     sampler2D Specular;
     vec2 Roughness;
+    vec3 DiffuseColor;
 };
 
 layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
@@ -38,7 +39,7 @@ void main()
     vec3 spec = vec3(1.0);
     if (uDebugColorMode == 0 && drawData.IsReady)
     {
-        color = texture(drawData.Diffuse, fs_in.vTexCoords).rgb;
+        color = texture(drawData.Diffuse, fs_in.vTexCoords).rgb * drawData.DiffuseColor;
         spec = texture(drawData.Specular, fs_in.vTexCoords).rgb;
         
         // compute roughness

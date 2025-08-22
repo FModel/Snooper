@@ -28,7 +28,7 @@ public class Texture2D(int width, int height,
             return;
         }
         
-        var mip = _owner.GetFirstMip();
+        var mip = _owner.GetMipByMaxSize(Settings.MaxTextureMipSize);
         if (mip?.BulkData == null)
             throw new InvalidOperationException("Mip data is null.");
 

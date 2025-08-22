@@ -17,7 +17,7 @@ const int kernelSize = 64;
 void main()
 {
     vec3 fragPos = texture(gPosition, vTexCoords).xyz;
-    vec3 normal = normalize(texture(gNormal, vTexCoords).xyz);
+    vec3 normal = texture(gNormal, vTexCoords).xyz;
     vec3 randomVec = normalize(texture(noiseTexture, vTexCoords * noiseScale).xyz);
 
     // Construct TBN matrix from normal and randomVec
@@ -53,16 +53,12 @@ void main()
         float depthDiff = sampleDepth - samplePos.z;
         float visibility = depthDiff > adaptiveBias ? 1.0 : 0.0;
 
-        // Distance falloff
-        float distance = length(samplePos - fragPos);
-        float falloff = smoothstep(0.0, adaptiveRadius, distance);
-
-        occlusion += visibility * rangeCheck * falloff;
+        occlusion += visibility * rangeCheck;
     }
 
     // Normalize and apply curve
     occlusion = occlusion / float(kernelSize);
-    occlusion = pow(clamp(1.0 - occlusion, 0.0, 1.0), 1.5); // control darkness with exponent
+    occlusion = pow(clamp(1.0 - occlusion, 0.0, 1.0), 0.7); // control darkness with exponent
 
     FragColor = occlusion;
 }

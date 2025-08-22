@@ -10,7 +10,7 @@ public class DeferredRenderSystem : RenderSystem
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("mesh.vert", "geometry.frag");
 
-    protected override bool CanProcessActorComponent(MeshComponent component)
+    protected override bool CanEnqueueActorComponent(MeshComponent component)
     {
         return !component.IsTranslucent;
     }

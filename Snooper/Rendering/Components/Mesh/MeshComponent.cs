@@ -31,6 +31,8 @@ public struct PerDrawMeshData : IPerDrawData
     public ulong Normal;
     public ulong Specular;
     public Vector2 Roughness;
+    public Vector2 Padding1;
+    public Vector3 DiffuseColor;
 }
 
 [DefaultActorSystem(typeof(RenderSystem))]
@@ -56,8 +58,15 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                     {
                         if (parameters.TryGetTexture2d(out var diffuse, CMaterialParams2.Diffuse[j]))
                         {
-                            parameters.TryGetTexture2d(out var normal, CMaterialParams2.Normals[j]);
-                            parameters.TryGetTexture2d(out var specular, CMaterialParams2.SpecularMasks[j]);
+                            parameters.TryGetTexture2d(out var normal, [..CMaterialParams2.Normals[j], CMaterialParams2.FallbackNormals]);
+                            parameters.TryGetTexture2d(out var specular, [..CMaterialParams2.SpecularMasks[j], CMaterialParams2.FallbackSpecularMasks]);
+                            
+                            var diffuseColor = Vector3.One;
+                            if (parameters.TryGetLinearColor(out var color, CMaterialParams2.DiffuseColors[j]))
+                            {
+                                color = color.ToSRGB();
+                                diffuseColor = new Vector3(color.R, color.G, color.B);
+                            }
                             
                             var roughness = Vector2.UnitY;
                             if (parameters.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
@@ -90,6 +99,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                                 normal != null ? new Texture2D(normal) : null,
                                 s,
                                 roughness,
+                                diffuseColor,
                                 parameters.BlendMode is EBlendMode.BLEND_Translucent or EBlendMode.BLEND_Masked);
                             
                             break;
@@ -126,7 +136,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         return geometries;
     }
 
-    private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular, Vector2? roughness = null, bool translucent = false) : IDrawDataContainer
+    private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular, Vector2? roughness = null, Vector3? diffuseColor = null, bool translucent = false) : IDrawDataContainer
     {
         private BindlessTexture? _diffuse;
         private BindlessTexture? _normal;
@@ -193,7 +203,8 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 Diffuse = _diffuse,
                 Normal = _normal ?? 0UL,
                 Specular = _specular ?? 0UL,
-                Roughness = roughness ?? Vector2.UnitY
+                Roughness = roughness ?? Vector2.UnitY,
+                DiffuseColor = diffuseColor ?? Vector3.One
             };
         }
 

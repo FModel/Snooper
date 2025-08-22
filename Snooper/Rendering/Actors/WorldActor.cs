@@ -9,7 +9,6 @@ using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
@@ -69,6 +68,17 @@ public class WorldActor : Actor
                 CreateActor(root);
                 CreateActor(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
                 CreateActor(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+
+                if (actor is AInstancedFoliageActor foliage)
+                {
+                    foreach (var info in foliage.FoliageInfos ?? [])
+                    {
+                        if (info.Value.Implementation is not FFoliageStaticMesh staticMesh)
+                            continue;
+                        
+                        CreateActor(staticMesh.Component);
+                    }
+                }
             }
             
             if (additional && actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
@@ -175,7 +185,7 @@ public class WorldActor : Actor
             else
             {
                 a = new Actor($"{component.Name} ({component.GetType().Name})", transform: transform);
-                // a.Components.Add(new CubeComponent());
+                // a.Components.Add(new Components.PrimitiveComponent(new Primitives.Cube()));
             }
         }
         else
