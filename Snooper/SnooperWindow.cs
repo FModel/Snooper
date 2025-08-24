@@ -117,6 +117,7 @@ public partial class SnooperWindow : GameWindow
 
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
+        if (!IsFocused) return;
         base.OnUpdateFrame(args);
 
         var delta = (float) args.Time;
@@ -125,6 +126,7 @@ public partial class SnooperWindow : GameWindow
 
     protected override void OnRenderFrame(FrameEventArgs args)
     {
+        if (!IsFocused) return;
         base.OnRenderFrame(args);
         
         _interface.Render();
@@ -134,6 +136,7 @@ public partial class SnooperWindow : GameWindow
 
     protected override void OnTextInput(TextInputEventArgs e)
     {
+        if (!IsFocused) return;
         base.OnTextInput(e);
 
         _interface.TextInput((char) e.Unicode);

@@ -27,6 +27,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     };
     
     private readonly ShaderStorageBuffer<Vector2> _scales = new(100 * Settings.TessellationQuadCountTotal);
+    private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new(100);
     private readonly List<string> _layers = [];
     private ColorMode _colorMode = ColorMode.Heightmap;
     private int _selectedLayer;
@@ -42,14 +43,18 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         foreach (var component in Components)
         {
             _scales.AddRange(component.Scales);
-            foreach (var layer in component.Layers)
+            foreach (var layer in component.Layers.Keys)
             {
-                if (!_layers.Contains(layer.Name))
-                    _layers.Add(layer.Name);
+                if (!_layers.Contains(layer)) _layers.Add(layer);
             }
             sizeQuads = Math.Max(sizeQuads, component.SizeQuads);
         }
         _scales.Unbind();
+        
+        _mapping.Generate();
+        _mapping.Bind();
+        _mapping.Allocate(new WeightHighlightMapping[ComponentsCount]);
+        _mapping.Unbind();
         
         Shader.Use();
         Shader.SetUniform("uSizeQuads", sizeQuads);
@@ -57,27 +62,48 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
     }
 
+    public override void Update(float delta)
+    {
+        base.Update(delta);
+        if (_colorMode != ColorMode.Weightmap)
+            return;
+
+        var layer = _layers[_selectedLayer];
+        
+        _mapping.Bind();
+        foreach (var component in Components)
+        {
+            var m = new WeightHighlightMapping();
+            if (component.Layers.TryGetValue(layer, out var mapping))
+            {
+                m = new WeightHighlightMapping
+                {
+                    WeightmapIndex = mapping.TextureIndex,
+                    ChannelIndex = mapping.ChannelIndex,
+                    DebugColor = mapping.DebugColor
+                };
+            }
+            
+            _mapping.Update(component.Materials[0].DrawMetadata.DrawId, m);
+        }
+        _mapping.Unbind();
+    }
+
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
     {
         base.PreRender(camera, batchIndex);
     
         Shader.SetUniform("uColorMode", (uint)_colorMode);
-        if (_colorMode == ColorMode.Weightmap)
-        {
-            Shader.SetUniform("uLayerName", _layers.Count > _selectedLayer ? _layers[_selectedLayer] : string.Empty);
-        }
         
         _scales.Bind(2);
+        _mapping.Bind(3);
     }
 
     public void DrawControls()
     {
         var c = (int) _colorMode;
         ImGui.Combo("Color Mode", ref c, "Heightmap\0Weightmap\0");
-        if (_layers.Count == 0)
-        {
-            c = (int) ColorMode.Heightmap; // Default to Heightmap if no layers are available
-        }
+        if (_layers.Count == 0) c = 0; // Default to Heightmap if no layers are available
         _colorMode = (ColorMode) c;
         
         if (_colorMode == ColorMode.Weightmap)
@@ -85,10 +111,18 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
             ImGui.Combo("Weightmap Layer", ref _selectedLayer, _layers.ToArray(), _layers.Count);
         }
     }
-}
-
-public enum ColorMode : byte
-{
-    Heightmap,
-    Weightmap
+    
+    private enum ColorMode : byte
+    {
+        Heightmap,
+        Weightmap
+    }
+    
+    private struct WeightHighlightMapping
+    {
+        public uint WeightmapIndex;
+        public uint ChannelIndex;
+        public Vector2 Padding;
+        public Vector4 DebugColor;
+    }
 }

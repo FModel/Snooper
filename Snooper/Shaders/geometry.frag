@@ -21,6 +21,7 @@ layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
     PerDrawData uDrawDataBuffer[];
 };
 
+uniform mat4 uViewMatrix;
 uniform int uDebugColorMode;
 
 in flat int mIndex;
@@ -63,7 +64,7 @@ void main()
     }
 
     gPosition = fs_in.vViewPos;
-    gNormal = normalize(fs_in.TBN * normal);
+    gNormal = mat3(uViewMatrix) * normalize(fs_in.TBN * normal);
     gColor.rgb = color;
     gColor.a = 1.0; // free space
     gSpecular.rgb = spec.rgb;

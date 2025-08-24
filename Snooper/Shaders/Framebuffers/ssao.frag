@@ -48,7 +48,7 @@ void main()
         }
 
         float sampleDepth = texture(gPosition, offset.xy).z;
-        float rangeCheck = smoothstep(0.0, 1.0, adaptiveRadius / abs(fragPos.z - sampleDepth + adaptiveBias));
+        float rangeCheck = smoothstep(0.0, 1.0, adaptiveRadius / abs(fragPos.z - sampleDepth) + 0.0001);
 
         float depthDiff = sampleDepth - samplePos.z;
         float visibility = depthDiff > adaptiveBias ? 1.0 : 0.0;

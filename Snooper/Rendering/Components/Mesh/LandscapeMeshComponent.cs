@@ -4,35 +4,28 @@ using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
-using Snooper.Extensions;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
-public struct WeightmapLayerInfo
+public struct LayerMapping
 {
     public uint ChannelIndex;
     public uint TextureIndex;
-    public string Name;
     public Vector4 DebugColor;
 }
 
 public unsafe struct PerDrawLandscapeData : IPerDrawData
 {
     public bool IsReady { get; init; }
-    public uint LayerWeightCounts;
+    public uint WeightmapCount;
 
     public ulong Heightmap;
     public fixed ulong Weightmaps[4];
     
     public Vector2 HeightmapScaleBias;
     public Vector2 WeightmapScaleBias;
-    
-    public fixed uint Layer_TextureIndex[16]; // if you need more, pack your shit
-    public fixed uint Layer_ChannelIndex[16];
-    public fixed uint Layer_Name[16 * 8];
-    public fixed float Layer_DebugColor[16 * 4];
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
@@ -40,7 +33,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
 {
     public readonly int SizeQuads;
     public readonly Vector2[] Scales;
-    public readonly WeightmapLayerInfo[] Layers;
+    public readonly Dictionary<string, LayerMapping> Layers;
     
     public LandscapeMeshComponent(ULandscapeComponent component) : base(new Geometry(component.ComponentSizeQuads), component.CachedLocalBox)
     {
@@ -56,29 +49,24 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             weightmaps[i] = new Texture2D(textures[i]);
         }
         
-        var allocations = component.WeightmapLayerAllocations;
-        var layers = new List<WeightmapLayerInfo>();
-        for (var i = 0; i < allocations.Length; i++)
+        Layers = new Dictionary<string, LayerMapping>();
+        foreach (var allocation in component.WeightmapLayerAllocations)
         {
-            if (!allocations[i].LayerInfo.TryLoad(out ULandscapeLayerInfoObject info)) continue;
+            if (!allocation.LayerInfo.TryLoad(out ULandscapeLayerInfoObject info)) continue;
 
-            layers.Add(new WeightmapLayerInfo
+            Layers.Add(info.LayerName.Text, new LayerMapping
             {
-                ChannelIndex = allocations[i].WeightmapTextureChannel,
-                TextureIndex = allocations[i].WeightmapTextureIndex,
-                Name = info.LayerName.Text,
+                ChannelIndex = allocation.WeightmapTextureChannel,
+                TextureIndex = allocation.WeightmapTextureIndex,
                 DebugColor = info.LayerUsageDebugColor
             });
         }
-        
-        Layers = layers.ToArray();
         
         Materials[0].DrawDataContainer = new DrawDataContainer(
             new Texture2D(heightmap),
             new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
             weightmaps,
-            new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W),
-            Layers);
+            new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W));
 
         SizeQuads = component.ComponentSizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
@@ -93,7 +81,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
         }
     }
 
-    private class DrawDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, WeightmapLayerInfo[] layers) : IDrawDataContainer
+    private class DrawDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias) : IDrawDataContainer
     {
         private BindlessTexture? _heightmap;
         private BindlessTexture?[]? _weightmaps = new BindlessTexture[weightmaps.Length];
@@ -149,7 +137,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
                 Heightmap = _heightmap,
                 HeightmapScaleBias = heightmapScaleBias,
                 
-                LayerWeightCounts = (uint)((weightmaps.Length << 16) | (layers.Length & 0xFFFF)),
+                WeightmapCount = (uint)weightmaps.Length,
                 WeightmapScaleBias = weightmapScaleBias,
             };
 
@@ -170,26 +158,6 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
                     
                     data.Weightmaps[i] = weightmap;
                 }
-                
-                for (var i = 0; i < 16; i++)
-                {
-                    if (i >= layers.Length) break;
-                    
-                    data.Layer_TextureIndex[i] = layers[i].TextureIndex;
-                    data.Layer_ChannelIndex[i] = layers[i].ChannelIndex;
-                    
-                    var color = layers[i].DebugColor;
-                    data.Layer_DebugColor[i * 4] = color.X;
-                    data.Layer_DebugColor[i * 4 + 1] = color.Y;
-                    data.Layer_DebugColor[i * 4 + 2] = color.Z;
-                    data.Layer_DebugColor[i * 4 + 3] = color.W;
-
-                    var str = layers[i].Name.PackString();
-                    for (var j = 0; j < 8; j++)
-                    {
-                        data.Layer_Name[i * 8 + j] = j < str.Length ? str[j] : 0;
-                    }
-                }
             }
 
             Raw = data;
@@ -201,17 +169,17 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
         {
             ImGui.SeparatorText("Layers");
             
-            for (var i = 0; i < layers.Length; i++)
-            {
-                ImGui.Text($"Layer {i}: {layers[i].Name}");
-                ImGui.Text($"Texture Index: {layers[i].TextureIndex}");
-                ImGui.SameLine();
-                ImGui.Text($"Channel Index: {layers[i].ChannelIndex}");
-                ImGui.SameLine();
-                ImGui.PushID(i);
-                ImGui.ColorButton("Debug Color", layers[i].DebugColor);
-                ImGui.PopID();
-            }
+            // for (var i = 0; i < layers.Length; i++)
+            // {
+            //     ImGui.Text($"Layer {i}: {layers[i].Name}");
+            //     ImGui.Text($"Texture Index: {layers[i].TextureIndex}");
+            //     ImGui.SameLine();
+            //     ImGui.Text($"Channel Index: {layers[i].ChannelIndex}");
+            //     ImGui.SameLine();
+            //     ImGui.PushID(i);
+            //     ImGui.ColorButton("Debug Color", layers[i].DebugColor);
+            //     ImGui.PopID();
+            // }
         }
 
         public void Dispose()

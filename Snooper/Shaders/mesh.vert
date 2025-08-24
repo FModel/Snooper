@@ -34,13 +34,14 @@ void main()
     vec4 viewPos = uViewMatrix * matrix * vec4(aPos, 1.0);
     gl_Position = uProjectionMatrix * viewPos;
 
-    vec3 T = normalize(vec3(matrix * vec4(aTangent,   0.0)));
-    vec3 N = normalize(vec3(matrix * vec4(aNormal,    0.0)));
+    mat3 nMatrix = transpose(inverse(mat3(matrix)));
+    vec3 T = normalize(vec3(vec4(nMatrix * aTangent, 0.0)));
+    vec3 N = normalize(vec3(vec4(nMatrix * aNormal, 0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
-    vs_out.TBN = mat3(uViewMatrix) * mat3(T, normalize(cross(N, T)), N);
+    vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
 
     vs_out.vDebugColor = vec3(0.75);
     if (uDebugColorMode == 0) return;
