@@ -12,6 +12,7 @@ struct PerDrawData
 
     sampler2D Heightmap;
     sampler2D Weightmaps[4];
+    uint EnabledChannels[4];
 
     vec2 HeightmapScaleBias;
     vec2 WeightmapScaleBias;
@@ -51,6 +52,11 @@ uniform float uSizeQuads;
 uniform float uQuadCount;
 uniform uint uColorMode;
 
+bool channelEnabled(uint mask, int channel)
+{
+    return ((mask >> channel) & 1u) != 0u;
+}
+
 vec3 getColorFromWeightmap(PerDrawData drawData, WeightHighlightMapping mapping)
 {
     float quadFraction = 1.0 / uQuadCount;
@@ -70,22 +76,26 @@ vec3 getColorFromWeightmap(PerDrawData drawData, WeightHighlightMapping mapping)
         vec2 uv2 = drawData.WeightmapScaleBias + subPatchOffset * weightmapUvSize + fs_in.vTessCoord * (weightmapUvSize * quadFraction);
         uv2 = uv2 * (1.0 - texelSize) + 0.5 * texelSize;
 
+        uint mask = drawData.EnabledChannels[i];
         vec4 weightmapColor = texture(drawData.Weightmaps[i], uv2);
-        for (int c = 0; c < 4; ++c)
+        for (int c = 0; c < 4; c++)
         {
+            if (!channelEnabled(mask, c))
+            {
+                continue;
+            }
+
             float weight = weightmapColor[c];
+            gray += weight;
+
             if (i == mapping.WeightmapIndex && c == mapping.ChannelIndex)
             {
                 blendColor += mapping.DebugColor.rgb * weight * mapping.DebugColor.a;
             }
-            else
-            {
-                gray += weight;
-            }
         }
     }
 
-    blendColor += vec3(gray) * 0.05;
+    blendColor += vec3(gray) * 0.1;
     return blendColor;
 }
 

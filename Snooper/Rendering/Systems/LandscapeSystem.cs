@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
@@ -28,9 +29,10 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     
     private readonly ShaderStorageBuffer<Vector2> _scales = new(100 * Settings.TessellationQuadCountTotal);
     private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new(100);
-    private readonly List<string> _layers = [];
+    private readonly List<string> _layers = ["None"];
     private ColorMode _colorMode = ColorMode.Heightmap;
     private int _selectedLayer;
+    private bool _updateMapping;
 
     public override void Load()
     {
@@ -65,10 +67,11 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     public override void Update(float delta)
     {
         base.Update(delta);
-        if (_colorMode != ColorMode.Weightmap)
+        if (!_updateMapping || _colorMode != ColorMode.Weightmap)
             return;
 
         var layer = _layers[_selectedLayer];
+        Log.Information("Updating weightmap highlight for layer {Layer}", layer);
         
         _mapping.Bind();
         foreach (var component in Components)
@@ -87,6 +90,8 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
             _mapping.Update(component.Materials[0].DrawMetadata.DrawId, m);
         }
         _mapping.Unbind();
+        
+        _updateMapping = false;
     }
 
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)
@@ -103,12 +108,13 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     {
         var c = (int) _colorMode;
         ImGui.Combo("Color Mode", ref c, "Heightmap\0Weightmap\0");
-        if (_layers.Count == 0) c = 0; // Default to Heightmap if no layers are available
         _colorMode = (ColorMode) c;
         
         if (_colorMode == ColorMode.Weightmap)
         {
+            var before = _selectedLayer;
             ImGui.Combo("Weightmap Layer", ref _selectedLayer, _layers.ToArray(), _layers.Count);
+            if (!_updateMapping) _updateMapping = before != _selectedLayer;
         }
     }
     

@@ -14,6 +14,7 @@ struct PerDrawData
 
     sampler2D Heightmap;
     sampler2D Weightmaps[4];
+    uint EnabledChannels[4];
 
     vec2 HeightmapScaleBias;
     vec2 WeightmapScaleBias;

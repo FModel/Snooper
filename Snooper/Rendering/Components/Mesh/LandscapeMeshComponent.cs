@@ -23,6 +23,7 @@ public unsafe struct PerDrawLandscapeData : IPerDrawData
 
     public ulong Heightmap;
     public fixed ulong Weightmaps[4];
+    public fixed uint Weight_EnabledChannels[4]; // packed data representing which channels are used in each weightmap texture (4 channels as 4 bytes in a uint)
     
     public Vector2 HeightmapScaleBias;
     public Vector2 WeightmapScaleBias;
@@ -49,24 +50,12 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             weightmaps[i] = new Texture2D(textures[i]);
         }
         
-        Layers = new Dictionary<string, LayerMapping>();
-        foreach (var allocation in component.WeightmapLayerAllocations)
-        {
-            if (!allocation.LayerInfo.TryLoad(out ULandscapeLayerInfoObject info)) continue;
-
-            Layers.Add(info.LayerName.Text, new LayerMapping
-            {
-                ChannelIndex = allocation.WeightmapTextureChannel,
-                TextureIndex = allocation.WeightmapTextureIndex,
-                DebugColor = info.LayerUsageDebugColor
-            });
-        }
-        
         Materials[0].DrawDataContainer = new DrawDataContainer(
             new Texture2D(heightmap),
             new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
             weightmaps,
-            new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W));
+            new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W),
+            component.WeightmapLayerAllocations);
 
         SizeQuads = component.ComponentSizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
@@ -79,9 +68,22 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
                 Scales[x * quadCount + y] = new Vector2(x, y);
             }
         }
+        
+        Layers = new Dictionary<string, LayerMapping>();
+        foreach (var allocation in component.WeightmapLayerAllocations)
+        {
+            if (!allocation.LayerInfo.TryLoad(out ULandscapeLayerInfoObject info)) continue;
+
+            Layers.Add(info.LayerName.Text, new LayerMapping
+            {
+                ChannelIndex = allocation.WeightmapTextureChannel,
+                TextureIndex = allocation.WeightmapTextureIndex,
+                DebugColor = info.LayerUsageDebugColor
+            });
+        }
     }
 
-    private class DrawDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias) : IDrawDataContainer
+    private class DrawDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, FWeightmapLayerAllocationInfo[] allocations) : IDrawDataContainer
     {
         private BindlessTexture? _heightmap;
         private BindlessTexture?[]? _weightmaps = new BindlessTexture[weightmaps.Length];
@@ -152,11 +154,18 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
                     {
                         throw new InvalidOperationException($"Weightmap at index {i} is not set.");
                     }
-                    
+
                     weightmap.Generate();
                     weightmap.MakeResident();
                     
                     data.Weightmaps[i] = weightmap;
+                    data.Weight_EnabledChannels[i] = 0;
+                    
+                    foreach (var allocation in allocations)
+                    {
+                        if (allocation.WeightmapTextureIndex != i) continue;
+                        data.Weight_EnabledChannels[i] |= 1u << allocation.WeightmapTextureChannel;
+                    }
                 }
             }
 
