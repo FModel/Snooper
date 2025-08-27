@@ -54,5 +54,12 @@ public class MeshActor : Actor
         Components.Add(MeshComponent);
     }
 
+    protected override void OnRegistered()
+    {
+        base.OnRegistered();
+        
+        MeshComponent.ParseMaterials();
+    }
+
     internal override string Icon => MeshComponent is StaticMeshComponent ? "cube" : "bone";
 }

@@ -37,9 +37,9 @@ public struct PerDrawMeshData : IPerDrawData
 
 [DefaultActorSystem(typeof(RenderSystem))]
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
+public abstract class MeshComponent(IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>(CreateGeometry(levels), box)
 {
-    protected MeshComponent(IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : base(CreateGeometry(levels), box)
+    internal void ParseMaterials()
     {
         for (var i = 0; i < Materials.Length; i++)
         {

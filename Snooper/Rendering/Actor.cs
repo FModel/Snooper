@@ -1,7 +1,9 @@
-﻿using System.Collections.Specialized;
+﻿using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Core.Systems;
+using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering;
@@ -18,7 +20,7 @@ public class Actor
         Name = name;
 
         Components = new ActorComponentCollection(this);
-        Children = new ActorChildrenCollection();
+        Children = [];
 
         Children.CollectionChanged += OnChildrenCollectionChanged;
         Components.CollectionChanged += OnComponentsCollectionChanged;
@@ -31,7 +33,7 @@ public class Actor
     }
 
     public ActorComponentCollection Components { get; }
-    public ActorChildrenCollection Children { get; }
+    public ActorChildrenCollection Children { get; } // use ObservableCollection<Actor> for 100% fidelity to Unreal, ActorChildrenCollection is inaccurate but way more performant
 
     private Actor? _parent;
     public Actor? Parent
@@ -87,6 +89,9 @@ public class Actor
         
         return instance.LocalMatrix * relation;
     }
+    
+    protected virtual void OnRegistered() { }
+    protected virtual void OnUnregistered() { }
     
     internal void MarkDirty() => IsDirty = true;
     internal void MarkClean() => IsDirty = false;
@@ -155,12 +160,14 @@ public class Actor
                 foreach (var actor in e.NewItems!.Cast<Actor>())
                 {
                     AddInternal(actor);
+                    actor.OnRegistered();
                 }
                 break;
             case NotifyCollectionChangedAction.Remove:
                 foreach (var actor in e.OldItems!.Cast<Actor>())
                 {
                     RemoveInternal(actor);
+                    actor.OnUnregistered();
                 }
                 break;
         }

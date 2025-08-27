@@ -71,9 +71,7 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         _sections.Bind(2);
         commands.Bind(3);
 
-        const int groupSize = 64;
-        var dispatchCount = (commands.Count + groupSize - 1) / groupSize;
-        GL.DispatchCompute(dispatchCount, 1, 1);
+        GL.DispatchCompute(commands.Count, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit);
     }
 

@@ -32,8 +32,8 @@ ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-37.00-CL-44501951-Windows_oo.usmap";
-const string key = "0x20E23FDB8EF3D9503F6012072BAF4090EA6363A5E4BFBB457608C731914D8E83";
+const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-37.10-CL-45056983-Windows_oo.usmap";
+const string key = "0xBB6030C6AFF40C7CDBB38569A8A1CFC6FE5DA9FBDC07AC8BA8DC53A5BBB3E2A2";
 var version = new VersionContainer(EGame.GAME_UE5_6);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
@@ -52,7 +52,7 @@ const string key = "0x0000000000000000000000000000000000000000000000000000000000
 var version = new VersionContainer(EGame.GAME_UE4_27);
 #endif
 
-var provider = new DefaultFileProvider(dir, SearchOption.TopDirectoryOnly, version);
+var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
 if (!string.IsNullOrEmpty(mapping))
     provider.MappingsContainer = new FileUsmapTypeMappingsProvider(mapping);
 provider.Initialize();
@@ -126,7 +126,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/Patrick/SK_Patrick_Default.SK_Patrick_Default"), new FTransform(new FVector(100, 0, 0))));
         // break;
         
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/Global/BB_P_Background.BB_P_Background"), null, WorldActorType.Landscape));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/Global/BB_P_Background.BB_P_Background"), null, WorldActorType.Landscape));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z08_HUB8/BB_Z08_HUB8_Geo.BB_Z08_HUB8_Geo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z07_HUB7/BB_Z07_HUB7_Geo.BB_Z07_HUB7_Geo")));
         break;
@@ -141,7 +141,13 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Gadgets/Assets/VinderTech_GliderChute/Glider_Rumble_Female/Meshes/Rumble_Female_Glider.Rumble_Female_Glider"), new FTransform(new FVector(200, 0, 100))));
         // break;
         
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"), null, WorldActorType.Landscape));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/45a59717-4e0e-0359-cd14-b08bf44c08d9/Content/HammerFall_Level.HammerFall_Level")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/5e133425-4c5e-7cfb-1d0a-8db2bed53723/Content/StormChaser_Level.StormChaser_Level")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/a8a3061c-49c1-4f71-2604-ae9d3414b8d6/Content/Skyline_Level.Skyline_Level")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/99be4597-4530-1344-d0b9-4d8ab554db97/Content/Mandu_Shell.Mandu_Shell")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/45593d43-4a37-2dd7-f6bd-96a48fcd965a/Content/Cinderwatch_Shell.Cinderwatch_Shell")));
+        
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"), null, WorldActorType.Landscape));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/AZNCC0PONAUOZXCPHNADH91ON.Hermes_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/DY8VZ94TUGJMPA0DN6N95BLDK.Hermes_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7U5QLDZUKS48PSL1SEFZV1NIE.Hermes_Terrain")));

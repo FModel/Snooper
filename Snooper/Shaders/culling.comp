@@ -1,4 +1,9 @@
-﻿layout(local_size_x = 64) in;
+﻿layout(local_size_x = 32) in;
+
+shared uint sMinVisible[32];
+shared uint sMaxVisible[32];
+shared float sClosestDist[32];
+shared uint sAnyVisible[32];
 
 struct PrimitiveDescriptor
 {
@@ -94,7 +99,10 @@ bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
 
 void main()
 {
-    uint drawId = gl_GlobalInvocationID.x;
+    uint drawId = gl_WorkGroupID.x;
+    uint threadId = gl_LocalInvocationID.x;
+    uint threadCount = gl_WorkGroupSize.x;
+    
     if (drawId >= uIndirectDrawCommands.length()) return;
 
     DrawElementsIndirectCommand cmd = uIndirectDrawCommands[drawId];
@@ -102,10 +110,12 @@ void main()
     uint instanceCount = cmd.originalInstanceCount;
     uint baseInstance = cmd.originalBaseInstance;
 
-    uint minVisible = 0xFFFFFFFFu;
-    uint maxVisible = 0;
-    float closestDistance = 3.402823e+38;
-    for (uint j = 0; j < instanceCount; ++j)
+    uint localMin = 0xFFFFFFFFu;
+    uint localMax = 0;
+    float localClosest = 3.402823e+38;
+    uint localAny = 0u;
+
+    for (uint j = threadId; j < instanceCount; j += threadCount)
     {
         mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].matrix;
 
@@ -116,30 +126,50 @@ void main()
             dot(abs(m[1]), primitive.extents),
             dot(abs(m[2]), primitive.extents)
         );
-        
+
         if (isVisible(worldCenter, worldExtents))
         {
-            minVisible = min(minVisible, j);
-            maxVisible = max(maxVisible, j);
-
-            float dist = length(uCameraPosition - worldCenter);
-            if (dist < closestDistance)
-            {
-                closestDistance = dist;
-            }
+            localMin = min(localMin, j);
+            localMax = max(localMax, j);
+            localClosest = min(localClosest, length(uCameraPosition - worldCenter));
+            localAny = 1u;
         }
     }
 
-    DrawElementsIndirectCommand newCmd = cmd;
-    if (minVisible <= maxVisible)
+    sMinVisible[threadId] = localMin;
+    sMaxVisible[threadId] = localMax;
+    sClosestDist[threadId] = localClosest;
+    sAnyVisible[threadId] = localAny;
+    barrier();
+
+    // reduction
+    for (uint offset = threadCount / 2u; offset > 0u; offset >>= 1u)
     {
-        newCmd.baseInstance = baseInstance + minVisible;
-        newCmd.instanceCount = maxVisible - minVisible + 1;
+        if (threadId < offset)
+        {
+            sMinVisible[threadId] = min(sMinVisible[threadId], sMinVisible[threadId + offset]);
+            sMaxVisible[threadId] = max(sMaxVisible[threadId], sMaxVisible[threadId + offset]);
+            sClosestDist[threadId] = min(sClosestDist[threadId], sClosestDist[threadId + offset]);
+            sAnyVisible[threadId] |= sAnyVisible[threadId + offset];
+        }
+        barrier();
+    }
+
+    if (threadId != 0)
+    {
+        return;
+    }
+
+    DrawElementsIndirectCommand newCmd = cmd;
+    if (sAnyVisible[0] == 1u)
+    {
+        newCmd.baseInstance = baseInstance + sMinVisible[0];
+        newCmd.instanceCount = sMaxVisible[0] - sMinVisible[0] + 1;
         
         // if primitive has at least 2 lods, switch based on screen size
         if (primitive.maxLod > 0)
         {
-            float screenRadius = primitive.sphereRadius * uProjectionMatrix[1][1] / closestDistance;
+            float screenRadius = primitive.sphereRadius * uProjectionMatrix[1][1] / sClosestDist[0];
             float screenSize = screenRadius * 2.0;
 
             uint chosenLod = 0u;
