@@ -14,7 +14,7 @@ public class MeshActor : Actor
 {
     public MeshComponent MeshComponent { get; }
     
-    public MeshActor(UStaticMesh staticMesh, TransformComponent? transform = null) : base(staticMesh.Name, staticMesh.LightingGuid, transform)
+    public MeshActor(UStaticMesh staticMesh, Transform? transform = null) : base(staticMesh.Name)
     {
         if (!staticMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
@@ -23,6 +23,9 @@ public class MeshActor : Actor
 
         using (mesh) MeshComponent = new StaticMeshComponent(staticMesh, mesh);
         
+        if (transform is not null)
+            MeshComponent.LocalTransform = transform;
+        
         Components.Add(MeshComponent);
     }
     
@@ -30,35 +33,33 @@ public class MeshActor : Actor
     {
         for (var i = 1; i < transforms.Length; i++)
         {
-            InstancedTransform.AddLocalInstance(transforms[i].TransformData);
+            MeshComponent.LocalInstanceTransforms.Add(transforms[i].TransformData);
         }
     }
     
-    public MeshActor(ALandscapeProxy landscape, ULandscapeComponent component) : base(component.Name, component.MapBuildDataId, component.GetRelativeTransform())
+    public MeshActor(ALandscapeProxy landscape, ULandscapeComponent component) : base(component.Name)
     {
         if (!landscape.TryConvert([component], ELandscapeExportFlags.Mesh, out var mesh, out _, out _))
             throw new ArgumentException("Failed to convert landscape mesh.", nameof(landscape));
             
         using (mesh) MeshComponent = new StaticMeshComponent(landscape, mesh);
         
+        MeshComponent.LocalTransform = component.GetRelativeTransform();
+        
         Components.Add(MeshComponent);
     }
 
-    public MeshActor(USkeletalMesh skeletalMesh, TransformComponent? transform = null) : base(skeletalMesh.Name, transform: transform)
+    public MeshActor(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh.Name)
     {
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
 
         using (mesh) MeshComponent = new SkeletalMeshComponent(skeletalMesh, mesh);
         
-        Components.Add(MeshComponent);
-    }
-
-    protected override void OnRegistered()
-    {
-        base.OnRegistered();
+        if (transform is not null)
+            MeshComponent.LocalTransform = transform;
         
-        MeshComponent.ParseMaterials();
+        Components.Add(MeshComponent);
     }
 
     internal override string Icon => MeshComponent is StaticMeshComponent ? "cube" : "bone";

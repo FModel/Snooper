@@ -64,7 +64,7 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         _compute.Use();
         _compute.SetUniform("uFrustumPlanes", frustum);
         _compute.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
-        _compute.SetUniform("uCameraPosition", camera.Actor.Transform.Position);
+        _compute.SetUniform("uCameraPosition", camera.LocalTransform.Position);
         
         instances.Bind(0);
         _primitives.Bind(1);

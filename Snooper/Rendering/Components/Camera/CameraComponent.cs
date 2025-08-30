@@ -2,13 +2,14 @@
 using ImGuiNET;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Camera;
 
 [DefaultActorSystem(typeof(CameraSystem))]
-public sealed class CameraComponent : ActorComponent, IControllable
+public sealed class CameraComponent : SpatialComponent, IControllable
 {
     internal int PairIndex = -1;
     internal bool IsActive = false;
@@ -34,9 +35,7 @@ public sealed class CameraComponent : ActorComponent, IControllable
 
     public void Update()
     {
-        if (Actor is null) return;
-
-        Matrix4x4.Decompose(Actor.Transform.WorldMatrix, out _, out var rotation, out var position);
+        Matrix4x4.Decompose(WorldMatrix, out _, out var rotation, out var position);
         ViewMatrix = Matrix4x4.CreateLookAt(
             position,
             position + Vector3.Transform(Vector3.UnitZ, rotation),
@@ -53,8 +52,6 @@ public sealed class CameraComponent : ActorComponent, IControllable
 
     public void Update(KeyboardState keyboard, float time)
     {
-        if (Actor is null) return;
-        
         var input = Vector3.Zero;
         if (keyboard.IsKeyDown(Keys.W)) input.Z += 1;
         if (keyboard.IsKeyDown(Keys.S)) input.Z -= 1;
@@ -64,9 +61,9 @@ public sealed class CameraComponent : ActorComponent, IControllable
         if (keyboard.IsKeyDown(Keys.Q)) input.Y -= 1;
         if (input != Vector3.Zero) input = Vector3.Normalize(input);
 
-        var forward = Vector3.Transform(Vector3.UnitZ, Actor.Transform.Rotation);
-        var right   = Vector3.Transform(-Vector3.UnitX, Actor.Transform.Rotation);
-        var up      = Vector3.Transform(Vector3.UnitY, Actor.Transform.Rotation);
+        var forward = Vector3.Transform(Vector3.UnitZ, LocalTransform.Rotation);
+        var right   = Vector3.Transform(-Vector3.UnitX, LocalTransform.Rotation);
+        var up      = Vector3.Transform(Vector3.UnitY, LocalTransform.Rotation);
 
         var speed = MovementSpeed * (keyboard.IsKeyDown(Keys.LeftShift) ? 2f : 1f);
         var direction = (input.X * right + input.Y * up + input.Z * forward) * speed;
@@ -74,7 +71,7 @@ public sealed class CameraComponent : ActorComponent, IControllable
         const float smoothing = 12f; // higher = snappier
         _velocity = Vector3.Lerp(_velocity, direction, 1f - MathF.Exp(-smoothing * time));
 
-        Actor.Transform.Position += _velocity * time;
+        LocalTransform.Position += _velocity * time;
 
         if (keyboard.IsKeyDown(Keys.X)) FieldOfView = Math.Clamp(FieldOfView + 0.5f, 1.0f, 89.0f);
         if (keyboard.IsKeyDown(Keys.C)) FieldOfView = Math.Clamp(FieldOfView - 0.5f, 1.0f, 89.0f);
@@ -82,14 +79,12 @@ public sealed class CameraComponent : ActorComponent, IControllable
 
     public void Update(float deltaX, float deltaY)
     {
-        if (Actor is null) return;
-
         const float sensitivity = 0.001f;
 
         var yawRotation = Quaternion.CreateFromAxisAngle(-Vector3.UnitY, deltaX * sensitivity);
         var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, deltaY * sensitivity);
 
-        Actor.Transform.Rotation = Quaternion.Normalize(yawRotation * Actor.Transform.Rotation * pitchRotation);
+        LocalTransform.Rotation = Quaternion.Normalize(yawRotation * LocalTransform.Rotation * pitchRotation);
     }
 
     public void DrawControls()

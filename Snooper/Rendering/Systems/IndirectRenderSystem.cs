@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using CUE4Parse.UE4.Objects.Core.Misc;
+using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
@@ -88,6 +89,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     private int _drawCount;
     private int _indices;
     private int _vertices;
+    private readonly HashSet<FGuid> _guids = [];
 
     protected override void OnActorComponentEnqueued(TComponent component)
     {
@@ -95,10 +97,13 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         
         _componentCount++;
         _drawCount += component.LevelOfDetails[0].SectionDescriptors.Length;
-        foreach (var lod in component.LevelOfDetails)
+        if (_guids.Add(component.LevelOfDetails[0].Guid))
         {
-            _indices += lod.Primitive.Indices?.Length ?? 0;
-            _vertices += lod.Primitive.Vertices?.Length ?? 0;
+            foreach (var lod in component.LevelOfDetails)
+            {
+                _indices += lod.Primitive.Indices?.Length ?? 0;
+                _vertices += lod.Primitive.Vertices?.Length ?? 0;
+            }
         }
     }
 

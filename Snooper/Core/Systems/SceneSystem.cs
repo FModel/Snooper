@@ -1,6 +1,7 @@
 ﻿using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
 using Snooper.Rendering;
+using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
 

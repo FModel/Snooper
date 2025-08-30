@@ -6,8 +6,10 @@ namespace Snooper.Rendering.Actors;
 
 public class LandscapeProxyActor : Actor
 {
-    public LandscapeProxyActor(ALandscapeProxy landscape, TransformComponent? transform = null, bool convert = false) : base(landscape.Name, transform: transform)
+    public LandscapeProxyActor(ALandscapeProxy landscape, Transform? transform = null, bool convert = false) : base(landscape.Name)
     {
+        Components.Add(new SpatialComponent(transform));
+        
         var components = landscape.GetOrDefault<ULandscapeComponent[]>("LandscapeComponents", []);
         foreach (var component in components)
         {

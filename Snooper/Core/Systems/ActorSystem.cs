@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using Snooper.Rendering;
+using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;

@@ -3,6 +3,7 @@ using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core;
@@ -37,9 +38,16 @@ public struct PerDrawMeshData : IPerDrawData
 
 [DefaultActorSystem(typeof(RenderSystem))]
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent(IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>(CreateGeometry(levels), box)
+public abstract class MeshComponent(FGuid guid, IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>(CreateGeometry(guid, levels), box)
 {
-    internal void ParseMaterials()
+    protected override void OnAddedToActor()
+    {
+        base.OnAddedToActor();
+
+        ParseMaterials();
+    }
+
+    private void ParseMaterials()
     {
         for (var i = 0; i < Materials.Length; i++)
         {
@@ -119,7 +127,7 @@ public abstract class MeshComponent(IReadOnlyList<CBaseMeshLod> levels, Resolved
         }
     }
 
-    private static LevelOfDetail<Vertex>[] CreateGeometry(IReadOnlyList<CBaseMeshLod> levels)
+    private static LevelOfDetail<Vertex>[] CreateGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels)
     {
         var geometries = new LevelOfDetail<Vertex>[levels.Count];
         for (var i = 0; i < geometries.Length; i++)
@@ -131,7 +139,7 @@ public abstract class MeshComponent(IReadOnlyList<CBaseMeshLod> levels, Resolved
                 sections[j] = new PrimitiveSectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
             }
             
-            geometries[i] = new LevelOfDetail<Vertex>(new Geometry(levels[i]), levels[i].ScreenSize, sections);
+            geometries[i] = new LevelOfDetail<Vertex>(guid, new Geometry(levels[i]), levels[i].ScreenSize, sections);
         }
         return geometries;
     }

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers.Buffers;
@@ -56,7 +57,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _drawData.Unbind(); // instance ssbo is rebound here
 
         _commands.Current.Allocate(new DrawElementsIndirectCommand[drawCount]);
-        _instanceData.Allocate(new TInstanceData[drawCount * 10]);
+        _instanceData.Allocate(new TInstanceData[drawCount * 2]);
         
         EBO.Allocate(new uint[indices]);
         VBO.Allocate(new TVertex[vertices]);
@@ -72,11 +73,41 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         VBO.Unbind();
     }
     
+    private struct MeshGpuHandle
+    {
+        public uint FirstIndex;
+        public uint BaseVertex;
+        public uint ModelId;
+
+        public MeshGpuHandle(uint firstIndex, uint baseVertex, uint modelId)
+        {
+            FirstIndex = firstIndex;
+            BaseVertex = baseVertex;
+            ModelId = modelId;
+        }
+    }
+    private readonly Dictionary<FGuid, MeshGpuHandle> _meshCache = new();
+    
     public void Add(LevelOfDetail<TVertex>[] levelOfDetails, MaterialSection[] materials, TInstanceData[] instanceData, CullingBounds bounds)
     {
-        var (firstIndex, baseVertex, descriptor) = CreateDescriptor();
+        uint firstIndex;
+        uint baseVertex;
+        uint modelId;
+        if (_meshCache.TryGetValue(levelOfDetails[0].Guid, out var handle))
+        {
+            // Reuse VBO/EBO offsets
+            firstIndex = handle.FirstIndex;
+            baseVertex = handle.BaseVertex;
+            modelId = handle.ModelId;
+        }
+        else
+        {
+            (firstIndex, baseVertex, var descriptor) = CreateDescriptor();
+            modelId = (uint)_culling.Add(descriptor);
+            _meshCache[levelOfDetails[0].Guid] = new MeshGpuHandle(firstIndex, baseVertex, modelId);
+        }
+        
         var baseInstance = (uint)_instanceData.AddRange(instanceData);
-        var modelId = (uint)_culling.Add(descriptor);
         var instanceCount = (uint)instanceData.Length;
 
         for (var i = 0u; i < materials.Length; i++)
@@ -193,11 +224,11 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     {
         var builder = new StringBuilder();
         builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}, {typeof(TInstanceData).Name}>:");
-        builder.AppendLine($"    Commands:     {_commands.Current.GetFormattedSpace()}");
-        builder.AppendLine($"    InstanceData: {_instanceData.GetFormattedSpace()}");
-        builder.AppendLine($"    DrawData:     {_drawData.GetFormattedSpace()}");
-        builder.AppendLine($"    Indices:      {EBO.GetFormattedSpace()}");
-        builder.AppendLine($"    Vertices:     {VBO.GetFormattedSpace()}");
+        builder.AppendLine($"    x{_commands.Current.Count} Commands:     {_commands.Current.GetFormattedSpace()}");
+        builder.AppendLine($"    x{_drawData.Count} DrawData:     {_drawData.GetFormattedSpace()}");
+        builder.AppendLine($"    x{_instanceData.Count} InstanceData: {_instanceData.GetFormattedSpace()}");
+        builder.AppendLine($"    x{EBO.Count} Indices:      {EBO.GetFormattedSpace()}");
+        builder.AppendLine($"    x{VBO.Count} Vertices:     {VBO.GetFormattedSpace()}");
         return builder.ToString();
     }
 

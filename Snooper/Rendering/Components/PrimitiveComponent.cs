@@ -1,17 +1,19 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
 
-public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : ActorComponent, IControllable
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : SpatialComponent, IControllable
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
@@ -54,14 +56,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     private TInstanceData[]? _cachedInstanceData { get; set; }
     public TInstanceData[] GetPerInstanceData()
     {
-        if (Actor is null)
-            throw new InvalidOperationException("Actor is not set for the component.");
-        
-        var matrices = Actor.GetWorldMatrices();
-        var data = new TInstanceData[matrices.Length];
+        var relation = Relation?.WorldMatrix ?? Matrix4x4.Identity;
+        var data = new TInstanceData[LocalInstanceTransforms.Count];
         for (var i = 0; i < data.Length; i++)
         {
-            data[i] = new TInstanceData { Matrix = matrices[i] };
+            data[i] = new TInstanceData { Matrix = LocalInstanceTransforms[i].ToMatrix() * relation };
         }
         
         if (_cachedInstanceData is null)
@@ -126,7 +125,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
 /// primitive component that uses a single section for the entire primitive data.
 /// </summary>
 public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds)
-    : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>([new LevelOfDetail<TVertex>(primitive)], bounds)
+    : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>([new LevelOfDetail<TVertex>(FGuid.Random(), primitive)], bounds)
     where TVertex : unmanaged
     where TPerDrawData : unmanaged, IPerDrawData;
 

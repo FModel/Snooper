@@ -1,13 +1,28 @@
 ﻿using ImGuiNET;
+using Snooper.Rendering.Actors;
 using Snooper.UI;
 
 namespace Snooper.Rendering;
 
-public abstract partial class ActorComponent
+public abstract partial class ActorComponent(string? name = null)
 {
-    public Actor? Actor;
+    private Actor? _actor;
+    public Actor? Actor
+    {
+        get => _actor;
+        internal set
+        {
+            if (_actor == value || value is null)
+                return;
+            
+            var old = _actor;
+            _actor = value;
+            
+            if (old == null) OnAddedToActor();
+        }
+    }
     
-    private string? _displayName;
+    private string? _displayName = name;
     public string DisplayName
     {
         get
@@ -21,6 +36,8 @@ public abstract partial class ActorComponent
             return _displayName;
         }
     }
+    
+    protected virtual void OnAddedToActor() { }
 
     internal void DrawInterface()
     {

@@ -7,10 +7,13 @@ public class LandscapeActor : Actor
 {
     public LandscapeMeshComponent MeshComponent { get; }
     
-    public LandscapeActor(ULandscapeComponent component) : base(component.Name, component.MapBuildDataId, component.GetRelativeTransform())
+    public LandscapeActor(ULandscapeComponent component) : base(component.Name)
     {
-        MeshComponent = new LandscapeMeshComponent(component);
-        
+        MeshComponent = new LandscapeMeshComponent(component)
+        {
+            LocalTransform = component.GetRelativeTransform()
+        };
+
         Components.Add(MeshComponent);
     }
     

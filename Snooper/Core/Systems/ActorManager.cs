@@ -4,6 +4,7 @@ using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Textures;
 using Snooper.Core.Hardware;
 using Snooper.Rendering;
+using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
@@ -175,7 +176,7 @@ public abstract class ActorManager : IGameSystem
         // walk up until we find the first class with attributes
         for (var t = type; t != null; t = t.BaseType)
         {
-            var attrs = t.GetCustomAttributes<DefaultActorSystemAttribute>(false).ToArray();
+            var attrs = t.GetCustomAttributes<DefaultActorSystemAttribute>().ToArray();
             if (attrs.Length > 0)
                 return attrs; // stop at the first hit
         }
