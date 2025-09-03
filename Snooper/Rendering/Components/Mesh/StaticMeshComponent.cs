@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Misc;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Mesh;
 
@@ -9,7 +10,7 @@ public class StaticMeshComponent : MeshComponent
 {
     private readonly CStaticMesh _mesh;
 
-    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(owner.LightingGuid, mesh.LODs, owner.Materials, mesh.BoundingBox)
+    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh, Transform? transform = null, string? name = null) : base(owner.LightingGuid, mesh.LODs, owner.Materials, mesh.BoundingBox, transform, name ?? owner.Name)
     {
         _mesh = mesh;
     }

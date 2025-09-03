@@ -19,7 +19,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
     
-    protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
+    protected abstract Action<int> VertexLayout { get; }
 
     protected IndirectResources<TVertex, TInstanceData, TPerDrawData> Resources { get; }
     public TextureManager TextureManager { get; }
@@ -51,7 +51,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.Load();
 
         Resources.Generate();
-        Resources.Bind();
         Resources.Allocate(_componentCount, _drawCount, _indices, _vertices);
         
         TextureManager.Load();
@@ -60,9 +59,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         {
             component.Generate(Resources, TextureManager);
         }
-        PointersFactory(Resources.VBO);
-        
-        Resources.Unbind();
+        Resources.SetVertexLayout(VertexLayout);
     }
 
     public override void Update(float delta)
@@ -72,12 +69,10 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         // dequeue textures
         TextureManager.Update(delta);
 
-        Resources.Bind();
         foreach (var component in Components)
         {
             component.Update(Resources, TextureManager);
         }
-        Resources.Unbind();
     }
 
     public override void Render(CameraComponent camera)

@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers.Buffers;
@@ -10,106 +9,54 @@ using Snooper.Rendering.Components.Primitive;
 namespace Snooper.Core.Containers.Resources;
 
 public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type)
-    : IBind, IMemorySizeProvider, IDisposable
+    : IMemorySizeProvider, IDisposable
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData 
     where TPerDrawData : unmanaged, IPerDrawData
 {
+    private readonly GeometryPool<TVertex> _geometry = new(initialDrawCapacity);
     private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new(initialDrawCapacity);
     private readonly ShaderStorageBuffer<TPerDrawData> _drawData = new(initialDrawCapacity);
     
-    private readonly CullingResources _culling = new(initialDrawCapacity);
-
-    private readonly VertexArray _vao = new();
-    public readonly ElementArrayBuffer<uint> EBO = new(initialDrawCapacity * 2000);
-    public readonly ArrayBuffer<TVertex> VBO = new(initialDrawCapacity * 1000);
-    
     public void Generate()
     {
+        _geometry.Generate();
         _commands.Generate();
         _instanceData.Generate();
         _drawData.Generate();
-        
-        _culling.Generate();
-        
-        _vao.Generate();
-        EBO.Generate();
-        VBO.Generate();
     }
-
-    public void Bind()
-    {
-        _commands.Current.Bind();
-        _instanceData.Bind();
-        
-        _vao.Bind();
-        EBO.Bind();
-        VBO.Bind();
-    }
+    
+    public void SetVertexLayout(Action<int> setter) => _geometry.SetVertexLayout(setter);
     
     public void Allocate(int componentCount, int drawCount, int indices, int vertices)
     {
-        _culling.Allocate(componentCount, drawCount);
-        
+        _geometry.Allocate(componentCount, drawCount, indices, vertices);
+
+        _commands.Current.Bind();
+        _commands.Current.Allocate(new DrawElementsIndirectCommand[drawCount]);
+        _commands.Current.Unbind();
+
+        _instanceData.Bind();
+        _instanceData.Allocate(new TInstanceData[drawCount * 2]);
+        _instanceData.Unbind();
+
         _drawData.Bind();
         _drawData.Allocate(new TPerDrawData[drawCount]);
-        _drawData.Unbind(); // instance ssbo is rebound here
-
-        _commands.Current.Allocate(new DrawElementsIndirectCommand[drawCount]);
-        _instanceData.Allocate(new TInstanceData[drawCount * 2]);
-        
-        EBO.Allocate(new uint[indices]);
-        VBO.Allocate(new TVertex[vertices]);
+        _drawData.Unbind();
     }
-
-    public void Unbind()
-    {
-        _commands.Current.Unbind();
-        _instanceData.Unbind();
-        
-        _vao.Unbind();
-        EBO.Unbind();
-        VBO.Unbind();
-    }
-    
-    private struct MeshGpuHandle
-    {
-        public uint FirstIndex;
-        public uint BaseVertex;
-        public uint ModelId;
-
-        public MeshGpuHandle(uint firstIndex, uint baseVertex, uint modelId)
-        {
-            FirstIndex = firstIndex;
-            BaseVertex = baseVertex;
-            ModelId = modelId;
-        }
-    }
-    private readonly Dictionary<FGuid, MeshGpuHandle> _meshCache = new();
     
     public void Add(LevelOfDetail<TVertex>[] levelOfDetails, MaterialSection[] materials, TInstanceData[] instanceData, CullingBounds bounds)
     {
-        uint firstIndex;
-        uint baseVertex;
-        uint modelId;
-        if (_meshCache.TryGetValue(levelOfDetails[0].Guid, out var handle))
-        {
-            // Reuse VBO/EBO offsets
-            firstIndex = handle.FirstIndex;
-            baseVertex = handle.BaseVertex;
-            modelId = handle.ModelId;
-        }
-        else
-        {
-            (firstIndex, baseVertex, var descriptor) = CreateDescriptor();
-            modelId = (uint)_culling.Add(descriptor);
-            _meshCache[levelOfDetails[0].Guid] = new MeshGpuHandle(firstIndex, baseVertex, modelId);
-        }
+        // TODO: create lod only if not already cached
+        var handle = _geometry.Add(levelOfDetails[0].Guid, () => levelOfDetails, bounds);
         
+        _instanceData.Bind();
         var baseInstance = (uint)_instanceData.AddRange(instanceData);
+        _instanceData.Unbind();
+        
+        _commands.Current.Bind();
         var instanceCount = (uint)instanceData.Length;
-
         for (var i = 0u; i < materials.Length; i++)
         {
             materials[i].DrawMetadata.BaseInstance = (int)baseInstance;
@@ -117,40 +64,16 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
             {
                 IndexCount = levelOfDetails[0].SectionDescriptors[i].IndexCount,
                 InstanceCount = instanceCount,
-                FirstIndex = firstIndex + levelOfDetails[0].SectionDescriptors[i].FirstIndex,
-                BaseVertex = baseVertex,
+                FirstIndex = handle.FirstIndex + levelOfDetails[0].SectionDescriptors[i].FirstIndex,
+                BaseVertex = handle.BaseVertex,
                 BaseInstance = baseInstance,
                 OriginalInstanceCount = instanceCount,
                 OriginalBaseInstance = baseInstance,
-                ModelId = modelId,
+                ModelId = handle.ModelId,
                 SectionId = i,
             });
         }
-
-        unsafe (uint, uint, PrimitiveDescriptor) CreateDescriptor()
-        {
-            var maxLod = 0u;
-            var d = new PrimitiveDescriptor(bounds);
-            for (var i = 0; i < levelOfDetails.Length && i < Settings.MaxNumberOfLods; i++)
-            {
-                if (!levelOfDetails[i].Primitive.IsValid)
-                {
-                    continue;
-                    // throw new InvalidOperationException("Primitive data is not valid.");
-                }
-                
-                d.LOD_FirstIndex[i] = (uint)EBO.AddRange(levelOfDetails[i].Primitive.Indices);
-                d.LOD_BaseVertex[i] = (uint)VBO.AddRange(levelOfDetails[i].Primitive.Vertices);
-                d.LOD_ScreenSize[i] = levelOfDetails[i].ScreenSize;
-                d.LOD_SectionCount[i] = (uint)levelOfDetails[i].SectionDescriptors.Length;
-                d.LOD_SectionOffset[i] = (uint)_culling.Add(levelOfDetails[i].SectionDescriptors);
-                
-                maxLod++;
-                levelOfDetails[i].Dispose();
-            }
-            d.Bounds.MaxLevelOfDetail = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
-            return (d.LOD_FirstIndex[0], d.LOD_BaseVertex[0], d);
-        }
+        _commands.Current.Unbind();
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
@@ -158,7 +81,11 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         if (!component.Actor.IsDirty || component.Materials.Length < 1) return;
         
         var metadata = component.Materials[0].DrawMetadata;
+        
+        _instanceData.Bind();
         _instanceData.Update(metadata.BaseInstance, component.GetPerInstanceData());
+        _instanceData.Unbind();
+        
         component.Actor.MarkClean();
     }
     
@@ -176,12 +103,15 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     {
         Log.Debug("Removing draw data for draw ID {DrawId}.", metadata.DrawId);
         
-        Bind();
+        _commands.Current.Bind();
         _commands.Current.Remove(metadata.DrawId);
+        _commands.Current.Unbind();
+        
+        _instanceData.Bind();
         _instanceData.Remove(metadata.BaseInstance);
+        _instanceData.Unbind();
         // EBO.Remove();
         // VBO.Remove();
-        Unbind();
 
         _drawData.Bind();
         _drawData.Remove(metadata.DrawId);
@@ -190,45 +120,36 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         // _culling.Remove();
     }
 
-    public void Cull(CameraComponent camera) => _culling.Cull(camera, _instanceData, _commands.Current);
+    public void Cull(CameraComponent camera) => _geometry.Cull(camera, _instanceData, _commands.Current);
 
     public void Render()
     {
         _commands.Current.Bind();
         _instanceData.Bind(0);
         _drawData.Bind(1);
-        _vao.Bind();
+        
+        _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.Count, _commands.Current.Stride));
 
-        GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.Count, _commands.Current.Stride);
-
-        // _vao.Unbind();
-        // EBO.Unbind();
         _commands.Current.Unbind();
-
         // _commands.Swap();
     }
     
     public void Dispose()
     {
+        _geometry.Dispose();
         _commands.Dispose();
         _instanceData.Dispose();
-        _culling.Dispose();
         _drawData.Dispose();
-        
-        _vao.Dispose();
-        EBO.Dispose();
-        VBO.Dispose();
     }
 
     public string GetFormattedSpace()
     {
         var builder = new StringBuilder();
         builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}, {typeof(TInstanceData).Name}>:");
+        builder.AppendLine(_geometry.GetFormattedSpace());
         builder.AppendLine($"    x{_commands.Current.Count} Commands:     {_commands.Current.GetFormattedSpace()}");
         builder.AppendLine($"    x{_drawData.Count} DrawData:     {_drawData.GetFormattedSpace()}");
         builder.AppendLine($"    x{_instanceData.Count} InstanceData: {_instanceData.GetFormattedSpace()}");
-        builder.AppendLine($"    x{EBO.Count} Indices:      {EBO.GetFormattedSpace()}");
-        builder.AppendLine($"    x{VBO.Count} Vertices:     {VBO.GetFormattedSpace()}");
         return builder.ToString();
     }
 

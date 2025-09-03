@@ -21,4 +21,6 @@ public struct CullingBounds
     }
     
     public static implicit operator CullingBounds(FBox box) => new(box);
+
+    public override string ToString() => $"Center: {Center}, Extents: {Extents}, SphereRadius: {SphereRadius}";
 }

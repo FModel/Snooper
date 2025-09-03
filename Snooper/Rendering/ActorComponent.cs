@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
 using Snooper.UI;
 
 namespace Snooper.Rendering;
@@ -41,9 +42,9 @@ public abstract partial class ActorComponent(string? name = null)
 
     internal void DrawInterface()
     {
-        if (this is not IControllable controllable) return;
-        
-        if (ImGui.CollapsingHeader($"{DisplayName} Controls"))
+        if (this is not IControllable controllable || this is DebugComponent) return;
+
+        if (ImGui.CollapsingHeader(DisplayName))
         {
             controllable.DrawControls();
         }

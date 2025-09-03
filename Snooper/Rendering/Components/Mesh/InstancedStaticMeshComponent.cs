@@ -7,7 +7,7 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public class InstancedStaticMeshComponent : StaticMeshComponent
 {
-    public InstancedStaticMeshComponent(UStaticMesh owner, CStaticMesh mesh, FTransform relation, FInstancedStaticMeshInstanceData[] instances) : base(owner, mesh)
+    public InstancedStaticMeshComponent(UStaticMesh owner, CStaticMesh mesh, FInstancedStaticMeshInstanceData[] instances, FTransform transform, string? name = null) : base(owner, mesh, null, name)
     {
         if (instances.Length == 0)
             return;
@@ -15,7 +15,7 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
         LocalInstanceTransforms.Clear();
         foreach (var data in instances)
         {
-            LocalInstanceTransforms.Add(data.TransformData * relation);
+            LocalInstanceTransforms.Add(data.TransformData * transform);
         }
     }
 }

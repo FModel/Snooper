@@ -11,6 +11,7 @@ using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -38,7 +39,8 @@ public struct PerDrawMeshData : IPerDrawData
 
 [DefaultActorSystem(typeof(RenderSystem))]
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent(FGuid guid, IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>(CreateGeometry(guid, levels), box)
+public abstract class MeshComponent(FGuid guid, IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box, Transform? transform = null, string? name = null)
+    : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>(CreateGeometry(guid, levels), box, transform, name)
 {
     protected override void OnAddedToActor()
     {

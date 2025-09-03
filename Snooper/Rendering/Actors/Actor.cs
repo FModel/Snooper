@@ -55,6 +55,11 @@ public class Actor
         }
         
         actor._parent = this;
+        
+        if (actor.RootComponent is ISpatialComponent spatial && RootComponent is ISpatialComponent parentSpatial)
+        {
+            spatial.AttachTo(parentSpatial);
+        }
     }
 
     private void RemoveInternal(Actor actor)

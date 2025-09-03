@@ -11,9 +11,6 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
 {
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
     
-    private const float KeyDownCooldown = 0.1f;
-    private float _keyDownTimer;
-    
     private WindowState _pWindowState;
     
     protected bool Enabled { get; private set; } = true;
@@ -27,8 +24,6 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
 
     public override void Update(float delta)
     {
-        _keyDownTimer -= delta;
-        
         var pressed = Window.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
 
@@ -57,22 +52,6 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         {
             if (pressed && !Enabled)
                 ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
-
-            if (_keyDownTimer <= 0)
-            {
-                if (Window.IsKeyDown(Keys.PageUp))
-                {
-                    ActiveCamera.MovementSpeed += 5f;
-                    Notifications.PushNotification("Camera", $"Movement speed increased to {ActiveCamera.MovementSpeed}.");
-                    _keyDownTimer = KeyDownCooldown;
-                }
-                else if (Window.IsKeyDown(Keys.PageDown))
-                {
-                    ActiveCamera.MovementSpeed = MathF.Max(1, ActiveCamera.MovementSpeed - 5f);
-                    Notifications.PushNotification("Camera", $"Movement speed decreased to {ActiveCamera.MovementSpeed}.");
-                    _keyDownTimer = KeyDownCooldown;
-                }
-            }
         }
         
         ActiveCamera?.Update(Window.KeyboardState, delta);

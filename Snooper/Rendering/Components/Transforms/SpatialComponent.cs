@@ -1,15 +1,27 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 using Snooper.Core;
+using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Transforms;
 
-[DefaultActorSystem(typeof(TransformSystem))]
-public class SpatialComponent(Transform? transform = null, string? name = null) : ActorComponent(name), IControllable
+public interface ISpatialComponent
 {
-    public readonly List<Transform> LocalInstanceTransforms = [transform ?? Transform.Identity];
+    public Matrix4x4 WorldMatrix { get; }
+    public Matrix4x4 LocalMatrix { get; }
+    public Transform LocalTransform { get; }
+    
+    void UpdateWorldMatrix(bool recursive = true);
+    void AttachTo(ISpatialComponent parent);
+}
+
+[DefaultActorSystem(typeof(TransformSystem))]
+public class SpatialComponent<TInstanceData>(Transform? transform = null, string? name = null) : ActorComponent(name), ISpatialComponent, IControllable where TInstanceData : unmanaged, IPerInstanceData
+{
+    public List<Transform> LocalInstanceTransforms = [transform ?? Transform.Identity];
 
     public Transform LocalTransform
     {
@@ -45,7 +57,14 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
         }
     }
 
-    public SpatialComponent? Relation;
+    public ISpatialComponent? Relation;
+    public void AttachTo(ISpatialComponent parent)
+    {
+        if (Relation is not null)
+            throw new InvalidOperationException("This component is already attached to a parent.");
+        
+        Relation = parent;
+    }
     
     public void UpdateWorldMatrix(bool recursive = true)
     {
@@ -71,19 +90,66 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
         }
     }
     
-    public void DrawControls()
+    private TInstanceData[]? _cachedInstanceData { get; set; }
+    public TInstanceData[] GetPerInstanceData()
     {
-        // if (ImGui.DragFloat3("Position", ref LocalTransform.Position, 0.1f))
-        // {
-        //     UpdateLocalMatrix();
-        // }
-        // if (ImGui.DragFloat4("Rotation", ref LocalTransform.Rotation, 0.1f))
-        // {
-        //     UpdateLocalMatrix();
-        // }
-        // if (ImGui.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f))
-        // {
-        //     UpdateLocalMatrix();
-        // }
+        Relation?.UpdateWorldMatrix();
+        var relation = Relation?.WorldMatrix ?? Matrix4x4.Identity;
+        var data = new TInstanceData[LocalInstanceTransforms.Count];
+        for (var i = 0; i < data.Length; i++)
+        {
+            data[i] = new TInstanceData { Matrix = LocalInstanceTransforms[i].ToMatrix() * relation };
+        }
+        
+        if (_cachedInstanceData is null)
+        {
+            if (ApplyInstanceData(data))
+                _cachedInstanceData = data;
+        }
+        else
+        {
+            CopyCachedData(data, _cachedInstanceData);
+        }
+
+        return data;
+    }
+    protected virtual bool ApplyInstanceData(TInstanceData[] data)
+    {
+        return false;
+    }
+    protected virtual void CopyCachedData(TInstanceData[] data, TInstanceData[] cached)
+    {
+        
+    }
+    
+    public virtual void DrawControls()
+    {
+        if (ImGui.TreeNode("Transform"))
+        {
+            if (ImGui.DragFloat3("Position", ref LocalTransform.Position, 0.1f))
+            {
+                UpdateLocalMatrix();
+            }
+            // if (ImGui.DragFloat4("Rotation", ref LocalTransform.Rotation, 0.1f))
+            // {
+            //     UpdateLocalMatrix();
+            // }
+            if (ImGui.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f))
+            {
+                UpdateLocalMatrix();
+            }
+
+            ImGui.Text($"Instances: {LocalInstanceTransforms.Count}");
+            if (Relation is ActorComponent relation)
+            {
+                ImGui.Text($"Attached to: {relation.DisplayName}");
+                ImGui.Text($"Owner: {(relation.Actor == Actor ? "Self" : relation.Actor?.Name)}");
+            }
+            
+            ImGui.TreePop();
+        }
     }
 }
+
+public class SpatialComponent(Transform? transform = null, string? name = null)
+    : SpatialComponent<PerInstanceData>(transform, name);

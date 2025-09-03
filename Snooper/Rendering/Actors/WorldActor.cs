@@ -23,6 +23,8 @@ public class WorldActor : Actor
 {
     public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world.Name)
     {
+        Components.Add(new Components.PrimitiveComponent(new Primitives.Cube()));
+        
         var compoments = type.Includes(WorldActorType.Components);
         var landscape = type.Includes(WorldActorType.Landscape);
         var partition = type.Includes(WorldActorType.WorldPartition);
@@ -50,9 +52,9 @@ public class WorldActor : Actor
             var parent = actor.ProcessEnqueuedComponents(_parents);
             if (parent != null)
             {
-                if (_parents.TryGetValue(parent, out var root) && root.Actor != null)
+                if (_parents.TryGetValue(parent, out var root))
                 {
-                    root.Actor.Children.Add(actor);
+                    root.Actor?.Children.Add(actor);
                 }
                 else
                 {

@@ -72,7 +72,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
             color = new Vector3((id & 0xFF) / 255f, ((id >> 8) & 0xFF) / 255f, ((id >> 16) & 0xFF) / 255f);
         }
         
-        component.Actor?.Components.Add(new DebugComponent(component.Bounds, color));
+        component.Actor?.Components.Add(new DebugComponent(component.Bounds, color) { LocalInstanceTransforms = component.LocalInstanceTransforms });
     }
 }
 
@@ -82,9 +82,9 @@ public class PrimitiveSystem<TComponent, TInstanceData, TPerDrawData>(int initia
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    protected override Action<ArrayBuffer<Vector3>> PointersFactory { get; } = buffer =>
+    protected override Action<int> VertexLayout { get; } = stride =>
     {
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, buffer.Stride, 0);
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, 0);
         GL.EnableVertexAttribArray(0);
     };
 }

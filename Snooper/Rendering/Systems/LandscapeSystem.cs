@@ -21,9 +21,9 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         TessellationControl = "Landscape/landscape.tesc",
         TessellationEvaluation = "Landscape/landscape.tese"
     };
-    protected override Action<ArrayBuffer<Vector2>> PointersFactory { get; } = buffer =>
+    protected override Action<int> VertexLayout { get; } = stride =>
     {
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, buffer.Stride, 0);
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
         GL.EnableVertexAttribArray(0);
     };
     

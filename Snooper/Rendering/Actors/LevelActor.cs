@@ -1,12 +1,14 @@
 ﻿using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
@@ -16,18 +18,22 @@ public class LevelActor : Actor
 {
     public LevelActor(UObject actor, Dictionary<FPackageIndex, ActorComponent> components) : base(actor.Name)
     {
-        var root = actor.GetOrDefault<FPackageIndex?>("RootComponent");
-        if (root != null)
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
+
+        foreach (var ptr in _ptrs)
         {
-            var component = CreateComponent(root);
+            var component = CreateComponent(ptr);
             _parent = component.Item1;
             
             Components.Add(component.Item2);
-            components.TryAdd(root, component.Item2);
+            components.TryAdd(ptr, component.Item2);
+            
+            _ptrs.Remove(ptr);
+            break;
         }
-        
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
         
         if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
         {
@@ -51,23 +57,20 @@ public class LevelActor : Actor
         void CreateRecursive(FPackageIndex ptr)
         {
             var component = CreateComponent(ptr);
-            if (component is { Item1: not null, Item2: SpatialComponent spatial })
+            if (component is { Item1: not null, Item2: ISpatialComponent spatial })
             {
-                if (components.TryGetValue(component.Item1, out var parent))
+                if (!components.ContainsKey(component.Item1))
                 {
-                    if (parent is SpatialComponent parentSpatial)
-                    {
-                        spatial.Relation = parentSpatial;
-                    }
-                    else
-                    {
-                        throw new Exception("Parent component is not a spatial component");
-                    }
+                    CreateRecursive(component.Item1);
+                }
+                
+                if (components[component.Item1] is ISpatialComponent parentSpatial)
+                {
+                    spatial.AttachTo(parentSpatial);
                 }
                 else
                 {
-                    CreateRecursive(component.Item1);
-                    // throw new Exception("Parent component not found");
+                    throw new Exception("Parent component is not a spatial component");
                 }
             }
             
@@ -80,12 +83,15 @@ public class LevelActor : Actor
     {
         FPackageIndex? parent = null;
         ActorComponent component;
-        switch (ptr.Load())
+
+        var data = ptr.Load();
+        var name = $"{data?.Name} ({data?.GetType().Name})";
+        switch (data)
         {
             case USceneComponent sceneComponent:
             {
                 parent = sceneComponent.GetOrDefault<FPackageIndex?>("AttachParent");
-                
+
                 var transform = sceneComponent.GetRelativeTransform();
                 switch (sceneComponent)
                 {
@@ -101,11 +107,11 @@ public class LevelActor : Actor
                         {
                             if (staticMeshComponent is UInstancedStaticMeshComponent instancedComponent)
                             {
-                                component = new InstancedStaticMeshComponent(staticMesh, mesh, transform, instancedComponent.GetInstances());
+                                component = new InstancedStaticMeshComponent(staticMesh, mesh, instancedComponent.GetInstances(), transform, name);
                             }
                             else
                             {
-                                component = new StaticMeshComponent(staticMesh, mesh);
+                                component = new StaticMeshComponent(staticMesh, mesh, transform, name);
                             }
                         }
                         break;
@@ -115,27 +121,26 @@ public class LevelActor : Actor
                         if (!skeletalMesh.TryConvert(out var mesh))
                             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
 
-                        using (mesh) component = new SkeletalMeshComponent(skeletalMesh, mesh);
+                        using (mesh) component = new SkeletalMeshComponent(skeletalMesh, mesh, transform, name);
+                        break;
+                    }
+                    case ULandscapeComponent landscapeComponent:
+                    {
+                        component = new LandscapeMeshComponent(landscapeComponent, transform, name);
                         break;
                     }
                     default:
                     {
-                        component = new SpatialComponent(null, $"{sceneComponent.Name} ({sceneComponent.GetType().Name})");
-                        // component = new Components.PrimitiveComponent(new Primitives.Cube());
+                        component = new SpatialComponent<PerInstanceData>(transform, name);
+                        // component = new Components.PrimitiveComponent(new Primitives.Cube(), transform, name);
                         break;
                     }
-                }
-
-                if (component is SpatialComponent spatial and not InstancedStaticMeshComponent)
-                {
-                    // instance components already have the correct transform set
-                    spatial.LocalTransform = transform;
                 }
                 break;
             }
             default:
             {
-                component = new Components.PrimitiveComponent(new Primitives.Cube());
+                component = new Components.PrimitiveComponent(new Primitives.Cube(), null, name);
                 break;
             }
         }
@@ -149,7 +154,7 @@ public class LevelActor : Actor
     {
         foreach (var ptr in ptrs)
         {
-            if (ptr != null)
+            if (ptr is { IsNull: false })
             {
                 _ptrs.Add(ptr);
             }

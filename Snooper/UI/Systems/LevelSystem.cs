@@ -47,9 +47,18 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 pair.Camera.ViewportSize = size;
                 ImGui.Image(framebuffers[^1], size, Vector2.UnitY, Vector2.UnitX);
 
-                if (ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                if (ImGui.IsItemHovered())
                 {
-                    Window.CursorState = CursorState.Grabbed;
+                    if (Window.MouseState.ScrollDelta.Y != 0)
+                    {
+                        pair.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * 5f;
+                        Notifications.PushNotification("Camera", $"Movement speed set to {pair.Camera.MovementSpeed}.");
+                    }
+
+                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                    {
+                        Window.CursorState = CursorState.Grabbed;
+                    }
                 }
 
                 const float margin = 7.5f;
@@ -337,7 +346,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
     }
     
-    private void PlaceInFrontOfCamera(SpatialComponent component)
+    private void PlaceInFrontOfCamera(ISpatialComponent component)
     {
         if (ActiveCamera != null)
         {

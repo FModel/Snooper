@@ -4,6 +4,7 @@ using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -36,7 +37,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
     public readonly Vector2[] Scales;
     public readonly Dictionary<string, LayerMapping> Layers;
     
-    public LandscapeMeshComponent(ULandscapeComponent component) : base(new Geometry(component.ComponentSizeQuads), component.CachedLocalBox)
+    public LandscapeMeshComponent(ULandscapeComponent component, Transform? transform = null, string? name = null) : base(new Geometry(component.ComponentSizeQuads), component.CachedLocalBox, transform, name)
     {
         if (component.GetHeightmap() is not { } heightmap)
         {

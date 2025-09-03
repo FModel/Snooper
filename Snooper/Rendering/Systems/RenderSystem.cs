@@ -12,12 +12,12 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
     public override uint Order => 22;
     protected override bool AllowDerivation => true;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("mesh");
-    protected override Action<ArrayBuffer<Vertex>> PointersFactory { get; } = buffer =>
+    protected override Action<int> VertexLayout { get; } = stride =>
     {
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, buffer.Stride, 0);
-        GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, buffer.Stride, 12);
-        GL.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, buffer.Stride, 24);
-        GL.VertexAttribPointer(3, 2, VertexAttribPointerType.Float, false, buffer.Stride, 36);
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, 0);
+        GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, stride, 12);
+        GL.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, stride, 24);
+        GL.VertexAttribPointer(3, 2, VertexAttribPointerType.Float, false, stride, 36);
         GL.EnableVertexAttribArray(0);
         GL.EnableVertexAttribArray(1);
         GL.EnableVertexAttribArray(2);
