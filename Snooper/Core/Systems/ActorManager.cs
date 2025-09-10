@@ -186,7 +186,7 @@ public abstract class ActorManager : IGameSystem
 
     private void CollectNewActorSystems(Type componentType)
     {
-        var actorSystemAttributes = CollectActorSystemAttributes(componentType);
+        var actorSystemAttributes = componentType.GetCustomAttributes<DefaultActorSystemAttribute>();
         foreach (var actorSystemAttribute in actorSystemAttributes)
         {
             var addNewSystem = _systemsToLoad.All(IsSystemNotOfType(actorSystemAttribute.Type)) && Systems.Values.All(IsSystemNotOfType(actorSystemAttribute.Type));

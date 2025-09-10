@@ -8,7 +8,6 @@ namespace Snooper.Rendering.Actors;
 public class Actor
 {
     public string Name { get; }
-    public bool IsDirty { get; private set; } // currently driven by a component transform being modified
 
     public Actor(string name)
     {
@@ -41,9 +40,6 @@ public class Actor
     public ActorManager? ActorManager { get; internal set; }
     public ActorComponent? RootComponent { get; private set; }
     
-    internal void MarkDirty() => IsDirty = true;
-    internal void MarkClean() => IsDirty = false;
-    
     internal readonly int Id = Random.Shared.Next();
     internal virtual string Icon => "cube";
 
@@ -56,9 +52,9 @@ public class Actor
         
         actor._parent = this;
         
-        if (actor.RootComponent is ISpatialComponent spatial && RootComponent is ISpatialComponent parentSpatial)
+        if (actor.RootComponent is SpatialComponent spatial && RootComponent is SpatialComponent parentSpatial)
         {
-            spatial.AttachTo(parentSpatial);
+            spatial.Relation = parentSpatial;
         }
     }
 

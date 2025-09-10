@@ -346,7 +346,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
     }
     
-    private void PlaceInFrontOfCamera(ISpatialComponent component)
+    private void PlaceInFrontOfCamera(SpatialComponent component)
     {
         if (ActiveCamera != null)
         {

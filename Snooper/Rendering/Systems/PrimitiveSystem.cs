@@ -72,7 +72,10 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
             color = new Vector3((id & 0xFF) / 255f, ((id >> 8) & 0xFF) / 255f, ((id >> 16) & 0xFF) / 255f);
         }
         
-        component.Actor?.Components.Add(new DebugComponent(component.Bounds, color) { LocalInstanceTransforms = component.LocalInstanceTransforms });
+        component.Actor?.Components.Add(new DebugComponent(component.Bounds, color, $"AABB {component.DisplayName}")
+        {
+            Relation = component
+        });
     }
 }
 

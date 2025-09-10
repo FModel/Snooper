@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
 
@@ -23,14 +24,9 @@ public class WorldActor : Actor
 {
     public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world.Name)
     {
-        Components.Add(new Components.PrimitiveComponent(new Primitives.Cube()));
+        Components.Add(new SpatialComponent());
         
-        var compoments = type.Includes(WorldActorType.Components);
-        var landscape = type.Includes(WorldActorType.Landscape);
-        var partition = type.Includes(WorldActorType.WorldPartition);
         var streaming = type.Includes(WorldActorType.LevelStreaming);
-        var additional = type.Includes(WorldActorType.AdditionalWorlds);
-
         for (var i = 0; streaming && i < world.StreamingLevels.Length; i++)
         {
             Process(world.StreamingLevels[i]);
@@ -71,7 +67,7 @@ public class WorldActor : Actor
         _parents.Clear();
     }
 
-    private readonly Dictionary<FPackageIndex, ActorComponent> _parents = [];
+    private readonly Dictionary<FPackageIndex, SpatialComponent> _parents = [];
 
     private void Process(FPackageIndex? ptr)
     {

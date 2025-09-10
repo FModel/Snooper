@@ -17,9 +17,9 @@ public struct PerDrawDebugData : IPerDrawData
 }
 
 [DefaultActorSystem(typeof(DebugSystem))]
-public class DebugComponent(PrimitiveData primitive, CullingBounds bounds) : PrimitiveComponent<PerDrawDebugData>(primitive, bounds)
+public class DebugComponent(PrimitiveData primitive, CullingBounds bounds, string? name = null) : PrimitiveComponent<PerDrawDebugData>(primitive, bounds, null, name)
 {
-    public DebugComponent(CullingBounds bounds, Vector3? color = null) : this(new Geometry(bounds), bounds)
+    public DebugComponent(CullingBounds bounds, Vector3? color = null, string? name = null) : this(new Geometry(bounds), bounds, name)
     {
         if (color != null)
         {

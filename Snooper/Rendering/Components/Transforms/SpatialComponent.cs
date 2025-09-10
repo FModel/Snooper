@@ -1,27 +1,17 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using Serilog;
 using Snooper.Core;
-using Snooper.Core.Containers.Buffers;
-using Snooper.Core.Containers.Resources;
+using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Transforms;
 
-public interface ISpatialComponent
-{
-    public Matrix4x4 WorldMatrix { get; }
-    public Matrix4x4 LocalMatrix { get; }
-    public Transform LocalTransform { get; }
-    
-    void UpdateWorldMatrix(bool recursive = true);
-    void AttachTo(ISpatialComponent parent);
-}
-
 [DefaultActorSystem(typeof(TransformSystem))]
-public class SpatialComponent<TInstanceData>(Transform? transform = null, string? name = null) : ActorComponent(name), ISpatialComponent, IControllable where TInstanceData : unmanaged, IPerInstanceData
+public class SpatialComponent(Transform? transform = null, string? name = null) : ActorComponent(name), IControllable
 {
-    public List<Transform> LocalInstanceTransforms = [transform ?? Transform.Identity];
+    public readonly List<Transform> LocalInstanceTransforms = [transform ?? Transform.Identity];
 
     public Transform LocalTransform
     {
@@ -39,7 +29,7 @@ public class SpatialComponent<TInstanceData>(Transform? transform = null, string
                 return;
             
             _localMatrix = value;
-            Actor?.MarkDirty();
+            MarkDirty();
         }
     }
     
@@ -53,18 +43,34 @@ public class SpatialComponent<TInstanceData>(Transform? transform = null, string
                 return;
             
             _worldMatrix = value;
-            Actor?.MarkDirty();
+            MarkDirty();
         }
     }
-
-    public ISpatialComponent? Relation;
-    public void AttachTo(ISpatialComponent parent)
+    
+    private SpatialComponent? _relation;
+    public SpatialComponent? Relation
     {
-        if (Relation is not null)
-            throw new InvalidOperationException("This component is already attached to a parent.");
-        
-        Relation = parent;
+        get => _relation;
+        set
+        {
+            if (this is InstancedStaticMeshComponent && value is InstancedStaticMeshComponent)
+            {
+                Log.Warning("InstancedStaticMeshComponent cannot be used as a relation to another InstancedStaticMeshComponent");
+                return;
+            }
+            if (_relation == value) return;
+
+            _relation?.Children.Remove(this);
+            _relation = value;
+
+            if (_relation != null && !_relation.Children.Contains(this))
+                _relation.Children.Add(this);
+
+            MarkDirty();
+        }
     }
+    
+    public readonly List<SpatialComponent> Children = [];
     
     public void UpdateWorldMatrix(bool recursive = true)
     {
@@ -72,12 +78,12 @@ public class SpatialComponent<TInstanceData>(Transform? transform = null, string
         UpdateWorldMatrixInternal(recursive);
     }
     
-    public void UpdateLocalMatrix()
+    private void UpdateLocalMatrix()
     {
         LocalMatrix = LocalTransform.ToMatrix();
     }
     
-    internal void UpdateWorldMatrixInternal(bool recursive)
+    private void UpdateWorldMatrixInternal(bool recursive)
     {
         if (Relation is null)
         {
@@ -89,55 +95,24 @@ public class SpatialComponent<TInstanceData>(Transform? transform = null, string
             WorldMatrix = LocalMatrix * Relation.WorldMatrix;
         }
     }
-    
-    private TInstanceData[]? _cachedInstanceData { get; set; }
-    public TInstanceData[] GetPerInstanceData()
-    {
-        Relation?.UpdateWorldMatrix();
-        var relation = Relation?.WorldMatrix ?? Matrix4x4.Identity;
-        var data = new TInstanceData[LocalInstanceTransforms.Count];
-        for (var i = 0; i < data.Length; i++)
-        {
-            data[i] = new TInstanceData { Matrix = LocalInstanceTransforms[i].ToMatrix() * relation };
-        }
-        
-        if (_cachedInstanceData is null)
-        {
-            if (ApplyInstanceData(data))
-                _cachedInstanceData = data;
-        }
-        else
-        {
-            CopyCachedData(data, _cachedInstanceData);
-        }
 
-        return data;
-    }
-    protected virtual bool ApplyInstanceData(TInstanceData[] data)
+    internal override void MarkDirty()
     {
-        return false;
-    }
-    protected virtual void CopyCachedData(TInstanceData[] data, TInstanceData[] cached)
-    {
+        base.MarkDirty();
         
+        foreach (var child in Children)
+        {
+            child.MarkDirty();
+        }
     }
-    
+
     public virtual void DrawControls()
     {
         if (ImGui.TreeNode("Transform"))
         {
-            if (ImGui.DragFloat3("Position", ref LocalTransform.Position, 0.1f))
-            {
-                UpdateLocalMatrix();
-            }
-            // if (ImGui.DragFloat4("Rotation", ref LocalTransform.Rotation, 0.1f))
-            // {
-            //     UpdateLocalMatrix();
-            // }
-            if (ImGui.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f))
-            {
-                UpdateLocalMatrix();
-            }
+            ImGui.DragFloat3("Position", ref LocalTransform.Position, 0.1f);
+            // ImGui.DragFloat4("Rotation", ref LocalTransform.Rotation, 0.1f);
+            ImGui.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f);
 
             ImGui.Text($"Instances: {LocalInstanceTransforms.Count}");
             if (Relation is ActorComponent relation)
@@ -150,6 +125,3 @@ public class SpatialComponent<TInstanceData>(Transform? transform = null, string
         }
     }
 }
-
-public class SpatialComponent(Transform? transform = null, string? name = null)
-    : SpatialComponent<PerInstanceData>(transform, name);

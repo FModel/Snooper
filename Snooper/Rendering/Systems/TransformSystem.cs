@@ -12,20 +12,14 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
     {
         base.Load();
         
-        foreach (var component in _roots)
-        {
-            UpdateTransformComponentsRecursive(component);
-        }
+        Parallel.ForEach(Components, UpdateTransformComponentsRecursive);
     }
 
     public override void Update(float delta)
     {
         base.Update(delta);
-        
-        foreach (var component in _roots)
-        {
-            UpdateTransformComponentsRecursive(component);
-        }
+
+        Parallel.ForEach(Components, UpdateTransformComponentsRecursive);
     }
 
     public override void Render(CameraComponent camera)
@@ -33,33 +27,18 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
 
     }
 
-    protected override void OnActorComponentAdded(SpatialComponent component)
+    protected override bool CanEnqueueActorComponent(SpatialComponent component)
     {
-        base.OnActorComponentAdded(component);
+        return component.Relation is null;
+    }
 
-        if (component.Relation is null)
+    private void UpdateTransformComponentsRecursive(SpatialComponent component)
+    {
+        component.UpdateWorldMatrix(false);
+        
+        foreach (var child in component.Children)
         {
-            _roots.Add(component);
+            UpdateTransformComponentsRecursive(child);
         }
     }
-
-    protected override void OnActorComponentRemoved(SpatialComponent component)
-    {
-        base.OnActorComponentRemoved(component);
-
-        _roots.Remove(component);
-    }
-
-    private static void UpdateTransformComponentsRecursive(SpatialComponent component)
-    {
-        component.UpdateLocalMatrix();
-        component.UpdateWorldMatrixInternal(false);
-        
-        // foreach (var child in component.Actor.Children)
-        // {
-        //     UpdateTransformComponentsRecursive(child);
-        // }
-    }
-
-    private readonly HashSet<SpatialComponent> _roots = [];
 }

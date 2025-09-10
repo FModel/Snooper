@@ -78,7 +78,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
     {
-        if (!component.Actor.IsDirty || component.Materials.Length < 1) return;
+        if (!component.IsDirty || component.Materials.Length < 1) return;
         
         var metadata = component.Materials[0].DrawMetadata;
         
@@ -86,7 +86,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _instanceData.Update(metadata.BaseInstance, component.GetPerInstanceData());
         _instanceData.Unbind();
         
-        component.Actor.MarkClean();
+        component.MarkClean();
     }
     
     public void Update(int drawId, TPerDrawData drawData)

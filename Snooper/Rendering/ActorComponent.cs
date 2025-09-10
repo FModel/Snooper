@@ -1,6 +1,5 @@
 ﻿using ImGuiNET;
 using Snooper.Rendering.Actors;
-using Snooper.Rendering.Components;
 using Snooper.UI;
 
 namespace Snooper.Rendering;
@@ -38,12 +37,16 @@ public abstract partial class ActorComponent(string? name = null)
         }
     }
     
+    public bool IsDirty { get; private set; }
+    internal virtual void MarkDirty() => IsDirty = true; // spatial components will override this to propagate to children
+    internal virtual void MarkClean() => IsDirty = false;
+    
     protected virtual void OnAddedToActor() { }
-
+    
     internal void DrawInterface()
     {
-        if (this is not IControllable controllable || this is DebugComponent) return;
-
+        if (this is not IControllable controllable) return;
+        
         if (ImGui.CollapsingHeader(DisplayName))
         {
             controllable.DrawControls();

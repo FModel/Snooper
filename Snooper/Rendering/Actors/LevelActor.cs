@@ -8,7 +8,6 @@ using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
-using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
@@ -16,7 +15,7 @@ namespace Snooper.Rendering.Actors;
 
 public class LevelActor : Actor
 {
-    public LevelActor(UObject actor, Dictionary<FPackageIndex, ActorComponent> components) : base(actor.Name)
+    public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components) : base(actor.Name)
     {
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
@@ -25,11 +24,11 @@ public class LevelActor : Actor
 
         foreach (var ptr in _ptrs)
         {
-            var component = CreateComponent(ptr);
-            _parent = component.Item1;
+            var pair = CreateComponent(ptr);
+            _parent = pair.ParentPtr;
             
-            Components.Add(component.Item2);
-            components.TryAdd(ptr, component.Item2);
+            Components.Add(pair.Component);
+            components.TryAdd(ptr, pair.Component);
             
             _ptrs.Remove(ptr);
             break;
@@ -44,7 +43,7 @@ public class LevelActor : Actor
         }
     }
 
-    public FPackageIndex? ProcessEnqueuedComponents(Dictionary<FPackageIndex, ActorComponent> components)
+    public FPackageIndex? ProcessEnqueuedComponents(Dictionary<FPackageIndex, SpatialComponent> components)
     {
         foreach (var ptr in _ptrs)
         {
@@ -56,33 +55,24 @@ public class LevelActor : Actor
         
         void CreateRecursive(FPackageIndex ptr)
         {
-            var component = CreateComponent(ptr);
-            if (component is { Item1: not null, Item2: ISpatialComponent spatial })
+            var pair = CreateComponent(ptr);
+            if (pair is { ParentPtr: not null })
             {
-                if (!components.ContainsKey(component.Item1))
-                {
-                    CreateRecursive(component.Item1);
-                }
-                
-                if (components[component.Item1] is ISpatialComponent parentSpatial)
-                {
-                    spatial.AttachTo(parentSpatial);
-                }
-                else
-                {
-                    throw new Exception("Parent component is not a spatial component");
-                }
+                if (!components.ContainsKey(pair.ParentPtr))
+                    CreateRecursive(pair.ParentPtr);
+
+                pair.Component.Relation = components[pair.ParentPtr];
             }
             
-            components.TryAdd(ptr, component.Item2);
-            Components.Add(component.Item2);
+            components.TryAdd(ptr, pair.Component);
+            Components.Add(pair.Component);
         }
     }
     
-    private (FPackageIndex?, ActorComponent) CreateComponent(FPackageIndex ptr)
+    private Pair CreateComponent(FPackageIndex ptr)
     {
         FPackageIndex? parent = null;
-        ActorComponent component;
+        SpatialComponent component;
 
         var data = ptr.Load();
         var name = $"{data?.Name} ({data?.GetType().Name})";
@@ -131,7 +121,7 @@ public class LevelActor : Actor
                     }
                     default:
                     {
-                        component = new SpatialComponent<PerInstanceData>(transform, name);
+                        component = new SpatialComponent(transform, name);
                         // component = new Components.PrimitiveComponent(new Primitives.Cube(), transform, name);
                         break;
                     }
@@ -140,12 +130,13 @@ public class LevelActor : Actor
             }
             default:
             {
+                // component = new SpatialComponent(null, name);
                 component = new Components.PrimitiveComponent(new Primitives.Cube(), null, name);
                 break;
             }
         }
 
-        return (parent, component);
+        return new Pair(parent, component);
     }
     
     private readonly FPackageIndex? _parent;
@@ -159,5 +150,11 @@ public class LevelActor : Actor
                 _ptrs.Add(ptr);
             }
         }
+    }
+    
+    private readonly struct Pair(FPackageIndex? parentPtr, SpatialComponent component)
+    {
+        public readonly FPackageIndex? ParentPtr = parentPtr;
+        public readonly SpatialComponent Component = component;
     }
 }

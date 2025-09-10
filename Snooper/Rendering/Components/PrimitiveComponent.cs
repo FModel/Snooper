@@ -12,7 +12,7 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components;
 
-public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : SpatialComponent<TInstanceData>
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : SpatialComponent
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
@@ -50,6 +50,37 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         {
             resources.Update(this);
         }
+    }
+    
+    private TInstanceData[]? _cachedInstanceData { get; set; }
+    public TInstanceData[] GetPerInstanceData()
+    {
+        var relation = Relation?.WorldMatrix ?? Matrix4x4.Identity;
+        var data = new TInstanceData[LocalInstanceTransforms.Count];
+        for (var i = 0; i < data.Length; i++)
+        {
+            data[i] = new TInstanceData { Matrix = LocalInstanceTransforms[i].ToMatrix() * relation };
+        }
+        
+        if (_cachedInstanceData is null)
+        {
+            if (ApplyInstanceData(data))
+                _cachedInstanceData = data;
+        }
+        else
+        {
+            CopyCachedData(data, _cachedInstanceData);
+        }
+
+        return data;
+    }
+    protected virtual bool ApplyInstanceData(TInstanceData[] data)
+    {
+        return false;
+    }
+    protected virtual void CopyCachedData(TInstanceData[] data, TInstanceData[] cached)
+    {
+        
     }
 
     public override void DrawControls()
