@@ -1,5 +1,6 @@
 ﻿using Snooper.Core.Containers.Textures;
 using Snooper.UI;
+using System.Runtime.InteropServices;
 
 namespace Snooper.Core.Containers.Resources;
 
@@ -11,6 +12,7 @@ public interface IPerDrawData
     public bool IsReady { get; }
 }
 
+[StructLayout(LayoutKind.Sequential, Pack = 1, Size = 4)]
 public struct PerDrawData : IPerDrawData
 {
     public bool IsReady { get; init; }
