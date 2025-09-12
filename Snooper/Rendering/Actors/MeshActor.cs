@@ -45,7 +45,10 @@ public class MeshActor : Actor
         using (mesh) MeshComponent = new StaticMeshComponent(landscape, mesh);
         
         MeshComponent.LocalTransform = component.GetRelativeTransform();
-        
+        MeshComponent.UseAbsolutePosition = component.GetOrDefault("bAbsoluteLocation", false);
+        MeshComponent.UseAbsoluteRotation = component.GetOrDefault("bAbsoluteRotation", false);
+        MeshComponent.UseAbsoluteScale = component.GetOrDefault("bAbsoluteScale", false);
+
         Components.Add(MeshComponent);
     }
 

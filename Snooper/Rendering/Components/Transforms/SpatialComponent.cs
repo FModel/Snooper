@@ -18,7 +18,11 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
         get => LocalInstanceTransforms[0];
         set => LocalInstanceTransforms[0] = value;
     }
-    
+
+    public bool UseAbsolutePosition { get; set; }
+    public bool UseAbsoluteRotation { get; set; }
+    public bool UseAbsoluteScale { get; set; }
+
     private Matrix4x4 _localMatrix = Matrix4x4.Identity;
     public Matrix4x4 LocalMatrix
     {
@@ -27,12 +31,23 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
         {
             if (_localMatrix == value)
                 return;
-            
+
             _localMatrix = value;
             MarkDirty();
         }
     }
-    
+
+    private Transform? _worldTransform = null;
+    public Transform WorldTransform
+    {
+        get
+        {
+            if (_worldTransform is null)
+                _worldTransform = BuildWorldTransform(LocalTransform);
+            return _worldTransform;
+        }
+    }
+
     private Matrix4x4 _worldMatrix = Matrix4x4.Identity;
     public Matrix4x4 WorldMatrix
     {
@@ -41,12 +56,12 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
         {
             if (_worldMatrix == value)
                 return;
-            
+
             _worldMatrix = value;
             MarkDirty();
         }
     }
-    
+
     private SpatialComponent? _relation;
     public SpatialComponent? Relation
     {
@@ -69,20 +84,54 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
             MarkDirty();
         }
     }
-    
+
     public readonly List<SpatialComponent> Children = [];
-    
+
     public void UpdateWorldMatrix(bool recursive = true)
     {
         UpdateLocalMatrix();
         UpdateWorldMatrixInternal(recursive);
     }
-    
+
     private void UpdateLocalMatrix()
     {
         LocalMatrix = LocalTransform.ToMatrix();
     }
-    
+
+    protected Transform BuildWorldTransform(Transform localTransform)
+    {
+        if (Relation is null)
+        {
+            return new Transform(LocalTransform);
+        }
+        else
+        {
+            var ret = new Transform();
+
+            if (UseAbsoluteRotation)
+                ret.Rotation = localTransform.Rotation;
+            else
+                ret.Rotation = Relation.WorldTransform.Rotation * localTransform.Rotation;
+
+            if (UseAbsoluteScale)
+                ret.Scale = localTransform.Scale;
+            else
+                ret.Scale = localTransform.Scale * Relation.WorldTransform.Scale;
+
+            if (UseAbsolutePosition)
+            {
+                ret.Position = localTransform.Position;
+            }
+            else
+            {
+                Relation.UpdateWorldMatrix(true);
+                ret.Position = Vector3.Transform(localTransform.Position, Relation.WorldMatrix);
+            }
+
+            return ret;
+        }
+    }
+
     private void UpdateWorldMatrixInternal(bool recursive)
     {
         if (Relation is null)
@@ -92,14 +141,24 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
         else
         {
             if (recursive) Relation.UpdateWorldMatrix();
-            WorldMatrix = LocalMatrix * Relation.WorldMatrix;
+
+            if (UseAbsoluteRotation || UseAbsoluteScale || UseAbsolutePosition)
+            {
+                WorldMatrix = WorldTransform.ToMatrix();
+            }
+            else
+            {
+                WorldMatrix = LocalMatrix * Relation.WorldMatrix;
+            }
         }
     }
 
     internal override void MarkDirty()
     {
+        _worldTransform = null;
+
         base.MarkDirty();
-        
+
         foreach (var child in Children)
         {
             child.MarkDirty();
@@ -120,7 +179,7 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
                 ImGui.Text($"Attached to: {relation.DisplayName}");
                 ImGui.Text($"Owner: {(relation.Actor == Actor ? "Self" : relation.Actor?.Name)}");
             }
-            
+
             ImGui.TreePop();
         }
     }
