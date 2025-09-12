@@ -32,7 +32,24 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
             MarkDirty();
         }
     }
-    
+
+    public bool UseAbsolutePosition { get; set; }
+    public bool UseAbsoluteRotation { get; set; }
+    public bool UseAbsoluteScale { get; set; }
+
+    private Transform? _worldTransform = null;
+    public Transform WorldTransform
+    {
+        get
+        {
+            if (_worldTransform != null)
+                return _worldTransform;
+            UpdateWorldTransform();
+            return _worldTransform ?? LocalTransform;
+        }
+        private set => _worldTransform = value;
+    }
+
     private Matrix4x4 _worldMatrix = Matrix4x4.Identity;
     public Matrix4x4 WorldMatrix
     {
@@ -82,7 +99,41 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
     {
         LocalMatrix = LocalTransform.ToMatrix();
     }
-    
+
+    protected Transform BuildWorldTransform(Transform localTransform)
+    {
+        if (Relation is null)
+        {
+            return LocalTransform;
+        }
+        else
+        {
+            var ret = new Transform();
+
+            if (UseAbsoluteRotation)
+                ret.Rotation = localTransform.Rotation;
+            else
+                ret.Rotation = Relation.WorldTransform.Rotation * localTransform.Rotation;
+
+            if (UseAbsoluteScale)
+                ret.Scale = localTransform.Scale;
+            else
+                ret.Scale = localTransform.Scale * Relation.WorldTransform.Scale;
+
+            if (UseAbsolutePosition)
+            {
+                ret.Position = localTransform.Position;
+            }
+            else
+            {
+                Relation.UpdateWorldMatrix();
+                ret.Position = Vector3.Transform(localTransform.Position, Relation.WorldMatrix);
+            }
+
+            return ret;
+        }
+    }
+
     private void UpdateWorldMatrixInternal(bool recursive)
     {
         if (Relation is null)
@@ -92,12 +143,22 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
         else
         {
             if (recursive) Relation.UpdateWorldMatrix();
-            WorldMatrix = LocalMatrix * Relation.WorldMatrix;
+
+            if (UseAbsoluteRotation || UseAbsoluteScale || UseAbsolutePosition)
+            {
+                WorldMatrix = WorldTransform.ToMatrix();
+            }
+            else
+            {
+                WorldMatrix = LocalMatrix * Relation.WorldMatrix;
+            }
         }
     }
 
     internal override void MarkDirty()
     {
+        _worldTransform = null;
+
         base.MarkDirty();
         
         foreach (var child in Children)

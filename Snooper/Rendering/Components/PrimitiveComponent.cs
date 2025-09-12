@@ -59,7 +59,16 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         var data = new TInstanceData[LocalInstanceTransforms.Count];
         for (var i = 0; i < data.Length; i++)
         {
-            data[i] = new TInstanceData { Matrix = LocalInstanceTransforms[i].ToMatrix() * relation };
+            Matrix4x4 instanceMatr;
+            if (Relation != null && (UseAbsolutePosition || UseAbsoluteRotation || UseAbsoluteScale))
+            {
+                instanceMatr = BuildWorldTransform(LocalInstanceTransforms[i]).ToMatrix();
+            }
+            else
+            {
+                instanceMatr = LocalInstanceTransforms[i].ToMatrix() * relation;
+            }
+            data[i] = new TInstanceData { Matrix = instanceMatr };
         }
         
         if (_cachedInstanceData is null)

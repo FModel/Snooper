@@ -126,6 +126,9 @@ public class LevelActor : Actor
                         break;
                     }
                 }
+                component.UseAbsolutePosition = sceneComponent.GetOrDefault("bAbsoluteLocation", false);
+                component.UseAbsoluteRotation = sceneComponent.GetOrDefault("bAbsoluteRotation", false);
+                component.UseAbsoluteScale = sceneComponent.GetOrDefault("bAbsoluteScale", false);
                 break;
             }
             default:
