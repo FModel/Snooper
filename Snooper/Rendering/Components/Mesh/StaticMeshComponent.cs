@@ -21,14 +21,8 @@ public class StaticMeshComponent : MeshComponent
         
     }
 
-    public StaticMeshComponent(UStaticMeshComponent component) : base(component)
+    public StaticMeshComponent(UStaticMeshComponent component, UStaticMesh staticMesh) : base(component)
     {
-        if (!component.GetStaticMesh().TryLoad<UStaticMesh>(out var staticMesh))
-        {
-            staticMesh = component.Owner.Provider.LoadPackageObject<UStaticMesh>(Settings.FallbackMeshPath);
-            // throw new ArgumentException("Failed to load static mesh.", nameof(component));
-        }
-        
         if (!staticMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
         if (staticMesh.RenderData?.Bounds is null)

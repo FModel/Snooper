@@ -14,10 +14,8 @@ public class SkeletalMeshComponent : MeshComponent
         
     }
 
-    public SkeletalMeshComponent(USkeletalMeshComponent component) : base(component)
+    public SkeletalMeshComponent(USkeletalMeshComponent component, USkeletalMesh skeletalMesh) : base(component)
     {
-        if (!component.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var skeletalMesh))
-            throw new ArgumentException("Failed to load skeletal mesh.", nameof(component));
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
         

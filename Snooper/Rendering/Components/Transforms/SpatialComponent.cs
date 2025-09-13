@@ -42,20 +42,6 @@ public class SpatialComponent : ActorComponent, IControllable
         }
     }
     
-    private Matrix4x4 _localMatrix = Matrix4x4.Identity;
-    public Matrix4x4 LocalMatrix
-    {
-        get => _localMatrix;
-        private set
-        {
-            if (_localMatrix == value)
-                return;
-            
-            _localMatrix = value;
-            MarkDirty();
-        }
-    }
-    
     private Matrix4x4 _worldMatrix = Matrix4x4.Identity;
     public Matrix4x4 WorldMatrix
     {
@@ -94,36 +80,25 @@ public class SpatialComponent : ActorComponent, IControllable
     
     public void UpdateWorldMatrix(bool recursive = true)
     {
-        UpdateLocalMatrix();
-        UpdateWorldMatrixInternal(recursive);
-    }
-    
-    private void UpdateLocalMatrix()
-    {
-        LocalMatrix = LocalTransform.ToMatrix();
-    }
-    
-    private void UpdateWorldMatrixInternal(bool recursive)
-    {
         if (Relation is null)
         {
-            WorldMatrix = LocalMatrix;
+            WorldMatrix = LocalTransform.ToMatrix();
         }
         else
         {
             if (recursive) Relation.UpdateWorldMatrix();
             if (!_absPosition && !_absRotation && !_absScale)
             {
-                WorldMatrix = LocalMatrix * Relation.WorldMatrix;
+                WorldMatrix = LocalTransform.ToMatrix() * Relation.WorldMatrix;
                 return;
             }
             
-            Matrix4x4.Decompose(Relation.WorldMatrix, out var scale, out var rotation, out var translation);
+            Matrix4x4.Decompose(Relation.WorldMatrix, out var scale, out var rotation, out _);
             
             WorldMatrix = new Transform
             {
-                Position = _absPosition ? LocalTransform.Position : (LocalTransform.Position * scale) + translation,
-                Rotation = _absRotation ? LocalTransform.Rotation : LocalTransform.Rotation * rotation,
+                Position = _absPosition ? LocalTransform.Position : Vector3.Transform(LocalTransform.Position, Relation.WorldMatrix),
+                Rotation = _absRotation ? LocalTransform.Rotation : rotation * LocalTransform.Rotation,
                 Scale = _absScale ? LocalTransform.Scale : LocalTransform.Scale * scale
             }.ToMatrix();
         }

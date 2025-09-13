@@ -36,6 +36,7 @@ public sealed class CameraComponent : SpatialComponent, IControllable
     public void Update()
     {
         Matrix4x4.Decompose(WorldMatrix, out _, out var rotation, out var position);
+        
         ViewMatrix = Matrix4x4.CreateLookAt(
             position,
             position + Vector3.Transform(Vector3.UnitZ, rotation),

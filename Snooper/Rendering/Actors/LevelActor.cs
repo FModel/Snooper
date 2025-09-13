@@ -84,9 +84,12 @@ public class LevelActor : Actor
 
                 component = sceneComponent switch
                 {
-                    UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(ism),
-                    UStaticMeshComponent sm => new StaticMeshComponent(sm),
-                    USkeletalMeshComponent sk => new SkeletalMeshComponent(sk),
+                    UStaticMeshComponent sm when sm.GetStaticMesh().TryLoad<UStaticMesh>(out var mesh) => sm switch
+                    {
+                        UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(ism, mesh),
+                        _ => new StaticMeshComponent(sm, mesh)
+                    },
+                    USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh)=> new SkeletalMeshComponent(sk, mesh),
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent, sceneComponent.GetRelativeTransform(), name),
                     _ => new SpatialComponent(sceneComponent)
                 };
