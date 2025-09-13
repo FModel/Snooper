@@ -2,7 +2,6 @@
 using CUE4Parse_Conversion.Meshes;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
-using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Rendering.Components.Mesh;
@@ -29,14 +28,6 @@ public class MeshActor : Actor
         Components.Add(MeshComponent);
     }
     
-    public MeshActor(UStaticMesh staticMesh, params FInstancedStaticMeshInstanceData[] transforms) : this(staticMesh, transforms[0].TransformData)
-    {
-        for (var i = 1; i < transforms.Length; i++)
-        {
-            MeshComponent.LocalInstanceTransforms.Add(transforms[i].TransformData);
-        }
-    }
-    
     public MeshActor(ALandscapeProxy landscape, ULandscapeComponent component) : base(component.Name)
     {
         if (!landscape.TryConvert([component], ELandscapeExportFlags.Mesh, out var mesh, out _, out _))
@@ -45,9 +36,6 @@ public class MeshActor : Actor
         using (mesh) MeshComponent = new StaticMeshComponent(landscape, mesh);
         
         MeshComponent.LocalTransform = component.GetRelativeTransform();
-        MeshComponent.UseAbsolutePosition = component.GetOrDefault("bAbsoluteLocation", false);
-        MeshComponent.UseAbsoluteRotation = component.GetOrDefault("bAbsoluteRotation", false);
-        MeshComponent.UseAbsoluteScale = component.GetOrDefault("bAbsoluteScale", false);
 
         Components.Add(MeshComponent);
     }

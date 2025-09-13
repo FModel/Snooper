@@ -18,13 +18,6 @@ public class Transform()
         Scale = new Vector3(transform.Scale3D.X, transform.Scale3D.Z, transform.Scale3D.Y);
     }
 
-    public Transform(Transform orig) : this()
-    {
-        Position = orig.Position;
-        Rotation = orig.Rotation;
-        Scale = orig.Scale;
-    }
-
     public Matrix4x4 ToMatrix()
     {
         return Matrix4x4.CreateScale(Scale) *

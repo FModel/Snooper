@@ -50,6 +50,11 @@ const string dir = "D:\\Games\\SBSP - The Cosmic Shake\\CosmicShake\\Content\\Pa
 const string mapping = "";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE4_27);
+#elif SUPRA
+const string dir = "D:\\CSGO\\steamapps\\common\\Supraworld\\Supraworld\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\5.6.1-44394996+++UE5+Release-5.6-Supraworld.usmap";
+const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
+var version = new VersionContainer(EGame.GAME_UE5_6);
 #endif
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
@@ -136,6 +141,11 @@ switch (provider.ProjectName)
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z04_HUB4/BB_Z04_HUB4_Geo.BB_Z04_HUB4_Geo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z03_HUB3/BB_Z03_HUB3_Geo.BB_Z03_HUB3_Geo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z02_HUB2/BB_Z02_HUB2_Geo.BB_Z02_HUB2_Geo")));
+        break;
+    }
+    case "Supraworld":
+    {
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Supraworld/Plugins/GameFeatures/Supraworld/Supraworld/Content/Maps/Supraworld.Supraworld")));
         break;
     }
     case "FortniteGame":

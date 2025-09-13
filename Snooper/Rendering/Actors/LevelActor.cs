@@ -82,53 +82,14 @@ public class LevelActor : Actor
             {
                 parent = sceneComponent.GetOrDefault<FPackageIndex?>("AttachParent");
 
-                var transform = sceneComponent.GetRelativeTransform();
-                switch (sceneComponent)
+                component = sceneComponent switch
                 {
-                    case UStaticMeshComponent staticMeshComponent when staticMeshComponent.GetStaticMesh().TryLoad<UStaticMesh>(out var staticMesh):
-                    {
-                        if (!staticMesh.TryConvert(out var mesh))
-                            throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
-                        if (staticMesh.RenderData?.Bounds is null)
-                            throw new ArgumentException("Static mesh does not have render data or bounds.", nameof(staticMesh));
-
-                        staticMesh.OverrideMaterials(staticMeshComponent.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []));
-                        using (mesh)
-                        {
-                            if (staticMeshComponent is UInstancedStaticMeshComponent instancedComponent)
-                            {
-                                component = new InstancedStaticMeshComponent(staticMesh, mesh, instancedComponent.GetInstances(), transform, name);
-                            }
-                            else
-                            {
-                                component = new StaticMeshComponent(staticMesh, mesh, transform, name);
-                            }
-                        }
-                        break;
-                    }
-                    case USkeletalMeshComponent skeletalMeshComponent when skeletalMeshComponent.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var skeletalMesh):
-                    {
-                        if (!skeletalMesh.TryConvert(out var mesh))
-                            throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
-
-                        using (mesh) component = new SkeletalMeshComponent(skeletalMesh, mesh, transform, name);
-                        break;
-                    }
-                    case ULandscapeComponent landscapeComponent:
-                    {
-                        component = new LandscapeMeshComponent(landscapeComponent, transform, name);
-                        break;
-                    }
-                    default:
-                    {
-                        component = new SpatialComponent(transform, name);
-                        // component = new Components.PrimitiveComponent(new Primitives.Cube(), transform, name);
-                        break;
-                    }
-                }
-                component.UseAbsolutePosition = sceneComponent.GetOrDefault("bAbsoluteLocation", false);
-                component.UseAbsoluteRotation = sceneComponent.GetOrDefault("bAbsoluteRotation", false);
-                component.UseAbsoluteScale = sceneComponent.GetOrDefault("bAbsoluteScale", false);
+                    UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(ism),
+                    UStaticMeshComponent sm => new StaticMeshComponent(sm),
+                    USkeletalMeshComponent sk => new SkeletalMeshComponent(sk),
+                    ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent, sceneComponent.GetRelativeTransform(), name),
+                    _ => new SpatialComponent(sceneComponent)
+                };
                 break;
             }
             default:

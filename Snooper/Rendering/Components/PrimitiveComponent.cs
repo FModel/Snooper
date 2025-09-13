@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
@@ -17,8 +18,25 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    public readonly LevelOfDetail<TVertex>[] LevelOfDetails;
-    public readonly CullingBounds Bounds;
+    private readonly LevelOfDetail<TVertex>[] _lods = [];
+    public LevelOfDetail<TVertex>[] LevelOfDetails
+    {
+        get => _lods;
+        protected init
+        {
+            if (value.Length == 0)
+                throw new ArgumentException("There must be at least one LOD", nameof(value));
+            
+            _lods = value;
+            
+            Materials = new MaterialSection[_lods[0].SectionDescriptors.Length];
+            for (var i = 0; i < Materials.Length; i++)
+            {
+                Materials[i] = new MaterialSection(_lods[0].SectionDescriptors[i].MaterialIndex);
+            }
+        }
+    }
+    public CullingBounds Bounds { get; protected init; }
     public readonly MaterialSection[] Materials; // we store materials for each section at lod 0
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
@@ -27,11 +45,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         LevelOfDetails = levelOfDetails;
         Bounds = bounds;
-        Materials = new MaterialSection[levelOfDetails[0].SectionDescriptors.Length];
-        for (var i = 0; i < Materials.Length; i++)
-        {
-            Materials[i] = new MaterialSection(levelOfDetails[0].SectionDescriptors[i].MaterialIndex);
-        }
+    }
+
+    protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
+    {
+        
     }
     
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
@@ -55,20 +73,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     private TInstanceData[]? _cachedInstanceData { get; set; }
     public TInstanceData[] GetPerInstanceData()
     {
-        var relation = Relation?.WorldMatrix ?? Matrix4x4.Identity;
-        var data = new TInstanceData[LocalInstanceTransforms.Count];
+        var matrices = GetInstanceMatrices();
+        var data = new TInstanceData[matrices.Length];
         for (var i = 0; i < data.Length; i++)
         {
-            Matrix4x4 instanceMatr;
-            if (Relation != null && (UseAbsolutePosition || UseAbsoluteRotation || UseAbsoluteScale))
-            {
-                instanceMatr = BuildWorldTransform(LocalInstanceTransforms[i]).ToMatrix();
-            }
-            else
-            {
-                instanceMatr = LocalInstanceTransforms[i].ToMatrix() * relation;
-            }
-            data[i] = new TInstanceData { Matrix = instanceMatr };
+            data[i] = new TInstanceData { Matrix = matrices[i] };
         }
         
         if (_cachedInstanceData is null)

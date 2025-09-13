@@ -11,4 +11,6 @@ public static class Settings
     public static float TessellationScaleFactor => 1.0f / TessellationQuadCount;
     public static int TessellationQuadCountTotal => TessellationQuadCount * TessellationQuadCount;
     public static int TessellationIndicesPerQuad => TessellationQuadCountTotal * 4;
+    
+    public const string FallbackMeshPath = "Engine/Content/BasicShapes/Cube.Cube";
 }
