@@ -1,9 +1,9 @@
-﻿using System.Numerics;
-using CUE4Parse_Conversion.Meshes.PSK;
+﻿using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Texture;
+using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
@@ -15,6 +15,7 @@ using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
+using System.Numerics;
 
 namespace Snooper.Rendering.Components.Mesh;
 
@@ -51,7 +52,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     protected MeshComponent(UMeshComponent component) : base(component)
     {
-        
+
     }
 
     protected override void OnAddedToActor()
@@ -61,7 +62,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         for (var i = 0; i < Materials.Length; i++)
         {
             var index = i;
-            
+
             // TODO: do somewhere else
             Task.Run(() =>
             {
@@ -80,7 +81,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             });
         }
     }
-    
+
     private DrawDataContainer? ParseMaterialParameters(CMaterialParams2 parameters, string projectName)
     {
         UTexture? diffuse = null, normal = null, specular = null;
@@ -103,29 +104,58 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             parameters.TryGetTexture2d(out diffuse, CMaterialParams2.FallbackDiffuse);
         }
 
+        if (diffuse == null)
+        {
+            parameters.TryGetTexture2d(out diffuse, "Color Map", "Sprite", "Texture");
+        }
+
+        float alpha = 0;
+        bool hasDiffColor = parameters.TryGetLinearColor(out var color, [.. CMaterialParams2.DiffuseColors[layer], "color"]);
+        if (hasDiffColor)
+        {
+            color = color.ToSRGB();
+            diffuseColor = new Vector3(color.R, color.G, color.B);
+            alpha = color.A;
+        }
+
+        Texture2D? diff2d = null;
         if (diffuse != null)
         {
-            if (parameters.TryGetLinearColor(out var color, CMaterialParams2.DiffuseColors[layer]))
-            {
-                color = color.ToSRGB();
-                diffuseColor = new Vector3(color.R, color.G, color.B);
-            }
-            
+            diff2d = new Texture2D(diffuse);
+
             parameters.TryGetTexture2d(out normal, [..CMaterialParams2.Normals[layer], CMaterialParams2.FallbackNormals]);
-            
             parameters.TryGetTexture2d(out specular, [..CMaterialParams2.SpecularMasks[layer], CMaterialParams2.FallbackSpecularMasks]);
             if (parameters.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
                 roughness.X = roughnessMin;
             if (parameters.TryGetScalar(out var roughnessMax, "RoughnessMax", "SpecRoughnessMax"))
                 roughness.Y = roughnessMax;
         }
+        else if (hasDiffColor)
+        {
+            if (parameters.BlendMode != EBlendMode.BLEND_Opaque && parameters.BlendMode != EBlendMode.BLEND_Masked)
+            {
+                if (parameters.TryGetScalar(out var a, ["Opacity"]))
+                {
+                    alpha = a;
+                }
+                else
+                {
+                    // Load verification debug breakpoint location.
+                    // int i4 = 0;
+                }
+            }
+
+            diff2d = new ColorTexture(new FLinearColor(diffuseColor.X, diffuseColor.Y, diffuseColor.Z, alpha));
+        }
         else
         {
             parameters.TryGetFirstTexture2d(out diffuse);
+
+            if (diffuse == null)
+                return null;
+
+            diff2d = new Texture2D(diffuse);
         }
-        
-        if (diffuse == null)
-            return null;
 
         Texture2D? specularTex = null;
         if (specular != null)
@@ -148,7 +178,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
 
         return new DrawDataContainer(
-            new Texture2D(diffuse),
+            diff2d,
             normal != null ? new Texture2D(normal) : null,
             specularTex,
             roughness,
@@ -157,7 +187,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         );
     }
 
-    protected LevelOfDetail<Vertex>[] CreateGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels)
+    protected static LevelOfDetail<Vertex>[] CreateGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels)
     {
         var geometries = new LevelOfDetail<Vertex>[levels.Count];
         for (var i = 0; i < geometries.Length; i++)
@@ -168,7 +198,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 var section = levels[i].Sections.Value[j];
                 sections[j] = new PrimitiveSectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
             }
-            
+
             geometries[i] = new LevelOfDetail<Vertex>(guid, new Geometry(levels[i]), levels[i].ScreenSize, sections);
         }
         return geometries;
@@ -179,7 +209,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         private BindlessTexture? _diffuse;
         private BindlessTexture? _normal;
         private BindlessTexture? _specular;
-        
+
         public bool HasTextures => true;
         public bool IsTranslucent { get; } = translucent;
 
@@ -218,10 +248,10 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
             }
-            
+
             _diffuse.Generate();
             _diffuse.MakeResident();
-            
+
             if (_normal != null)
             {
                 _normal.Generate();
@@ -247,7 +277,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
 
         public IPerDrawData? Raw { get; private set; }
-        
+
         public void DrawControls()
         {
             // var largest = ImGui.GetContentRegionAvail();
@@ -266,11 +296,11 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             _diffuse?.Dispose();
             _normal?.Dispose();
             _specular?.Dispose();
-            
+
             _diffuse = null;
             _normal = null;
             _specular = null;
-            
+
             Raw = null;
         }
     }
