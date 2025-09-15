@@ -1,10 +1,11 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
-using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -37,8 +38,14 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
     public readonly Vector2[] Scales;
     public readonly Dictionary<string, LayerMapping> Layers;
     
-    public LandscapeMeshComponent(ULandscapeComponent component, Transform? transform = null, string? name = null) : base(new Geometry(component.ComponentSizeQuads), component.CachedLocalBox, transform, name)
+    public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
+        LevelOfDetails =
+        [
+            new LevelOfDetail<Vector2>(new FGuid((uint)component.ComponentSizeQuads), new Geometry(component.ComponentSizeQuads))
+        ];
+        Bounds = component.CachedLocalBox;
+        
         if (component.GetHeightmap() is not { } heightmap)
         {
             throw new InvalidOperationException("Landscape component does not have a valid heightmap.");

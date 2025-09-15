@@ -9,7 +9,7 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
 {
     public readonly List<Transform> LocalInstancedTransforms = [];
 
-    public InstancedStaticMeshComponent(UInstancedStaticMeshComponent component, UStaticMesh staticMesh) : base(component, staticMesh)
+    public InstancedStaticMeshComponent(UStaticMesh staticMesh, UInstancedStaticMeshComponent component) : base(staticMesh, component)
     {
         var instances = component.GetInstances();
         foreach (var data in instances)

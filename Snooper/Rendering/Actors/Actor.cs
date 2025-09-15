@@ -1,6 +1,9 @@
 ﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using Snooper.Core.Systems;
+using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Mesh;
+using Snooper.Rendering.Components.Skybox;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
@@ -38,10 +41,32 @@ public class Actor
     }
 
     public ActorManager? ActorManager { get; internal set; }
-    public ActorComponent? RootComponent { get; private set; }
     
+    private ActorComponent? _rootComponent;
+    public ActorComponent? RootComponent
+    {
+        get => _rootComponent;
+        private set
+        {
+            if (_rootComponent == value)
+                return;
+            
+            _rootComponent = value;
+            
+            Icon = RootComponent switch
+            {
+                CameraComponent => "video",
+                AtmosphericComponent => "sun",
+                LandscapeMeshComponent => "mountain",
+                SkeletalMeshComponent => "bone",
+                StaticMeshComponent => "sphere",
+                _ => "cube"
+            };
+        }
+    }
+
     internal readonly int Id = Random.Shared.Next();
-    internal virtual string Icon => "cube";
+    internal string Icon { get; private set; } = "cube";
 
     private void AddInternal(Actor actor)
     {

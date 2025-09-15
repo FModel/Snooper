@@ -3,7 +3,6 @@ using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Material;
-using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
@@ -42,18 +41,18 @@ public struct PerDrawMeshData : IPerDrawData
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
-    protected ResolvedObject?[] MaterialPointers { get; init; }
-    
-    protected MeshComponent(FGuid guid, IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box, Transform? transform = null, string? name = null) : base(CreateGeometry(guid, levels), box, transform, name)
+    protected ResolvedObject?[] MaterialsToParse { get; init; } = [];
+
+    protected MeshComponent(ResolvedObject?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        MaterialPointers = materials;
+        MaterialsToParse = materials;
     }
-    
+
     protected MeshComponent(UMeshComponent component) : base(component)
     {
         
     }
-    
+
     protected override void OnAddedToActor()
     {
         base.OnAddedToActor();
@@ -71,7 +70,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             Task.Run(() =>
             {
                 var materialIndex = Materials[index].MaterialIndex;
-                if (MaterialPointers[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
+                if (MaterialsToParse[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
                 {
                     var parameters = new CMaterialParams2();
                     material.GetParams(parameters, EMaterialFormat.FirstLayer);
@@ -141,7 +140,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
     }
 
-    protected static LevelOfDetail<Vertex>[] CreateGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels)
+    protected LevelOfDetail<Vertex>[] CreateGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels)
     {
         var geometries = new LevelOfDetail<Vertex>[levels.Count];
         for (var i = 0; i < geometries.Length; i++)

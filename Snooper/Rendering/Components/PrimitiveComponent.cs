@@ -40,6 +40,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     public readonly MaterialSection[] Materials; // we store materials for each section at lod 0
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
+    
+    protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
+    {
+        
+    }
 
     protected PrimitiveComponent(LevelOfDetail<TVertex>[] levelOfDetails, CullingBounds bounds, Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -119,10 +124,20 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
 /// <summary>
 /// primitive component that uses a single section for the entire primitive data.
 /// </summary>
-public class PrimitiveComponent<TVertex, TPerDrawData>(TPrimitiveData<TVertex> primitive, CullingBounds bounds, Transform? transform = null, string? name = null)
-    : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>([new LevelOfDetail<TVertex>(FGuid.Random(), primitive)], bounds, transform, name)
+public class PrimitiveComponent<TVertex, TPerDrawData> : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>
     where TVertex : unmanaged
-    where TPerDrawData : unmanaged, IPerDrawData;
+    where TPerDrawData : unmanaged, IPerDrawData
+{
+    protected PrimitiveComponent(TPrimitiveData<TVertex> primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base([new LevelOfDetail<TVertex>(FGuid.Random(), primitive)], bounds, transform, name)
+    {
+        
+    }
+
+    protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
+    {
+        
+    }
+}
 
 /// <inheritdoc />
 public class PrimitiveComponent<TPerDrawData>(PrimitiveData primitive, CullingBounds bounds, Transform? transform = null, string? name = null)

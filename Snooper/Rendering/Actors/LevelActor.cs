@@ -1,5 +1,4 @@
-﻿using CUE4Parse_Conversion.Meshes;
-using CUE4Parse.UE4.Assets.Exports;
+﻿using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
@@ -75,7 +74,6 @@ public class LevelActor : Actor
         SpatialComponent component;
 
         var data = ptr.Load();
-        var name = $"{data?.Name} ({data?.GetType().Name})";
         switch (data)
         {
             case USceneComponent sceneComponent:
@@ -86,19 +84,24 @@ public class LevelActor : Actor
                 {
                     UStaticMeshComponent sm when sm.GetStaticMesh().TryLoad<UStaticMesh>(out var mesh) => sm switch
                     {
-                        UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(ism, mesh),
-                        _ => new StaticMeshComponent(sm, mesh)
+                        UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(mesh, ism),
+                        _ => new StaticMeshComponent(mesh, sm)
                     },
-                    USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh)=> new SkeletalMeshComponent(sk, mesh),
-                    ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent, sceneComponent.GetRelativeTransform(), name),
+                    USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
+                    ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
                     _ => new SpatialComponent(sceneComponent)
                 };
                 break;
             }
             default:
             {
-                // component = new SpatialComponent(null, name);
-                component = new Components.PrimitiveComponent(new Primitives.Cube(), null, name);
+                component = new SpatialComponent(null, $"{data?.Name} ({data?.GetType().Name})");
+                // component = new Components.PrimitiveComponent(new Primitives.Cube(), null, $"{data?.Name} ({data?.GetType().Name})");
+                
+                if (RootComponent is SpatialComponent root)
+                {
+                    component.Relation = root;
+                }
                 break;
             }
         }
