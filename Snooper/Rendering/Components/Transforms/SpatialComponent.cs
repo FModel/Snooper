@@ -1,34 +1,43 @@
 ﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
-using Serilog;
 using Snooper.Core;
-using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Transforms;
 
 [DefaultActorSystem(typeof(TransformSystem))]
-public class SpatialComponent(Transform? transform = null, string? name = null) : ActorComponent(name), IControllable
+public class SpatialComponent : ActorComponent, IControllable
 {
-    public readonly List<Transform> LocalInstanceTransforms = [transform ?? Transform.Identity];
-
-    public Transform LocalTransform
+    public SpatialComponent(Transform? transform = null, string? name = null) : base(name)
     {
-        get => LocalInstanceTransforms[0];
-        set => LocalInstanceTransforms[0] = value;
+        LocalTransform = transform ?? Transform.Identity;
     }
     
-    private Matrix4x4 _localMatrix = Matrix4x4.Identity;
-    public Matrix4x4 LocalMatrix
+    public SpatialComponent(USceneComponent component) : base(component)
     {
-        get => _localMatrix;
-        private set
+        LocalTransform = component.GetRelativeTransform();
+        
+        _absPosition = component.GetOrDefault<bool>("bAbsoluteLocation");
+        _absRotation = component.GetOrDefault<bool>("bAbsoluteRotation");
+        _absScale = component.GetOrDefault<bool>("bAbsoluteScale");
+    }
+    
+    private readonly bool _absPosition;
+    private readonly bool _absRotation;
+    private readonly bool _absScale;
+    
+    private Transform _localTransform = Transform.Identity;
+    public Transform LocalTransform
+    {
+        get => _localTransform;
+        set
         {
-            if (_localMatrix == value)
+            if (_localTransform == value)
                 return;
             
-            _localMatrix = value;
+            _localTransform = value;
             MarkDirty();
         }
     }
@@ -53,11 +62,6 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
         get => _relation;
         set
         {
-            if (this is InstancedStaticMeshComponent && value is InstancedStaticMeshComponent)
-            {
-                Log.Warning("InstancedStaticMeshComponent cannot be used as a relation to another InstancedStaticMeshComponent");
-                return;
-            }
             if (_relation == value) return;
 
             _relation?.Children.Remove(this);
@@ -72,27 +76,31 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
     
     public readonly List<SpatialComponent> Children = [];
     
+    protected virtual Matrix4x4[] GetInstanceMatrices() => [WorldMatrix];
+    
     public void UpdateWorldMatrix(bool recursive = true)
-    {
-        UpdateLocalMatrix();
-        UpdateWorldMatrixInternal(recursive);
-    }
-    
-    private void UpdateLocalMatrix()
-    {
-        LocalMatrix = LocalTransform.ToMatrix();
-    }
-    
-    private void UpdateWorldMatrixInternal(bool recursive)
     {
         if (Relation is null)
         {
-            WorldMatrix = LocalMatrix;
+            WorldMatrix = LocalTransform.ToMatrix();
         }
         else
         {
             if (recursive) Relation.UpdateWorldMatrix();
-            WorldMatrix = LocalMatrix * Relation.WorldMatrix;
+            if (!_absPosition && !_absRotation && !_absScale)
+            {
+                WorldMatrix = LocalTransform.ToMatrix() * Relation.WorldMatrix;
+                return;
+            }
+            
+            Matrix4x4.Decompose(Relation.WorldMatrix, out var scale, out var rotation, out _);
+            
+            WorldMatrix = new Transform
+            {
+                Position = _absPosition ? LocalTransform.Position : Vector3.Transform(LocalTransform.Position, Relation.WorldMatrix),
+                Rotation = _absRotation ? LocalTransform.Rotation : rotation * LocalTransform.Rotation,
+                Scale = _absScale ? LocalTransform.Scale : LocalTransform.Scale * scale
+            }.ToMatrix();
         }
     }
 
@@ -114,7 +122,6 @@ public class SpatialComponent(Transform? transform = null, string? name = null) 
             // ImGui.DragFloat4("Rotation", ref LocalTransform.Rotation, 0.1f);
             ImGui.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f);
 
-            ImGui.Text($"Instances: {LocalInstanceTransforms.Count}");
             if (Relation is ActorComponent relation)
             {
                 ImGui.Text($"Attached to: {relation.DisplayName}");

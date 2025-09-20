@@ -1,11 +1,18 @@
-﻿using ImGuiNET;
+﻿using CUE4Parse.UE4.Assets.Exports.Component;
+using ImGuiNET;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
 using Snooper.UI;
 
 namespace Snooper.Rendering;
 
 public abstract partial class ActorComponent(string? name = null)
 {
+    protected ActorComponent(UActorComponent component) : this($"{component.Name} ({component.GetType().Name})")
+    {
+        
+    }
+    
     private Actor? _actor;
     public Actor? Actor
     {
@@ -45,7 +52,7 @@ public abstract partial class ActorComponent(string? name = null)
     
     internal void DrawInterface()
     {
-        if (this is not IControllable controllable) return;
+        if (this is not IControllable controllable || this is DebugComponent) return;
         
         if (ImGui.CollapsingHeader(DisplayName))
         {

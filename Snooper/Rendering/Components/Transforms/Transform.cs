@@ -17,7 +17,7 @@ public class Transform()
         Rotation = new Quaternion(transform.Rotation.X, transform.Rotation.Z, transform.Rotation.Y, -transform.Rotation.W);
         Scale = new Vector3(transform.Scale3D.X, transform.Scale3D.Z, transform.Scale3D.Y);
     }
-    
+
     public Matrix4x4 ToMatrix()
     {
         return Matrix4x4.CreateScale(Scale) *

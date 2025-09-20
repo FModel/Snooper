@@ -1,5 +1,4 @@
-﻿using CUE4Parse_Conversion.Meshes;
-using CUE4Parse.UE4.Assets.Exports;
+﻿using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
@@ -75,63 +74,34 @@ public class LevelActor : Actor
         SpatialComponent component;
 
         var data = ptr.Load();
-        var name = $"{data?.Name} ({data?.GetType().Name})";
         switch (data)
         {
             case USceneComponent sceneComponent:
             {
                 parent = sceneComponent.GetOrDefault<FPackageIndex?>("AttachParent");
 
-                var transform = sceneComponent.GetRelativeTransform();
-                switch (sceneComponent)
+                component = sceneComponent switch
                 {
-                    case UStaticMeshComponent staticMeshComponent when staticMeshComponent.GetStaticMesh().TryLoad<UStaticMesh>(out var staticMesh):
+                    UStaticMeshComponent sm when sm.GetStaticMesh().TryLoad<UStaticMesh>(out var mesh) => sm switch
                     {
-                        if (!staticMesh.TryConvert(out var mesh))
-                            throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
-                        if (staticMesh.RenderData?.Bounds is null)
-                            throw new ArgumentException("Static mesh does not have render data or bounds.", nameof(staticMesh));
-
-                        staticMesh.OverrideMaterials(staticMeshComponent.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []));
-                        using (mesh)
-                        {
-                            if (staticMeshComponent is UInstancedStaticMeshComponent instancedComponent)
-                            {
-                                component = new InstancedStaticMeshComponent(staticMesh, mesh, instancedComponent.GetInstances(), transform, name);
-                            }
-                            else
-                            {
-                                component = new StaticMeshComponent(staticMesh, mesh, transform, name);
-                            }
-                        }
-                        break;
-                    }
-                    case USkeletalMeshComponent skeletalMeshComponent when skeletalMeshComponent.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var skeletalMesh):
-                    {
-                        if (!skeletalMesh.TryConvert(out var mesh))
-                            throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
-
-                        using (mesh) component = new SkeletalMeshComponent(skeletalMesh, mesh, transform, name);
-                        break;
-                    }
-                    case ULandscapeComponent landscapeComponent:
-                    {
-                        component = new LandscapeMeshComponent(landscapeComponent, transform, name);
-                        break;
-                    }
-                    default:
-                    {
-                        component = new SpatialComponent(transform, name);
-                        // component = new Components.PrimitiveComponent(new Primitives.Cube(), transform, name);
-                        break;
-                    }
-                }
+                        UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(mesh, ism),
+                        _ => new StaticMeshComponent(mesh, sm)
+                    },
+                    USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
+                    ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
+                    _ => new SpatialComponent(sceneComponent)
+                };
                 break;
             }
             default:
             {
-                // component = new SpatialComponent(null, name);
-                component = new Components.PrimitiveComponent(new Primitives.Cube(), null, name);
+                component = new SpatialComponent(null, $"{data?.Name} ({data?.GetType().Name})");
+                // component = new Components.PrimitiveComponent(new Primitives.Cube(), null, $"{data?.Name} ({data?.GetType().Name})");
+                
+                if (RootComponent is SpatialComponent root)
+                {
+                    component.Relation = root;
+                }
                 break;
             }
         }
