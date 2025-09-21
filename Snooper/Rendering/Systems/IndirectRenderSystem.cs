@@ -1,7 +1,6 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
-using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;

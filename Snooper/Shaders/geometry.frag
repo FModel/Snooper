@@ -16,7 +16,7 @@ struct PerDrawData
     vec3 DiffuseColor;
 };
 
-layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 {
     PerDrawData uDrawDataBuffer[];
 };
@@ -24,7 +24,8 @@ layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
 uniform mat4 uViewMatrix;
 uniform int uDebugColorMode;
 
-in flat int mIndex;
+#include "Buffers/common.frag"
+
 in VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
@@ -34,7 +35,7 @@ in VS_OUT {
 
 void main()
 {
-    PerDrawData drawData = uDrawDataBuffer[mIndex];
+    PerDrawData drawData = uDrawDataBuffer[gDrawID];
     
     vec3 color = fs_in.vDebugColor;
     vec3 spec = vec3(1.0);

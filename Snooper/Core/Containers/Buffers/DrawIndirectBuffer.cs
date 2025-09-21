@@ -53,6 +53,7 @@ public struct DrawElementsIndirectCommand
     // end of struct for indirect draw commands
     // anything extra can be used as ssbo data
 
+    public uint PickingId;
     public uint OriginalInstanceCount;
     public uint OriginalBaseInstance;
     public uint ModelId;

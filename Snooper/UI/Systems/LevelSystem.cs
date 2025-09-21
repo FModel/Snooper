@@ -7,7 +7,6 @@ using Snooper.Core.Containers;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
@@ -58,6 +57,12 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                     {
                         Window.CursorState = CursorState.Grabbed;
+                    }
+                    
+                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+                    {
+                        SelectedComponent = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
+                        ImGui.SetWindowFocus("Scene Hierarchy");
                     }
                 }
 
@@ -209,63 +214,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
     }
 
-    private bool _loadingTexturesOpen = true;
-    private void DrawLoadingTexturesProgress()
-    {
-        var systems = Systems.Values.OfType<ITexturedSystem>().Where(s => s.TextureManager.IsLoadingTextures).ToArray();
-        if (systems.Length == 0)
-            return;
-        
-        ImGui.OpenPopup("Loading Textures");
-        
-        var viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowPos(viewport.Pos);
-        ImGui.SetNextWindowSize(viewport.Size);
-
-        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                                       ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoTitleBar |
-                                       ImGuiWindowFlags.NoScrollbar;
-        
-        if (ImGui.BeginPopupModal("Loading Textures", ref _loadingTexturesOpen, flags))
-        {
-            const float contentWidth = 400;
-            const string loadingText = "Loading textures, please wait...";
-            
-            var lineHeight = ImGui.CalcTextSize(loadingText).Y;
-            var progressBarHeight = ImGui.GetFrameHeight();
-            var spacing = ImGui.GetStyle().ItemSpacing.Y;
-            var buttonHeight = ImGui.GetFrameHeight();
-
-            var contentHeight = systems.Length * (lineHeight + progressBarHeight + spacing) + buttonHeight * 1.5f;
-
-            var centerX = (ImGui.GetWindowWidth() - contentWidth) * 0.5f;
-            var centerY = (ImGui.GetWindowHeight() - contentHeight) * 0.5f;
-
-            ImGui.SetCursorPos(new Vector2(centerX, centerY));
-
-            ImGui.BeginGroup();
-            {
-                ImGui.TextUnformatted(loadingText);
-                ImGui.Separator();
-                ImGui.Spacing();
-                foreach (var system in systems)
-                {
-                    ImGui.TextUnformatted(system.GetType().Name);
-                    ImGui.ProgressBar(system.TextureManager.LoadingProgress, new Vector2(contentWidth, 0));
-                    ImGui.Spacing();
-                }
-                ImGui.Spacing();
-                ImGui.SetCursorPosX(centerX + (contentWidth - 100) * 0.5f);
-                if (ImGui.Button("Let me in!", new Vector2(100, 0)))
-                    _loadingTexturesOpen = false;
-            }
-            ImGui.EndGroup();
-
-            ImGui.EndPopup();
-        }
-    }
-
-    private Actor? _selectedActor;
     private readonly Vector2 _iconSize = new(20);
     
     private void DrawActorTree(Actor actor)
@@ -273,7 +221,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.PushID(actor.Id);
         
         var count = actor.Children.Count;
-        var isSelected = actor == _selectedActor;
+        var isSelected = actor == SelectedActor;
         var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick;
         if (isSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
@@ -281,7 +229,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.AlignTextToFramePadding();
         var open = ImGui.TreeNodeEx("##tree", flags);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-            _selectedActor = actor;
+            SelectedActor = actor;
         
         ImGui.SameLine();
         if (Icons.TryGetValue(actor.Icon, out var icon))
@@ -304,15 +252,15 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
     private void DrawActorInspector()
     {
-        if (_selectedActor is null)
+        if (SelectedActor is null)
         {
             ImGui.TextUnformatted("No actor selected.");
             return;
         }
         
-        ImGui.Text(_selectedActor.Name);
+        ImGui.Text(SelectedActor.Name);
 
-        foreach (var component in _selectedActor.Components)
+        foreach (var component in SelectedActor.Components)
             component.DrawInterface();
     }
     

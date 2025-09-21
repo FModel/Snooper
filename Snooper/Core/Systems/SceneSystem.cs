@@ -4,6 +4,7 @@ using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.Core.Systems;
 
@@ -50,6 +51,32 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
         }
     }
 
+    protected Actor? FindActorByComponentId(uint componentId)
+    {
+        if (RootActor == null)
+            return null;
+        
+        return FindRecursive(RootActor);
+
+        Actor? FindRecursive(Actor actor)
+        {
+            foreach (var component in actor.Components)
+            {
+                if (component.Id == componentId)
+                    return actor;
+            }
+            
+            foreach (var child in actor.Children)
+            {
+                var found = FindRecursive(child);
+                if (found != null)
+                    return found;
+            }
+
+            return null;
+        }
+    }
+
     public override void Load()
     {
         DequeuePairs();
@@ -77,6 +104,14 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
         {
             pair.DeferredRendering(Render);
             pair.ForwardRendering(Render);
+            pair.PickingRendering(camera =>
+            {
+                foreach (var system in Systems.Values)
+                {
+                    if (system is not IPickableSystem pickable) continue;
+                    pickable.RenderPicking(camera);
+                }
+            });
             
             pair.CombineRendering();
             pair.ApplyFxaa();

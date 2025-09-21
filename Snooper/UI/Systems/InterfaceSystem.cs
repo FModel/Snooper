@@ -3,7 +3,9 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using Serilog;
 using Snooper.Core.Systems;
+using Snooper.Rendering.Actors;
 
 namespace Snooper.UI.Systems;
 
@@ -15,6 +17,24 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     
     protected bool Enabled { get; private set; } = true;
     protected NotificationManager Notifications { get; } = new();
+    
+    private uint _selectedComponent;
+    protected uint SelectedComponent
+    {
+        get => _selectedComponent;
+        set
+        {
+            if (_selectedComponent == value)
+                return;
+            
+            _selectedComponent = value;
+            Log.Debug("Picked component ID: {ComponentId}", _selectedComponent);
+            
+            SelectedActor = _selectedComponent == 0 ? null : FindActorByComponentId(_selectedComponent);
+        }
+    }
+    
+    public Actor? SelectedActor { get; protected set; }
 
     public override void Load()
     {

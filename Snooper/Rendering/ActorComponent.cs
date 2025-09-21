@@ -8,6 +8,9 @@ namespace Snooper.Rendering;
 
 public abstract partial class ActorComponent(string? name = null)
 {
+    private static uint _nextId = 1;
+    public readonly uint Id = _nextId++;
+    
     protected ActorComponent(UActorComponent component) : this($"{component.Name} ({component.GetType().Name})")
     {
         

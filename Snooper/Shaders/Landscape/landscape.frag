@@ -25,22 +25,23 @@ struct WeightHighlightMapping
     vec4 DebugColor;
 };
 
-layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 {
     PerDrawData uDrawDataBuffer[];
 };
 
-layout(std430, binding = 2) restrict readonly buffer LandscapeScales
+layout(std430, binding = 3) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };
 
-layout(std430, binding = 3) restrict readonly buffer WeightMappingBuffer
+layout(std430, binding = 4) restrict readonly buffer WeightMappingBuffer
 {
     WeightHighlightMapping uWeightMappingBuffer[];
 };
 
-in flat int vDrawID;
+#include "Buffers/common.frag"
+
 in TE_OUT {
     vec3 vViewPos;
     mat3 TBN;
@@ -149,7 +150,7 @@ void main()
     }
     else if (uColorMode == 1)
     {
-        color = getColorFromWeightmap(uDrawDataBuffer[vDrawID], uWeightMappingBuffer[vDrawID]);
+        color = getColorFromWeightmap(uDrawDataBuffer[gDrawID], uWeightMappingBuffer[gDrawID]);
     }
     
     gPosition = fs_in.vViewPos;

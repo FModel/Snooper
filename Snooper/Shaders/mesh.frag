@@ -11,7 +11,7 @@ struct PerDrawData
     vec3 DiffuseColor;
 };
 
-layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 {
     PerDrawData uDrawDataBuffer[];
 };
@@ -20,7 +20,8 @@ uniform int uDebugColorMode;
 
 #include "pbr.glsl"
 
-in flat int mIndex;
+#include "Buffers/common.frag"
+
 in VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
@@ -32,7 +33,7 @@ out vec4 FragColor;
 
 void main()
 {
-    PerDrawData drawData = uDrawDataBuffer[mIndex];
+    PerDrawData drawData = uDrawDataBuffer[gDrawID];
 
     vec4 color = vec4(fs_in.vDebugColor, 1.0);
     vec3 spec = vec3(1.0);

@@ -4,18 +4,19 @@
     vec3 Color;
 };
 
-layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 {
     PerDrawData uDrawDataBuffer[];
 };
 
-in flat int mIndex;
+#include "Buffers/common.frag"
 
 out vec4 FragColor;
 
 void main()
 {
-    PerDrawData drawData = uDrawDataBuffer[mIndex];
+    PerDrawData drawData = uDrawDataBuffer[gDrawID];
+    
     vec3 color = vec3(0.75);
     if (drawData.IsReady)
     {

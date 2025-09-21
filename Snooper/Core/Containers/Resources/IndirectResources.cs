@@ -46,7 +46,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _drawData.Unbind();
     }
     
-    public void Add(LevelOfDetail<TVertex>[] levelOfDetails, MaterialSection[] materials, TInstanceData[] instanceData, CullingBounds bounds)
+    public void Add(uint pickingId, LevelOfDetail<TVertex>[] levelOfDetails, MaterialSection[] materials, TInstanceData[] instanceData, CullingBounds bounds)
     {
         // TODO: create lod only if not already cached
         var handle = _geometry.Add(levelOfDetails[0].Guid, () => levelOfDetails, bounds);
@@ -67,6 +67,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
                 FirstIndex = handle.FirstIndex + levelOfDetails[0].SectionDescriptors[i].FirstIndex,
                 BaseVertex = handle.BaseVertex,
                 BaseInstance = baseInstance,
+                PickingId = pickingId,
                 OriginalInstanceCount = instanceCount,
                 OriginalBaseInstance = baseInstance,
                 ModelId = handle.ModelId,
@@ -125,8 +126,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     public void Render()
     {
         _commands.Current.Bind();
-        _instanceData.Bind(0);
-        _drawData.Bind(1);
+        _commands.Current.Bind(0);
+        _instanceData.Bind(1);
+        _drawData.Bind(2);
         
         _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.Count, _commands.Current.Stride));
 

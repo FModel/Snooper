@@ -95,8 +95,8 @@ public class LevelActor : Actor
             }
             default:
             {
-                component = new SpatialComponent(null, $"{data?.Name} ({data?.GetType().Name})");
-                // component = new Components.PrimitiveComponent(new Primitives.Cube(), null, $"{data?.Name} ({data?.GetType().Name})");
+                // component = new SpatialComponent(null, $"{data?.Name} ({data?.GetType().Name})");
+                component = new Components.PrimitiveComponent(new Primitives.Cube(), null, $"{data?.Name} ({data?.GetType().Name})");
                 
                 if (RootComponent is SpatialComponent root)
                 {

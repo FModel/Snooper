@@ -65,11 +65,11 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         _compute.SetUniform("uFrustumPlanes", frustum);
         _compute.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
         _compute.SetUniform("uCameraPosition", camera.LocalTransform.Position);
-        
-        instances.Bind(0);
-        _primitives.Bind(1);
-        _sections.Bind(2);
-        commands.Bind(3);
+
+        commands.Bind(0);
+        instances.Bind(1);
+        _primitives.Bind(2);
+        _sections.Bind(3);
 
         GL.DispatchCompute(commands.Count, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit);
