@@ -1,7 +1,7 @@
 ﻿using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
-using Snooper.Rendering;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
 using Snooper.Rendering.Systems;
@@ -48,32 +48,6 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
                 AddRoot(value);
 
             _rootActor = value;
-        }
-    }
-
-    protected Actor? FindActorByComponentId(uint componentId)
-    {
-        if (RootActor == null)
-            return null;
-        
-        return FindRecursive(RootActor);
-
-        Actor? FindRecursive(Actor actor)
-        {
-            foreach (var component in actor.Components)
-            {
-                if (component.Id == componentId)
-                    return actor;
-            }
-            
-            foreach (var child in actor.Children)
-            {
-                var found = FindRecursive(child);
-                if (found != null)
-                    return found;
-            }
-
-            return null;
         }
     }
 

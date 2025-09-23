@@ -1,15 +1,29 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
 using Snooper.Rendering.Actors;
-using Snooper.Rendering.Components;
 using Snooper.UI;
 
-namespace Snooper.Rendering;
+namespace Snooper.Rendering.Components;
 
 public abstract partial class ActorComponent(string? name = null)
 {
     private static uint _nextId = 1;
     public readonly uint Id = _nextId++;
+
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set
+        {
+            if (_isSelected == value)
+                return;
+            
+            _isSelected = value;
+
+            Actor?.ComputeSelected();
+        }
+    }
     
     protected ActorComponent(UActorComponent component) : this($"{component.Name} ({component.GetType().Name})")
     {
@@ -56,11 +70,19 @@ public abstract partial class ActorComponent(string? name = null)
     internal void DrawInterface()
     {
         if (this is not IControllable controllable || this is DebugComponent) return;
+
+        ImGui.PushID((int)Id);
+        
+        if (IsSelected) // TODO: just an example
+            ImGui.PushStyleColor(ImGuiCol.Header, new System.Numerics.Vector4(1.0f, 1.0f, 0.0f, 0.5f));
         
         if (ImGui.CollapsingHeader(DisplayName))
-        {
             controllable.DrawControls();
-        }
+        
+        if (IsSelected)
+            ImGui.PopStyleColor();
+        
+        ImGui.PopID();
     }
 
     [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]

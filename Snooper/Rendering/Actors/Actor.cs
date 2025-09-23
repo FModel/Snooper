@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using Snooper.Core.Systems;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Skybox;
@@ -11,6 +12,7 @@ namespace Snooper.Rendering.Actors;
 public class Actor
 {
     public string Name { get; }
+    public bool IsSelected { get; private set; }
 
     public Actor(string name)
     {
@@ -156,5 +158,13 @@ public class Actor
                 }
                 break;
         }
+    }
+    
+    internal void ComputeSelected()
+    {
+        var any = Components.Any(component => component.IsSelected);
+        if (IsSelected == any) return;
+        
+        IsSelected = any;
     }
 }

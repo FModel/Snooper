@@ -61,7 +61,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
                     {
-                        SelectedComponent = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
+                        PickedComponentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
                         ImGui.SetWindowFocus("Scene Hierarchy");
                     }
                 }
@@ -221,15 +221,14 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.PushID(actor.Id);
         
         var count = actor.Children.Count;
-        var isSelected = actor == SelectedActor;
         var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick;
-        if (isSelected) flags |= ImGuiTreeNodeFlags.Selected;
+        if (actor.IsSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
         
         ImGui.AlignTextToFramePadding();
         var open = ImGui.TreeNodeEx("##tree", flags);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-            SelectedActor = actor;
+            PickedComponentId = actor.RootComponent?.Id ?? 0;
         
         ImGui.SameLine();
         if (Icons.TryGetValue(actor.Icon, out var icon))

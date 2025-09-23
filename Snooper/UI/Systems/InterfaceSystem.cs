@@ -6,6 +6,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
 
 namespace Snooper.UI.Systems;
 
@@ -18,24 +19,32 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     protected bool Enabled { get; private set; } = true;
     protected NotificationManager Notifications { get; } = new();
     
-    private uint _selectedComponent;
-    protected uint SelectedComponent
+    private uint _pickedComponentId;
+    protected uint PickedComponentId
     {
-        get => _selectedComponent;
+        get => _pickedComponentId;
         set
         {
-            if (_selectedComponent == value)
+            if (_pickedComponentId == value)
                 return;
             
-            _selectedComponent = value;
-            Log.Debug("Picked component ID: {ComponentId}", _selectedComponent);
+            if (SelectedActor is not null)
+                foreach (var c in SelectedActor.Components)
+                    c.IsSelected = false;
             
-            SelectedActor = _selectedComponent == 0 ? null : FindActorByComponentId(_selectedComponent);
+            _pickedComponentId = value;
+            Log.Debug("Picked Component ID: {ComponentId}", _pickedComponentId);
+            
+            var component = FindComponentById(_pickedComponentId);
+            if (component is not null)
+                component.IsSelected = true;
+            
+            SelectedActor = component?.Actor;
         }
     }
     
-    public Actor? SelectedActor { get; protected set; }
-
+    protected Actor? SelectedActor { get; private set; }
+    
     public override void Load()
     {
         _controller.Load();
@@ -110,6 +119,34 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         base.Resize(newWidth, newHeight);
         
         _controller.Resize(newWidth, newHeight);
+    }
+    
+    private ActorComponent? FindComponentById(uint componentId)
+    {
+        if (RootActor == null)
+            return null;
+        
+        return FindRecursive(RootActor);
+
+        ActorComponent? FindRecursive(Actor actor)
+        {
+            foreach (var component in actor.Components)
+            {
+                if (component.Id == componentId)
+                {
+                    return component;
+                }
+            }
+            
+            foreach (var child in actor.Children)
+            {
+                var found = FindRecursive(child);
+                if (found != null)
+                    return found;
+            }
+            
+            return null;
+        }
     }
 
     public void TextInput(char c) => _controller.TextInput(c);

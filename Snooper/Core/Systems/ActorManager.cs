@@ -5,6 +5,7 @@ using Snooper.Core.Containers.Textures;
 using Snooper.Core.Hardware;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
@@ -27,9 +28,9 @@ public abstract class ActorManager : IGameSystem
         _registeredFactories.Add(typeof(T), factory);
     }
 
-    public ContextInfo Context { get; private set; }
-    public Dictionary<string, Texture> Icons { get; } = new();
-    public SortedList<uint, ActorSystem> Systems { get; } = [];
+    protected ContextInfo Context { get; private set; }
+    protected Dictionary<string, Texture> Icons { get; } = new();
+    protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
