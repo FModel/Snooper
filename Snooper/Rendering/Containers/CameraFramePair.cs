@@ -109,15 +109,12 @@ public class CameraFramePair(CameraComponent camera) : IResizable
     public void PickingRendering(Action<CameraComponent> render)
     {
         _picking.Bind();
-
         GL.DrawBuffer(DrawBufferMode.ColorAttachment1);
         GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        
         render(Camera);
         
-        GL.DrawBuffer(DrawBufferMode.ColorAttachment0);
-        GL.ClearColor(0, 0, 0, 0);
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
         _picking.Render();
     }
 
@@ -131,6 +128,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         {
             _geometry.Bind(TextureUnit.Texture0);
             _forward.Bind(TextureUnit.Texture1);
+            _picking.Bind(TextureUnit.Texture2);
         });
     }
     
@@ -170,7 +168,6 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         .._geometry.GetTexturePointers(),
         _ssao.GetPointer(),
         _forward.GetPointer(),
-        _picking.GetPointer(),
         Camera.bFXAA ? _fxaa.GetPointer() : _combined.GetPointer(),
     ];
 }

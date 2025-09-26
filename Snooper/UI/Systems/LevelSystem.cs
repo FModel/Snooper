@@ -2,6 +2,7 @@
 using ImGuiNET;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Rendering;
@@ -50,7 +51,9 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 {
                     if (Window.MouseState.ScrollDelta.Y != 0)
                     {
-                        pair.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * 5f;
+                        var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+                        pair.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
+                        pair.Camera.MovementSpeed = MathF.Max(1f, pair.Camera.MovementSpeed);
                         Notifications.PushNotification("Camera", $"Movement speed set to {pair.Camera.MovementSpeed}.");
                     }
 
@@ -61,7 +64,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
                     {
-                        PickedComponentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
+                        SelectedComponentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
                         ImGui.SetWindowFocus("Scene Hierarchy");
                     }
                 }
@@ -228,7 +231,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.AlignTextToFramePadding();
         var open = ImGui.TreeNodeEx("##tree", flags);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-            PickedComponentId = actor.RootComponent?.Id ?? 0;
+            SelectedComponentId = actor.RootComponent?.Id ?? 0;
         
         ImGui.SameLine();
         if (Icons.TryGetValue(actor.Icon, out var icon))

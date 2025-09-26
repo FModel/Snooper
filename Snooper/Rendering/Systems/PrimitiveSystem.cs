@@ -32,7 +32,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
 
         if (IsPickable)
         {
-            _picking = new EmbeddedShaderProgram(Shader.Vertex, "picking.frag")
+            _picking = new EmbeddedShaderProgram(Shader.Vertex, "Picking/picking.frag")
             {
                 TessellationControl = Shader.TessellationControl,
                 TessellationEvaluation = Shader.TessellationEvaluation

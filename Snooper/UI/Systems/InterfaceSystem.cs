@@ -19,23 +19,23 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     protected bool Enabled { get; private set; } = true;
     protected NotificationManager Notifications { get; } = new();
     
-    private uint _pickedComponentId;
-    protected uint PickedComponentId
+    private uint _selectedComponentId;
+    protected uint SelectedComponentId
     {
-        get => _pickedComponentId;
+        get => _selectedComponentId;
         set
         {
-            if (_pickedComponentId == value)
+            if (_selectedComponentId == value)
                 return;
             
             if (SelectedActor is not null)
                 foreach (var c in SelectedActor.Components)
                     c.IsSelected = false;
             
-            _pickedComponentId = value;
-            Log.Debug("Picked Component ID: {ComponentId}", _pickedComponentId);
+            _selectedComponentId = value;
+            Log.Debug("Selected Component ID: {ComponentId}", _selectedComponentId);
             
-            var component = FindComponentById(_pickedComponentId);
+            var component = FindComponentById(_selectedComponentId);
             if (component is not null)
                 component.IsSelected = true;
             
@@ -123,7 +123,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     
     private ActorComponent? FindComponentById(uint componentId)
     {
-        if (RootActor == null)
+        if (componentId == 0 || RootActor == null)
             return null;
         
         return FindRecursive(RootActor);
