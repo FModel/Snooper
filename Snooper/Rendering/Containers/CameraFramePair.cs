@@ -106,15 +106,11 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         render(Camera, ActorSystemType.Forward);
     }
     
-    public void PickingRendering(Action<CameraComponent> render)
+    public void PickingRendering()
     {
         _picking.Bind();
-        GL.DrawBuffer(DrawBufferMode.ColorAttachment1);
-        GL.ClearColor(0, 0, 0, 0);
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-        
-        render(Camera);
-        
+        _geometry.BindPicking(TextureUnit.Texture0);
+        _forward.BindPicking(TextureUnit.Texture1);
         _picking.Render();
     }
 

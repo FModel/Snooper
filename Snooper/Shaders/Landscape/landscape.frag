@@ -4,6 +4,7 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
 layout (location = 3) out vec4 gSpecular;
+layout (location = 4) out uint gPicking;
 
 struct PerDrawData
 {
@@ -40,6 +41,7 @@ layout(std430, binding = 4) restrict readonly buffer WeightMappingBuffer
     WeightHighlightMapping uWeightMappingBuffer[];
 };
 
+#include "Buffers/PerDrawCommand.glsl"
 #include "Buffers/common.frag"
 
 in TE_OUT {
@@ -159,4 +161,5 @@ void main()
     gColor.a = 1.0; // free space
     gSpecular.rgb = vec3(0.0, 0.0, 0.0);
     gSpecular.a = 1.0; // free space
+    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
 }

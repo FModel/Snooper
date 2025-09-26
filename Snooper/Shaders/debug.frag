@@ -1,4 +1,6 @@
-﻿struct PerDrawData
+﻿layout (location = 1) out uint gPicking;
+
+struct PerDrawData
 {
     bool IsReady;
     vec3 Color;
@@ -24,4 +26,6 @@ void main()
     }
     
     FragColor = vec4(color, 1.0);
+
+    gPicking = 0u;
 }

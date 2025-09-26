@@ -9,12 +9,13 @@ namespace Snooper.Rendering.Containers.Framebuffers;
 /// <summary>
 /// dedicated framebuffer for object picking
 /// uses a single channel 32-bit unsigned integer texture to store component IDs
+/// it does not need yet another render pass because the picking is done in both deferred/forward rendering and combined here
 ///
-/// it is a full screen quad under the hood so we can easily render it to the screen for debugging
-/// ColorAttachment0 is the debug texture (visualization of the picking texture)
-/// ColorAttachment1 is the picking texture
-///
-/// picking is enabled by default for all IPickableSystem
+/// ColorAttachment0 is the outline texture that will be blended over the final image
+/// ColorAttachment1 is the picking texture (combined from deferred and forward picking)
+/// ColorAttachment2 is the mask texture of the currently selected object
+/// ColorAttachment3 is the outline mask texture
+/// ColorAttachment4 is a debug texture to see the picking texture
 /// </summary>
 /// <param name="originalWidth"></param>
 /// <param name="originalHeight"></param>
@@ -26,6 +27,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
     private readonly Texture2D _outline = new(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.DepthComponent, false);
     
+    private readonly ShaderProgram _combineShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/combine.frag");
     private readonly ShaderProgram _maskShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/mask.frag");
     private readonly ShaderProgram _outlineShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/outline.frag");
     private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/picking.frag");
@@ -67,18 +69,33 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
 
         CheckStatus();
         
+        _combineShader.Generate();
+        _combineShader.Link();
+        
         _maskShader.Generate();
         _maskShader.Link();
-        
+
         _outlineShader.Generate();
         _outlineShader.Link();
         
         _shader.Generate();
         _shader.Link();
     }
-    
+
     public void Render()
     {
+        // combine deferred and forward picking into one texture
+        GL.DrawBuffer(DrawBufferMode.ColorAttachment1);
+        GL.ClearColor(0, 0, 0, 0);
+        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        base.Render(() =>
+        {
+            _combineShader.Use();
+            _combineShader.SetUniform("deferredPicking", 0);
+            _combineShader.SetUniform("forwardPicking", 1);
+        });
+        
+        // use that combined texture to create a mask of the currently selected object
         GL.DrawBuffer(DrawBufferMode.ColorAttachment2);
         GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -90,6 +107,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             _picking.Bind(TextureUnit.Texture0);
         });
         
+        // use that mask to create an outline
         GL.DrawBuffer(DrawBufferMode.ColorAttachment3);
         GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -102,6 +120,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             _mask.Bind(TextureUnit.Texture0);
         });
         
+        // use that outline to highlight the selected object with a color
         GL.DrawBuffer(DrawBufferMode.ColorAttachment0);
         GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);

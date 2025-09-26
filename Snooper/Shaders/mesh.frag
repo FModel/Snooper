@@ -1,5 +1,7 @@
 ﻿#extension GL_ARB_bindless_texture : require
 
+layout (location = 1) out uint gPicking;
+
 struct PerDrawData
 {
     bool IsReady;
@@ -19,7 +21,7 @@ layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 uniform int uDebugColorMode;
 
 #include "pbr.glsl"
-
+#include "Buffers/PerDrawCommand.glsl"
 #include "Buffers/common.frag"
 
 in VS_OUT {
@@ -100,4 +102,6 @@ void main()
 
     finalColor = pow(finalColor, vec3(1.0 / 2.2));
     FragColor = vec4(finalColor, 1.0);
+
+    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
 }

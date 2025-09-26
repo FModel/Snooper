@@ -1,4 +1,6 @@
-﻿#include "Skybox/atmosphere.glsl"
+﻿layout (location = 1) out uint gPicking;
+
+#include "Skybox/atmosphere.glsl"
 
 in vec3 vTexCoords;
 
@@ -29,4 +31,6 @@ void main()
     color = 1.0 - exp(-1.0 * color);
 
     FragColor = vec4(color, 1.0);
+    
+    gPicking = 0u;
 }

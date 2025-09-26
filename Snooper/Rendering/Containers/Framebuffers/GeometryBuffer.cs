@@ -16,6 +16,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
     private readonly Texture2D _normal = new(originalWidth, originalHeight, PixelInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float);
     private readonly Texture2D _color = new(originalWidth, originalHeight);
     private readonly Texture2D _specular = new(originalWidth, originalHeight);
+    private readonly Texture2D _picking = new(originalWidth, originalHeight, PixelInternalFormat.R32ui, PixelFormat.RedInteger, PixelType.UnsignedInt);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
     private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/light.frag");
@@ -43,6 +44,13 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         _specular.Resize(Width, Height);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        
+        _picking.Generate();
+        _picking.Resize(Width, Height);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
 
         _depth.Generate();
         _depth.Resize(Width, Height);
@@ -53,11 +61,13 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment1, TextureTarget.Texture2D, _normal, 0);
         GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment2, TextureTarget.Texture2D, _color, 0);
         GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment3, TextureTarget.Texture2D, _specular, 0);
-        GL.DrawBuffers(4, [
+        GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment4, TextureTarget.Texture2D, _picking, 0);
+        GL.DrawBuffers(5, [
             DrawBuffersEnum.ColorAttachment0,
             DrawBuffersEnum.ColorAttachment1,
             DrawBuffersEnum.ColorAttachment2,
             DrawBuffersEnum.ColorAttachment3,
+            DrawBuffersEnum.ColorAttachment4,
         ]);
         GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, _depth);
 
@@ -70,6 +80,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
     }
 
     public override void Bind(TextureUnit unit) => _fullQuad.Bind(unit);
+    public void BindPicking(TextureUnit unit) => _picking.Bind(unit);
 
     public void BindTextures(bool position = false, bool normal = false, bool color = false, bool specular = false)
     {
@@ -104,6 +115,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         _normal.Resize(newWidth, newHeight);
         _color.Resize(newWidth, newHeight);
         _specular.Resize(newWidth, newHeight);
+        _picking.Resize(newWidth, newHeight);
         _depth.Resize(newWidth, newHeight);
         _fullQuad.Resize(newWidth, newHeight);
     }

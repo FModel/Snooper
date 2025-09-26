@@ -78,14 +78,7 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
         {
             pair.DeferredRendering(Render);
             pair.ForwardRendering(Render);
-            pair.PickingRendering(camera =>
-            {
-                foreach (var system in Systems.Values)
-                {
-                    if (system is not IPickableSystem pickable) continue;
-                    pickable.RenderPicking(camera);
-                }
-            });
+            pair.PickingRendering();
             
             pair.CombineRendering();
             pair.ApplyFxaa();

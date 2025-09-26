@@ -12,7 +12,6 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
     protected override bool AllowDerivation => true;
     protected override bool IsRenderable => ActorManager?.DrawBoundingBoxes ?? false;
     protected override bool IsCulled => false;
-    protected override bool IsPickable => false;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default.vert", "debug.frag");
     
     protected override void PreRender(CameraComponent camera, int batchIndex = 0)

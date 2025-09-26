@@ -101,17 +101,6 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         _mapping.Bind(4);
     }
 
-    protected override void PreRenderPicking(CameraComponent camera, ShaderProgram shader)
-    {
-        base.PreRenderPicking(camera, shader);
-        
-        shader.SetUniform("uSizeQuads", _sizeQuads);
-        shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
-        shader.SetUniform("uGlobalScale", Settings.GlobalScale);
-        
-        _scales.Bind(3);
-    }
-
     public void DrawControls()
     {
         var c = (int) _colorMode;
