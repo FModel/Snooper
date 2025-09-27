@@ -8,6 +8,7 @@ using Snooper.Core.Containers;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
@@ -46,6 +47,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
                 ImGui.Image(framebuffers[^1], size, Vector2.UnitY, Vector2.UnitX);
+                DrawAtOrigin(SelectedComponent, pair.Camera, ImGui.GetWindowDrawList(), size, 8f, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
 
                 if (ImGui.IsItemHovered())
                 {
@@ -204,6 +206,31 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
         ImGui.End();
     }
+    
+    private void DrawAtOrigin(
+        ActorComponent? component,
+        CameraComponent? camera,
+        ImDrawListPtr drawList,
+        Vector2 viewportSize,
+        float rectSize = 16f,
+        Vector4? color = null)
+    {
+        if (component is not SpatialComponent spatial || camera == null) return;
+
+        foreach (var matrix in spatial.GetInstanceMatrices())
+        {
+            var clip = Vector4.Transform(new Vector4(matrix.Translation, 1f), camera.ViewProjectionMatrix);
+            if (clip.W <= 0) continue;
+        
+            clip /= clip.W;
+            var ndc = new Vector2(clip.X, clip.Y);
+            var screenPos = new Vector2((ndc.X * 0.5f + 0.5f) * viewportSize.X, (1f - (ndc.Y * 0.5f + 0.5f)) * viewportSize.Y);
+            var pMin = screenPos - new Vector2(rectSize / 2f);
+            var pMax = screenPos + new Vector2(rectSize / 2f);
+
+            drawList.AddRect(pMin, pMax, ImGui.GetColorU32(color ?? new Vector4(1f, 1f, 0f, 1f)), 0f, ImDrawFlags.None, 2f);
+        }
+    }
 
     private void NotifyOnFirstRender()
     {
@@ -231,7 +258,13 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.AlignTextToFramePadding();
         var open = ImGui.TreeNodeEx("##tree", flags);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        {
             SelectedComponentId = actor.RootComponent?.Id ?? 0;
+            foreach (var pair in Pairs)
+            {
+                pair.OverridePickingId(SelectedComponentId);
+            }
+        }
         
         ImGui.SameLine();
         if (Icons.TryGetValue(actor.Icon, out var icon))
@@ -254,15 +287,15 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
     private void DrawActorInspector()
     {
-        if (SelectedActor is null)
+        if (SelectedComponent?.Actor is null)
         {
             ImGui.TextUnformatted("No actor selected.");
             return;
         }
         
-        ImGui.Text(SelectedActor.Name);
+        ImGui.Text(SelectedComponent.Actor.Name);
 
-        foreach (var component in SelectedActor.Components)
+        foreach (var component in SelectedComponent.Actor.Components)
             component.DrawInterface();
     }
     

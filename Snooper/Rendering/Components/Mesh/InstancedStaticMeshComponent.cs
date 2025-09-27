@@ -24,7 +24,7 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
         }
     }
 
-    protected override Matrix4x4[] GetInstanceMatrices()
+    public override Matrix4x4[] GetInstanceMatrices()
     {
         var matrices = new Matrix4x4[LocalInstancedTransforms.Count];
         for (var i = 0; i < LocalInstancedTransforms.Count; i++)

@@ -127,7 +127,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
         base.Render(() =>
         {
             _shader.Use();
-            _shader.SetUniform("outlineColor", new Vector3(0.929f, 0.588f, 0.196f));
+            _shader.SetUniform("outlineColor", new Vector3(1.0f, 0.6f, 0.2f));
             _shader.SetUniform("outlineMask", 0);
             _outline.Bind(TextureUnit.Texture0);
         });
@@ -149,6 +149,11 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
 
         Unbind();
         return _id;
+    }
+    
+    public void OverrideId(uint id)
+    {
+        _id = id;
     }
     
     public override void Resize(int newWidth, int newHeight)

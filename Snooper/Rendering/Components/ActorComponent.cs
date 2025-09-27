@@ -75,9 +75,11 @@ public abstract partial class ActorComponent(string? name = null)
         
         if (IsSelected) // TODO: just an example
             ImGui.PushStyleColor(ImGuiCol.Header, new System.Numerics.Vector4(1.0f, 1.0f, 0.0f, 0.5f));
-        
-        if (ImGui.CollapsingHeader(DisplayName))
+
+        if (ImGui.CollapsingHeader(DisplayName, IsSelected ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None))
+        {
             controllable.DrawControls();
+        }
         
         if (IsSelected)
             ImGui.PopStyleColor();

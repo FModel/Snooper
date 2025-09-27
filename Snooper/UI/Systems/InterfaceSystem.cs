@@ -28,22 +28,20 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
             if (_selectedComponentId == value)
                 return;
             
-            if (SelectedActor is not null)
-                foreach (var c in SelectedActor.Components)
+            if (SelectedComponent?.Actor != null)
+                foreach (var c in SelectedComponent.Actor.Components)
                     c.IsSelected = false;
             
             _selectedComponentId = value;
             Log.Debug("Selected Component ID: {ComponentId}", _selectedComponentId);
             
-            var component = FindComponentById(_selectedComponentId);
-            if (component is not null)
-                component.IsSelected = true;
-            
-            SelectedActor = component?.Actor;
+            SelectedComponent = FindComponentById(_selectedComponentId);
+            if (SelectedComponent is not null)
+                SelectedComponent.IsSelected = true;
         }
     }
     
-    protected Actor? SelectedActor { get; private set; }
+    protected ActorComponent? SelectedComponent { get; private set; }
     
     public override void Load()
     {

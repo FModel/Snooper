@@ -76,7 +76,7 @@ public class SpatialComponent : ActorComponent, IControllable
     
     public readonly List<SpatialComponent> Children = [];
     
-    protected virtual Matrix4x4[] GetInstanceMatrices() => [WorldMatrix];
+    public virtual Matrix4x4[] GetInstanceMatrices() => [WorldMatrix];
     
     public void UpdateWorldMatrix(bool recursive = true)
     {

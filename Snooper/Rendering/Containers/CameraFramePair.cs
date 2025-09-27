@@ -148,6 +148,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
     }
     
     public uint ReadPickingPixel(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => _picking.ReadPixel(mousePos, windowPos, windowSize);
+    public void OverridePickingId(uint id) => _picking.OverrideId(id);
 
     public void Resize(int newWidth, int newHeight)
     {
