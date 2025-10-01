@@ -7,6 +7,8 @@ using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
+using Snooper.Extensions;
+using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
@@ -14,26 +16,33 @@ namespace Snooper.Rendering.Actors;
 
 public class LevelActor : Actor
 {
-    public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components) : base(actor.Name)
+    public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components, WorldActorType type) : base(actor.Name)
     {
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
+        var compoments = type.Includes(WorldActorType.Components);
+        var landscape = type.Includes(WorldActorType.Landscape);
+        var additional = type.Includes(WorldActorType.AdditionalWorlds);
+        
+        if (compoments)
+        {
+            EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
+            EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
+            EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+        }
+        
+        if (landscape)
+        {
+            EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
+        }
 
+        // ProcessRootComponent
         foreach (var ptr in _ptrs)
         {
-            var pair = CreateComponent(ptr);
-            _parent = pair.ParentPtr;
-            
-            Components.Add(pair.Component);
-            components.TryAdd(ptr, pair.Component);
-            
+            _parent = CreateComponentRecursive(components, ptr).ParentPtr;
             _ptrs.Remove(ptr);
             break;
         }
         
-        if (actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
+        if (additional && actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
         {
             foreach (var additionalWorld in additionalWorlds)
             {
@@ -46,26 +55,29 @@ public class LevelActor : Actor
     {
         foreach (var ptr in _ptrs)
         {
-            CreateRecursive(ptr);
+            CreateComponentRecursive(components, ptr);
         }
         
         _ptrs.Clear();
         return _parent;
+    }
+    
+    private Pair CreateComponentRecursive(Dictionary<FPackageIndex, SpatialComponent> components, FPackageIndex ptr)
+    {
+        Pair root;
         
-        void CreateRecursive(FPackageIndex ptr)
+        var pair = root = CreateComponent(ptr);
+        if (pair is { ParentPtr: not null })
         {
-            var pair = CreateComponent(ptr);
-            if (pair is { ParentPtr: not null })
-            {
-                if (!components.ContainsKey(pair.ParentPtr))
-                    CreateRecursive(pair.ParentPtr);
+            if (!components.ContainsKey(pair.ParentPtr))
+                root = CreateComponentRecursive(components, pair.ParentPtr);
 
-                pair.Component.Relation = components[pair.ParentPtr];
-            }
-            
-            components.TryAdd(ptr, pair.Component);
-            Components.Add(pair.Component);
+            pair.Component.Relation = components[pair.ParentPtr];
         }
+            
+        components.TryAdd(ptr, pair.Component);
+        Components.Add(pair.Component);
+        return root;
     }
     
     private Pair CreateComponent(FPackageIndex ptr)
@@ -89,6 +101,7 @@ public class LevelActor : Actor
                     },
                     USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
+                    // UCameraComponent camera => new CameraComponent(camera),
                     _ => new SpatialComponent(sceneComponent)
                 };
                 break;

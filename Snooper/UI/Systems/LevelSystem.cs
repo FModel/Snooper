@@ -47,7 +47,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
                 ImGui.Image(framebuffers[^1], size, Vector2.UnitY, Vector2.UnitX);
-                DrawAtOrigin(SelectedComponent, pair.Camera, ImGui.GetWindowDrawList(), size, 8f, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
+                DrawAtOrigin(SelectedComponent, pair.Camera, ImGui.GetWindowDrawList(), 8f, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
 
                 if (ImGui.IsItemHovered())
                 {
@@ -211,7 +211,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ActorComponent? component,
         CameraComponent? camera,
         ImDrawListPtr drawList,
-        Vector2 viewportSize,
         float rectSize = 16f,
         Vector4? color = null)
     {
@@ -224,7 +223,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         
             clip /= clip.W;
             var ndc = new Vector2(clip.X, clip.Y);
-            var screenPos = new Vector2((ndc.X * 0.5f + 0.5f) * viewportSize.X, (1f - (ndc.Y * 0.5f + 0.5f)) * viewportSize.Y);
+            var screenPos = new Vector2((ndc.X + 1f) * 0.5f * camera.ViewportSize.X, (1f - ndc.Y) * 0.5f * camera.ViewportSize.Y + ImGui.GetFrameHeight());
             var pMin = screenPos - new Vector2(rectSize / 2f);
             var pMax = screenPos + new Vector2(rectSize / 2f);
 

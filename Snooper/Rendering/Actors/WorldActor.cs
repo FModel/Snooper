@@ -26,7 +26,9 @@ public class WorldActor : Actor
     {
         Components.Add(new SpatialComponent());
         
+        var partition = type.Includes(WorldActorType.WorldPartition);
         var streaming = type.Includes(WorldActorType.LevelStreaming);
+        
         for (var i = 0; streaming && i < world.StreamingLevels.Length; i++)
         {
             Process(world.StreamingLevels[i]);
@@ -38,9 +40,20 @@ public class WorldActor : Actor
         foreach (var ptr in actors)
         {
             if (ptr == null || !ptr.TryLoad<UObject>(out var data))
+            {
                 continue;
+            }
+            
+            if (partition)
+            {
+                Process(data.GetOrDefault<FPackageIndex?>("WorldPartition"));
+            }
 
-            created.Add(new LevelActor(data, _parents));
+            var a = new LevelActor(data, _parents, type);
+            if (a.RootComponent is not null)
+            {
+                created.Add(a);
+            }
         }
 
         foreach (var actor in created)

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core;
@@ -9,7 +10,7 @@ using Snooper.UI;
 namespace Snooper.Rendering.Components.Camera;
 
 [DefaultActorSystem(typeof(CameraSystem))]
-public sealed class CameraComponent : SpatialComponent, IControllable
+public sealed class CameraComponent : SpatialComponent
 {
     internal int PairIndex = -1;
     internal bool IsActive = false;
@@ -32,6 +33,16 @@ public sealed class CameraComponent : SpatialComponent, IControllable
     public float AspectRatio => ViewportSize.X / ViewportSize.Y;
     
     private Vector3 _velocity = Vector3.Zero;
+    
+    public CameraComponent(Transform? transform = null, string? name = null) : base(transform, name)
+    {
+        
+    }
+    
+    public CameraComponent(UCameraComponent component) : base(component)
+    {
+        FieldOfView = component.GetOrDefault(nameof(FieldOfView), FieldOfView);
+    }
 
     public void Update()
     {
@@ -88,31 +99,27 @@ public sealed class CameraComponent : SpatialComponent, IControllable
         LocalTransform.Rotation = Quaternion.Normalize(yawRotation * LocalTransform.Rotation * pitchRotation);
     }
 
-    public void DrawControls()
+    public override void DrawControls()
     {
-        ImGui.Checkbox("FXAA", ref bFXAA);
-        ImGui.Checkbox("HBAO", ref bAmbientOcclusion);
-        ImGui.BeginDisabled(!bAmbientOcclusion);
-        ImGui.SliderFloat("Radius", ref SsaoRadius, 0.01f, 5.0f);
-        ImGui.EndDisabled();
+        base.DrawControls();
+        
+        if (ImGui.TreeNode("Parameters"))
+        {
+            ImGui.Checkbox("FXAA", ref bFXAA);
+            ImGui.Checkbox("HBAO", ref bAmbientOcclusion);
+            ImGui.BeginDisabled(!bAmbientOcclusion);
+            ImGui.SliderFloat("Radius", ref SsaoRadius, 0.01f, 5.0f);
+            ImGui.EndDisabled();
 
-        ImGui.DragFloat("Speed", ref MovementSpeed, 0.1f, 1f, 100f);
-        ImGui.DragFloat("FOV", ref FieldOfView, 0.1f, 1.0f, 89.0f);
-        ImGui.DragFloat("Near Plane", ref NearPlaneDistance, 0.001f, 0.001f, FarPlaneDistance - 1);
-        ImGui.DragFloat("Far Plane", ref FarPlaneDistance, 0.1f , NearPlaneDistance + 1, 1000.0f);
+            ImGui.DragFloat("Speed", ref MovementSpeed, 0.1f, 1f, 100f);
+            ImGui.DragFloat("FOV", ref FieldOfView, 0.1f, 1.0f, 89.0f);
+            ImGui.DragFloat("Near Plane", ref NearPlaneDistance, 0.001f, 0.001f, FarPlaneDistance - 1);
+            ImGui.DragFloat("Far Plane", ref FarPlaneDistance, 0.1f , NearPlaneDistance + 1, 1000.0f);
+            
+            ImGui.TreePop();
+        }
     }
 
-    public Vector2 ProjectToScreen(Vector3 worldPosition)
-    {
-        var clipSpacePosition = Vector4.Transform(new Vector4(worldPosition, 1.0f), ViewProjectionMatrix);
-        var ndcSpacePosition = new Vector3(clipSpacePosition.X, clipSpacePosition.Y, clipSpacePosition.Z) / clipSpacePosition.W;
-
-        return new Vector2(
-            (ndcSpacePosition.X + 1.0f) * 0.5f * AspectRatio,
-            (1.0f - ndcSpacePosition.Y) * 0.5f);
-    }
-
-    public Plane[] GetLocalFrustumPlanes() => GetFrustumPlanes(ProjectionMatrix);
     public Plane[] GetWorldFrustumPlanes() => GetFrustumPlanes(ViewProjectionMatrix);
 
     private Plane[] GetFrustumPlanes(Matrix4x4 matrix)
