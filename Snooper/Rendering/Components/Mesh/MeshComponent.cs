@@ -1,8 +1,10 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Material;
-using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Assets.Exports.Texture;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core;
@@ -10,6 +12,7 @@ using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -37,10 +40,24 @@ public struct PerDrawMeshData : IPerDrawData
 
 [DefaultActorSystem(typeof(RenderSystem))]
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent(IReadOnlyList<CBaseMeshLod> levels, ResolvedObject?[] materials, FBox box) : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>(CreateGeometry(levels), box)
+public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
-    internal void ParseMaterials()
+    protected ResolvedObject?[] MaterialsToParse { get; init; } = [];
+
+    protected MeshComponent(ResolvedObject?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {
+        MaterialsToParse = materials;
+    }
+
+    protected MeshComponent(UMeshComponent component) : base(component)
+    {
+        
+    }
+
+    protected override void OnAddedToActor()
+    {
+        base.OnAddedToActor();
+
         for (var i = 0; i < Materials.Length; i++)
         {
             var index = i;
@@ -49,67 +66,12 @@ public abstract class MeshComponent(IReadOnlyList<CBaseMeshLod> levels, Resolved
             Task.Run(() =>
             {
                 var materialIndex = Materials[index].MaterialIndex;
-                if (materials[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
+                if (MaterialsToParse[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
                 {
                     var parameters = new CMaterialParams2();
                     material.GetParams(parameters, EMaterialFormat.FirstLayer);
 
-                    for (var j = 0; j < CMaterialParams2.Diffuse.Length; j++)
-                    {
-                        if (parameters.TryGetTexture2d(out var diffuse, CMaterialParams2.Diffuse[j]))
-                        {
-                            parameters.TryGetTexture2d(out var normal, [..CMaterialParams2.Normals[j], CMaterialParams2.FallbackNormals]);
-                            parameters.TryGetTexture2d(out var specular, [..CMaterialParams2.SpecularMasks[j], CMaterialParams2.FallbackSpecularMasks]);
-                            
-                            var diffuseColor = Vector3.One;
-                            if (parameters.TryGetLinearColor(out var color, CMaterialParams2.DiffuseColors[j]))
-                            {
-                                color = color.ToSRGB();
-                                diffuseColor = new Vector3(color.R, color.G, color.B);
-                            }
-                            
-                            var roughness = Vector2.UnitY;
-                            if (parameters.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
-                                roughness.X = roughnessMin;
-                            if (parameters.TryGetScalar(out var roughnessMax, "RoughnessMax", "SpecRoughnessMax"))
-                                roughness.Y = roughnessMax;
-
-                            var s = specular != null ? new Texture2D(specular) : null;
-                            if (s != null)
-                            {
-                                if ((parameters.TryGetSwitch(out var srg, "SwizzleRoughnessToGreen") && srg) ||
-                                    parameters.Textures.ContainsKey("SRM"))
-                                {
-                                    s.SwizzleMask =
-                                    [
-                                        (int) PixelFormat.Red,
-                                        (int) PixelFormat.Blue,
-                                        (int) PixelFormat.Green,
-                                        (int) PixelFormat.Alpha
-                                    ];
-                                }
-                                else
-                                {
-                                    s.SwizzlePerGame(specular.Owner.Provider.ProjectName.ToUpperInvariant());
-                                }
-                            }
-
-                            Materials[index].DrawDataContainer = new DrawDataContainer(
-                                new Texture2D(diffuse),
-                                normal != null ? new Texture2D(normal) : null,
-                                s,
-                                roughness,
-                                diffuseColor,
-                                parameters.BlendMode is EBlendMode.BLEND_Translucent or EBlendMode.BLEND_Masked);
-                            
-                            break;
-                        }
-                    }
-
-                    if (Materials[index].DrawDataContainer == null && parameters.TryGetFirstTexture2d(out var fallback))
-                    {
-                        Materials[index].DrawDataContainer = new DrawDataContainer(new Texture2D(fallback), null, null);
-                    }
+                    Materials[index].DrawDataContainer = ParseMaterialParameters(parameters, material.Owner.Provider.ProjectName.ToUpperInvariant());
                 }
                 else
                 {
@@ -118,8 +80,84 @@ public abstract class MeshComponent(IReadOnlyList<CBaseMeshLod> levels, Resolved
             });
         }
     }
+    
+    private DrawDataContainer? ParseMaterialParameters(CMaterialParams2 parameters, string projectName)
+    {
+        UTexture? diffuse = null, normal = null, specular = null;
+        var diffuseColor = Vector3.One;
+        var roughness = Vector2.UnitY;
 
-    private static LevelOfDetail<Vertex>[] CreateGeometry(IReadOnlyList<CBaseMeshLod> levels)
+        var layer = 0;
+        for (var i = 0; i < CMaterialParams2.Diffuse.Length; i++)
+        {
+            if (parameters.TryGetTexture2d(out diffuse, CMaterialParams2.Diffuse[i]))
+            {
+                layer = i;
+                break;
+            }
+        }
+
+        if (diffuse == null)
+        {
+            layer = 0;
+            parameters.TryGetTexture2d(out diffuse, CMaterialParams2.FallbackDiffuse);
+        }
+
+        if (diffuse != null)
+        {
+            if (parameters.TryGetLinearColor(out var color, CMaterialParams2.DiffuseColors[layer]))
+            {
+                color = color.ToSRGB();
+                diffuseColor = new Vector3(color.R, color.G, color.B);
+            }
+            
+            parameters.TryGetTexture2d(out normal, [..CMaterialParams2.Normals[layer], CMaterialParams2.FallbackNormals]);
+            
+            parameters.TryGetTexture2d(out specular, [..CMaterialParams2.SpecularMasks[layer], CMaterialParams2.FallbackSpecularMasks]);
+            if (parameters.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
+                roughness.X = roughnessMin;
+            if (parameters.TryGetScalar(out var roughnessMax, "RoughnessMax", "SpecRoughnessMax"))
+                roughness.Y = roughnessMax;
+        }
+        else
+        {
+            parameters.TryGetFirstTexture2d(out diffuse);
+        }
+        
+        if (diffuse == null)
+            return null;
+
+        Texture2D? specularTex = null;
+        if (specular != null)
+        {
+            specularTex = new Texture2D(specular);
+            if ((parameters.TryGetSwitch(out var srg, "SwizzleRoughnessToGreen") && srg) || parameters.Textures.ContainsKey("SRM"))
+            {
+                specularTex.SwizzleMask =
+                [
+                    (int) PixelFormat.Red,
+                    (int) PixelFormat.Blue,
+                    (int) PixelFormat.Green,
+                    (int) PixelFormat.Alpha
+                ];
+            }
+            else
+            {
+                specularTex.SwizzlePerGame(projectName);
+            }
+        }
+
+        return new DrawDataContainer(
+            new Texture2D(diffuse),
+            normal != null ? new Texture2D(normal) : null,
+            specularTex,
+            roughness,
+            diffuseColor,
+            parameters.BlendMode is EBlendMode.BLEND_Translucent or EBlendMode.BLEND_Masked
+        );
+    }
+
+    protected LevelOfDetail<Vertex>[] CreateGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels)
     {
         var geometries = new LevelOfDetail<Vertex>[levels.Count];
         for (var i = 0; i < geometries.Length; i++)
@@ -131,7 +169,7 @@ public abstract class MeshComponent(IReadOnlyList<CBaseMeshLod> levels, Resolved
                 sections[j] = new PrimitiveSectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
             }
             
-            geometries[i] = new LevelOfDetail<Vertex>(new Geometry(levels[i]), levels[i].ScreenSize, sections);
+            geometries[i] = new LevelOfDetail<Vertex>(guid, new Geometry(levels[i]), levels[i].ScreenSize, sections);
         }
         return geometries;
     }

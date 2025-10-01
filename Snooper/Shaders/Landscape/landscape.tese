@@ -2,10 +2,8 @@
 
 layout (quads, fractional_odd_spacing, ccw) in;
 
-struct PerInstanceData
-{
-    mat4 Matrix;
-};
+#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerInstanceData.glsl"
 
 struct PerDrawData
 {
@@ -20,17 +18,12 @@ struct PerDrawData
     vec2 WeightmapScaleBias;
 };
 
-layout(std430, binding = 0) restrict readonly buffer PerInstanceDataBuffer
-{
-    PerInstanceData uInstanceDataBuffer[];
-};
-
-layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 {
     PerDrawData uDrawDataBuffer[];
 };
 
-layout(std430, binding = 2) restrict readonly buffer LandscapeScales
+layout(std430, binding = 3) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };
@@ -44,7 +37,7 @@ uniform float uGlobalScale;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 
-out flat int vDrawID;
+out flat int gDrawID;
 out TE_OUT {
     vec3 vViewPos;
     mat3 TBN;
@@ -54,7 +47,8 @@ out TE_OUT {
 
 void main()
 {
-    vDrawID = tcDrawIndex[0];
+    gDrawID = tcDrawIndex[0];
+    
     te_out.vTessCoord = gl_TessCoord.xy;
     
     float u = te_out.vTessCoord.x;
@@ -71,7 +65,7 @@ void main()
 
     mat4 matrix = uInstanceDataBuffer[tcInstanceIndex[0]].Matrix;
 
-    PerDrawData drawData = uDrawDataBuffer[tcDrawIndex[0]];
+    PerDrawData drawData = uDrawDataBuffer[gDrawID];
     if (!drawData.IsReady)
     {
         te_out.vViewPos = vec3(0.0);

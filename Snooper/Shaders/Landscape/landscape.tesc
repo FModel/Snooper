@@ -1,14 +1,6 @@
 ﻿layout (vertices = 4) out;
 
-struct PerInstanceData
-{
-    mat4 Matrix;
-};
-
-layout(std430, binding = 0) restrict readonly buffer PerInstanceDataBuffer
-{
-    PerInstanceData uInstanceDataBuffer[];
-};
+#include "Buffers/PerInstanceData.glsl"
 
 in gl_PerVertex
 {

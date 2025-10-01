@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-        <DefineConstants>BOB</DefineConstants>
+        <DefineConstants>FN</DefineConstants>
     </PropertyGroup>
 
 </Project>

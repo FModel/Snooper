@@ -21,6 +21,7 @@ public class CombinedFramebuffer(int originalWidth, int originalHeight) : FullQu
             _shader.Use();
             _shader.SetUniform("deferredTexture", 0);
             _shader.SetUniform("forwardTexture", 1);
+            _shader.SetUniform("outlineTexture", 2);
             callback?.Invoke(_shader);
         });
     }

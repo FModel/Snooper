@@ -1,10 +1,4 @@
 ﻿using CUE4Parse.UE4.Assets.Exports;
-using CUE4Parse.UE4.Assets.Exports.Actor;
-using CUE4Parse.UE4.Assets.Exports.Component;
-using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
-using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
-using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
-using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
@@ -28,72 +22,65 @@ public enum WorldActorType
 
 public class WorldActor : Actor
 {
-    public WorldActor(UWorld world, TransformComponent? transform = null, WorldActorType type = WorldActorType.BaseResolution) : base(world.Name, transform: transform)
+    public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world.Name)
     {
-        var compoments = type.Includes(WorldActorType.Components);
-        var landscape = type.Includes(WorldActorType.Landscape);
+        Components.Add(new SpatialComponent());
+        
         var partition = type.Includes(WorldActorType.WorldPartition);
         var streaming = type.Includes(WorldActorType.LevelStreaming);
-        var additional = type.Includes(WorldActorType.AdditionalWorlds);
-
+        
         for (var i = 0; streaming && i < world.StreamingLevels.Length; i++)
         {
             Process(world.StreamingLevels[i]);
             if (i > 5) break; // TODO: optimize
         }
-        
+
+        var created = new List<LevelActor>();
         var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
         foreach (var ptr in actors)
         {
-            if (ptr == null || !ptr.TryLoad(out UObject actor))
-                continue;
-            
-            var root = actor.GetOrDefault<FPackageIndex?>("RootComponent");
-            var scene = root?.Load<USceneComponent>();
-            if (landscape && actor is ALandscapeProxy proxy)
+            if (ptr == null || !ptr.TryLoad<UObject>(out var data))
             {
-                Children.Add(new LandscapeProxyActor(proxy, scene?.GetRelativeTransform()));
                 continue;
             }
-
+            
             if (partition)
             {
-                Process(actor.GetOrDefault<FPackageIndex?>("WorldPartition"));
-                continue;
+                Process(data.GetOrDefault<FPackageIndex?>("WorldPartition"));
             }
 
-            if (compoments)
+            var a = new LevelActor(data, _parents, type);
+            if (a.RootComponent is not null)
             {
-                // am I crazy or InstanceComponents[0] may or may not be the root component?
-                CreateActor(root);
-                CreateActor(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
-                CreateActor(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+                created.Add(a);
+            }
+        }
 
-                if (actor is AInstancedFoliageActor foliage)
+        foreach (var actor in created)
+        {
+            var parent = actor.ProcessEnqueuedComponents(_parents);
+            if (parent != null)
+            {
+                if (_parents.TryGetValue(parent, out var root))
                 {
-                    foreach (var info in foliage.FoliageInfos ?? [])
-                    {
-                        if (info.Value.Implementation is not FFoliageStaticMesh staticMesh)
-                            continue;
-                        
-                        CreateActor(staticMesh.Component);
-                    }
+                    root.Actor?.Children.Add(actor);
+                }
+                else
+                {
+                    throw new Exception("Parent actor not found");
                 }
             }
-            
-            if (additional && actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
+            else
             {
-                // this is a visual hack to add additional worlds to the scene
-                // technically additional worlds are children of the root component
-                foreach (var additionalWorld in additionalWorlds)
-                {
-                    Children.Add(new WorldActor(additionalWorld, scene?.GetRelativeTransform(), WorldActorType.Components));
-                }
+                Children.Add(actor);
             }
         }
         
+        created.Clear();
         _parents.Clear();
     }
+
+    private readonly Dictionary<FPackageIndex, SpatialComponent> _parents = [];
 
     private void Process(FPackageIndex? ptr)
     {
@@ -135,70 +122,4 @@ public class WorldActor : Actor
             }
         }
     }
-
-    private void CreateActor(FPackageIndex?[] ptrs)
-    {
-        foreach (var ptr in ptrs)
-        {
-            CreateActor(ptr);
-        }
-    }
-
-    private Actor? CreateActor(FPackageIndex? ptr)
-    {
-        if (ptr == null || !ptr.TryLoad(out UActorComponent component) || component.ExportType == "ShadowProxyMeshComponent_C")
-            return null;
-        
-        if (_parents.TryGetValue(ptr, out var existing))
-            return existing;
-
-        Actor a;
-        Actor? parent = null;
-        if (component is USceneComponent sceneComponent)
-        {
-            parent = CreateActor(sceneComponent.GetOrDefault<FPackageIndex?>("AttachParent"));
-
-            var transform = sceneComponent.GetRelativeTransform();
-            if (component is UStaticMeshComponent staticMeshComponent && staticMeshComponent.GetStaticMesh().TryLoad(out UStaticMesh staticMesh))
-            {
-                if (staticMesh.Name.EndsWith("_SingleCluster")) return null;
-                
-                staticMesh.OverrideMaterials(staticMeshComponent.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []));
-                
-                if (component is UInstancedStaticMeshComponent { PerInstanceSMData.Length: > 0 } instancedComponent)
-                {
-                    // act as a container for instances
-                    // downside, a container will never be instanced itself, so we may miss out on some performance if 2 containers instance the same mesh
-                    // upside, instances relation is properly handled, OverrideMaterials are applied to the correct instances
-                    a = new Actor(component.Name, transform: transform);
-                    a.Children.Add(new MeshActor(staticMesh, instancedComponent.PerInstanceSMData));
-                }
-                else
-                {
-                    a = new MeshActor(staticMesh, transform);
-                }
-            }
-            else if (component is USkeletalMeshComponent skeletalMeshComponent && skeletalMeshComponent.GetSkeletalMesh().TryLoad(out USkeletalMesh skeletalMesh))
-            {
-                a = new MeshActor(skeletalMesh, transform);
-            }
-            else
-            {
-                a = new Actor($"{component.Name} ({component.GetType().Name})", transform: transform);
-                // a.Components.Add(new Components.PrimitiveComponent(new Primitives.Cube()));
-            }
-        }
-        else
-        {
-            a = new Actor($"{component.Name} ({component.GetType().Name})");
-        }
-        
-        parent ??= this;
-        parent.Children.Add(a);
-
-        _parents.Add(ptr, a);
-        return a;
-    }
-
-    private readonly Dictionary<FPackageIndex, Actor> _parents = [];
 }

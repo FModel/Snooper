@@ -4,26 +4,22 @@ using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Systems;
 
-public sealed class TransformSystem : ActorSystem<TransformComponent>
+public sealed class TransformSystem : ActorSystem<SpatialComponent>
 {
     public override uint Order => 9;
 
     public override void Load()
     {
         base.Load();
-        foreach (var component in _transformRoots)
-        {
-            UpdateTransformComponentsRecursive(component);
-        }
+        
+        Parallel.ForEach(Components, UpdateTransformComponentsRecursive);
     }
 
     public override void Update(float delta)
     {
         base.Update(delta);
-        foreach (var component in _transformRoots)
-        {
-            UpdateTransformComponentsRecursive(component);
-        }
+
+        Parallel.ForEach(Components, UpdateTransformComponentsRecursive);
     }
 
     public override void Render(CameraComponent camera)
@@ -31,33 +27,18 @@ public sealed class TransformSystem : ActorSystem<TransformComponent>
 
     }
 
-    protected override void OnActorComponentAdded(TransformComponent component)
+    protected override bool CanEnqueueActorComponent(SpatialComponent component)
     {
-        base.OnActorComponentAdded(component);
-
-        if (component.Relation is null)
-        {
-            _transformRoots.Add(component);
-        }
+        return component.Relation is null;
     }
 
-    protected override void OnActorComponentRemoved(TransformComponent component)
+    private void UpdateTransformComponentsRecursive(SpatialComponent component)
     {
-        base.OnActorComponentRemoved(component);
-
-        _transformRoots.Remove(component);
-    }
-
-    private static void UpdateTransformComponentsRecursive(TransformComponent transformComponent)
-    {
-        transformComponent.UpdateLocalMatrix();
-        transformComponent.UpdateWorldMatrixInternal(false);
-
-        foreach (var child in transformComponent.Children)
+        component.UpdateWorldMatrix(false);
+        
+        foreach (var child in component.Children)
         {
             UpdateTransformComponentsRecursive(child);
         }
     }
-
-    private readonly HashSet<TransformComponent> _transformRoots = [];
 }

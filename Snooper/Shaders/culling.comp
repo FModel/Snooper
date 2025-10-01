@@ -25,42 +25,17 @@ struct SectionDescriptor
     uint materialIndex;
 };
 
-struct PerInstanceData
-{
-    mat4 matrix;
-};
+#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerInstanceData.glsl"
 
-struct DrawElementsIndirectCommand // 1 draw command per section per model in LOD 0
-{
-    uint count;
-    uint instanceCount;
-    uint firstIndex;
-    uint baseVertex;
-    uint baseInstance;
-    uint originalInstanceCount;
-    uint originalBaseInstance;
-    uint modelId; // model offset in PrimitiveDescriptorsBuffer
-    uint sectionId; // section index in the current model (0-X)
-};
-
-layout(std430, binding = 0) readonly buffer PerInstanceDataBuffer
-{
-    PerInstanceData uInstanceDataBuffer[];
-};
-
-layout(std430, binding = 1) readonly buffer PrimitiveDescriptorsBuffer
+layout(std430, binding = 2) readonly buffer PrimitiveDescriptorsBuffer
 {
     PrimitiveDescriptor uPrimitiveDescriptors[];
 };
 
-layout(std430, binding = 2) buffer SectionDescriptorsBuffer
+layout(std430, binding = 3) buffer SectionDescriptorsBuffer
 {
     SectionDescriptor uSectionDescriptors[];
-};
-
-layout(std430, binding = 3) buffer DrawCommandBuffer
-{
-    DrawElementsIndirectCommand uIndirectDrawCommands[];
 };
 
 uniform vec4 uFrustumPlanes[6];
@@ -90,11 +65,11 @@ bool isVisible(vec3 center, vec3 extents)
 bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
 {
     return
-        a.baseInstance == b.baseInstance &&
-        a.instanceCount == b.instanceCount &&
-        a.count == b.count &&
-        a.firstIndex == b.firstIndex &&
-        a.baseVertex == b.baseVertex;
+        a.BaseInstance == b.BaseInstance &&
+        a.InstanceCount == b.InstanceCount &&
+        a.IndexCount == b.IndexCount &&
+        a.FirstIndex == b.FirstIndex &&
+        a.BaseVertex == b.BaseVertex;
 }
 
 void main()
@@ -103,12 +78,12 @@ void main()
     uint threadId = gl_LocalInvocationID.x;
     uint threadCount = gl_WorkGroupSize.x;
     
-    if (drawId >= uIndirectDrawCommands.length()) return;
+    if (drawId >= uDrawCommandBuffer.length()) return;
 
-    DrawElementsIndirectCommand cmd = uIndirectDrawCommands[drawId];
-    PrimitiveDescriptor primitive = uPrimitiveDescriptors[cmd.modelId];
-    uint instanceCount = cmd.originalInstanceCount;
-    uint baseInstance = cmd.originalBaseInstance;
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[drawId];
+    PrimitiveDescriptor primitive = uPrimitiveDescriptors[cmd.ModelId];
+    uint instanceCount = cmd.OriginalInstanceCount;
+    uint baseInstance = cmd.OriginalBaseInstance;
 
     uint localMin = 0xFFFFFFFFu;
     uint localMax = 0;
@@ -117,7 +92,7 @@ void main()
 
     for (uint j = threadId; j < instanceCount; j += threadCount)
     {
-        mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].matrix;
+        mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].Matrix;
 
         vec3 worldCenter = (modelMatrix * vec4(primitive.center, 1.0)).xyz;
         mat3 m = mat3(modelMatrix);
@@ -163,8 +138,8 @@ void main()
     DrawElementsIndirectCommand newCmd = cmd;
     if (sAnyVisible[0] == 1u)
     {
-        newCmd.baseInstance = baseInstance + sMinVisible[0];
-        newCmd.instanceCount = sMaxVisible[0] - sMinVisible[0] + 1;
+        newCmd.BaseInstance = baseInstance + sMinVisible[0];
+        newCmd.InstanceCount = sMaxVisible[0] - sMinVisible[0] + 1;
         
         // if primitive has at least 2 lods, switch based on screen size
         if (primitive.maxLod > 0)
@@ -188,32 +163,32 @@ void main()
             uint lodSub = lod % 4u;
 
             uint sectionCount = primitive.sectionCount[lodGroup][lodSub];
-            if (cmd.sectionId >= sectionCount)
+            if (cmd.SectionId >= sectionCount)
             {
-                newCmd.instanceCount = 0;
+                newCmd.InstanceCount = 0;
             }
             else
             {
-                uint sectionOffset = primitive.sectionOffset[lodGroup][lodSub] + cmd.sectionId;
+                uint sectionOffset = primitive.sectionOffset[lodGroup][lodSub] + cmd.SectionId;
                 SectionDescriptor section = uSectionDescriptors[sectionOffset];
                 
-                newCmd.count = section.count;
-                newCmd.firstIndex = primitive.firstIndex[lodGroup][lodSub] + section.firstIndex;
-                newCmd.baseVertex = primitive.baseVertex[lodGroup][lodSub];
+                newCmd.IndexCount = section.count;
+                newCmd.FirstIndex = primitive.firstIndex[lodGroup][lodSub] + section.firstIndex;
+                newCmd.BaseVertex = primitive.baseVertex[lodGroup][lodSub];
             }
         }
     }
     else
     {
-        newCmd.instanceCount = 0;
+        newCmd.InstanceCount = 0;
     }
     
     if (!equals(cmd, newCmd))
     {
-        uIndirectDrawCommands[drawId].count         = newCmd.count;
-        uIndirectDrawCommands[drawId].instanceCount = newCmd.instanceCount;
-        uIndirectDrawCommands[drawId].firstIndex    = newCmd.firstIndex;
-        uIndirectDrawCommands[drawId].baseVertex    = newCmd.baseVertex;
-        uIndirectDrawCommands[drawId].baseInstance  = newCmd.baseInstance;
+        uDrawCommandBuffer[drawId].IndexCount    = newCmd.IndexCount;
+        uDrawCommandBuffer[drawId].InstanceCount = newCmd.InstanceCount;
+        uDrawCommandBuffer[drawId].FirstIndex    = newCmd.FirstIndex;
+        uDrawCommandBuffer[drawId].BaseVertex    = newCmd.BaseVertex;
+        uDrawCommandBuffer[drawId].BaseInstance  = newCmd.BaseInstance;
     }
 }

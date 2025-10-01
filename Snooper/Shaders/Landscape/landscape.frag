@@ -4,6 +4,7 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
 layout (location = 3) out vec4 gSpecular;
+layout (location = 4) out uint gPicking;
 
 struct PerDrawData
 {
@@ -25,22 +26,24 @@ struct WeightHighlightMapping
     vec4 DebugColor;
 };
 
-layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 {
     PerDrawData uDrawDataBuffer[];
 };
 
-layout(std430, binding = 2) restrict readonly buffer LandscapeScales
+layout(std430, binding = 3) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };
 
-layout(std430, binding = 3) restrict readonly buffer WeightMappingBuffer
+layout(std430, binding = 4) restrict readonly buffer WeightMappingBuffer
 {
     WeightHighlightMapping uWeightMappingBuffer[];
 };
 
-in flat int vDrawID;
+#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/common.frag"
+
 in TE_OUT {
     vec3 vViewPos;
     mat3 TBN;
@@ -149,7 +152,7 @@ void main()
     }
     else if (uColorMode == 1)
     {
-        color = getColorFromWeightmap(uDrawDataBuffer[vDrawID], uWeightMappingBuffer[vDrawID]);
+        color = getColorFromWeightmap(uDrawDataBuffer[gDrawID], uWeightMappingBuffer[gDrawID]);
     }
     
     gPosition = fs_in.vViewPos;
@@ -158,4 +161,5 @@ void main()
     gColor.a = 1.0; // free space
     gSpecular.rgb = vec3(0.0, 0.0, 0.0);
     gSpecular.a = 1.0; // free space
+    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
 }

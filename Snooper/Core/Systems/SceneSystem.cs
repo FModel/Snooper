@@ -1,8 +1,10 @@
 ﻿using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
-using Snooper.Rendering;
+using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.Core.Systems;
 
@@ -76,6 +78,7 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
         {
             pair.DeferredRendering(Render);
             pair.ForwardRendering(Render);
+            pair.PickingRendering();
             
             pair.CombineRendering();
             pair.ApplyFxaa();

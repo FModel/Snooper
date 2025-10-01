@@ -20,6 +20,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
     private readonly ForwardFramebuffer _forward = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly CombinedFramebuffer _combined = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly FxaaFramebuffer _fxaa = new(DefaultWidthHeight, DefaultWidthHeight);
+    private readonly PickingFramebuffer _picking = new(DefaultWidthHeight, DefaultWidthHeight);
 
     public void Generate(int pairIndex, int width, int height)
     {
@@ -30,6 +31,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _forward.Generate();
         _combined.Generate();
         _fxaa.Generate();
+        _picking.Generate();
 
         Resize(width, height);
     }
@@ -103,6 +105,14 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         
         render(Camera, ActorSystemType.Forward);
     }
+    
+    public void PickingRendering()
+    {
+        _picking.Bind();
+        _geometry.BindPicking(TextureUnit.Texture0);
+        _forward.BindPicking(TextureUnit.Texture1);
+        _picking.Render();
+    }
 
     public void CombineRendering()
     {
@@ -114,6 +124,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         {
             _geometry.Bind(TextureUnit.Texture0);
             _forward.Bind(TextureUnit.Texture1);
+            _picking.Bind(TextureUnit.Texture2);
         });
     }
     
@@ -135,6 +146,9 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0);
         GL.BlitFramebuffer(0, 0, framebuffer.Width, framebuffer.Height, 0, 0, width, height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
     }
+    
+    public uint ReadPickingPixel(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => _picking.ReadPixel(mousePos, windowPos, windowSize);
+    public void OverridePickingId(uint id) => _picking.OverrideId(id);
 
     public void Resize(int newWidth, int newHeight)
     {
@@ -143,6 +157,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _forward.Resize(newWidth, newHeight);
         _combined.Resize(newWidth, newHeight);
         _fxaa.Resize(newWidth, newHeight);
+        _picking.Resize(newWidth, newHeight);
     }
 
     public IntPtr[] GetFramebuffers() =>

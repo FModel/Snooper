@@ -2,11 +2,14 @@
 using ImGuiNET;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -44,10 +47,28 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
                 ImGui.Image(framebuffers[^1], size, Vector2.UnitY, Vector2.UnitX);
+                DrawAtOrigin(SelectedComponent, pair.Camera, ImGui.GetWindowDrawList(), 8f, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
 
-                if (ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                if (ImGui.IsItemHovered())
                 {
-                    Window.CursorState = CursorState.Grabbed;
+                    if (Window.MouseState.ScrollDelta.Y != 0)
+                    {
+                        var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+                        pair.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
+                        pair.Camera.MovementSpeed = MathF.Max(1f, pair.Camera.MovementSpeed);
+                        Notifications.PushNotification("Camera", $"Movement speed set to {pair.Camera.MovementSpeed}.");
+                    }
+
+                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                    {
+                        Window.CursorState = CursorState.Grabbed;
+                    }
+                    
+                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+                    {
+                        SelectedComponentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
+                        ImGui.SetWindowFocus("Scene Hierarchy");
+                    }
                 }
 
                 const float margin = 7.5f;
@@ -185,6 +206,30 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
         ImGui.End();
     }
+    
+    private void DrawAtOrigin(
+        ActorComponent? component,
+        CameraComponent? camera,
+        ImDrawListPtr drawList,
+        float rectSize = 16f,
+        Vector4? color = null)
+    {
+        if (component is not SpatialComponent spatial || camera == null) return;
+
+        foreach (var matrix in spatial.GetInstanceMatrices())
+        {
+            var clip = Vector4.Transform(new Vector4(matrix.Translation, 1f), camera.ViewProjectionMatrix);
+            if (clip.W <= 0) continue;
+        
+            clip /= clip.W;
+            var ndc = new Vector2(clip.X, clip.Y);
+            var screenPos = new Vector2((ndc.X + 1f) * 0.5f * camera.ViewportSize.X, (1f - ndc.Y) * 0.5f * camera.ViewportSize.Y + ImGui.GetFrameHeight());
+            var pMin = screenPos - new Vector2(rectSize / 2f);
+            var pMax = screenPos + new Vector2(rectSize / 2f);
+
+            drawList.AddRect(pMin, pMax, ImGui.GetColorU32(color ?? new Vector4(1f, 1f, 0f, 1f)), 0f, ImDrawFlags.None, 2f);
+        }
+    }
 
     private void NotifyOnFirstRender()
     {
@@ -198,63 +243,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
     }
 
-    private bool _loadingTexturesOpen = true;
-    private void DrawLoadingTexturesProgress()
-    {
-        var systems = Systems.Values.OfType<ITexturedSystem>().Where(s => s.TextureManager.IsLoadingTextures).ToArray();
-        if (systems.Length == 0)
-            return;
-        
-        ImGui.OpenPopup("Loading Textures");
-        
-        var viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowPos(viewport.Pos);
-        ImGui.SetNextWindowSize(viewport.Size);
-
-        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-                                       ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoTitleBar |
-                                       ImGuiWindowFlags.NoScrollbar;
-        
-        if (ImGui.BeginPopupModal("Loading Textures", ref _loadingTexturesOpen, flags))
-        {
-            const float contentWidth = 400;
-            const string loadingText = "Loading textures, please wait...";
-            
-            var lineHeight = ImGui.CalcTextSize(loadingText).Y;
-            var progressBarHeight = ImGui.GetFrameHeight();
-            var spacing = ImGui.GetStyle().ItemSpacing.Y;
-            var buttonHeight = ImGui.GetFrameHeight();
-
-            var contentHeight = systems.Length * (lineHeight + progressBarHeight + spacing) + buttonHeight * 1.5f;
-
-            var centerX = (ImGui.GetWindowWidth() - contentWidth) * 0.5f;
-            var centerY = (ImGui.GetWindowHeight() - contentHeight) * 0.5f;
-
-            ImGui.SetCursorPos(new Vector2(centerX, centerY));
-
-            ImGui.BeginGroup();
-            {
-                ImGui.TextUnformatted(loadingText);
-                ImGui.Separator();
-                ImGui.Spacing();
-                foreach (var system in systems)
-                {
-                    ImGui.TextUnformatted(system.GetType().Name);
-                    ImGui.ProgressBar(system.TextureManager.LoadingProgress, new Vector2(contentWidth, 0));
-                    ImGui.Spacing();
-                }
-                ImGui.Spacing();
-                ImGui.SetCursorPosX(centerX + (contentWidth - 100) * 0.5f);
-                if (ImGui.Button("Let me in!", new Vector2(100, 0)))
-                    _loadingTexturesOpen = false;
-            }
-            ImGui.EndGroup();
-
-            ImGui.EndPopup();
-        }
-    }
-
-    private Actor? _selectedActor;
     private readonly Vector2 _iconSize = new(20);
     
     private void DrawActorTree(Actor actor)
@@ -262,15 +250,20 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.PushID(actor.Id);
         
         var count = actor.Children.Count;
-        var isSelected = actor == _selectedActor;
         var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick;
-        if (isSelected) flags |= ImGuiTreeNodeFlags.Selected;
+        if (actor.IsSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
         
         ImGui.AlignTextToFramePadding();
         var open = ImGui.TreeNodeEx("##tree", flags);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-            _selectedActor = actor;
+        {
+            SelectedComponentId = actor.RootComponent?.Id ?? 0;
+            foreach (var pair in Pairs)
+            {
+                pair.OverridePickingId(SelectedComponentId);
+            }
+        }
         
         ImGui.SameLine();
         if (Icons.TryGetValue(actor.Icon, out var icon))
@@ -293,16 +286,15 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
     private void DrawActorInspector()
     {
-        if (_selectedActor is null)
+        if (SelectedComponent?.Actor is null)
         {
             ImGui.TextUnformatted("No actor selected.");
             return;
         }
         
-        ImGui.Text(_selectedActor.Name);
-        ImGui.Text($"Instances: {_selectedActor.InstancedTransform.Transforms.Count + 1}");
+        ImGui.Text(SelectedComponent.Actor.Name);
 
-        foreach (var component in _selectedActor.Components)
+        foreach (var component in SelectedComponent.Actor.Components)
             component.DrawInterface();
     }
     
@@ -311,35 +303,37 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         if (ImGui.MenuItem("Add Cube"))
         {
             var cube = new Actor("Cube");
-            cube.Components.Add(new PrimitiveComponent(new Cube()));
+            var component = new PrimitiveComponent(new Cube());
+            cube.Components.Add(component);
 
-            PlaceInFrontOfCamera(cube);
+            PlaceInFrontOfCamera(component);
             parent.Children.Add(cube);
         }
 
         if (ImGui.MenuItem("Add Sphere"))
         {
             var sphere = new Actor("Sphere");
-            sphere.Components.Add(new PrimitiveComponent(new Sphere(18, 9, 0.5f)));
+            var component = new PrimitiveComponent(new Sphere(18, 9, 0.5f));
+            sphere.Components.Add(component);
 
-            PlaceInFrontOfCamera(sphere);
+            PlaceInFrontOfCamera(component);
             parent.Children.Add(sphere);
         }
 
         if (ImGui.MenuItem("Add Camera"))
         {
             var camera = new CameraActor($"Camera {Pairs.Count + 1}");
-            PlaceInFrontOfCamera(camera);
+            PlaceInFrontOfCamera(camera.CameraComponent);
             parent.Children.Add(camera);
         }
     }
     
-    private void PlaceInFrontOfCamera(Actor actor)
+    private void PlaceInFrontOfCamera(SpatialComponent component)
     {
-        if (ActiveCamera?.Actor is { Transform: var camTransform })
+        if (ActiveCamera != null)
         {
-            var forward = Vector3.Transform(Vector3.UnitZ, camTransform.Rotation);
-            actor.Transform.Position = camTransform.Position + forward * 3f;
+            var forward = Vector3.Transform(Vector3.UnitZ, ActiveCamera.LocalTransform.Rotation);
+            component.LocalTransform.Position = ActiveCamera.LocalTransform.Position + forward * 3f;
         }
     }
 }

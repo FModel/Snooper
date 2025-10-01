@@ -1,6 +1,6 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using CUE4Parse.UE4.Objects.Core.Misc;
+using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
-using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
@@ -18,7 +18,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
     
-    protected abstract Action<ArrayBuffer<TVertex>> PointersFactory { get; }
+    protected abstract Action<int> VertexLayout { get; }
 
     protected IndirectResources<TVertex, TInstanceData, TPerDrawData> Resources { get; }
     public TextureManager TextureManager { get; }
@@ -50,7 +50,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.Load();
 
         Resources.Generate();
-        Resources.Bind();
         Resources.Allocate(_componentCount, _drawCount, _indices, _vertices);
         
         TextureManager.Load();
@@ -59,9 +58,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         {
             component.Generate(Resources, TextureManager);
         }
-        PointersFactory(Resources.VBO);
-        
-        Resources.Unbind();
+        Resources.SetVertexLayout(VertexLayout);
     }
 
     public override void Update(float delta)
@@ -71,12 +68,10 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         // dequeue textures
         TextureManager.Update(delta);
 
-        Resources.Bind();
         foreach (var component in Components)
         {
             component.Update(Resources, TextureManager);
         }
-        Resources.Unbind();
     }
 
     public override void Render(CameraComponent camera)
@@ -88,6 +83,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     private int _drawCount;
     private int _indices;
     private int _vertices;
+    private readonly HashSet<FGuid> _guids = [];
 
     protected override void OnActorComponentEnqueued(TComponent component)
     {
@@ -95,10 +91,13 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         
         _componentCount++;
         _drawCount += component.LevelOfDetails[0].SectionDescriptors.Length;
-        foreach (var lod in component.LevelOfDetails)
+        if (_guids.Add(component.LevelOfDetails[0].Guid))
         {
-            _indices += lod.Primitive.Indices?.Length ?? 0;
-            _vertices += lod.Primitive.Vertices?.Length ?? 0;
+            foreach (var lod in component.LevelOfDetails)
+            {
+                _indices += lod.Primitive.Indices?.Length ?? 0;
+                _vertices += lod.Primitive.Vertices?.Length ?? 0;
+            }
         }
     }
 

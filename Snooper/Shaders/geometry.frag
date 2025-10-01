@@ -4,6 +4,7 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gColor;
 layout (location = 3) out vec4 gSpecular;
+layout (location = 4) out uint gPicking;
 
 struct PerDrawData
 {
@@ -16,7 +17,7 @@ struct PerDrawData
     vec3 DiffuseColor;
 };
 
-layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 {
     PerDrawData uDrawDataBuffer[];
 };
@@ -24,7 +25,9 @@ layout(std430, binding = 1) restrict readonly buffer PerDrawDataBuffer
 uniform mat4 uViewMatrix;
 uniform int uDebugColorMode;
 
-in flat int mIndex;
+#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/common.frag"
+
 in VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
@@ -34,7 +37,7 @@ in VS_OUT {
 
 void main()
 {
-    PerDrawData drawData = uDrawDataBuffer[mIndex];
+    PerDrawData drawData = uDrawDataBuffer[gDrawID];
     
     vec3 color = fs_in.vDebugColor;
     vec3 spec = vec3(1.0);
@@ -69,4 +72,5 @@ void main()
     gColor.a = 1.0; // free space
     gSpecular.rgb = spec.rgb;
     gSpecular.a = 1.0; // free space
+    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
 }

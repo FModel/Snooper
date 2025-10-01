@@ -21,15 +21,16 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         TessellationControl = "Landscape/landscape.tesc",
         TessellationEvaluation = "Landscape/landscape.tese"
     };
-    protected override Action<ArrayBuffer<Vector2>> PointersFactory { get; } = buffer =>
+    protected override Action<int> VertexLayout { get; } = stride =>
     {
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, buffer.Stride, 0);
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
         GL.EnableVertexAttribArray(0);
     };
     
     private readonly ShaderStorageBuffer<Vector2> _scales = new(100 * Settings.TessellationQuadCountTotal);
     private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new(100);
     private readonly List<string> _layers = ["None"];
+    private float _sizeQuads = 0.0f;
     private ColorMode _colorMode = ColorMode.Heightmap;
     private int _selectedLayer;
     private bool _updateMapping;
@@ -37,8 +38,6 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     public override void Load()
     {
         base.Load();
-
-        var sizeQuads = 0.0f;
 
         _scales.Generate();
         _scales.Bind();
@@ -49,7 +48,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
             {
                 if (!_layers.Contains(layer)) _layers.Add(layer);
             }
-            sizeQuads = Math.Max(sizeQuads, component.SizeQuads);
+            _sizeQuads = Math.Max(_sizeQuads, component.SizeQuads);
         }
         _scales.Unbind();
         
@@ -57,11 +56,6 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         _mapping.Bind();
         _mapping.Allocate(new WeightHighlightMapping[ComponentsCount]);
         _mapping.Unbind();
-        
-        Shader.Use();
-        Shader.SetUniform("uSizeQuads", sizeQuads);
-        Shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
-        Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
     }
 
     public override void Update(float delta)
@@ -99,9 +93,12 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         base.PreRender(camera, batchIndex);
     
         Shader.SetUniform("uColorMode", (uint)_colorMode);
+        Shader.SetUniform("uSizeQuads", _sizeQuads);
+        Shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
+        Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
         
-        _scales.Bind(2);
-        _mapping.Bind(3);
+        _scales.Bind(3);
+        _mapping.Bind(4);
     }
 
     public void DrawControls()

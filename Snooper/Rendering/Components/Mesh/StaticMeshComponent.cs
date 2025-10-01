@@ -1,20 +1,41 @@
-﻿using CUE4Parse_Conversion.Meshes.PSK;
-using CUE4Parse.UE4.Assets.Exports.Actor;
+﻿using CUE4Parse_Conversion.Meshes;
+using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Objects.UObject;
 
 namespace Snooper.Rendering.Components.Mesh;
 
 public class StaticMeshComponent : MeshComponent
 {
-    private readonly CStaticMesh _mesh;
-
-    public StaticMeshComponent(UStaticMesh owner, CStaticMesh mesh) : base(mesh.LODs, owner.Materials, mesh.BoundingBox)
+    public StaticMeshComponent(UStaticMesh staticMesh) : base(staticMesh.Materials, null, staticMesh.Name)
     {
-        _mesh = mesh;
+        if (!staticMesh.TryConvert(out var mesh))
+            throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
+        if (staticMesh.RenderData?.Bounds is null)
+            throw new ArgumentException("Static mesh does not have render data or bounds.", nameof(staticMesh));
+
+        using (mesh)
+        {
+            LevelOfDetails = CreateGeometry(staticMesh.LightingGuid, mesh.LODs);
+            Bounds = mesh.BoundingBox;
+        }
     }
     
-    public StaticMeshComponent(ALandscapeProxy owner, CStaticMesh mesh) : base(mesh.LODs, [owner.LandscapeMaterial.ResolvedObject], mesh.BoundingBox)
+    public StaticMeshComponent(UStaticMesh staticMesh, UStaticMeshComponent component) : base(component)
     {
-        _mesh = mesh;
+        if (!staticMesh.TryConvert(out var mesh))
+            throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
+        if (staticMesh.RenderData?.Bounds is null)
+            throw new ArgumentException("Static mesh does not have render data or bounds.", nameof(staticMesh));
+
+        staticMesh.OverrideMaterials(component.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []));
+        MaterialsToParse = staticMesh.Materials;
+        
+        using (mesh)
+        {
+            LevelOfDetails = CreateGeometry(staticMesh.LightingGuid, mesh.LODs);
+            // TODO: use component.LODData to override some stuff (eg vertex colors)
+            Bounds = mesh.BoundingBox;
+        }
     }
 }

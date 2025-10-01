@@ -1,4 +1,6 @@
-﻿in VS_OUT {
+﻿layout (location = 1) out uint gPicking;
+
+in VS_OUT {
     vec3 nearPoint;
     vec3 farPoint;
     mat4 proj;
@@ -58,4 +60,6 @@ void main()
 
     FragColor = (grid(fragPos3D, 10) + grid(fragPos3D, 1)) * float(t > 0);
     FragColor.a *= fading;
+
+    gPicking = 0u;
 }

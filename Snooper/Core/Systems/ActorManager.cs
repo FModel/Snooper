@@ -4,6 +4,8 @@ using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Textures;
 using Snooper.Core.Hardware;
 using Snooper.Rendering;
+using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
@@ -14,7 +16,7 @@ public abstract class ActorManager : IGameSystem
     
     private static readonly Dictionary<Type, Func<ActorSystem>> _registeredFactories = [];
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
-    // private readonly HashSet<FGuid> _actors = [];
+    private readonly HashSet<int> _actors = [];
 
     public bool ShowFramebuffers = false;
     public bool DrawBoundingBoxes = false;
@@ -26,9 +28,9 @@ public abstract class ActorManager : IGameSystem
         _registeredFactories.Add(typeof(T), factory);
     }
 
-    public ContextInfo Context { get; private set; }
-    public Dictionary<string, Texture> Icons { get; } = new();
-    public SortedList<uint, ActorSystem> Systems { get; } = [];
+    protected ContextInfo Context { get; private set; }
+    protected Dictionary<string, Texture> Icons { get; } = new();
+    protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
@@ -83,13 +85,13 @@ public abstract class ActorManager : IGameSystem
 
     private void AddInternal(Actor actor)
     {
-        // if (_actors.Contains(actor.Guid))
-        //     throw new ArgumentException("This actor is already added to the actor manager.", nameof(actor));
+        if (_actors.Contains(actor.Id))
+            throw new ArgumentException("This actor is already added to the actor manager.", nameof(actor));
         if (actor.ActorManager != null)
             throw new ArgumentException("This actor is already used by another actor manager.", nameof(actor));
 
         actor.ActorManager = this;
-        // _actors.Add(actor.Guid);
+        _actors.Add(actor.Id);
 
         for (var i = 0; i < actor.Components.Count; i++)
         {
@@ -112,7 +114,7 @@ public abstract class ActorManager : IGameSystem
 
     private void RemoveInternal(Actor actor)
     {
-        // if (!_actors.Remove(actor.Guid)) return;
+        if (!_actors.Remove(actor.Id)) return;
 
         actor.Components.CollectionChanged -= OnComponentsCollectionChanged;
         actor.Children.CollectionChanged -= OnChildrenCollectionChanged;
@@ -169,23 +171,10 @@ public abstract class ActorManager : IGameSystem
             }
         }
     }
-    
-    private IEnumerable<DefaultActorSystemAttribute> CollectActorSystemAttributes(Type type)
-    {
-        // walk up until we find the first class with attributes
-        for (var t = type; t != null; t = t.BaseType)
-        {
-            var attrs = t.GetCustomAttributes<DefaultActorSystemAttribute>(false).ToArray();
-            if (attrs.Length > 0)
-                return attrs; // stop at the first hit
-        }
-
-        return [];
-    }
 
     private void CollectNewActorSystems(Type componentType)
     {
-        var actorSystemAttributes = CollectActorSystemAttributes(componentType);
+        var actorSystemAttributes = componentType.GetCustomAttributes<DefaultActorSystemAttribute>();
         foreach (var actorSystemAttribute in actorSystemAttributes)
         {
             var addNewSystem = _systemsToLoad.All(IsSystemNotOfType(actorSystemAttribute.Type)) && Systems.Values.All(IsSystemNotOfType(actorSystemAttribute.Type));
