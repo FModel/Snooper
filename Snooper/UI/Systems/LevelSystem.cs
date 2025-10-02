@@ -63,12 +63,26 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     {
                         Window.CursorState = CursorState.Grabbed;
                     }
-                    
-                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+
+                    var right = ImGui.IsMouseClicked(ImGuiMouseButton.Right);
+                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Middle) || right)
                     {
                         SelectedComponentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
                         ImGui.SetWindowFocus("Scene Hierarchy");
                     }
+                    
+                    if (right && SelectedComponent?.Actor != null)
+                    {
+                        ImGui.OpenPopup("ViewportContext");
+                    }
+                }
+                
+                if (ImGui.BeginPopup("ViewportContext"))
+                {
+                    if (SelectedComponent?.Actor != null)
+                        DrawActorCreationMenu(SelectedComponent.Actor);
+
+                    ImGui.EndPopup();
                 }
 
                 const float margin = 7.5f;
@@ -101,12 +115,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     }
                 }
                 
-                const string label1 = "Press F10 to toggle interface";
-                drawList.AddText(
-                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label1).X - margin, pos.Y + margin),
-                    ImGui.GetColorU32(ImGuiCol.Text),
-                    label1
-                );
+                ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);
 
                 var framerate = ImGui.GetIO().Framerate;
                 drawList.AddText(
@@ -115,12 +124,20 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms)"
                 );
 
+                var col = ImGui.GetColorU32(new Vector4(1.00f, 1.00f, 1.00f, 0.50f));
+                const string label1 = "F10: Toggle UI | MMB: Select Object";
+                drawList.AddText(
+                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label1).X - margin, pos.Y + margin),
+                    col, label1
+                );
+
                 const string label2 = "Previewed content may differ from final version saved or used in-game.";
                 drawList.AddText(
                     new Vector2(pos.X + size.X - ImGui.CalcTextSize(label2).X - margin, pos.Y + size.Y - frameHeight),
-                    ImGui.GetColorU32(ImGuiCol.TextDisabled),
-                    label2
+                    col, label2
                 );
+                
+                ImGui.PopFont();
             }
             ImGui.End();
         }
@@ -152,9 +169,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             
             ImGui.SeparatorText("Options");
             ImGui.Checkbox("Show Framebuffers", ref ShowFramebuffers);
-            ImGui.Checkbox("Draw Bounding Boxes", ref DrawBoundingBoxes);
             var c = (int) DebugColorMode;
-            ImGui.Combo("DebugColorMode", ref c, "None\0Per Actor\0Per Instance\0Per Material\0Per Primitive\0");
+            ImGui.Combo("DebugColorMode", ref c, "None\0Per Component\0Per Instance\0Per Material\0Per Primitive\0");
             DebugColorMode = (ActorDebugColorMode) c;
             
             ImGui.SeparatorText("Systems");
@@ -259,10 +275,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
         {
             SelectedComponentId = actor.RootComponent?.Id ?? 0;
-            foreach (var pair in Pairs)
-            {
-                pair.OverridePickingId(SelectedComponentId);
-            }
         }
         
         ImGui.SameLine();
@@ -271,7 +283,10 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         else
             ImGui.Image(0, _iconSize, Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
         ImGui.SameLine();
+
+        ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);
         ImGui.TextUnformatted(actor.Name);
+        ImGui.PopFont();
         
         if (open && count > 0)
         {
@@ -286,16 +301,47 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
     private void DrawActorInspector()
     {
-        if (SelectedComponent?.Actor is null)
+        if (SelectedComponent is not { } component)
+        {
+            ImGui.TextUnformatted("No component selected.");
+            return;
+        }
+        
+        if (component.Actor is not { } actor)
         {
             ImGui.TextUnformatted("No actor selected.");
             return;
         }
-        
-        ImGui.Text(SelectedComponent.Actor.Name);
 
-        foreach (var component in SelectedComponent.Actor.Components)
-            component.DrawInterface();
+        ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
+        ImGui.TextUnformatted(actor.Name);
+        ImGui.PopFont();
+
+        var components = actor.Components;
+        if (components.Count == 0)
+        {
+            ImGui.TextUnformatted("This actor has no components.");
+            return;
+        }
+
+        ImGui.SeparatorText($"{components.Count} Component{(components.Count > 1 ? "s" : "")}");
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+        if (ImGui.BeginCombo("##Components", component.Name))
+        {
+            foreach (var c in components)
+            {
+                var selected = c.Id == SelectedComponentId;
+                if (ImGui.Selectable(c.Name, selected))
+                {
+                    SelectedComponentId = c.Id;
+                }
+
+                if (selected) ImGui.SetItemDefaultFocus();
+            }
+            ImGui.EndCombo();
+        }
+
+        component.DrawInterface();
     }
     
     private void DrawActorCreationMenu(Actor parent)

@@ -49,8 +49,12 @@ public class NotificationManager
                                            ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.AlwaysAutoResize;
 
             ImGui.Begin($"##Notification{i}", flags);
+            ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);
             ImGui.TextColored(new Vector4(1, 1, 0.7f, 1), n.Title);
+            ImGui.PopFont();
+            ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
             ImGui.TextWrapped(n.Message);
+            ImGui.PopFont();
             if (n.Progress != null)
             {
                 ImGui.Spacing();

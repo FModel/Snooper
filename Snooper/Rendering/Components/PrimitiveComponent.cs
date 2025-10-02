@@ -10,6 +10,7 @@ using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
 
@@ -110,14 +111,12 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         base.DrawControls();
         
-        if (ImGui.TreeNode("Primitive"))
+        EditorUI.CollapsingTable("Primitive", ImGuiTreeNodeFlags.None, () =>
         {
-            ImGui.Text($"LODs: {LevelOfDetails.Length}");
-            ImGui.Text($"Sections: {Materials.Length}");
-            ImGui.Text($"Bounds: {Bounds}");
-            
-            ImGui.TreePop();
-        }
+            EditorUI.Text("LODs", LevelOfDetails.Length.ToString());
+            EditorUI.Text("Sections", Materials.Length.ToString());
+            EditorUI.Text("Bounds", Bounds.ToString());
+        });
     }
 }
 

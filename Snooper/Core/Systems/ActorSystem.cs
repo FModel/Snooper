@@ -86,7 +86,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
                 OnActorComponentEnqueued(actorComponent);
                 break;
             case true:
-                Log.Debug("Removing component {ComponentName} from actor {ActorName} in system {SystemName}.", actorComponent.DisplayName, actor.Name, DisplayName);
+                Log.Debug("Removing component {ComponentName} from actor {ActorName} in system {SystemName}.", actorComponent.Name, actor.Name, DisplayName);
                 Components.Remove(actorComponent);
                 OnActorComponentRemoved(actorComponent);
                 break;

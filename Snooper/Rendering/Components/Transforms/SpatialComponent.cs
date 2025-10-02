@@ -116,19 +116,16 @@ public class SpatialComponent : ActorComponent, IControllable
 
     public virtual void DrawControls()
     {
-        if (ImGui.TreeNode("Transform"))
+        EditorUI.CollapsingTable("Transform", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
-            ImGui.DragFloat3("Position", ref LocalTransform.Position, 0.1f);
-            // ImGui.DragFloat4("Rotation", ref LocalTransform.Rotation, 0.1f);
-            ImGui.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f);
+            EditorUI.DragFloat3("Position", ref LocalTransform.Position);
+            EditorUI.DragFloat4("Rotation", ref LocalTransform.Rotation);
+            EditorUI.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f);
 
             if (Relation is ActorComponent relation)
             {
-                ImGui.Text($"Attached to: {relation.DisplayName}");
-                ImGui.Text($"Owner: {(relation.Actor == Actor ? "Self" : relation.Actor?.Name)}");
+                EditorUI.Text("Attached To", $"{relation.Name} in {(relation.Actor == Actor ? "Self" : relation.Actor?.Name ?? "Unknown")}");
             }
-            
-            ImGui.TreePop();
-        }
+        });
     }
 }

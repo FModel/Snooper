@@ -29,12 +29,12 @@ public class AtmosphericComponent : CubeComponent
     {
         base.DrawControls();
         
-        if (ImGui.CollapsingHeader("Atmosphere"))
+        EditorUI.CollapsingTable("Atmosphere", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
-            ImGui.DragFloat3("Sun Direction", ref Sun.Position, 0.01f, -1.0f, 2.0f);
-            ImGui.DragFloat("Sun Intensity", ref Sun.Intensity, 0.1f, 0.0f);
-            ImGui.DragFloat("Sun Radius", ref Sun.Radius, 1e3f, 0.0f);
-            ImGui.DragFloat("Atmosphere Radius", ref Sun.AtmosphereRadius, 1e3f, Sun.Radius + 1e3f);
-        }
+            EditorUI.DragFloat3("Sun Direction", ref Sun.Position, 0.01f, -1.0f, 2.0f);
+            EditorUI.DragFloat("Sun Intensity", ref Sun.Intensity, 0.1f, 0.0f);
+            EditorUI.DragFloat("Sun Radius", ref Sun.Radius, 1e3f, 0.0f);
+            EditorUI.DragFloat("Atmosphere Radius", ref Sun.AtmosphereRadius, 1e3f, Sun.Radius + 1e3f);
+        });
     }
 }

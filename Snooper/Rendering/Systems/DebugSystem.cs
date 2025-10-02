@@ -10,7 +10,6 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
 {
     public override uint Order => 100;
     protected override bool AllowDerivation => true;
-    protected override bool IsRenderable => ActorManager?.DrawBoundingBoxes ?? false;
     protected override bool IsCulled => false;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default.vert", "debug.frag");
     

@@ -158,7 +158,7 @@ switch (provider.ProjectName)
         // head.Relation = body;
         // acc1.Relation = body;
         //
-        // var character = new Actor(body.DisplayName);
+        // var character = new Actor(body.Name);
         // character.Components.Add(body); // root component
         // character.Components.Add(head);
         // character.Components.Add(acc1);

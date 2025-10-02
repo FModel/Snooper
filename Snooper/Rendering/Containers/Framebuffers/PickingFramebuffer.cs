@@ -31,8 +31,6 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
     private readonly ShaderProgram _maskShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/mask.frag");
     private readonly ShaderProgram _outlineShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/outline.frag");
     private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/picking.frag");
-    
-    private uint _id;
 
     public override void Generate()
     {
@@ -136,6 +134,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
     public uint ReadPixel(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
     {
         Bind();
+        var pixel = 0u;
 
         var scaleX = windowSize.X / Width;
         var scaleY = windowSize.Y / Height;
@@ -144,13 +143,14 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
 
         // picking texture is in color attachment 1 and we the first channel of a single pixel
         GL.ReadBuffer(ReadBufferMode.ColorAttachment1);
-        GL.ReadPixels(x, y, 1, 1, PixelFormat.RedInteger, PixelType.UnsignedInt, ref _id);
+        GL.ReadPixels(x, y, 1, 1, PixelFormat.RedInteger, PixelType.UnsignedInt, ref pixel);
         GL.ReadBuffer(ReadBufferMode.None);
 
         Unbind();
-        return _id;
+        return pixel;
     }
     
+    private uint _id;
     public void OverrideId(uint id)
     {
         _id = id;

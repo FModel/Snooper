@@ -24,7 +24,7 @@ public class WorldActor : Actor
 {
     public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world.Name)
     {
-        Components.Add(new SpatialComponent());
+        Components.Add(new SpatialComponent(null, "WorldRoot"));
         
         var partition = type.Includes(WorldActorType.WorldPartition);
         var streaming = type.Includes(WorldActorType.LevelStreaming);

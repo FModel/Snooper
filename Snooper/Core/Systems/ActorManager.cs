@@ -19,7 +19,6 @@ public abstract class ActorManager : IGameSystem
     private readonly HashSet<int> _actors = [];
 
     public bool ShowFramebuffers = false;
-    public bool DrawBoundingBoxes = false;
     public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.None;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new() => RegisterSystemFactory(() => new T());

@@ -28,6 +28,9 @@ public class ImGuiController : IResizable
         ImGui.SetCurrentContext(ImGui.CreateContext());
 
         var io = ImGui.GetIO();
+        io.Fonts.AddFontFromFileTTF(@"C:\Windows\Fonts\segoeui.ttf", 16);
+        io.Fonts.AddFontFromFileTTF(@"C:\Windows\Fonts\segoeuib.ttf", 16);
+        io.Fonts.AddFontFromFileTTF(@"C:\Windows\Fonts\seguisb.ttf", 16);
         io.Fonts.AddFontDefault();
         io.Fonts.Build();
 

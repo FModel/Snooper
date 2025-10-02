@@ -103,21 +103,20 @@ public sealed class CameraComponent : SpatialComponent
     {
         base.DrawControls();
         
-        if (ImGui.TreeNode("Parameters"))
+        EditorUI.CollapsingTable("Camera", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
-            ImGui.Checkbox("FXAA", ref bFXAA);
-            ImGui.Checkbox("HBAO", ref bAmbientOcclusion);
+            EditorUI.Checkbox("FXAA", ref bFXAA);
+            EditorUI.Checkbox("HBAO", ref bAmbientOcclusion);
             ImGui.BeginDisabled(!bAmbientOcclusion);
-            ImGui.SliderFloat("Radius", ref SsaoRadius, 0.01f, 5.0f);
+            EditorUI.Property("Radius");
+            ImGui.SliderFloat("##Radius", ref SsaoRadius, 0.01f, 5.0f);
             ImGui.EndDisabled();
 
-            ImGui.DragFloat("Speed", ref MovementSpeed, 0.1f, 1f, 100f);
-            ImGui.DragFloat("FOV", ref FieldOfView, 0.1f, 1.0f, 89.0f);
-            ImGui.DragFloat("Near Plane", ref NearPlaneDistance, 0.001f, 0.001f, FarPlaneDistance - 1);
-            ImGui.DragFloat("Far Plane", ref FarPlaneDistance, 0.1f , NearPlaneDistance + 1, 1000.0f);
-            
-            ImGui.TreePop();
-        }
+            EditorUI.DragFloat("Speed", ref MovementSpeed, 0.1f, 1f, 100f);
+            EditorUI.DragFloat("FOV", ref FieldOfView, 0.1f, 1.0f, 89.0f);
+            EditorUI.DragFloat("Near Plane", ref NearPlaneDistance, 0.001f, 0.001f, FarPlaneDistance - 1);
+            EditorUI.DragFloat("Far Plane", ref FarPlaneDistance, 0.1f , NearPlaneDistance + 1, 1000.0f);
+        });
     }
 
     public Plane[] GetWorldFrustumPlanes() => GetFrustumPlanes(ViewProjectionMatrix);

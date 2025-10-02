@@ -3,7 +3,7 @@
 public enum ActorDebugColorMode : byte
 {
     None,
-    PerActor,
+    PerComponent,
     PerInstance,
     PerMaterial,
     PerPrimitive,
