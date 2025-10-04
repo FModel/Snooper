@@ -25,10 +25,14 @@ void main()
 {
     PerDrawData drawData = uDrawDataBuffer[gDrawID];
     
-    vec4 color = texture(drawData.Sprite, vTexCoords);
-    if (color.a < drawData.OpacityMask)
+    vec4 color = vec4(1.0);
+    if (drawData.IsReady)
     {
-        discard;
+        color = texture(drawData.Sprite, vTexCoords);
+        if (color.a < drawData.OpacityMask)
+        {
+            discard;
+        }
     }
 
     FragColor = pow(color, vec4(1.0 / 2.2));

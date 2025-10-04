@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
+using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
@@ -97,6 +98,7 @@ public class LevelActor : Actor
                     UStaticMeshComponent sm when sm.GetStaticMesh().TryLoad<UStaticMesh>(out var mesh) => sm switch
                     {
                         UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(mesh, ism),
+                        USplineMeshComponent spline => new SplineMeshComponent(mesh, spline),
                         _ => new StaticMeshComponent(mesh, sm)
                     },
                     USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),

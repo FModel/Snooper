@@ -31,6 +31,8 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
         Shader.SetUniform("uDebugColorMode", (int)DebugColorMode);
     }
 
+    public override bool Accepts(Type type) => type != typeof(SplineMeshComponent) && base.Accepts(type); // TODO: improve this
+
     protected override bool CanEnqueueActorComponent(MeshComponent component)
     {
         return component.IsTranslucent;

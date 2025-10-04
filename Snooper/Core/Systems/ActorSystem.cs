@@ -20,7 +20,7 @@ public enum ActorSystemType
 public abstract class ActorSystem : IGameSystem
 {
     public readonly string DisplayName;
-    public readonly Type? ComponentType;
+    public readonly Type ComponentType;
     public readonly SystemProfiler Profiler;
     public ActorManager? ActorManager { get; internal set; }
     public float Time { get; private set; }
@@ -30,7 +30,7 @@ public abstract class ActorSystem : IGameSystem
     public abstract int ComponentsCount { get; }
     public abstract int EnqueuedComponentsCount { get; }
 
-    protected ActorSystem(Type? componentType)
+    protected ActorSystem(Type componentType)
     {
         DisplayName = GetType().Name;
         ComponentType = componentType;
@@ -44,10 +44,10 @@ public abstract class ActorSystem : IGameSystem
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
     
     protected virtual bool AllowDerivation => true;
-    public bool Accepts(Type type)
+    public virtual bool Accepts(Type type)
     {
         if (!AllowDerivation) return ComponentType == type;
-        return ComponentType?.IsAssignableFrom(type) ?? false;
+        return ComponentType.IsAssignableFrom(type);
     }
 
     protected ActorDebugColorMode DebugColorMode => ActorManager?.DebugColorMode ?? ActorDebugColorMode.None;
