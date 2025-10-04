@@ -17,12 +17,10 @@ namespace Snooper.Rendering.Containers.Framebuffers;
 /// ColorAttachment3 is the outline mask texture
 /// ColorAttachment4 is a debug texture to see the picking texture
 /// </summary>
-/// <param name="originalWidth"></param>
-/// <param name="originalHeight"></param>
 public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight)
 {
     // single channel 32-bit unsigned integer texture for component IDs, then that id can give us the actor, no instance picking yet
-    private readonly Texture2D _picking = new(originalWidth, originalHeight, PixelInternalFormat.R32ui, PixelFormat.RedInteger, PixelType.UnsignedInt);
+    private readonly PickingTexture _picking = new(originalWidth, originalHeight);
     private readonly Texture2D _mask = new(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red);
     private readonly Texture2D _outline = new(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.DepthComponent, false);
@@ -36,10 +34,6 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
     {
         _picking.Generate();
         _picking.Resize(Width, Height);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
         
         _mask.Generate();
         _mask.Resize(Width, Height);

@@ -1,5 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using CUE4Parse.UE4.Assets.Exports;
+using CUE4Parse.UE4.Assets.Exports.Actor;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
@@ -12,6 +14,8 @@ namespace Snooper.Rendering.Actors;
 public class Actor
 {
     public string Name { get; }
+    public string? ExportType { get; }
+    public string? InternalType { get; }
     public bool IsSelected { get; private set; }
 
     public Actor(string name)
@@ -23,6 +27,17 @@ public class Actor
 
         Components.CollectionChanged += OnComponentsCollectionChanged;
         Children.CollectionChanged += OnChildrenCollectionChanged;
+    }
+
+    protected Actor(UObject actor) : this(actor.Name)
+    {
+        if (actor is AActor a && !string.IsNullOrEmpty(a.ActorLabel))
+        {
+            Name = a.ActorLabel;
+        }
+        
+        ExportType = actor.ExportType;
+        InternalType = actor.GetType().Name;
     }
 
     public ActorComponentCollection Components { get; }

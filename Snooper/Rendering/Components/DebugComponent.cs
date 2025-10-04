@@ -47,7 +47,7 @@ public class DebugComponent(PrimitiveData primitive, CullingBounds bounds, strin
         
         public void DrawControls()
         {
-            ImGui.ColorButton("Debug Color", new Vector4(color, 1.0f), ImGuiColorEditFlags.NoPicker | ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoTooltip);
+            
         }
 
         public void Dispose()

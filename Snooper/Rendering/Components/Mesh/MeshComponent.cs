@@ -250,15 +250,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         
         public void DrawControls()
         {
-            // var largest = ImGui.GetContentRegionAvail();
-            // largest.X -= ImGui.GetScrollX();
-            // largest.X /= 3;
-            //
-            // ImGui.Image(diffuse.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
-            // ImGui.SameLine();
-            // ImGui.Image(normal.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
-            // ImGui.SameLine();
-            // ImGui.Image(specular.GetPointer(), new Vector2(largest.X), Vector2.Zero, Vector2.One);
+            
         }
 
         public void Dispose()

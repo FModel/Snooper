@@ -7,7 +7,7 @@ namespace Snooper.Rendering.Actors;
 
 public class MeshActor : Actor
 {
-    public MeshActor(UStaticMesh staticMesh, Transform? transform = null) : base(staticMesh.Name)
+    public MeshActor(UStaticMesh staticMesh, Transform? transform = null) : base(staticMesh)
     {
         var component = new StaticMeshComponent(staticMesh);
         
@@ -17,7 +17,7 @@ public class MeshActor : Actor
         Components.Add(component);
     }
 
-    public MeshActor(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh.Name)
+    public MeshActor(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh)
     {
         var component = new SkeletalMeshComponent(skeletalMesh);
         

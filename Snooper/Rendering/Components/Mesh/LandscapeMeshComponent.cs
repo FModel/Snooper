@@ -184,19 +184,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
         
         public void DrawControls()
         {
-            ImGui.SeparatorText("Layers");
             
-            // for (var i = 0; i < layers.Length; i++)
-            // {
-            //     ImGui.Text($"Layer {i}: {layers[i].Name}");
-            //     ImGui.Text($"Texture Index: {layers[i].TextureIndex}");
-            //     ImGui.SameLine();
-            //     ImGui.Text($"Channel Index: {layers[i].ChannelIndex}");
-            //     ImGui.SameLine();
-            //     ImGui.PushID(i);
-            //     ImGui.ColorButton("Debug Color", layers[i].DebugColor);
-            //     ImGui.PopID();
-            // }
         }
 
         public void Dispose()

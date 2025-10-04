@@ -6,14 +6,15 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
 
-public abstract class ActorComponent(string? name = null, string? @class = null, string? type = null)
+public abstract partial class ActorComponent
 {
     private static uint _nextId = 1;
     public readonly uint Id = _nextId++;
     
-    public readonly string Name = name ?? "Unnamed";
-    public readonly string? Class = @class;
-    public readonly string? Type = type;
+    public readonly string Name;
+    protected readonly string? ExportType;
+    protected readonly string? InternalType;
+    protected readonly string Header;
 
     private bool _isSelected;
     public bool IsSelected
@@ -29,10 +30,18 @@ public abstract class ActorComponent(string? name = null, string? @class = null,
             Actor?.ComputeSelected();
         }
     }
+
+    protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
+    {
+        Name = name ?? "Unnamed";
+        ExportType = exportType;
+        InternalType = internalType;
+        Header = UpperCaseToSpace().Replace(GetType().Name[..^"Component".Length], " $1");
+    }
     
     protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType, component.GetType().Name)
     {
-        
+
     }
     
     private Actor? _actor;
@@ -64,14 +73,14 @@ public abstract class ActorComponent(string? name = null, string? @class = null,
         ImGui.PushID((int)Id);
 
         var condition = false;
-        if (Class != null && "U" + Class != Type)
+        if (ExportType != null)
         {
-            ImGui.Text($"Class: {Class}");
+            ImGui.Text($"Export Type: {ExportType}");
             condition = true;
         }
-        if (Type != null && !("U" + Name).StartsWith(Type))
+        if (InternalType != null)
         {
-            ImGui.Text($"Type: {Type}");
+            ImGui.Text($"Internal Type: {InternalType}");
             condition = true;
         }
         if (condition)
@@ -83,4 +92,7 @@ public abstract class ActorComponent(string? name = null, string? @class = null,
         
         ImGui.PopID();
     }
+    
+    [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]
+    private partial System.Text.RegularExpressions.Regex UpperCaseToSpace();
 }

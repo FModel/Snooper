@@ -9,6 +9,8 @@ public class StaticMeshComponent : MeshComponent
 {
     public StaticMeshComponent(UStaticMesh staticMesh) : base(staticMesh.Materials, null, staticMesh.Name)
     {
+        Path = staticMesh.Name;
+        
         if (!staticMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
         if (staticMesh.RenderData?.Bounds is null)
@@ -23,6 +25,8 @@ public class StaticMeshComponent : MeshComponent
     
     public StaticMeshComponent(UStaticMesh staticMesh, UStaticMeshComponent component) : base(component)
     {
+        Path = staticMesh.Name;
+        
         if (!staticMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
         if (staticMesh.RenderData?.Bounds is null)

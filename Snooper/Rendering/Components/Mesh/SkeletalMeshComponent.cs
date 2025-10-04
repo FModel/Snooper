@@ -9,6 +9,8 @@ public class SkeletalMeshComponent : MeshComponent
 {
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh) : base(skeletalMesh.Materials, null, skeletalMesh.Name)
     {
+        Path = skeletalMesh.Name;
+        
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
         
@@ -21,6 +23,8 @@ public class SkeletalMeshComponent : MeshComponent
     
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh, USkeletalMeshComponent component) : base(component)
     {
+        Path = skeletalMesh.Name;
+        
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
         

@@ -22,7 +22,7 @@ public enum WorldActorType
 
 public class WorldActor : Actor
 {
-    public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world.Name)
+    public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world)
     {
         Components.Add(new SpatialComponent(null, "WorldRoot"));
         

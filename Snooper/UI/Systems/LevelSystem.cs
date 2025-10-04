@@ -316,6 +316,14 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
         ImGui.TextUnformatted(actor.Name);
         ImGui.PopFont();
+        if (actor.ExportType != null)
+        {
+            ImGui.Text($"Export Type: {actor.ExportType}");
+        }
+        if (actor.InternalType != null)
+        {
+            ImGui.Text($"Internal Type: {actor.InternalType}");
+        }
 
         var components = actor.Components;
         if (components.Count == 0)
@@ -340,7 +348,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             }
             ImGui.EndCombo();
         }
-
+        
         component.DrawInterface();
     }
     

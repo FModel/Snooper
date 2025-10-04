@@ -8,15 +8,15 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
 
 public class LevelActor : Actor
 {
-    public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components, WorldActorType type) : base(actor.Name)
+    public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components, WorldActorType type) : base(actor)
     {
         var compoments = type.Includes(WorldActorType.Components);
         var landscape = type.Includes(WorldActorType.Landscape);
@@ -91,7 +91,7 @@ public class LevelActor : Actor
             case USceneComponent sceneComponent:
             {
                 parent = sceneComponent.GetOrDefault<FPackageIndex?>("AttachParent");
-
+                
                 component = sceneComponent switch
                 {
                     UStaticMeshComponent sm when sm.GetStaticMesh().TryLoad<UStaticMesh>(out var mesh) => sm switch
@@ -101,7 +101,7 @@ public class LevelActor : Actor
                     },
                     USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
-                    // UCameraComponent camera => new CameraComponent(camera),
+                    UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
                     _ => new SpatialComponent(sceneComponent)
                 };
                 break;

@@ -38,6 +38,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         }
     }
     public CullingBounds Bounds { get; protected init; }
+    public string Path { get; protected init; }
     public readonly MaterialSection[] Materials; // we store materials for each section at lod 0
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
@@ -111,11 +112,20 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         base.DrawControls();
         
-        EditorUI.CollapsingTable("Primitive", ImGuiTreeNodeFlags.None, () =>
+        EditorUI.CollapsingTable(Header, ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
+            EditorUI.Text("Path", Path);
+            EditorUI.Text("Draw ID", Materials[0].DrawMetadata.DrawId.ToString());
             EditorUI.Text("LODs", LevelOfDetails.Length.ToString());
             EditorUI.Text("Sections", Materials.Length.ToString());
-            EditorUI.Text("Bounds", Bounds.ToString());
+        });
+        
+        EditorUI.CollapsingTable("Materials", ImGuiTreeNodeFlags.DefaultOpen, () =>
+        {
+            foreach (var material in Materials)
+            {
+                material.DrawDataContainer?.DrawControls();
+            }
         });
     }
 }
