@@ -23,8 +23,8 @@ void main()
     vec3 up = vec3(uViewMatrix[0][1], uViewMatrix[1][1], uViewMatrix[2][1]);
     float screenSize = DEFAULT_SCREEN_SIZE * length(viewPos.xyz);
     
-    vec3 billboard = worldPos + right * aPos.x * screenSize + up * aPos.y * screenSize;
+    vec3 billboard = worldPos + right * aPos.x * screenSize + up * -aPos.y * screenSize;
     gl_Position = uProjectionMatrix * uViewMatrix * vec4(billboard, 1.0);
 
-    vTexCoords = -aPos * 0.5 + 0.5;
+    vTexCoords = aPos * 0.5 + 0.5;
 }

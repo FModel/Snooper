@@ -29,11 +29,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
         ];
         Bounds = new CullingBounds(new FBox());
 
-        var sprite =
-            component.GetOrDefault<UTexture2D?>("Sprite") ??
-            component.Owner?.Provider?.LoadPackageObject<UTexture2D>("Engine/Content/EditorResources/S_Actor.S_Actor");
-
-        if (sprite != null)
+        if (component.GetSprite() is { } sprite)
         {
             Materials[0].DrawDataContainer = new DrawDataContainer(new Texture2D(sprite), component.GetOrDefault("OpacityMaskRefVal", 0.5f));
         }
