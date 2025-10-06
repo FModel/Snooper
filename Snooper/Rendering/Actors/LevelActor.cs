@@ -9,6 +9,7 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
@@ -108,11 +109,18 @@ public class LevelActor : Actor
                 };
                 break;
             }
-            default:
+            case UActorComponent actorComponent:
             {
-                // component = new SpatialComponent(null, $"{data?.Name} ({data?.GetType().Name})");
-                component = new Components.PrimitiveComponent(new Primitives.Cube(), null, $"{data?.Name} ({data?.GetType().Name})");
-                
+                component = new SpatialComponent(actorComponent);
+                if (RootComponent is SpatialComponent root)
+                {
+                    component.Relation = root;
+                }
+                break;
+            }
+            default: // uobject
+            {
+                component = new PrimitiveComponent(new Primitives.Cube(), null, $"{data?.Name} ({data?.GetType().Name})");
                 if (RootComponent is SpatialComponent root)
                 {
                     component.Relation = root;

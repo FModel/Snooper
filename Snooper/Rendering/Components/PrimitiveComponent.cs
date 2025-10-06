@@ -42,6 +42,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     public readonly MaterialSection[] Materials; // we store materials for each section at lod 0
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
+
+    public readonly bool IsVisible = true;
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -56,7 +58,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        
+        IsVisible = component.GetOrDefault("bVisible", IsVisible);
     }
     
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
@@ -115,6 +117,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         EditorUI.CollapsingTable(Header, ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Text("Path", Path);
+            EditorUI.Text("Visible", IsVisible.ToString());
             EditorUI.Text("Draw ID", Materials[0].DrawMetadata.DrawId.ToString());
             EditorUI.Text("LODs", LevelOfDetails.Length.ToString());
             EditorUI.Text("Sections", Materials.Length.ToString());

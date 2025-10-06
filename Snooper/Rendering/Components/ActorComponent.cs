@@ -1,5 +1,4 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component;
-using CUE4Parse.Utils;
 using ImGuiNET;
 using Snooper.Rendering.Actors;
 using Snooper.UI;

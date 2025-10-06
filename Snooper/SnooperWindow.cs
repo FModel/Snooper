@@ -49,6 +49,8 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<RenderSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
         
+        PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
+        
         _interface = new LevelSystem(this);
         
         Closing += _ =>

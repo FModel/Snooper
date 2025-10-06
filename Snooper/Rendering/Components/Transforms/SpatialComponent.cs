@@ -15,6 +15,11 @@ public class SpatialComponent : ActorComponent, IControllable
         LocalTransform = transform ?? Transform.Identity;
     }
     
+    public SpatialComponent(UActorComponent component) : base(component)
+    {
+        LocalTransform = Transform.Identity;
+    }
+    
     public SpatialComponent(USceneComponent component) : base(component)
     {
         LocalTransform = component.GetRelativeTransform();

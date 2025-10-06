@@ -16,8 +16,8 @@ public struct GeometryHandle(uint firstIndex, uint baseVertex, uint modelId)
 public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemorySizeProvider where TVertex : unmanaged
 {
     private readonly VertexArray _vao = new();
-    private readonly ElementArrayBuffer<uint> _ebo = new(initialDrawCapacity * 2000);
-    private readonly ArrayBuffer<TVertex> _vbo = new(initialDrawCapacity * 1000);
+    private readonly ElementArrayBuffer<uint> _ebo = new(initialDrawCapacity);
+    private readonly ArrayBuffer<TVertex> _vbo = new(initialDrawCapacity);
     private readonly CullingResources _culling = new(initialDrawCapacity);
     
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
