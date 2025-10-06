@@ -53,6 +53,40 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
     {
         
     }
+    
+    protected void SetGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels, CullingBounds bounds)
+    {
+        var geometries = new LevelOfDetail<Vertex>[levels.Count];
+        for (var i = 0; i < geometries.Length; i++)
+        {
+            var lod = levels[i];
+            var sections = new PrimitiveSectionDescriptor[lod.Sections.Value.Length];
+            for (var j = 0; j < sections.Length; j++)
+            {
+                var section = lod.Sections.Value[j];
+                sections[j] = new PrimitiveSectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
+            }
+            
+            var indices = lod.Indices.Value;
+            var vertices = lod switch
+            {
+                CStaticMeshLod staticLod => staticLod.Verts ?? throw new InvalidOperationException("Static mesh LOD has no vertices."),
+                CSkelMeshLod skelLod => skelLod.Verts ?? throw new InvalidOperationException("Skeletal mesh LOD has no vertices."),
+                _ => throw new NotSupportedException($"Unsupported mesh type: {lod.GetType().Name}")
+            };
+            
+            // TODO: go even higher and cache the converted data by guid and dispose on close
+            var capturedVertices = new CMeshVertex[vertices.Length];
+            Array.Copy(vertices, capturedVertices, vertices.Length);
+
+            var capturedIndices = new uint[indices.Length];
+            Array.Copy(indices, capturedIndices, indices.Length);
+
+            geometries[i] = new LevelOfDetail<Vertex>(guid, lod.ScreenSize, capturedIndices.Length, capturedVertices.Length, sections, () => new Geometry(capturedVertices, capturedIndices));
+        }
+        
+        SetGeometry(geometries, bounds);
+    }
 
     protected override void OnAddedToActor()
     {
@@ -157,23 +191,6 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         );
     }
 
-    protected LevelOfDetail<Vertex>[] CreateGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels)
-    {
-        var geometries = new LevelOfDetail<Vertex>[levels.Count];
-        for (var i = 0; i < geometries.Length; i++)
-        {
-            var sections = new PrimitiveSectionDescriptor[levels[i].Sections.Value.Length];
-            for (var j = 0; j < sections.Length; j++)
-            {
-                var section = levels[i].Sections.Value[j];
-                sections[j] = new PrimitiveSectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
-            }
-            
-            geometries[i] = new LevelOfDetail<Vertex>(guid, new Geometry(levels[i]), levels[i].ScreenSize, sections);
-        }
-        return geometries;
-    }
-
     private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular, Vector2? roughness = null, Vector3? diffuseColor = null, bool translucent = false) : IDrawDataContainer
     {
         private BindlessTexture? _diffuse;
@@ -269,15 +286,8 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     private class Geometry : PrimitiveData<Vertex>
     {
-        public Geometry(CBaseMeshLod lod)
+        public Geometry(CMeshVertex[] vertices, uint[] indices)
         {
-            var vertices = lod switch
-            {
-                CStaticMeshLod staticLod => staticLod.Verts,
-                CSkelMeshLod skelLod => skelLod.Verts,
-                _ => throw new NotSupportedException($"Unsupported mesh type: {lod.GetType().Name}")
-            };
-
             Vertices = new Vertex[vertices.Length];
             for (var i = 0; i < Vertices.Length; i++)
             {
@@ -290,11 +300,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 Vertices[i] = new Vertex(position, normal, tangent, texCoord);
             }
 
-            Indices = new uint[lod.Indices.Value.Length];
-            for (var i = 0; i < Indices.Length; i++)
-            {
-                Indices[i] = (uint) lod.Indices.Value[i];
-            }
+            Indices = indices;
         }
     }
 }

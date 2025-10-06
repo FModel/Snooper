@@ -34,17 +34,14 @@ public unsafe struct PerDrawLandscapeData : IPerDrawData
 [DefaultActorSystem(typeof(LandscapeSystem))]
 public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandscapeData>
 {
-    public readonly int SizeQuads;
+    public readonly uint SizeQuads;
     public readonly Vector2[] Scales;
     public readonly Dictionary<string, LayerMapping> Layers;
     
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
-        LevelOfDetails =
-        [
-            new LevelOfDetail<Vector2>(new FGuid((uint)component.ComponentSizeQuads), new Geometry(component.ComponentSizeQuads))
-        ];
-        Bounds = component.CachedLocalBox;
+        var sizeQuads = (uint)component.ComponentSizeQuads;
+        SetGeometry(new FGuid(sizeQuads), new Geometry(sizeQuads), component.CachedLocalBox);
         
         if (component.GetHeightmap() is not { } heightmap)
         {
@@ -65,7 +62,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W),
             component.WeightmapLayerAllocations);
 
-        SizeQuads = component.ComponentSizeQuads + 1;
+        SizeQuads = sizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
         
         const int quadCount = Settings.TessellationQuadCount;
@@ -208,7 +205,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
 
     private class Geometry : PrimitiveData<Vector2>
     {
-        public Geometry(int sizeQuads)
+        public Geometry(uint sizeQuads)
         {
             const int quadCount = Settings.TessellationQuadCount;
             var halfSize = sizeQuads / (float)quadCount;

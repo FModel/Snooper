@@ -120,7 +120,7 @@ public class LevelActor : Actor
             }
             default: // uobject
             {
-                component = new PrimitiveComponent(new Primitives.Cube(), null, $"{data?.Name} ({data?.GetType().Name})");
+                component = new SpatialComponent(null, $"{data?.Name} ({data?.GetType().Name})");
                 if (RootComponent is SpatialComponent root)
                 {
                     component.Relation = root;

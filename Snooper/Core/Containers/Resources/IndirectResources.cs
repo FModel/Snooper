@@ -29,7 +29,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     
     public void SetVertexLayout(Action<int> setter) => _geometry.SetVertexLayout(setter);
     
-    public void Allocate(int componentCount, int drawCount, int indices, int vertices)
+    public void Allocate(uint componentCount, uint drawCount, uint indices, uint vertices)
     {
         _geometry.Allocate(componentCount, drawCount, indices, vertices);
 
@@ -49,7 +49,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
     public void Add(uint pickingId, LevelOfDetail<TVertex>[] levelOfDetails, MaterialSection[] materials, TInstanceData[] instanceData, CullingBounds bounds)
     {
         // TODO: create lod only if not already cached
-        var handle = _geometry.Add(levelOfDetails[0].Guid, () => levelOfDetails, bounds);
+        var handle = _geometry.Add(levelOfDetails[0].Guid, levelOfDetails, bounds);
         
         _instanceData.Bind();
         var baseInstance = (uint)_instanceData.AddRange(instanceData);

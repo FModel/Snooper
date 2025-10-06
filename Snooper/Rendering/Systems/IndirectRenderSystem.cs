@@ -79,10 +79,10 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Render();
     }
     
-    private int _componentCount;
-    private int _drawCount;
-    private int _indices;
-    private int _vertices;
+    private uint _componentCount;
+    private uint _drawCount;
+    private uint _indices;
+    private uint _vertices;
     private readonly HashSet<FGuid> _guids = [];
 
     protected override void OnActorComponentEnqueued(TComponent component)
@@ -90,13 +90,13 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.OnActorComponentEnqueued(component);
         
         _componentCount++;
-        _drawCount += component.LevelOfDetails[0].SectionDescriptors.Length;
+        _drawCount += (uint)component.LevelOfDetails[0].SectionDescriptors.Length;
         if (_guids.Add(component.LevelOfDetails[0].Guid))
         {
             foreach (var lod in component.LevelOfDetails)
             {
-                _indices += lod.Primitive.Indices?.Length ?? 0;
-                _vertices += lod.Primitive.Vertices?.Length ?? 0;
+                _indices += lod.IndexCount;
+                _vertices += lod.VertexCount;
             }
         }
     }

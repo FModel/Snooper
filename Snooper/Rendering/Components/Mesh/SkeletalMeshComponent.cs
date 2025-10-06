@@ -13,11 +13,10 @@ public class SkeletalMeshComponent : MeshComponent
         
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
-        
+
         using (mesh)
         {
-            LevelOfDetails = CreateGeometry(FGuid.Random(), mesh.LODs);
-            Bounds = mesh.BoundingBox;
+            SetGeometry(FGuid.Random(), mesh.LODs, mesh.BoundingBox);
         }
     }
     
@@ -27,13 +26,12 @@ public class SkeletalMeshComponent : MeshComponent
         
         if (!skeletalMesh.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(skeletalMesh));
-        
+
         MaterialsToParse = skeletalMesh.Materials;
 
         using (mesh)
         {
-            LevelOfDetails = CreateGeometry(FGuid.Random(), mesh.LODs);
-            Bounds = mesh.BoundingBox;
+            SetGeometry(FGuid.Random(), mesh.LODs, mesh.BoundingBox);
         }
     }
 }

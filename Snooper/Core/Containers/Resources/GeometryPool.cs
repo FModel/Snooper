@@ -41,7 +41,7 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         _vao.Unbind();
     }
     
-    public void Allocate(int componentCount, int drawCount, int indices, int vertices)
+    public void Allocate(uint componentCount, uint drawCount, uint indices, uint vertices)
     {
         _ebo.Bind();
         _ebo.Allocate(new uint[indices]);
@@ -54,18 +54,18 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         _culling.Allocate(componentCount, drawCount);
     }
     
-    public GeometryHandle Add(FGuid guid, Func<LevelOfDetail<TVertex>[]> factory, CullingBounds bounds)
+    public GeometryHandle Add(FGuid guid, LevelOfDetail<TVertex>[] lods, CullingBounds bounds)
     {
         if (!_cache.TryGetValue(guid, out var handle))
         {
-            var (firstIndex, baseVertex, descriptor) = CreateDescriptor(factory());
+            var (firstIndex, baseVertex, descriptor) = CreateDescriptor();
             handle = new GeometryHandle(firstIndex, baseVertex, (uint)_culling.Add(descriptor));
             _cache.Add(guid, handle);
         }
         
         return handle;
 
-        unsafe (uint, uint, PrimitiveDescriptor) CreateDescriptor(LevelOfDetail<TVertex>[] lods)
+        unsafe (uint, uint, PrimitiveDescriptor) CreateDescriptor()
         {
             _ebo.Bind();
             _vbo.Bind();
@@ -74,20 +74,21 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
             var d = new PrimitiveDescriptor(bounds);
             for (var i = 0; i < lods.Length && i < Settings.MaxNumberOfLods; i++)
             {
-                if (!lods[i].Primitive.IsValid)
+                var primitive = lods[i].CreatePrimitive();
+                if (!primitive.IsValid)
                 {
                     continue;
                     // throw new InvalidOperationException("Primitive data is not valid.");
                 }
                 
-                d.LOD_FirstIndex[i] = (uint)_ebo.AddRange(lods[i].Primitive.Indices);
-                d.LOD_BaseVertex[i] = (uint)_vbo.AddRange(lods[i].Primitive.Vertices);
+                d.LOD_FirstIndex[i] = (uint)_ebo.AddRange(primitive.Indices);
+                d.LOD_BaseVertex[i] = (uint)_vbo.AddRange(primitive.Vertices);
                 d.LOD_ScreenSize[i] = lods[i].ScreenSize;
                 d.LOD_SectionCount[i] = (uint)lods[i].SectionDescriptors.Length;
                 d.LOD_SectionOffset[i] = (uint)_culling.Add(lods[i].SectionDescriptors);
                 
                 maxLod++;
-                lods[i].Dispose();
+                primitive.Dispose();
             }
             d.Bounds.MaxLevelOfDetail = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
 

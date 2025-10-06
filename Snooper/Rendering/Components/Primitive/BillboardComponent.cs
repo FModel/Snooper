@@ -23,11 +23,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
 {
     public BillboardComponent(UBillboardComponent component) : base(component)
     {
-        LevelOfDetails =
-        [
-            new LevelOfDetail<Vector2>(FGuid.Random(), new Geometry())
-        ];
-        Bounds = new CullingBounds(new FBox());
+        SetGeometry(FGuid.Random(), new Geometry(), new FBox());
 
         if (component.GetSprite() is { } sprite)
         {

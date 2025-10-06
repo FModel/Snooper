@@ -24,7 +24,7 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         _compute.Link();
     }
     
-    public void Allocate(int componentCount, int drawCount)
+    public void Allocate(uint componentCount, uint drawCount)
     {
         _primitives.Bind();
         _primitives.Allocate(new PrimitiveDescriptor[componentCount]);

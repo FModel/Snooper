@@ -19,27 +19,22 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    private readonly LevelOfDetail<TVertex>[] _lods = [];
+    private LevelOfDetail<TVertex>[]? _lods;
     public LevelOfDetail<TVertex>[] LevelOfDetails
     {
-        get => _lods;
-        protected init
-        {
-            if (value.Length == 0)
-                throw new ArgumentException("There must be at least one LOD", nameof(value));
-            
-            _lods = value;
-            
-            Materials = new MaterialSection[_lods[0].SectionDescriptors.Length];
-            for (var i = 0; i < Materials.Length; i++)
-            {
-                Materials[i] = new MaterialSection(_lods[0].SectionDescriptors[i].MaterialIndex);
-            }
-        }
+        get => _lods ?? throw new InvalidOperationException("Level of details have not been initialized. Call SetGeometry during construction of derived classes.");
+        private set => _lods = value;
     }
-    public CullingBounds Bounds { get; protected init; }
-    public string Path { get; protected init; }
-    public readonly MaterialSection[] Materials; // we store materials for each section at lod 0
+
+    private CullingBounds? _bounds;
+    public CullingBounds Bounds
+    {
+        get => _bounds ?? throw new InvalidOperationException("Bounds have not been initialized. Call SetGeometry during construction of derived classes.");
+        private set => _bounds = value;
+    }
+
+    public string Path { get; protected set; } = string.Empty;
+    public MaterialSection[] Materials { get; private set; } = [];
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
@@ -47,13 +42,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
-        
-    }
-
-    protected PrimitiveComponent(LevelOfDetail<TVertex>[] levelOfDetails, CullingBounds bounds, Transform? transform = null, string? name = null) : base(transform, name)
-    {
-        LevelOfDetails = levelOfDetails;
-        Bounds = bounds;
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
@@ -61,6 +49,24 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         IsVisible = component.GetOrDefault("bVisible", IsVisible);
     }
     
+    protected void SetGeometry(FGuid guid, TPrimitiveData<TVertex> primitive, CullingBounds bounds) => SetGeometry(new LevelOfDetail<TVertex>(guid, primitive.Indices?.Length ?? 0, primitive.Vertices?.Length ?? 0, () => primitive), bounds);
+    protected void SetGeometry(LevelOfDetail<TVertex> levelOfDetail, CullingBounds bounds) => SetGeometry([levelOfDetail], bounds);
+    protected void SetGeometry(LevelOfDetail<TVertex>[] levelOfDetails, CullingBounds bounds)
+    {
+        if (levelOfDetails.Length == 0)
+            throw new ArgumentException("There must be at least one LOD", nameof(levelOfDetails));
+
+        LevelOfDetails = levelOfDetails;
+        Bounds = bounds;
+
+        Materials = new MaterialSection[levelOfDetails[0].SectionDescriptors.Length];
+        for (var i = 0; i < Materials.Length; i++)
+        {
+            Materials[i] = new MaterialSection(levelOfDetails[0].SectionDescriptors[i].MaterialIndex);
+        }
+    }
+
+
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
         resources.Add(Id, LevelOfDetails, Materials, GetPerInstanceData(), Bounds);
@@ -140,14 +146,13 @@ public class PrimitiveComponent<TVertex, TPerDrawData> : PrimitiveComponent<TVer
     where TVertex : unmanaged
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    protected PrimitiveComponent(TPrimitiveData<TVertex> primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base([new LevelOfDetail<TVertex>(FGuid.Random(), primitive)], bounds, transform, name)
+    protected PrimitiveComponent(TPrimitiveData<TVertex> primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        
+        SetGeometry(FGuid.Random(), primitive, bounds);
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        
     }
 }
 
