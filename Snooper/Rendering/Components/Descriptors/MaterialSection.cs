@@ -1,6 +1,6 @@
 ﻿using Snooper.Core.Containers.Resources;
 
-namespace Snooper.Rendering.Components.Primitive;
+namespace Snooper.Rendering.Components.Descriptors;
 
 public class MaterialSection(uint materialIndex)
 {

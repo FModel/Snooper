@@ -1,11 +1,10 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
-using CUE4Parse.UE4.Assets.Exports.Texture;
-using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -23,7 +22,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
 {
     public BillboardComponent(UBillboardComponent component) : base(component)
     {
-        SetGeometry(FGuid.Random(), new Geometry(), new CullingBounds(Vector3.Zero, Vector3.One / 4));
+        Descriptor = new PrimitiveDescriptor2<Vector2>(new CullingBounds(Vector3.Zero, Vector3.One / 4), () => new Geometry());
 
         if (component.GetSprite() is { } sprite)
         {

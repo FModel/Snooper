@@ -1,11 +1,9 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
-using CUE4Parse.UE4.Objects.Core.Misc;
-using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
-using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -41,7 +39,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
         var sizeQuads = (uint)component.ComponentSizeQuads;
-        SetGeometry(new FGuid(sizeQuads), new Geometry(sizeQuads), component.CachedLocalBox);
+        Descriptor = new PrimitiveDescriptor2<Vector2>(sizeQuads, component.CachedLocalBox, id => new Geometry(id));
         
         if (component.GetHeightmap() is not { } heightmap)
         {

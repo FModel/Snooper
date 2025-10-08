@@ -2,14 +2,14 @@
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
 public class CullingResources(int initialDrawCapacity) : IDisposable
 {
     private readonly ShaderStorageBuffer<PrimitiveDescriptor> _primitives = new(initialDrawCapacity);
-    private readonly ShaderStorageBuffer<PrimitiveSectionDescriptor> _sections = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<SectionDescriptor> _sections = new(initialDrawCapacity);
     private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
     {
         Compute = "culling.comp"
@@ -31,11 +31,11 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         _primitives.Unbind();
         
         _sections.Bind();
-        _sections.Allocate(new PrimitiveSectionDescriptor[drawCount]);
+        _sections.Allocate(new SectionDescriptor[drawCount]);
         _sections.Unbind();
     }
     
-    public int Add(PrimitiveSectionDescriptor[] sections)
+    public int Add(SectionDescriptor[] sections)
     {
         _sections.Bind();
         var sectionOffset = _sections.AddRange(sections);

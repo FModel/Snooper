@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Core;
-using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
@@ -71,6 +71,6 @@ public class SplineMeshComponent : StaticMeshComponent
     
     public SplineMeshComponent(UStaticMesh staticMesh, USplineMeshComponent component) : base(staticMesh, component)
     {
-        SplineParams = new SplineMeshParams(component, Bounds);
+        SplineParams = new SplineMeshParams(component, Descriptor.Bounds);
     }
 }

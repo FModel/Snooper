@@ -2,7 +2,7 @@
 using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
@@ -54,7 +54,7 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         _culling.Allocate(componentCount, drawCount);
     }
     
-    public GeometryHandle Add(FGuid guid, LevelOfDetail<TVertex>[] lods, CullingBounds bounds)
+    public GeometryHandle Add(FGuid guid, LodDescriptor<TVertex>[] lods, CullingBounds bounds)
     {
         if (!_cache.TryGetValue(guid, out var handle))
         {
@@ -84,8 +84,8 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
                 d.LOD_FirstIndex[i] = (uint)_ebo.AddRange(primitive.Indices);
                 d.LOD_BaseVertex[i] = (uint)_vbo.AddRange(primitive.Vertices);
                 d.LOD_ScreenSize[i] = lods[i].ScreenSize;
-                d.LOD_SectionCount[i] = (uint)lods[i].SectionDescriptors.Length;
-                d.LOD_SectionOffset[i] = (uint)_culling.Add(lods[i].SectionDescriptors);
+                d.LOD_SectionCount[i] = (uint)lods[i].Sections.Length;
+                d.LOD_SectionOffset[i] = (uint)_culling.Add(lods[i].Sections);
                 
                 maxLod++;
                 primitive.Dispose();

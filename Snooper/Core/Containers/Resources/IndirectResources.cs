@@ -4,7 +4,7 @@ using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
@@ -46,10 +46,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _drawData.Unbind();
     }
     
-    public void Add(uint pickingId, LevelOfDetail<TVertex>[] levelOfDetails, MaterialSection[] materials, TInstanceData[] instanceData, CullingBounds bounds)
+    public void Add(uint pickingId, PrimitiveDescriptor2<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
     {
-        // TODO: create lod only if not already cached
-        var handle = _geometry.Add(levelOfDetails[0].Guid, levelOfDetails, bounds);
+        var handle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
         
         _instanceData.Bind();
         var baseInstance = (uint)_instanceData.AddRange(instanceData);
@@ -62,9 +61,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
             materials[i].DrawMetadata.BaseInstance = (int)baseInstance;
             materials[i].DrawMetadata.DrawId = _commands.Current.Add(new DrawElementsIndirectCommand
             {
-                IndexCount = levelOfDetails[0].SectionDescriptors[i].IndexCount,
+                IndexCount = primitive.Lods[0].Sections[i].IndexCount,
                 InstanceCount = instanceCount,
-                FirstIndex = handle.FirstIndex + levelOfDetails[0].SectionDescriptors[i].FirstIndex,
+                FirstIndex = handle.FirstIndex + primitive.Lods[0].Sections[i].FirstIndex,
                 BaseVertex = handle.BaseVertex,
                 BaseInstance = baseInstance,
                 PickingId = pickingId,

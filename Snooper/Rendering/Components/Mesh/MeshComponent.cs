@@ -3,10 +3,7 @@ using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Material;
-using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
-using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Texture;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.UObject;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
@@ -14,7 +11,6 @@ using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Extensions;
-using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
@@ -45,85 +41,25 @@ public struct PerDrawMeshData : IPerDrawData
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
-    private ResolvedObject?[] _materials { get; set; } = [];
-    private readonly ResolvedObject?[]? _overrideMaterials;
+    private readonly ResolvedObject?[] _materials;
 
-    protected MeshComponent(Transform? transform = null, string? name = null) : base(transform, name)
+    protected MeshComponent(ResolvedObject?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        
+        _materials = materials;
     }
 
-    protected MeshComponent(UMeshComponent component) : base(component)
-    {
-        var overrideMaterials = component.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []);
-        if (overrideMaterials.Length > 0)
-        {
-            _overrideMaterials = new ResolvedObject?[overrideMaterials.Length];
-            for (var i = 0; i < overrideMaterials.Length; i++)
-            {
-                if (overrideMaterials[i].IsNull) continue;
-                _overrideMaterials[i] = overrideMaterials[i].ResolvedObject;
-            }
-        }
-    }
-
-    protected void SetGeometry(UStaticMesh owner, CStaticMesh mesh)
-    {
-        Path = owner.Name;
-        SetGeometry(owner.LightingGuid, owner.Materials, mesh.LODs, mesh.BoundingBox);
-    }
-
-    protected void SetGeometry(USkeletalMesh owner, CSkeletalMesh mesh)
-    {
-        Path = owner.Name;
-        SetGeometry(new FGuid((uint)owner.Name.GetHashCode()), owner.Materials, mesh.LODs, mesh.BoundingBox);
-    }
-    
-    private void SetGeometry(FGuid guid, ResolvedObject?[] materials, IReadOnlyList<CBaseMeshLod> levels, CullingBounds bounds)
+    protected MeshComponent(ResolvedObject?[] materials, UMeshComponent component) : base(component)
     {
         _materials = materials;
         
-        if (_overrideMaterials != null)
+        var overrideMaterials = component.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []);
+        for (var i = 0; i < overrideMaterials.Length; i++)
         {
-            for (var i = 0; i < _overrideMaterials.Length && i < _materials.Length; i++)
-            {
-                if (_overrideMaterials[i] != null)
-                {
-                    _materials[i] = _overrideMaterials[i];
-                }
-            }
+            if (i >= _materials.Length) break;
+            if (overrideMaterials[i].IsNull) continue;
+                
+            _materials[i] = overrideMaterials[i].ResolvedObject;
         }
-        
-        var geometries = new LevelOfDetail<Vertex>[levels.Count];
-        for (var i = 0; i < geometries.Length; i++)
-        {
-            var lod = levels[i];
-            var sections = new PrimitiveSectionDescriptor[lod.Sections.Value.Length];
-            for (var j = 0; j < sections.Length; j++)
-            {
-                var section = lod.Sections.Value[j];
-                sections[j] = new PrimitiveSectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
-            }
-            
-            var indices = lod.Indices.Value;
-            var vertices = lod switch
-            {
-                CStaticMeshLod staticLod => staticLod.Verts ?? throw new InvalidOperationException("Static mesh LOD has no vertices."),
-                CSkelMeshLod skelLod => skelLod.Verts ?? throw new InvalidOperationException("Skeletal mesh LOD has no vertices."),
-                _ => throw new NotSupportedException($"Unsupported mesh type: {lod.GetType().Name}")
-            };
-            
-            // TODO: go even higher and cache the converted data by guid and dispose on close
-            var capturedVertices = new CMeshVertex[vertices.Length];
-            Array.Copy(vertices, capturedVertices, vertices.Length);
-
-            var capturedIndices = new uint[indices.Length];
-            Array.Copy(indices, capturedIndices, indices.Length);
-
-            geometries[i] = new LevelOfDetail<Vertex>(guid, lod.ScreenSize, capturedIndices.Length, capturedVertices.Length, sections, () => new Geometry(capturedVertices, capturedIndices));
-        }
-        
-        SetGeometry(geometries, bounds);
     }
 
     protected override void OnAddedToActor()
@@ -322,7 +258,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
     }
 
-    private class Geometry : PrimitiveData<Vertex>
+    protected class Geometry : PrimitiveData<Vertex>
     {
         public Geometry(CMeshVertex[] vertices, uint[] indices)
         {

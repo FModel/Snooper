@@ -90,10 +90,10 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.OnActorComponentEnqueued(component);
         
         _componentCount++;
-        _drawCount += (uint)component.LevelOfDetails[0].SectionDescriptors.Length;
-        if (_guids.Add(component.LevelOfDetails[0].Guid))
+        _drawCount += (uint)component.Descriptor.Lods[0].Sections.Length;
+        if (_guids.Add(component.Descriptor.Guid))
         {
-            foreach (var lod in component.LevelOfDetails)
+            foreach (var lod in component.Descriptor.Lods)
             {
                 _indices += lod.IndexCount;
                 _vertices += lod.VertexCount;

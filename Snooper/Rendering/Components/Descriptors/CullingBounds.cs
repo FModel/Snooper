@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Math;
 
-namespace Snooper.Rendering.Components.Primitive;
+namespace Snooper.Rendering.Components.Descriptors;
 
 public struct CullingBounds
 {

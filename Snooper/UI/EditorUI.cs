@@ -58,17 +58,22 @@ public static class EditorUI
     {
         if (ImGui.CollapsingHeader(label, flags))
         {
-            if (ImGui.BeginTable(label + "ControlsTable", 2))
-            {
-                ImGui.TableSetupColumn("Property", ImGuiTableColumnFlags.WidthStretch, 1.0f);
-                ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch, 2.0f);
+            PropertyValueTable(label, draws);
+        }
+    }
+    
+    public static void PropertyValueTable(string label, Action draws)
+    {
+        if (ImGui.BeginTable(label + "ControlsTable", 2))
+        {
+            ImGui.TableSetupColumn("Property", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+            ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch, 2.0f);
 
-                ImGui.Indent();
-                draws.Invoke();
-                ImGui.Unindent();
+            ImGui.Indent();
+            draws.Invoke();
+            ImGui.Unindent();
 
-                ImGui.EndTable();
-            }
+            ImGui.EndTable();
         }
     }
 }

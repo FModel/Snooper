@@ -1,30 +1,20 @@
-﻿using CUE4Parse_Conversion.Meshes;
-using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
+﻿using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Rendering.Components.Mesh;
 
 public class StaticMeshComponent : MeshComponent
 {
-    public StaticMeshComponent(UStaticMesh staticMesh) : base(null, staticMesh.Name)
+    public StaticMeshComponent(UStaticMesh staticMesh) : base(staticMesh.Materials, null, staticMesh.Name)
     {
-        SetGeometry(staticMesh);
+        Descriptor = new PrimitiveDescriptor2<Vertex>(staticMesh, (vertices, indices) => new Geometry(vertices, indices));
     }
     
-    public StaticMeshComponent(UStaticMesh staticMesh, UStaticMeshComponent component) : base(component)
+    public StaticMeshComponent(UStaticMesh staticMesh, UStaticMeshComponent component) : base(staticMesh.Materials, component)
     {
-        SetGeometry(staticMesh);
-        // TODO: use component.LODData to override some stuff (eg vertex colors)
-    }
-    
-    private void SetGeometry(UStaticMesh staticMesh)
-    {
-        if (!staticMesh.TryConvert(out var mesh))
-            throw new ArgumentException("Failed to convert static mesh.", nameof(staticMesh));
+        Descriptor = new PrimitiveDescriptor2<Vertex>(staticMesh, (vertices, indices) => new Geometry(vertices, indices));
         
-        using (mesh)
-        {
-            SetGeometry(staticMesh, mesh);
-        }
+        // TODO: use component.LODData to override some stuff (eg vertex colors)
     }
 }

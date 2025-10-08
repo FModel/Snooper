@@ -6,7 +6,7 @@ using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
-using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
@@ -19,22 +19,24 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    private LevelOfDetail<TVertex>[]? _lods;
-    public LevelOfDetail<TVertex>[] LevelOfDetails
+    private readonly PrimitiveDescriptor2<TVertex>? _descriptor;
+    public PrimitiveDescriptor2<TVertex> Descriptor
     {
-        get => _lods ?? throw new InvalidOperationException("Level of details have not been initialized. Call SetGeometry during construction of derived classes.");
-        private set => _lods = value;
+        get => _descriptor ?? throw new InvalidOperationException("Descriptor has not been initialized. Set it during construction of derived classes.");
+        protected init
+        {
+            _descriptor = value;
+            
+            // init materials for the first LOD only
+            Materials = new MaterialSection[_descriptor.Lods[0].Sections.Length];
+            for (var i = 0; i < Materials.Length; i++)
+            {
+                Materials[i] = new MaterialSection(_descriptor.Lods[0].Sections[i].MaterialIndex);
+            }
+        }
     }
 
-    private CullingBounds? _bounds;
-    public CullingBounds Bounds
-    {
-        get => _bounds ?? throw new InvalidOperationException("Bounds have not been initialized. Call SetGeometry during construction of derived classes.");
-        private set => _bounds = value;
-    }
-
-    public string Path { get; protected set; } = string.Empty;
-    public MaterialSection[] Materials { get; private set; } = [];
+    public MaterialSection[] Materials { get; private init; } = [];
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
@@ -48,27 +50,10 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         IsVisible = component.GetOrDefault("bVisible", IsVisible);
     }
-    
-    protected void SetGeometry(FGuid guid, TPrimitiveData<TVertex> primitive, CullingBounds bounds) => SetGeometry(new LevelOfDetail<TVertex>(guid, primitive.Indices?.Length ?? 0, primitive.Vertices?.Length ?? 0, () => primitive), bounds);
-    protected void SetGeometry(LevelOfDetail<TVertex> levelOfDetail, CullingBounds bounds) => SetGeometry([levelOfDetail], bounds);
-    protected void SetGeometry(LevelOfDetail<TVertex>[] levelOfDetails, CullingBounds bounds)
-    {
-        if (levelOfDetails.Length == 0)
-            throw new ArgumentException("There must be at least one LOD", nameof(levelOfDetails));
-
-        LevelOfDetails = levelOfDetails;
-        Bounds = bounds;
-
-        Materials = new MaterialSection[levelOfDetails[0].SectionDescriptors.Length];
-        for (var i = 0; i < Materials.Length; i++)
-        {
-            Materials[i] = new MaterialSection(levelOfDetails[0].SectionDescriptors[i].MaterialIndex);
-        }
-    }
 
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
-        resources.Add(Id, LevelOfDetails, Materials, GetPerInstanceData(), Bounds);
+        resources.Add(Id, Descriptor, Materials, GetPerInstanceData());
         textureManager.AddRange(Materials);
     }
 
@@ -119,14 +104,36 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         base.DrawControls();
         
-        EditorUI.CollapsingTable(Header, ImGuiTreeNodeFlags.DefaultOpen, () =>
+        if (ImGui.CollapsingHeader(Header, ImGuiTreeNodeFlags.DefaultOpen))
         {
-            EditorUI.Text("Path", Path);
-            EditorUI.Text("Visible", IsVisible.ToString());
-            EditorUI.Text("Draw ID", Materials[0].DrawMetadata.DrawId.ToString());
-            EditorUI.Text("LODs", LevelOfDetails.Length.ToString());
-            EditorUI.Text("Sections", Materials.Length.ToString());
-        });
+            if (ImGui.TreeNodeEx("Descriptor", ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                EditorUI.PropertyValueTable(Header, () =>
+                {
+                    EditorUI.Text("Path", Descriptor.Path ?? "N/A");
+                    EditorUI.Text("Guid", Descriptor.Guid.ToString(EGuidFormats.UniqueObjectGuid));
+                    
+                    // TODO: more shit
+                    
+                    var i = 0;
+                    EditorUI.Property("LODs");
+                    if (ImGui.BeginCombo("##LODs", $"LOD {i} - {Descriptor.Lods[i].VertexCount} vertices, {Descriptor.Lods[i].IndexCount} indices"))
+                    {
+                        for (i = 0; i < Descriptor.Lods.Length; i++)
+                        {
+                            if (ImGui.Selectable($"LOD {i} - {Descriptor.Lods[i].VertexCount} vertices, {Descriptor.Lods[i].IndexCount} indices"))
+                            {
+                                // TODO: alter the culling to force the preview of the selected LOD
+                            }
+                        }
+
+                        ImGui.EndCombo();
+                    }
+                });
+                
+                ImGui.TreePop();
+            }
+        }
         
         EditorUI.CollapsingTable("Materials", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
@@ -147,7 +154,7 @@ public class PrimitiveComponent<TVertex, TPerDrawData> : PrimitiveComponent<TVer
 {
     protected PrimitiveComponent(TPrimitiveData<TVertex> primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        SetGeometry(FGuid.Random(), primitive, bounds);
+        Descriptor = new PrimitiveDescriptor2<TVertex>(bounds, () => primitive);
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)

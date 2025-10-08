@@ -2,7 +2,7 @@
 using Serilog;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Systems;
 

@@ -1,5 +1,9 @@
-﻿namespace Snooper.Rendering.Components.Primitive;
+﻿namespace Snooper.Rendering.Components.Descriptors;
 
+/// <summary>
+/// TODO: rename and move somewhere else
+/// </summary>
+/// <param name="bounds"></param>
 public unsafe struct PrimitiveDescriptor(CullingBounds bounds)
 {
     public CullingBounds Bounds = bounds;
@@ -11,7 +15,7 @@ public unsafe struct PrimitiveDescriptor(CullingBounds bounds)
     public fixed uint LOD_SectionOffset[Settings.MaxNumberOfLods];
 }
 
-public struct PrimitiveSectionDescriptor(uint firstIndex, uint indexCount, uint materialIndex)
+public struct SectionDescriptor(uint firstIndex, uint indexCount, uint materialIndex)
 {
     public readonly uint FirstIndex = firstIndex;
     public readonly uint IndexCount = indexCount;
