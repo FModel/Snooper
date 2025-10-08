@@ -3,8 +3,11 @@ using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Material;
+using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Misc;
+using CUE4Parse.UE4.Objects.UObject;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core;
@@ -42,20 +45,55 @@ public struct PerDrawMeshData : IPerDrawData
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
 {
-    protected ResolvedObject?[] MaterialsToParse { get; init; } = [];
+    private ResolvedObject?[] _materials { get; set; } = [];
+    private readonly ResolvedObject?[]? _overrideMaterials;
 
-    protected MeshComponent(ResolvedObject?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
+    protected MeshComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
-        MaterialsToParse = materials;
+        
     }
 
     protected MeshComponent(UMeshComponent component) : base(component)
     {
-        
+        var overrideMaterials = component.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []);
+        if (overrideMaterials.Length > 0)
+        {
+            _overrideMaterials = new ResolvedObject?[overrideMaterials.Length];
+            for (var i = 0; i < overrideMaterials.Length; i++)
+            {
+                if (overrideMaterials[i].IsNull) continue;
+                _overrideMaterials[i] = overrideMaterials[i].ResolvedObject;
+            }
+        }
+    }
+
+    protected void SetGeometry(UStaticMesh owner, CStaticMesh mesh)
+    {
+        Path = owner.Name;
+        SetGeometry(owner.LightingGuid, owner.Materials, mesh.LODs, mesh.BoundingBox);
+    }
+
+    protected void SetGeometry(USkeletalMesh owner, CSkeletalMesh mesh)
+    {
+        Path = owner.Name;
+        SetGeometry(new FGuid((uint)owner.Name.GetHashCode()), owner.Materials, mesh.LODs, mesh.BoundingBox);
     }
     
-    protected void SetGeometry(FGuid guid, IReadOnlyList<CBaseMeshLod> levels, CullingBounds bounds)
+    private void SetGeometry(FGuid guid, ResolvedObject?[] materials, IReadOnlyList<CBaseMeshLod> levels, CullingBounds bounds)
     {
+        _materials = materials;
+        
+        if (_overrideMaterials != null)
+        {
+            for (var i = 0; i < _overrideMaterials.Length && i < _materials.Length; i++)
+            {
+                if (_overrideMaterials[i] != null)
+                {
+                    _materials[i] = _overrideMaterials[i];
+                }
+            }
+        }
+        
         var geometries = new LevelOfDetail<Vertex>[levels.Count];
         for (var i = 0; i < geometries.Length; i++)
         {
@@ -100,7 +138,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             Task.Run(() =>
             {
                 var materialIndex = Materials[index].MaterialIndex;
-                if (MaterialsToParse[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
+                if (_materials[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
                 {
                     var parameters = new CMaterialParams2();
                     material.GetParams(parameters, EMaterialFormat.FirstLayer);
@@ -180,7 +218,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 specularTex.SwizzlePerGame(projectName);
             }
         }
-
+        
         return new DrawDataContainer(
             new Texture2D(diffuse),
             normal != null ? new Texture2D(normal) : null,

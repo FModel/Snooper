@@ -3,7 +3,7 @@
 struct PerDrawData
 {
     bool IsReady;
-    vec3 Color;
+    vec3 LineColor;
 };
 
 layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
@@ -22,7 +22,7 @@ void main()
     vec3 color = vec3(0.75);
     if (drawData.IsReady)
     {
-        color = drawData.Color;
+        color = drawData.LineColor;
     }
     
     FragColor = vec4(color, 1.0);

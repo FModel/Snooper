@@ -66,7 +66,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         }
     }
 
-
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
     {
         resources.Add(Id, LevelOfDetails, Materials, GetPerInstanceData(), Bounds);

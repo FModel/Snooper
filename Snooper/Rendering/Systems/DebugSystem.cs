@@ -2,31 +2,13 @@
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, PerDrawDebugData>(500) // 500 because RenderSystem is 500
+public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, PerDrawDebugData>(500, PrimitiveType.Lines)
 {
     public override uint Order => 100;
     protected override bool AllowDerivation => true;
     protected override bool IsCulled => false;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default.vert", "debug.frag");
-    
-    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
-    {
-        _polygonMode = (PolygonMode)GL.GetInteger(GetPName.PolygonMode);
-        _bDiff = _polygonMode != PolygonMode.Line;
-        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
-        
-        base.PreRender(camera, batchIndex);
-    }
-    
-    private bool _bDiff;
-    private PolygonMode _polygonMode;
-
-    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
-    {
-        if (_bDiff) GL.PolygonMode(TriangleFace.FrontAndBack, _polygonMode);
-    }
 }

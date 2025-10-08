@@ -60,8 +60,8 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
     }
 }
 
-public class PrimitiveSystem<TComponent, TInstanceData, TPerDrawData>(int initialDrawCapacity)
-    : PrimitiveSystem<Vector3, TComponent, TInstanceData, TPerDrawData>(initialDrawCapacity)
+public class PrimitiveSystem<TComponent, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
+    : PrimitiveSystem<Vector3, TComponent, TInstanceData, TPerDrawData>(initialDrawCapacity, type)
     where TComponent : PrimitiveComponent<Vector3, TInstanceData, TPerDrawData>
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData

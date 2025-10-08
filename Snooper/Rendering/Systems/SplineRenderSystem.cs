@@ -1,5 +1,4 @@
 ﻿using Snooper.Core.Containers.Buffers;
-using Snooper.Core.Containers.Programs;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
@@ -10,12 +9,13 @@ public class SplineRenderSystem : DeferredRenderSystem
 {
     public override uint Order => 24;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("spline.vert", "geometry.frag");
     
     private readonly ShaderStorageBuffer<SplineMeshParams> _params = new(100);
     
     public override void Load()
     {
+        Shader.Vertex = "spline.vert";
+        
         base.Load();
         
         _params.Generate();

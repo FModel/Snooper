@@ -11,9 +11,9 @@ public abstract partial class ActorComponent
     public readonly uint Id = _nextId++;
     
     public readonly string Name;
-    protected readonly string? ExportType;
-    protected readonly string? InternalType;
     protected readonly string Header;
+    private readonly string? _exportType;
+    private readonly string? _internalType;
 
     private bool _isSelected;
     public bool IsSelected
@@ -33,9 +33,10 @@ public abstract partial class ActorComponent
     protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
     {
         Name = name ?? "Unnamed";
-        ExportType = exportType;
-        InternalType = internalType;
         Header = UpperCaseToSpace().Replace(GetType().Name[..^"Component".Length], " $1");
+        
+        _exportType = exportType;
+        _internalType = internalType;
     }
     
     protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType, component.GetType().Name)
@@ -62,8 +63,11 @@ public abstract partial class ActorComponent
     public bool IsDirty { get; private set; }
     internal virtual void MarkDirty() => IsDirty = true; // spatial components will override this to propagate to children
     internal virtual void MarkClean() => IsDirty = false;
-    
-    protected virtual void OnAddedToActor() { }
+
+    protected virtual void OnAddedToActor()
+    {
+        
+    }
     
     internal void DrawInterface()
     {
@@ -72,14 +76,14 @@ public abstract partial class ActorComponent
         ImGui.PushID((int)Id);
 
         var condition = false;
-        if (ExportType != null)
+        if (_exportType != null)
         {
-            ImGui.Text($"Export Type: {ExportType}");
+            ImGui.Text($"Export Type: {_exportType}");
             condition = true;
         }
-        if (InternalType != null)
+        if (_internalType != null)
         {
-            ImGui.Text($"Internal Type: {InternalType}");
+            ImGui.Text($"Internal Type: {_internalType}");
             condition = true;
         }
         if (condition)

@@ -10,6 +10,13 @@ public struct CullingBounds
     public readonly Vector3 Extents;
     public uint MaxLevelOfDetail;
 
+    public CullingBounds(Vector3 center, Vector3 extents)
+    {
+        Center = center;
+        Extents = extents;
+        SphereRadius = extents.Length();
+    }
+
     public CullingBounds(FBox box)
     {
         box *= Settings.GlobalScale;
