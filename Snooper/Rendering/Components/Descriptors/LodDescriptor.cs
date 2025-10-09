@@ -3,7 +3,7 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public class LodDescriptor<TVertex> where TVertex : unmanaged
+public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
 {
     public uint IndexCount { get; }
     public uint VertexCount { get; }
@@ -11,11 +11,12 @@ public class LodDescriptor<TVertex> where TVertex : unmanaged
     public SectionDescriptor[] Sections { get; }
 
     private TPrimitiveData<TVertex>? _primitive;
-    private readonly Func<TPrimitiveData<TVertex>> _factory;
+    private readonly Func<TPrimitiveData<TVertex>>? _factory;
     
     public LodDescriptor(TPrimitiveData<TVertex> primitive)
     {
         _primitive = primitive;
+        _factory = null;
 
         IndexCount = (uint)(_primitive?.Indices?.Length ?? 0);
         VertexCount = (uint)(_primitive?.Vertices?.Length ?? 0);
@@ -50,23 +51,31 @@ public class LodDescriptor<TVertex> where TVertex : unmanaged
             Sections[i] = new SectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
         }
         
-        // get rid of this by caching the whole primitive descriptor by guid
-        // so we dont convert and set the same mesh values multiple times, we can just reference it
-        var capturedVertices = new CMeshVertex[vertices.Length];
-        Array.Copy(vertices, capturedVertices, vertices.Length);
+        // capture vertices and indices for lazy factory creation
+        var cVertices = new CMeshVertex[vertices.Length];
+        Array.Copy(vertices, cVertices, vertices.Length);
 
-        var capturedIndices = new uint[indices.Length];
-        Array.Copy(indices, capturedIndices, indices.Length);
+        var cIndices = new uint[indices.Length];
+        Array.Copy(indices, cIndices, indices.Length);
         
-        _factory = () => factory(capturedVertices, capturedIndices);
+        _factory = () => factory(cVertices, cIndices);
     }
     
     internal TPrimitiveData<TVertex> CreatePrimitive()
     {
         if (_primitive != null)
             return _primitive;
+        
+        if (_factory == null)
+            throw new InvalidOperationException("Cannot create primitive: no factory available.");
             
         _primitive = _factory();
         return _primitive;
+    }
+
+    public void Dispose()
+    {
+        _primitive?.Dispose();
+        _primitive = null;
     }
 }

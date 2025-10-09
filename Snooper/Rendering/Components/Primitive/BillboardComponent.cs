@@ -22,7 +22,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
 {
     public BillboardComponent(UBillboardComponent component) : base(component)
     {
-        Descriptor = new PrimitiveDescriptor2<Vector2>(new CullingBounds(Vector3.Zero, Vector3.One / 4), () => new Geometry());
+        Descriptor = new PrimitiveDescriptor<Vector2>(new CullingBounds(Vector3.Zero, Vector3.One / 4), () => new Geometry());
 
         if (component.GetSprite() is { } sprite)
         {

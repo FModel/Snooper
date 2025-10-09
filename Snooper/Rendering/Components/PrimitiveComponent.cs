@@ -19,8 +19,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerDrawData : unmanaged, IPerDrawData
 {
-    private readonly PrimitiveDescriptor2<TVertex>? _descriptor;
-    public PrimitiveDescriptor2<TVertex> Descriptor
+    private readonly PrimitiveDescriptor<TVertex>? _descriptor;
+    public PrimitiveDescriptor<TVertex> Descriptor
     {
         get => _descriptor ?? throw new InvalidOperationException("Descriptor has not been initialized. Set it during construction of derived classes.");
         protected init
@@ -154,7 +154,7 @@ public class PrimitiveComponent<TVertex, TPerDrawData> : PrimitiveComponent<TVer
 {
     protected PrimitiveComponent(TPrimitiveData<TVertex> primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        Descriptor = new PrimitiveDescriptor2<TVertex>(bounds, () => primitive);
+        Descriptor = new PrimitiveDescriptor<TVertex>(bounds, () => primitive);
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)

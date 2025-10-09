@@ -9,7 +9,8 @@ public class SplineRenderSystem : DeferredRenderSystem
 {
     public override uint Order => 24;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
-    
+    protected override bool IsCulled => false; // TODO: alter the bounding box based on the spline params, then restore culling
+
     private readonly ShaderStorageBuffer<SplineMeshParams> _params = new(100);
     
     public override void Load()

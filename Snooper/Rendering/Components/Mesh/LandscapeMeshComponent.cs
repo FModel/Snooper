@@ -39,7 +39,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
         var sizeQuads = (uint)component.ComponentSizeQuads;
-        Descriptor = new PrimitiveDescriptor2<Vector2>(sizeQuads, component.CachedLocalBox, id => new Geometry(id));
+        Descriptor = PrimitiveDescriptor<Vector2>.GetOrCreate(sizeQuads, component.CachedLocalBox, id => new Geometry(id));
         
         if (component.GetHeightmap() is not { } heightmap)
         {

@@ -8,11 +8,11 @@ public class SkeletalMeshComponent : MeshComponent
 {
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh) : base(skeletalMesh.Materials, null, skeletalMesh.Name)
     {
-        Descriptor = new PrimitiveDescriptor2<Vertex>(skeletalMesh, (vertices, indices) => new Geometry(vertices, indices));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices) => new Geometry(vertices, indices));
     }
     
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh, USkeletalMeshComponent component) : base(skeletalMesh.Materials, component)
     {
-        Descriptor = new PrimitiveDescriptor2<Vertex>(skeletalMesh, (vertices, indices) => new Geometry(vertices, indices));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices) => new Geometry(vertices, indices));
     }
 }

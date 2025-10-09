@@ -8,12 +8,12 @@ public class StaticMeshComponent : MeshComponent
 {
     public StaticMeshComponent(UStaticMesh staticMesh) : base(staticMesh.Materials, null, staticMesh.Name)
     {
-        Descriptor = new PrimitiveDescriptor2<Vertex>(staticMesh, (vertices, indices) => new Geometry(vertices, indices));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices) => new Geometry(vertices, indices));
     }
     
     public StaticMeshComponent(UStaticMesh staticMesh, UStaticMeshComponent component) : base(staticMesh.Materials, component)
     {
-        Descriptor = new PrimitiveDescriptor2<Vertex>(staticMesh, (vertices, indices) => new Geometry(vertices, indices));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices) => new Geometry(vertices, indices));
         
         // TODO: use component.LODData to override some stuff (eg vertex colors)
     }

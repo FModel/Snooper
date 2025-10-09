@@ -46,7 +46,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _drawData.Unbind();
     }
     
-    public void Add(uint pickingId, PrimitiveDescriptor2<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
+    public void Add(uint pickingId, PrimitiveDescriptor<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
     {
         var handle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
         

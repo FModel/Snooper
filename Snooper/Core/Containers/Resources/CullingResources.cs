@@ -8,7 +8,7 @@ namespace Snooper.Core.Containers.Resources;
 
 public class CullingResources(int initialDrawCapacity) : IDisposable
 {
-    private readonly ShaderStorageBuffer<PrimitiveDescriptor> _primitives = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new(initialDrawCapacity);
     private readonly ShaderStorageBuffer<SectionDescriptor> _sections = new(initialDrawCapacity);
     private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
     {
@@ -27,7 +27,7 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
     public void Allocate(uint componentCount, uint drawCount)
     {
         _primitives.Bind();
-        _primitives.Allocate(new PrimitiveDescriptor[componentCount]);
+        _primitives.Allocate(new PrimitiveOffsets[componentCount]);
         _primitives.Unbind();
         
         _sections.Bind();
@@ -44,10 +44,10 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         return sectionOffset;
     }
 
-    public int Add(PrimitiveDescriptor descriptor)
+    public int Add(PrimitiveOffsets offsets)
     {
         _primitives.Bind();
-        var modelId = _primitives.Add(descriptor);
+        var modelId = _primitives.Add(offsets);
         _primitives.Unbind();
         
         return modelId;
