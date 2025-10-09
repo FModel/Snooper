@@ -106,7 +106,7 @@ public class LevelActor : Actor
                     USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
                     UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
-                    // UAudioComponent audioComponent => new AudioComponent(audioComponent), // TODO: disabled for now
+                    UAudioComponent audioComponent => new AudioComponent(audioComponent),
                     _ => new SpatialComponent(sceneComponent)
                 };
                 break;

@@ -23,7 +23,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     {
         base.Load();
         
-        _device = ALC.OpenDevice(null);
+        // _device = ALC.OpenDevice(null);
         if (_device == ALDevice.Null)
         {
             Log.Error("Failed to open OpenAL device");
@@ -56,9 +56,9 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
                 Log.Warning("Failed to load audio buffer for {Sound}", component.Sound.Name);
                 return;
             }
-
+        
             Log.Debug("Creating audio source with buffer {BufferId} for component {Name}", buffer, component.Name);
-
+        
             var source = new AudioSource(buffer);
             source.SetLooping(component.IsLooping);
             source.SetGain(component.Volume);
@@ -67,7 +67,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
             
             var position = component.WorldMatrix.Translation;
             source.SetPosition(position.X, position.Y, position.Z);
-
+        
             _activeSources[component] = source;
         }
     }
@@ -78,7 +78,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
         if (_context == ALContext.Null) return;
 
-        foreach (var (component, source) in _activeSources.ToArray())
+        foreach (var (component, source) in _activeSources)
         {
             if (component.Sound == null)
             {
