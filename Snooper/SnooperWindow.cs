@@ -48,6 +48,7 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<DeferredRenderSystem>();
         ActorManager.RegisterSystemFactory<SplineRenderSystem>();
         ActorManager.RegisterSystemFactory<BillboardSystem>();
+        ActorManager.RegisterSystemFactory<AudioSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
         
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie

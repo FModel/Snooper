@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-        <DefineConstants>CAT</DefineConstants>
+        <DefineConstants>FN</DefineConstants>
     </PropertyGroup>
 
 </Project>

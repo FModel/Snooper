@@ -83,6 +83,11 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
             pair.CombineRendering();
             pair.ApplyFxaa();
         }
+
+        if (ActiveCamera != null)
+        {
+            Render(ActiveCamera, ActorSystemType.Audio);
+        }
     }
 
     protected override void AddComponent(ActorComponent component, Actor actor)

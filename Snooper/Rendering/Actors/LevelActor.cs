@@ -10,6 +10,7 @@ using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
@@ -105,6 +106,7 @@ public class LevelActor : Actor
                     USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
                     UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
+                    // UAudioComponent audioComponent => new AudioComponent(audioComponent), // TODO: disabled for now
                     _ => new SpatialComponent(sceneComponent)
                 };
                 break;
