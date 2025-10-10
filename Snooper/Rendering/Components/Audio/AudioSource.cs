@@ -55,7 +55,7 @@ public class AudioSource : IDisposable
 
     public void SetGain(float gain)
     {
-        AL.Source(_sourceId, ALSourcef.Gain, Math.Clamp(gain, 0f, 1f));
+        AL.Source(_sourceId, ALSourcef.Gain, Math.Clamp(gain, 0f, 10f));
     }
 
     public void SetPitch(float pitch)

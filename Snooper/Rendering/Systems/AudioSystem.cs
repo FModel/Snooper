@@ -1,4 +1,6 @@
 ﻿using System.Numerics;
+using System.Runtime.InteropServices;
+using ImGuiNET;
 using OpenTK.Audio.OpenAL;
 using Serilog;
 using Snooper.Core.Systems;
@@ -16,20 +18,30 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     
     private ALDevice _device;
     private ALContext _context;
+    private float _volume = 0.5f;
+    private string[] _outputDevices = [];
+    private string _selectedDevice = string.Empty;
     private readonly Dictionary<AudioComponent, AudioSource> _activeSources = [];
     private readonly AudioCache _audioCache = new();
+    private AlcReopenDeviceSoft? _alcReopenDeviceSoft;
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate bool AlcReopenDeviceSoft(IntPtr device, string deviceName, IntPtr attribs);
+    
     public override void Load()
     {
         base.Load();
         
-        // _device = ALC.OpenDevice(null);
+        _device = ALC.OpenDevice(null);
         if (_device == ALDevice.Null)
         {
             Log.Error("Failed to open OpenAL device");
             return;
         }
-
+        
+        _selectedDevice = ALC.GetString(ALDevice.Null, AlcGetString.DefaultDeviceSpecifier);
+        _outputDevices = ALC.GetString(AlcGetStringList.AllDevicesSpecifier).ToArray();
+        
         _context = ALC.CreateContext(_device, (int[])null!);
         if (_context == ALContext.Null)
         {
@@ -61,7 +73,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         
             var source = new AudioSource(buffer);
             source.SetLooping(component.IsLooping);
-            source.SetGain(component.Volume);
+            source.SetGain(_volume * component.VolumeMultiplier);
             source.SetPitch(component.Pitch);
             source.SetReferenceDistance(component.AttenuationDistance);
             
@@ -70,6 +82,21 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         
             _activeSources[component] = source;
         }
+        
+        if (!ALC.IsExtensionPresent(_device, "ALC_SOFT_reopen_device"))
+        {
+            Log.Error("ALC_SOFT_reopen_device extension not available. Use OpenAL-Soft");
+            return;
+        }
+
+        var funcPtr = ALC.GetProcAddress(_device, "alcReopenDeviceSOFT");
+        if (funcPtr == IntPtr.Zero)
+        {
+            Log.Error("Could not get pointer for alcReopenDeviceSOFT");
+            return;
+        }
+        
+        _alcReopenDeviceSoft = Marshal.GetDelegateForFunctionPointer<AlcReopenDeviceSoft>(funcPtr);
     }
 
     public override void Update(float delta)
@@ -95,6 +122,8 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
             {
                 source.Stop();
             }
+            
+            source.SetGain(component.VolumeMultiplier * _volume);
         }
     }
 
@@ -165,9 +194,51 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         }
     }
 
+    private void SwitchAudioDevice(string deviceName)
+    {
+        if (_device == ALDevice.Null)
+        {
+            Log.Error("Failed to get ALDevice");
+            return;
+        }
+
+        if (_alcReopenDeviceSoft == null)
+        {
+            Log.Error("Failed to get delegate for alcReopenDeviceSOFT. Device switching will not be available.");
+            return;
+        }
+        
+        if (_alcReopenDeviceSoft(_device, deviceName, IntPtr.Zero))
+        {
+            Log.Information("Successfully switched Output Device from {OldDevice} to {NewDevice}", _selectedDevice, deviceName);
+            _selectedDevice = deviceName;
+        }
+        else
+        {
+            Log.Error("Unable to switch Output Device");
+        }
+
+        CheckAlError("Reopen Device");
+    }
+
     public void DrawControls()
     {
-        // TODO: select output device, etc
+        ImGui.DragFloat("Global Volume", ref _volume);
+        if (ImGui.BeginCombo("Output Device", _selectedDevice))
+        {
+            foreach (var outputDevice in _outputDevices)
+            {
+                if (ImGui.Selectable(outputDevice))
+                {
+                    SwitchAudioDevice(outputDevice);
+                }
+                
+                if (outputDevice == _selectedDevice) 
+                    ImGui.SetItemDefaultFocus();
+            }
+            
+            ImGui.EndCombo();
+        }
     }
 }
 
