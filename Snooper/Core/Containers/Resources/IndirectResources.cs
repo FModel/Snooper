@@ -2,9 +2,9 @@
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Containers.Resources;
 

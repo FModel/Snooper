@@ -77,7 +77,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         
         if (Enabled)
             _controller.Update(Window, delta);
-        else if (Window.IsMouseButtonPressed(MouseButton.Left))
+        else if (Window.IsMouseButtonPressed(MouseButton.Right))
             Window.CursorState = CursorState.Grabbed;
         
         if (ActiveCamera is null && Pairs.Count > 0)
@@ -93,7 +93,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         if (Window.CursorState == CursorState.Grabbed)
         {
             ActiveCamera?.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
-            if (Window.IsMouseButtonReleased(MouseButton.Left)) Window.CursorState = CursorState.Normal;
+            if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
         }
         
         base.Update(delta);

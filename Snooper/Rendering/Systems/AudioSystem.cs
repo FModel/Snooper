@@ -86,12 +86,12 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
                 continue;
             }
 
-            if (component.ForcePlay && !source.IsPlaying)
+            if (component.ShouldPlay && !source.IsPlaying)
             {
                 source.Play();
             }
             
-            if (source.IsPlaying && !component.ForcePlay)
+            if (source.IsPlaying && !component.ShouldPlay)
             {
                 source.Stop();
             }

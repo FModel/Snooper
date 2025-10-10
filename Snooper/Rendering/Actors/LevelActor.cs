@@ -1,4 +1,5 @@
 ﻿using CUE4Parse.UE4.Assets.Exports;
+using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
@@ -9,7 +10,6 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
@@ -107,6 +107,13 @@ public class LevelActor : Actor
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
                     UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
                     UAudioComponent audioComponent => new AudioComponent(audioComponent),
+                    UShapeComponent { Outer: not ALevelBounds } shape => shape switch // exclude level bounds because their scale looks weird and overall they provide little value
+                    {
+                        UBoxComponent boxComponent => new BoxComponent(boxComponent),
+                        USphereComponent sphereComponent => new SphereComponent(sphereComponent),
+                        UCapsuleComponent capsuleComponent => new CapsuleComponent(capsuleComponent),
+                        _ => new SpatialComponent(shape)
+                    },
                     _ => new SpatialComponent(sceneComponent)
                 };
                 break;

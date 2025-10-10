@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
+using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
@@ -146,13 +147,17 @@ void main()
         var mState = wnd.MouseState;
         var kState = wnd.KeyboardState;
 
-        io.AddMousePosEvent(mState.X, mState.Y);
-        io.AddMouseButtonEvent(0, mState[MouseButton.Left]);
-        io.AddMouseButtonEvent(1, mState[MouseButton.Right]);
-        io.AddMouseButtonEvent(2, mState[MouseButton.Middle]);
-        io.AddMouseButtonEvent(3, mState[MouseButton.Button1]);
-        io.AddMouseButtonEvent(4, mState[MouseButton.Button2]);
-        io.AddMouseWheelEvent(mState.ScrollDelta.X, mState.ScrollDelta.Y);
+        // Only send mouse events to ImGui when cursor is not grabbed
+        if (wnd.CursorState != CursorState.Grabbed)
+        {
+            io.AddMousePosEvent(mState.X, mState.Y);
+            io.AddMouseButtonEvent(0, mState[MouseButton.Left]);
+            io.AddMouseButtonEvent(1, mState[MouseButton.Right]);
+            io.AddMouseButtonEvent(2, mState[MouseButton.Middle]);
+            io.AddMouseButtonEvent(3, mState[MouseButton.Button1]);
+            io.AddMouseButtonEvent(4, mState[MouseButton.Button2]);
+            io.AddMouseWheelEvent(mState.ScrollDelta.X, mState.ScrollDelta.Y);
+        }
 
         foreach (Keys key in Enum.GetValues<Keys>())
         {

@@ -46,7 +46,8 @@ public class NotificationManager
 
             const ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize |
                                            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse |
-                                           ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.AlwaysAutoResize;
+                                           ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.AlwaysAutoResize |
+                                           ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoInputs;
 
             ImGui.Begin($"##Notification{i}", flags);
             ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);

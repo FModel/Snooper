@@ -9,6 +9,7 @@ using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
@@ -59,30 +60,16 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                         Notifications.PushNotification("Camera", $"Movement speed set to {pair.Camera.MovementSpeed}.");
                     }
 
-                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
                     {
                         Window.CursorState = CursorState.Grabbed;
                     }
 
-                    var right = ImGui.IsMouseClicked(ImGuiMouseButton.Right);
-                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Middle) || right)
+                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                     {
                         SelectedComponentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
                         ImGui.SetWindowFocus("Scene Hierarchy");
                     }
-                    
-                    if (right && SelectedComponent?.Actor != null)
-                    {
-                        ImGui.OpenPopup("ViewportContext");
-                    }
-                }
-                
-                if (ImGui.BeginPopup("ViewportContext"))
-                {
-                    if (SelectedComponent?.Actor != null)
-                        DrawActorCreationMenu(SelectedComponent.Actor);
-
-                    ImGui.EndPopup();
                 }
 
                 const float margin = 7.5f;
@@ -125,7 +112,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 );
 
                 var col = ImGui.GetColorU32(new Vector4(1.00f, 1.00f, 1.00f, 0.50f));
-                const string label1 = "F10: Toggle UI | MMB: Select Object";
+                const string label1 = "F10: Toggle UI | LMB: Select Object | RMB: Move Camera | Scroll: Adjust Speed";
                 drawList.AddText(
                     new Vector2(pos.X + size.X - ImGui.CalcTextSize(label1).X - margin, pos.Y + margin),
                     col, label1

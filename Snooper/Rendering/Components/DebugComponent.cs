@@ -1,8 +1,10 @@
 ﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -16,8 +18,13 @@ public struct PerDrawDebugData : IPerDrawData
 }
 
 [DefaultActorSystem(typeof(DebugSystem))]
-public class DebugComponent(PrimitiveData primitive, CullingBounds bounds, string? name = null) : PrimitiveComponent<PerDrawDebugData>(primitive, bounds, null, name)
+public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
 {
+    public DebugComponent(PrimitiveData primitive, CullingBounds bounds, string? name = null) : base(primitive, bounds, null, name)
+    {
+        
+    }
+    
     public DebugComponent(CullingBounds bounds, Vector3? color = null, string? name = null) : this(new Geometry(bounds), bounds, name)
     {
         if (color != null)
@@ -25,8 +32,13 @@ public class DebugComponent(PrimitiveData primitive, CullingBounds bounds, strin
             Materials[0].DrawDataContainer = new DrawDataContainer(color.Value);
         }
     }
+
+    protected DebugComponent(UShapeComponent component) : base(component)
+    {
+        
+    }
     
-    private class DrawDataContainer(Vector3 color) : IDrawDataContainer
+    protected class DrawDataContainer(Vector3 color) : IDrawDataContainer
     {
         public bool HasTextures => false;
         public bool IsTranslucent => false;
@@ -55,28 +67,26 @@ public class DebugComponent(PrimitiveData primitive, CullingBounds bounds, strin
         }
     }
 
-    private class Geometry : PrimitiveData
+    protected class Geometry : PrimitiveData
     {
         public Geometry(CullingBounds bounds) : this(bounds.Center, bounds.Extents)
         {
             
         }
         
-        public Geometry(CullingBounds bounds, bool isSphere) : this(bounds.Center, bounds.Extents, isSphere)
+        public Geometry(Vector3 center, Vector3 extents)
         {
-            
+            BuildBox(center, extents);
         }
-
-        private Geometry(Vector3 center, Vector3 extents, bool isSphere = false)
+        
+        public Geometry(float sphereRadius)
         {
-            if (isSphere)
-            {
-                BuildSphere(center, extents);
-            }
-            else
-            {
-                BuildBox(center, extents);
-            }
+            BuildSphere(Vector3.Zero, new Vector3(sphereRadius));
+        }
+        
+        public Geometry(float radius, float halfHeight)
+        {
+            BuildCapsule(Vector3.Zero, radius, halfHeight);
         }
         
         private void BuildSphere(Vector3 center, Vector3 extents)
@@ -140,13 +150,11 @@ public class DebugComponent(PrimitiveData primitive, CullingBounds bounds, strin
             
             Vertices = vertices.ToArray();
             
-            // Indices are simply sequential since we already paired the vertices
-            var indices = new List<uint>();
-            for (uint i = 0; i < vertices.Count; i++)
+            Indices = new uint[Vertices.Length];
+            for (uint i = 0; i < Indices.Length; i++)
             {
-                indices.Add(i);
+                Indices[i] = i;
             }
-            Indices = indices.ToArray();
         }
         
         private void BuildBox(Vector3 center, Vector3 extents)
@@ -162,55 +170,164 @@ public class DebugComponent(PrimitiveData primitive, CullingBounds bounds, strin
             
             Vertices =
             [
-                // Corner 0 (---): lines along X, Y, Z axes
-                c0, c1,  // X-axis to corner 1
-                c0, c3,  // Y-axis to corner 3
-                c0, c4,  // Z-axis to corner 4
-                
-                // Corner 1 (+--): lines along Y, Z axes (X already covered)
-                c1, c2,  // Y-axis to corner 2
-                c1, c5,  // Z-axis to corner 5
-                
-                // Corner 2 (+--): lines along Z axis (X, Y already covered)
-                c2, c6,  // Z-axis to corner 6
-                
-                // Corner 3 (-+-): lines along Z axis (X, Y already covered)
-                c3, c2,  // X-axis to corner 2
-                c3, c7,  // Z-axis to corner 7
-                
-                // Corner 4 (--+): lines along X, Y axes (Z already covered)
-                c4, c5,  // X-axis to corner 5
-                c4, c7,  // Y-axis to corner 7
-                
-                // Corner 5 (+-+): lines along Y axis (X, Z already covered)
-                c5, c6,  // Y-axis to corner 6
-                
-                // Corner 6 (+++): all edges already covered
-                
-                // Corner 7 (-++): lines along X axis (Y, Z already covered)
-                c7, c6   // X-axis to corner 6
+                c0, c1,
+                c0, c3,
+                c0, c4,
+                c1, c2,
+                c1, c5,
+                c2, c6,
+                c3, c2,
+                c3, c7,
+                c4, c5,
+                c4, c7,
+                c5, c6,
+                c7, c6 
             ];
 
             Indices =
             [
-                // Bottom face (4 edges)
-                0, 1,    // c0 to c1
-                2, 3,    // c0 to c3
-                4, 5,    // c1 to c2
-                6, 7,    // c3 to c2
-                
-                // Top face (4 edges)
-                8, 9,    // c4 to c5
-                10, 11,  // c4 to c7
-                12, 13,  // c5 to c6
-                14, 15,  // c7 to c6
-                
-                // Vertical edges (4 edges)
-                16, 17,  // c0 to c4
-                18, 19,  // c1 to c5
-                20, 21,  // c2 to c6
-                22, 23   // c3 to c7
+                0, 1,
+                2, 3,
+                4, 5,
+                6, 7,
+                8, 9,
+                10, 11,
+                12, 13,
+                14, 15,
+                16, 17,
+                18, 19,
+                20, 21,
+                22, 23 
             ];
+        }
+        
+        private void BuildCapsule(Vector3 center, float radius, float halfHeight)
+        {
+            const int segments = 12; // Number of segments around the capsule
+            const int capSegments = 4; // Number of segments for each hemisphere cap
+            
+            var vertices = new List<Vector3>();
+            
+            // In Unreal, halfHeight includes the hemisphere caps
+            // So the cylindrical part extends from (halfHeight - radius) to -(halfHeight - radius)
+            var cylinderHalfHeight = halfHeight - radius;
+            
+            // Calculate the top and bottom centers of the cylindrical part (Y is up)
+            var topCenter = center with { Y = center.Y + cylinderHalfHeight };
+            var bottomCenter = center with { Y = center.Y - cylinderHalfHeight };
+            
+            // Generate points around the circumference at different heights
+            var cylinderRings = new Vector3[2, segments];
+            
+            // Bottom ring of cylinder (XZ plane)
+            for (var i = 0; i < segments; i++)
+            {
+                var angle = 2.0f * MathF.PI * i / segments;
+                var x = MathF.Cos(angle) * radius;
+                var z = MathF.Sin(angle) * radius;
+                cylinderRings[0, i] = new Vector3(bottomCenter.X + x, bottomCenter.Y, bottomCenter.Z + z);
+            }
+            
+            // Top ring of cylinder (XZ plane)
+            for (var i = 0; i < segments; i++)
+            {
+                var angle = 2.0f * MathF.PI * i / segments;
+                var x = MathF.Cos(angle) * radius;
+                var z = MathF.Sin(angle) * radius;
+                cylinderRings[1, i] = new Vector3(topCenter.X + x, topCenter.Y, topCenter.Z + z);
+            }
+            
+            // Draw vertical lines connecting bottom and top rings
+            for (var i = 0; i < segments; i++)
+            {
+                vertices.Add(cylinderRings[0, i]);
+                vertices.Add(cylinderRings[1, i]);
+            }
+            
+            // Draw circumference rings
+            for (var i = 0; i < segments; i++)
+            {
+                var next = (i + 1) % segments;
+                vertices.Add(cylinderRings[0, i]);
+                vertices.Add(cylinderRings[0, next]);
+                
+                vertices.Add(cylinderRings[1, i]);
+                vertices.Add(cylinderRings[1, next]);
+            }
+            
+            // Generate bottom hemisphere cap
+            var bottomCapRings = new Vector3[capSegments + 1, segments];
+            for (var ring = 0; ring <= capSegments; ring++)
+            {
+                var phi = MathF.PI / 2 + (MathF.PI / 2) * ring / capSegments; // PI/2 to PI
+                var ringRadius = MathF.Sin(phi) * radius;
+                var y = MathF.Cos(phi) * radius;
+                
+                for (var i = 0; i < segments; i++)
+                {
+                    var angle = 2.0f * MathF.PI * i / segments;
+                    var x = MathF.Cos(angle) * ringRadius;
+                    var z = MathF.Sin(angle) * ringRadius;
+                    bottomCapRings[ring, i] = new Vector3(bottomCenter.X + x, bottomCenter.Y + y, bottomCenter.Z + z);
+                }
+            }
+            
+            // Draw bottom hemisphere lines
+            for (var ring = 0; ring < capSegments; ring++)
+            {
+                for (var i = 0; i < segments; i++)
+                {
+                    var next = (i + 1) % segments;
+                    // Horizontal lines
+                    vertices.Add(bottomCapRings[ring, i]);
+                    vertices.Add(bottomCapRings[ring, next]);
+                    
+                    // Vertical lines
+                    vertices.Add(bottomCapRings[ring, i]);
+                    vertices.Add(bottomCapRings[ring + 1, i]);
+                }
+            }
+            
+            // Generate top hemisphere cap
+            var topCapRings = new Vector3[capSegments + 1, segments];
+            for (var ring = 0; ring <= capSegments; ring++)
+            {
+                var phi = MathF.PI / 2 * ring / capSegments; // 0 to PI/2
+                var ringRadius = MathF.Sin(phi) * radius;
+                var y = MathF.Cos(phi) * radius;
+                
+                for (var i = 0; i < segments; i++)
+                {
+                    var angle = 2.0f * MathF.PI * i / segments;
+                    var x = MathF.Cos(angle) * ringRadius;
+                    var z = MathF.Sin(angle) * ringRadius;
+                    topCapRings[ring, i] = new Vector3(topCenter.X + x, topCenter.Y + y, topCenter.Z + z);
+                }
+            }
+            
+            // Draw top hemisphere lines
+            for (var ring = 0; ring < capSegments; ring++)
+            {
+                for (var i = 0; i < segments; i++)
+                {
+                    var next = (i + 1) % segments;
+                    // Horizontal lines
+                    vertices.Add(topCapRings[ring, i]);
+                    vertices.Add(topCapRings[ring, next]);
+                    
+                    // Vertical lines
+                    vertices.Add(topCapRings[ring, i]);
+                    vertices.Add(topCapRings[ring + 1, i]);
+                }
+            }
+            
+            Vertices = vertices.ToArray();
+            
+            Indices = new uint[Vertices.Length];
+            for (uint i = 0; i < Indices.Length; i++)
+            {
+                Indices[i] = i;
+            }
         }
     }
 }

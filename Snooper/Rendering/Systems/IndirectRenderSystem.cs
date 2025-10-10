@@ -3,8 +3,8 @@ using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 

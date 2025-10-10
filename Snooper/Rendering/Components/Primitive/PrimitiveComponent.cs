@@ -12,7 +12,7 @@ using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
-namespace Snooper.Rendering.Components;
+namespace Snooper.Rendering.Components.Primitive;
 
 public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : SpatialComponent
     where TVertex : unmanaged
@@ -22,7 +22,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     private readonly PrimitiveDescriptor<TVertex>? _descriptor;
     public PrimitiveDescriptor<TVertex> Descriptor
     {
-        get => _descriptor ?? throw new InvalidOperationException("Descriptor has not been initialized. Set it during construction of derived classes.");
+        get => _descriptor ?? throw new InvalidOperationException($"Descriptor not initialized for {Name} of type {GetType().Name}.");
         protected init
         {
             _descriptor = value;
@@ -159,13 +159,24 @@ public class PrimitiveComponent<TVertex, TPerDrawData> : PrimitiveComponent<TVer
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
+        
     }
 }
 
 /// <inheritdoc />
-public class PrimitiveComponent<TPerDrawData>(PrimitiveData primitive, CullingBounds bounds, Transform? transform = null, string? name = null)
-    : PrimitiveComponent<Vector3, TPerDrawData>(primitive, bounds, transform, name)
-    where TPerDrawData : unmanaged, IPerDrawData;
+public class PrimitiveComponent<TPerDrawData> : PrimitiveComponent<Vector3, TPerDrawData>
+    where TPerDrawData : unmanaged, IPerDrawData
+{
+    protected PrimitiveComponent(PrimitiveData primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(primitive, bounds, transform, name)
+    {
+        
+    }
+    
+    protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
+    {
+        
+    }
+}
 
 /// <inheritdoc />
 [DefaultActorSystem(typeof(PrimitiveSystem))]

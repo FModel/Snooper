@@ -13,7 +13,7 @@ public class AudioComponent : SpatialComponent
 {
     public readonly USoundBase? Sound;
     
-    public bool ForcePlay;
+    public bool ShouldPlay;
     public bool IsLooping { get; } = true;
     public float Volume { get; } = 1.0f;
     public float Pitch { get; } = 1.0f;
@@ -42,7 +42,7 @@ public class AudioComponent : SpatialComponent
         EditorUI.CollapsingTable("Audio", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Text("Sound", Sound?.Name ?? "N/A");
-            EditorUI.Checkbox("Play", ref ForcePlay);
+            EditorUI.Checkbox("Play", ref ShouldPlay);
         });
     }
 }

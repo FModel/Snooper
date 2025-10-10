@@ -71,7 +71,7 @@ public abstract partial class ActorComponent
     
     internal void DrawInterface()
     {
-        if (this is not IControllable controllable || this is DebugComponent) return;
+        if (this is not IControllable controllable) return;
 
         ImGui.PushID((int)Id);
 

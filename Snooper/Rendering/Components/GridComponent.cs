@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using Snooper.Core;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
