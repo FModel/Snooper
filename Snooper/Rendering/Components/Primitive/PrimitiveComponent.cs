@@ -41,11 +41,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
     public bool IsVisible { get; protected init; } = true;
-    
-    /// <summary>
-    /// Override LOD level. -1 means automatic LOD selection based on distance.
-    /// </summary>
-    public int OverrideLod { get; set; } = -1;
+    public int OverrideLod { get; protected set; } = -1;
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -129,27 +125,54 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
                     var value = OverrideLod;
                     var maxLod = Descriptor.Lods.Length - 1;
                     
-                    ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod);
-                    if (value != OverrideLod)
-                    {
-                        OverrideLod = value;
-                    }
+                    if (maxLod == 0) ImGui.BeginDisabled();
+                    if (ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod)) OverrideLod = value;
+                    if (maxLod == 0) ImGui.EndDisabled();
                     
                     ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                     ImGui.SetWindowFontScale(0.85f);
                     
+                    var lod = Descriptor.Lods[Math.Max(0, OverrideLod)];
                     switch (OverrideLod)
                     {
                         case -1:
                             ImGui.TextUnformatted("Auto (Distance-Based)");
                             break;
                         case >= 0 when OverrideLod < Descriptor.Lods.Length:
-                            ImGui.TextUnformatted($"LOD {OverrideLod}: {Descriptor.Lods[OverrideLod].VertexCount} vertices, {Descriptor.Lods[OverrideLod].IndexCount} indices, {Descriptor.Lods[OverrideLod].ScreenSize} screen size");
+                            ImGui.TextUnformatted($"LOD {OverrideLod}: {lod.VertexCount} vertices, {lod.IndexCount} indices, {lod.ScreenSize} screen size");
                             break;
                     }
                     
                     ImGui.SetWindowFontScale(1.0f);
                     ImGui.PopStyleVar();
+                    ImGui.EndGroup();
+                    
+                    EditorUI.Property($"Sections ({lod.Sections.Length})");
+                    ImGui.BeginGroup();
+                    
+                    if (lod.Sections.Length > 0)
+                    {
+                        var sectionIndex = 0;
+                        var maxSection = lod.Sections.Length - 1;
+                        
+                        if (maxSection == 0) ImGui.BeginDisabled();
+                        ImGui.SliderInt("##SectionSlider", ref sectionIndex, 0, maxSection);
+                        if (maxSection == 0) ImGui.EndDisabled();
+                        
+                        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
+                        ImGui.SetWindowFontScale(0.85f);
+                        
+                        var section = lod.Sections[sectionIndex];
+                        ImGui.TextUnformatted($"Section {sectionIndex}: Material {section.MaterialIndex}, {section.IndexCount} indices (offset {section.FirstIndex})");
+                        
+                        ImGui.SetWindowFontScale(1.0f);
+                        ImGui.PopStyleVar();
+                    }
+                    else
+                    {
+                        ImGui.TextDisabled("No Sections?");
+                    }
+                    
                     ImGui.EndGroup();
                 });
                 
