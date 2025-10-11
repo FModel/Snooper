@@ -42,6 +42,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
 
     public bool IsVisible { get; protected init; } = true;
     
+    /// <summary>
+    /// Override LOD level. -1 means automatic LOD selection based on distance.
+    /// </summary>
+    public int OverrideLod { get; set; } = -1;
+    
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
     }
@@ -117,20 +122,35 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
                     
                     // TODO: more shit
                     
-                    var i = 0;
                     EditorUI.Property($"LOD{(Descriptor.Lods.Length > 1 ? "s" : string.Empty)} ({Descriptor.Lods.Length})");
-                    if (ImGui.BeginCombo("##LODs", $"LOD {i} - {Descriptor.Lods[i].VertexCount} vertices, {Descriptor.Lods[i].IndexCount} indices"))
-                    {
-                        for (i = 0; i < Descriptor.Lods.Length; i++)
-                        {
-                            if (ImGui.Selectable($"LOD {i} - {Descriptor.Lods[i].VertexCount} vertices, {Descriptor.Lods[i].IndexCount} indices"))
-                            {
-                                // TODO: alter the culling to force the preview of the selected LOD
-                            }
-                        }
+                    ImGui.BeginGroup();
 
-                        ImGui.EndCombo();
+                    const int minLod = -1;
+                    var value = OverrideLod;
+                    var maxLod = Descriptor.Lods.Length - 1;
+                    
+                    ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod);
+                    if (value != OverrideLod)
+                    {
+                        OverrideLod = value;
                     }
+                    
+                    ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
+                    ImGui.SetWindowFontScale(0.85f);
+                    
+                    switch (OverrideLod)
+                    {
+                        case -1:
+                            ImGui.TextUnformatted("Auto (Distance-Based)");
+                            break;
+                        case >= 0 when OverrideLod < Descriptor.Lods.Length:
+                            ImGui.TextUnformatted($"LOD {OverrideLod}: {Descriptor.Lods[OverrideLod].VertexCount} vertices, {Descriptor.Lods[OverrideLod].IndexCount} indices, {Descriptor.Lods[OverrideLod].ScreenSize} screen size");
+                            break;
+                    }
+                    
+                    ImGui.SetWindowFontScale(1.0f);
+                    ImGui.PopStyleVar();
+                    ImGui.EndGroup();
                 });
                 
                 ImGui.TreePop();

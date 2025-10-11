@@ -59,6 +59,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         for (var i = 0u; i < materials.Length; i++)
         {
             materials[i].DrawMetadata.BaseInstance = (int)baseInstance;
+            materials[i].DrawMetadata.ModelId = handle.ModelId;
             materials[i].DrawMetadata.DrawId = _commands.Current.Add(new DrawElementsIndirectCommand
             {
                 IndexCount = primitive.Lods[0].Sections[i].IndexCount,
@@ -78,15 +79,24 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
     {
-        if (!component.IsDirty || component.Materials.Length < 1) return;
+        if (component.Materials.Length < 1) return;
         
         var metadata = component.Materials[0].DrawMetadata;
         
-        _instanceData.Bind();
-        _instanceData.Update(metadata.BaseInstance, component.GetPerInstanceData());
-        _instanceData.Unbind();
+        if (metadata.OverrideLod != component.OverrideLod)
+        {
+            _geometry.UpdateOverrideLod(metadata.ModelId, component.OverrideLod);
+            component.Materials[0].DrawMetadata.OverrideLod = component.OverrideLod;
+        }
         
-        component.MarkClean();
+        if (component.IsDirty)
+        {
+            _instanceData.Bind();
+            _instanceData.Update(metadata.BaseInstance, component.GetPerInstanceData());
+            _instanceData.Unbind();
+            
+            component.MarkClean();
+        }
     }
     
     public void Update(int drawId, TPerDrawData drawData)

@@ -11,6 +11,7 @@ struct PrimitiveDescriptor
     float sphereRadius;
     vec3 extents;
     uint maxLod;
+    int overrideLod; // -1 for automatic LOD selection, >= 0 to force a specific LOD
     uvec4 firstIndex[2]; // EBO offsets for each LOD
     uvec4 baseVertex[2]; // VBO offsets for each LOD
     vec4 screenSize[2];
@@ -141,20 +142,30 @@ void main()
         newCmd.BaseInstance = baseInstance + sMinVisible[0];
         newCmd.InstanceCount = sMaxVisible[0] - sMinVisible[0] + 1;
         
-        // if primitive has at least 2 lods, switch based on screen size
+        // if primitive has at least 2 lods, switch based on screen size or override
         if (primitive.maxLod > 0)
         {
-            float screenRadius = primitive.sphereRadius * uProjectionMatrix[1][1] / sClosestDist[0];
-            float screenSize = screenRadius * 2.0;
-
             uint chosenLod = 0u;
-            for (uint i = 1u; i <= primitive.maxLod; ++i)
+            
+            // Check if LOD override is set (>= 0)
+            if (primitive.overrideLod >= 0)
             {
-                float threshold = primitive.screenSize[i / 4u][i % 4u];
-                if (screenSize < threshold)
+                chosenLod = uint(primitive.overrideLod);
+            }
+            else
+            {
+                // Automatic LOD selection based on screen size
+                float screenRadius = primitive.sphereRadius * uProjectionMatrix[1][1] / sClosestDist[0];
+                float screenSize = screenRadius * 2.0;
+
+                for (uint i = 1u; i <= primitive.maxLod; ++i)
                 {
-                    chosenLod = i;
-                    break;
+                    float threshold = primitive.screenSize[i / 4u][i % 4u];
+                    if (screenSize < threshold)
+                    {
+                        chosenLod = i;
+                        break;
+                    }
                 }
             }
 

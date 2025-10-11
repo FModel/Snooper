@@ -101,6 +101,8 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands)
         where TInstanceData : unmanaged, IPerInstanceData => _culling.Cull(camera, instances, commands);
     
+    public void UpdateOverrideLod(uint modelId, int overrideLod) => _culling.UpdateOverrideLod((int)modelId, overrideLod);
+    
     public void Render(Action mdi)
     {
         _vao.Bind();

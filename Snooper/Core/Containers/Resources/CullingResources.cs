@@ -53,6 +53,13 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         return modelId;
     }
     
+    public void UpdateOverrideLod(int modelId, int overrideLod)
+    {
+        _primitives.Bind();
+        GL.BufferSubData(BufferTarget.ShaderStorageBuffer, modelId * _primitives.Stride + 32, 4, ref overrideLod);
+        _primitives.Unbind();
+    }
+    
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
     {
         var frustum = camera.GetWorldFrustumPlanes();
