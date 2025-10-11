@@ -86,6 +86,8 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             });
         }
     }
+    
+    internal override string Icon => "mountain";
 
     private class DrawDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, FWeightmapLayerAllocationInfo[] allocations) : IDrawDataContainer
     {

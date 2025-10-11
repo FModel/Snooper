@@ -34,6 +34,8 @@ public class AudioComponent : SpatialComponent
             AttenuationDistance = attenuation.FalloffDistance * Settings.GlobalScale;
         }
     }
+    
+    internal override string Icon => "audio";
 
     public override void DrawControls()
     {

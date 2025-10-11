@@ -12,7 +12,7 @@ namespace Snooper.Rendering.Systems;
 public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 {
     public override ActorSystemType SystemType => ActorSystemType.Audio;
-    public override uint Order => 99;
+    public override uint Order => 100;
     
     private ALDevice _device;
     private ALContext _context;

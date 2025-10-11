@@ -29,6 +29,8 @@ public abstract partial class ActorComponent
             Actor?.ComputeSelected();
         }
     }
+    
+    internal virtual string Icon => "component";
 
     protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
     {

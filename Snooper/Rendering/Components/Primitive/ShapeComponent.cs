@@ -16,6 +16,8 @@ public abstract class ShapeComponent : DebugComponent
             Color = new Vector3(color.R, color.G, color.B) / 255f;
         }
     }
+    
+    internal override string Icon => "circle-dashed";
 }
 
 public class BoxComponent : ShapeComponent

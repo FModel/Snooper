@@ -1,10 +1,12 @@
 ﻿using System.Numerics;
+using System.Reflection;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
+using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -16,8 +18,9 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
     
     private WindowState _pWindowState;
-    
+
     protected bool Enabled { get; private set; } = true;
+    protected Dictionary<string, Texture> Icons { get; } = new();
     protected NotificationManager Notifications { get; } = new();
     
     private uint _selectedComponentId;
@@ -53,6 +56,17 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     {
         _controller.Load();
         Theme();
+        
+        var icons = Assembly.GetExecutingAssembly().GetManifestResourceNames()
+            .Where(x => x.StartsWith("Snooper.UI.Textures.") && x.EndsWith(".png"))
+            .Select(x => x["Snooper.UI.Textures.".Length..]).ToList();
+        foreach (var icon in icons)
+        {
+            var texture = new EmbeddedTexture2D(icon);
+            texture.Generate();
+                
+            Icons.Add(icon[..^4], texture);
+        }
         
         base.Load();
     }

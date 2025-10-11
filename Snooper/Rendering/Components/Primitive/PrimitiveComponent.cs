@@ -35,12 +35,12 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
             }
         }
     }
-
+    
     public MaterialSection[] Materials { get; private init; } = [];
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
-    public readonly bool IsVisible = true;
+    public bool IsVisible { get; protected init; } = true;
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -99,6 +99,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         
     }
+    
+    internal override string Icon => "primitive";
 
     public override void DrawControls()
     {
@@ -116,7 +118,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
                     // TODO: more shit
                     
                     var i = 0;
-                    EditorUI.Property("LODs");
+                    EditorUI.Property($"LOD{(Descriptor.Lods.Length > 1 ? "s" : string.Empty)} ({Descriptor.Lods.Length})");
                     if (ImGui.BeginCombo("##LODs", $"LOD {i} - {Descriptor.Lods[i].VertexCount} vertices, {Descriptor.Lods[i].IndexCount} indices"))
                     {
                         for (i = 0; i < Descriptor.Lods.Length; i++)
@@ -180,4 +182,15 @@ public class PrimitiveComponent<TPerDrawData> : PrimitiveComponent<Vector3, TPer
 
 /// <inheritdoc />
 [DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent(PrimitiveData primitive, Transform? transform = null, string? name = null) : PrimitiveComponent<PerDrawData>(primitive, new FBox(), transform, name);
+public class PrimitiveComponent : PrimitiveComponent<PerDrawData>
+{
+    public PrimitiveComponent(PrimitiveData primitive, Transform? transform = null, string? name = null) : base(primitive, new FBox(), transform, name)
+    {
+        
+    }
+
+    protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
+    {
+        
+    }
+}

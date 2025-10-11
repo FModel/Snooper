@@ -4,11 +4,10 @@ using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Descriptors;
-using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
-namespace Snooper.Rendering.Components;
+namespace Snooper.Rendering.Components.Primitive;
 
 public struct PerDrawDebugData : IPerDrawData
 {

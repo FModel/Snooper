@@ -1,7 +1,6 @@
 ﻿using System.Collections.Specialized;
 using System.Reflection;
 using OpenTK.Graphics.OpenGL4;
-using Snooper.Core.Containers.Textures;
 using Snooper.Core.Hardware;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
@@ -28,21 +27,11 @@ public abstract class ActorManager : IGameSystem
     }
 
     protected ContextInfo Context { get; private set; }
-    protected Dictionary<string, Texture> Icons { get; } = new();
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
         Context = new ContextInfo();
-        
-        var icons = new[] {"bone.png", "cube.png", "mountain.png", "sphere.png", "sun.png", "video.png"};
-        foreach (var icon in icons)
-        {
-            var texture = new EmbeddedTexture2D(icon);
-            texture.Generate();
-                
-            Icons.Add(icon[..^4], texture);
-        }
         
         DequeueSystems();
     }

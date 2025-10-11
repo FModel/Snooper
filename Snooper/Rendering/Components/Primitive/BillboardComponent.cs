@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -30,6 +29,8 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
         }
     }
     
+    internal override string Icon => "chalkboard";
+    
     private class DrawDataContainer(Texture sprite, float opacityMask) : IDrawDataContainer
     {
         private BindlessTexture? _sprite;
@@ -41,14 +42,11 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
 
         public void SetBindlessTexture(string key, BindlessTexture bindless)
         {
-            switch (key)
+            _sprite = key switch
             {
-                case "Sprite":
-                    _sprite = bindless;
-                    break;
-                default:
-                    throw new ArgumentException($"Unknown texture key: {key}");
-            }
+                "Sprite" => bindless,
+                _ => throw new ArgumentException($"Unknown texture key: {key}")
+            };
         }
 
         public void FinalizeGpuData()

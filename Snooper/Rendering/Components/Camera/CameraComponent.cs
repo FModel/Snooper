@@ -98,6 +98,8 @@ public sealed class CameraComponent : SpatialComponent
 
         LocalTransform.Rotation = Quaternion.Normalize(yawRotation * LocalTransform.Rotation * pitchRotation);
     }
+    
+    internal override string Icon => "camera";
 
     public override void DrawControls()
     {

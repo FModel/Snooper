@@ -9,9 +9,7 @@ using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.UI.Systems;
@@ -136,12 +134,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             {
                 foreach (var child in root.Children)
                     DrawActorTree(child);
-            
-                if (ImGui.BeginPopupContextWindow("SceneContext", ImGuiPopupFlags.MouseButtonRight))
-                {
-                    DrawActorCreationMenu(root);
-                    ImGui.EndPopup();
-                }
             }
         }
         ImGui.End();
@@ -266,7 +258,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         
         ImGui.SameLine();
         if (Icons.TryGetValue(actor.Icon, out var icon))
-            ImGui.Image(icon.GetPointer(), _iconSize, Vector2.UnitX, Vector2.UnitY);
+            ImGui.Image(icon.GetPointer(), _iconSize);
         else
             ImGui.Image(0, _iconSize, Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
         ImGui.SameLine();
@@ -320,11 +312,22 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
 
         ImGui.SeparatorText($"{components.Count} Component{(components.Count > 1 ? "s" : "")}");
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+        
+        if (Icons.TryGetValue(component.Icon, out var icon))
+            ImGui.Image(icon.GetPointer(), _iconSize);
+        else
+            ImGui.Image(0, _iconSize, Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
+        ImGui.SameLine();ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
         if (ImGui.BeginCombo("##Components", component.Name))
         {
             foreach (var c in components)
             {
+                if (Icons.TryGetValue(c.Icon, out icon))
+                    ImGui.Image(icon.GetPointer(), _iconSize * 0.75f);
+                else
+                    ImGui.Image(0, _iconSize, Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
+                ImGui.SameLine();
+                
                 var selected = c.Id == SelectedComponentId;
                 if (ImGui.Selectable(c.Name, selected))
                 {
@@ -337,44 +340,5 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
         
         component.DrawInterface();
-    }
-    
-    private void DrawActorCreationMenu(Actor parent)
-    {
-        if (ImGui.MenuItem("Add Cube"))
-        {
-            var cube = new Actor("Cube");
-            var component = new PrimitiveComponent(new Cube());
-            cube.Components.Add(component);
-
-            PlaceInFrontOfCamera(component);
-            parent.Children.Add(cube);
-        }
-
-        if (ImGui.MenuItem("Add Sphere"))
-        {
-            var sphere = new Actor("Sphere");
-            var component = new PrimitiveComponent(new Sphere(18, 9, 0.5f));
-            sphere.Components.Add(component);
-
-            PlaceInFrontOfCamera(component);
-            parent.Children.Add(sphere);
-        }
-
-        if (ImGui.MenuItem("Add Camera"))
-        {
-            var camera = new CameraActor($"Camera {Pairs.Count + 1}");
-            PlaceInFrontOfCamera(camera.CameraComponent);
-            parent.Children.Add(camera);
-        }
-    }
-    
-    private void PlaceInFrontOfCamera(SpatialComponent component)
-    {
-        if (ActiveCamera != null)
-        {
-            var forward = Vector3.Transform(Vector3.UnitZ, ActiveCamera.LocalTransform.Rotation);
-            component.LocalTransform.Position = ActiveCamera.LocalTransform.Position + forward * 3f;
-        }
     }
 }
