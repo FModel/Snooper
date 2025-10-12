@@ -11,6 +11,7 @@ using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Extensions;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;

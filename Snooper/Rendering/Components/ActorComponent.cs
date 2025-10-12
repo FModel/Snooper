@@ -29,6 +29,8 @@ public abstract partial class ActorComponent
             Actor?.ComputeSelected();
         }
     }
+    
+    internal virtual string Icon => "component";
 
     protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
     {
@@ -71,7 +73,7 @@ public abstract partial class ActorComponent
     
     internal void DrawInterface()
     {
-        if (this is not IControllable controllable || this is DebugComponent) return;
+        if (this is not IControllable controllable) return;
 
         ImGui.PushID((int)Id);
 

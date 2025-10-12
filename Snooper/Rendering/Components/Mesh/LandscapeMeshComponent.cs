@@ -4,6 +4,7 @@ using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -85,6 +86,8 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             });
         }
     }
+    
+    internal override string Icon => "mountain";
 
     private class DrawDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, FWeightmapLayerAllocationInfo[] allocations) : IDrawDataContainer
     {

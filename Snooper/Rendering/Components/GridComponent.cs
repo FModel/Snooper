@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using Snooper.Core;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -8,6 +9,8 @@ namespace Snooper.Rendering.Components;
 [DefaultActorSystem(typeof(GridSystem))]
 public class GridComponent() : PrimitiveComponent(new Geometry())
 {
+    internal override string Icon => "grid";
+
     private class Geometry : PrimitiveData
     {
         public Geometry()

@@ -11,6 +11,7 @@ layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
     PerDrawData uDrawDataBuffer[];
 };
 
+#include "Buffers/PerDrawCommand.glsl"
 #include "Buffers/common.frag"
 
 out vec4 FragColor;
@@ -27,5 +28,5 @@ void main()
     
     FragColor = vec4(color, 1.0);
 
-    gPicking = 0u;
+    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
 }

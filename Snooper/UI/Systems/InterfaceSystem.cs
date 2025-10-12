@@ -1,10 +1,12 @@
 ﻿using System.Numerics;
+using System.Reflection;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
+using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -16,8 +18,9 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
     
     private WindowState _pWindowState;
-    
+
     protected bool Enabled { get; private set; } = true;
+    protected Dictionary<string, Texture> Icons { get; } = new();
     protected NotificationManager Notifications { get; } = new();
     
     private uint _selectedComponentId;
@@ -54,6 +57,17 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         _controller.Load();
         Theme();
         
+        var icons = Assembly.GetExecutingAssembly().GetManifestResourceNames()
+            .Where(x => x.StartsWith("Snooper.UI.Textures.") && x.EndsWith(".png"))
+            .Select(x => x["Snooper.UI.Textures.".Length..]).ToList();
+        foreach (var icon in icons)
+        {
+            var texture = new EmbeddedTexture2D(icon);
+            texture.Generate();
+                
+            Icons.Add(icon[..^4], texture);
+        }
+        
         base.Load();
     }
 
@@ -77,7 +91,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         
         if (Enabled)
             _controller.Update(Window, delta);
-        else if (Window.IsMouseButtonPressed(MouseButton.Left))
+        else if (Window.IsMouseButtonPressed(MouseButton.Right))
             Window.CursorState = CursorState.Grabbed;
         
         if (ActiveCamera is null && Pairs.Count > 0)
@@ -93,7 +107,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         if (Window.CursorState == CursorState.Grabbed)
         {
             ActiveCamera?.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
-            if (Window.IsMouseButtonReleased(MouseButton.Left)) Window.CursorState = CursorState.Normal;
+            if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
         }
         
         base.Update(delta);

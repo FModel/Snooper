@@ -15,4 +15,6 @@ public class SkeletalMeshComponent : MeshComponent
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices) => new Geometry(vertices, indices));
     }
+    
+    internal override string Icon => "man";
 }

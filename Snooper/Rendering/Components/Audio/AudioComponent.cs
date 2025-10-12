@@ -13,7 +13,7 @@ public class AudioComponent : SpatialComponent
 {
     public readonly USoundBase? Sound;
     
-    public bool ForcePlay;
+    public bool ShouldPlay;
     public float VolumeMultiplier = 1;
     public bool IsLooping { get; } = true;
     public float Pitch { get; } = 1.0f;
@@ -34,6 +34,8 @@ public class AudioComponent : SpatialComponent
             AttenuationDistance = attenuation.FalloffDistance * Settings.GlobalScale;
         }
     }
+    
+    internal override string Icon => "audio";
 
     public override void DrawControls()
     {
@@ -44,7 +46,7 @@ public class AudioComponent : SpatialComponent
             EditorUI.Text("Sound", Sound?.Name ?? "N/A");
             EditorUI.Property("Volume Multiplier");
             ImGui.SliderFloat("Volume Multiplier", ref VolumeMultiplier, 0f, 4f, $"x{VolumeMultiplier:F}");
-            EditorUI.Checkbox("Play", ref ForcePlay);
+            EditorUI.Checkbox("Play", ref ShouldPlay);
         });
     }
 }

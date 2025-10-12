@@ -12,7 +12,7 @@ using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
-namespace Snooper.Rendering.Components;
+namespace Snooper.Rendering.Components.Primitive;
 
 public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : SpatialComponent
     where TVertex : unmanaged
@@ -22,7 +22,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     private readonly PrimitiveDescriptor<TVertex>? _descriptor;
     public PrimitiveDescriptor<TVertex> Descriptor
     {
-        get => _descriptor ?? throw new InvalidOperationException("Descriptor has not been initialized. Set it during construction of derived classes.");
+        get => _descriptor ?? throw new InvalidOperationException($"Descriptor not initialized for {Name} of type {GetType().Name}.");
         protected init
         {
             _descriptor = value;
@@ -35,12 +35,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
             }
         }
     }
-
+    
     public MaterialSection[] Materials { get; private init; } = [];
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
-    public readonly bool IsVisible = true;
+    public bool IsVisible { get; protected init; } = true;
+    public int OverrideLod { get; protected set; } = -1;
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -99,6 +100,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
     {
         
     }
+    
+    internal override string Icon => "primitive";
 
     public override void DrawControls()
     {
@@ -115,20 +118,62 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
                     
                     // TODO: more shit
                     
-                    var i = 0;
-                    EditorUI.Property("LODs");
-                    if (ImGui.BeginCombo("##LODs", $"LOD {i} - {Descriptor.Lods[i].VertexCount} vertices, {Descriptor.Lods[i].IndexCount} indices"))
-                    {
-                        for (i = 0; i < Descriptor.Lods.Length; i++)
-                        {
-                            if (ImGui.Selectable($"LOD {i} - {Descriptor.Lods[i].VertexCount} vertices, {Descriptor.Lods[i].IndexCount} indices"))
-                            {
-                                // TODO: alter the culling to force the preview of the selected LOD
-                            }
-                        }
+                    EditorUI.Property($"LOD{(Descriptor.Lods.Length > 1 ? "s" : string.Empty)} ({Descriptor.Lods.Length})");
+                    ImGui.BeginGroup();
 
-                        ImGui.EndCombo();
+                    const int minLod = -1;
+                    var value = OverrideLod;
+                    var maxLod = Descriptor.Lods.Length - 1;
+                    
+                    if (maxLod == 0) ImGui.BeginDisabled();
+                    if (ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod)) OverrideLod = value;
+                    if (maxLod == 0) ImGui.EndDisabled();
+                    
+                    ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
+                    ImGui.SetWindowFontScale(0.85f);
+                    
+                    var lod = Descriptor.Lods[Math.Max(0, OverrideLod)];
+                    switch (OverrideLod)
+                    {
+                        case -1:
+                            ImGui.TextUnformatted("Auto (Distance-Based)");
+                            break;
+                        case >= 0 when OverrideLod < Descriptor.Lods.Length:
+                            ImGui.TextUnformatted($"LOD {OverrideLod}: {lod.VertexCount} vertices, {lod.IndexCount} indices, {lod.ScreenSize} screen size");
+                            break;
                     }
+                    
+                    ImGui.SetWindowFontScale(1.0f);
+                    ImGui.PopStyleVar();
+                    ImGui.EndGroup();
+                    
+                    EditorUI.Property($"Sections ({lod.Sections.Length})");
+                    ImGui.BeginGroup();
+                    
+                    if (lod.Sections.Length > 0)
+                    {
+                        var sectionIndex = 0;
+                        var maxSection = lod.Sections.Length - 1;
+                        
+                        if (maxSection == 0) ImGui.BeginDisabled();
+                        ImGui.SliderInt("##SectionSlider", ref sectionIndex, 0, maxSection);
+                        if (maxSection == 0) ImGui.EndDisabled();
+                        
+                        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
+                        ImGui.SetWindowFontScale(0.85f);
+                        
+                        var section = lod.Sections[sectionIndex];
+                        ImGui.TextUnformatted($"Section {sectionIndex}: Material {section.MaterialIndex}, {section.IndexCount} indices (offset {section.FirstIndex})");
+                        
+                        ImGui.SetWindowFontScale(1.0f);
+                        ImGui.PopStyleVar();
+                    }
+                    else
+                    {
+                        ImGui.TextDisabled("No Sections?");
+                    }
+                    
+                    ImGui.EndGroup();
                 });
                 
                 ImGui.TreePop();
@@ -159,14 +204,36 @@ public class PrimitiveComponent<TVertex, TPerDrawData> : PrimitiveComponent<TVer
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
+        
     }
 }
 
 /// <inheritdoc />
-public class PrimitiveComponent<TPerDrawData>(PrimitiveData primitive, CullingBounds bounds, Transform? transform = null, string? name = null)
-    : PrimitiveComponent<Vector3, TPerDrawData>(primitive, bounds, transform, name)
-    where TPerDrawData : unmanaged, IPerDrawData;
+public class PrimitiveComponent<TPerDrawData> : PrimitiveComponent<Vector3, TPerDrawData>
+    where TPerDrawData : unmanaged, IPerDrawData
+{
+    protected PrimitiveComponent(PrimitiveData primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(primitive, bounds, transform, name)
+    {
+        
+    }
+    
+    protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
+    {
+        
+    }
+}
 
 /// <inheritdoc />
 [DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent(PrimitiveData primitive, Transform? transform = null, string? name = null) : PrimitiveComponent<PerDrawData>(primitive, new FBox(), transform, name);
+public class PrimitiveComponent : PrimitiveComponent<PerDrawData>
+{
+    public PrimitiveComponent(PrimitiveData primitive, Transform? transform = null, string? name = null) : base(primitive, new FBox(), transform, name)
+    {
+        
+    }
+
+    protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
+    {
+        
+    }
+}

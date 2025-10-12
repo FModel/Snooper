@@ -1,4 +1,5 @@
-﻿using Snooper.Rendering.Primitives;
+﻿using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components;
 

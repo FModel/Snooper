@@ -80,7 +80,7 @@ public class SpatialComponent : ActorComponent, IControllable
     }
     
     public readonly List<SpatialComponent> Children = [];
-    
+
     public virtual Matrix4x4[] GetInstanceMatrices() => [WorldMatrix];
     
     public void UpdateWorldMatrix(bool recursive = true)
@@ -118,6 +118,8 @@ public class SpatialComponent : ActorComponent, IControllable
             child.MarkDirty();
         }
     }
+    
+    internal override string Icon => "perspective";
 
     public virtual void DrawControls()
     {

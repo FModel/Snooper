@@ -70,20 +70,12 @@ public class Actor
             
             _rootComponent = value;
             
-            Icon = RootComponent switch
-            {
-                CameraComponent => "video",
-                AtmosphericComponent => "sun",
-                LandscapeMeshComponent => "mountain",
-                SkeletalMeshComponent => "bone",
-                StaticMeshComponent => "sphere",
-                _ => "cube"
-            };
+            Icon = _rootComponent?.Icon ?? "component";
         }
     }
 
     internal readonly int Id = Random.Shared.Next();
-    internal string Icon { get; private set; } = "cube";
+    internal string Icon { get; private set; } = "component";
 
     private void AddInternal(Actor actor)
     {
