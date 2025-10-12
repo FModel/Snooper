@@ -19,7 +19,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     private ALDevice _device;
     private ALContext _context;
     private float _linearVolume = 0.5f;
-    private float _logarithmicVolume = 0.7f;
+    private float _logarithmicVolume = 0.5f;
     private string[] _outputDevices = [];
     private string _selectedDevice = string.Empty;
     private readonly Dictionary<AudioComponent, AudioSource> _activeSources = [];
