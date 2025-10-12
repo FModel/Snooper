@@ -42,7 +42,8 @@ public class AudioComponent : SpatialComponent
         EditorUI.CollapsingTable("Audio", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Text("Sound", Sound?.Name ?? "N/A");
-            EditorUI.DragFloat("Volume Multiplier", ref VolumeMultiplier);
+            EditorUI.Property("Volume Multiplier");
+            ImGui.SliderFloat("Volume Multiplier", ref VolumeMultiplier, 0f, 4f, $"x{VolumeMultiplier:F}");
             EditorUI.Checkbox("Play", ref ForcePlay);
         });
     }

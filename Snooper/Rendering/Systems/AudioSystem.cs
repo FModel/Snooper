@@ -18,12 +18,16 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     
     private ALDevice _device;
     private ALContext _context;
-    private float _volume = 0.5f;
+    private float _linearVolume = 0.5f;
+    private float _logarithmicVolume = 0.7f;
     private string[] _outputDevices = [];
     private string _selectedDevice = string.Empty;
     private readonly Dictionary<AudioComponent, AudioSource> _activeSources = [];
     private readonly AudioCache _audioCache = new();
     private AlcReopenDeviceSoft? _alcReopenDeviceSoft;
+
+    private const float MinDb = -35;
+    private const float MaxDb = 0;
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate bool AlcReopenDeviceSoft(IntPtr device, string deviceName, IntPtr attribs);
@@ -73,7 +77,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         
             var source = new AudioSource(buffer);
             source.SetLooping(component.IsLooping);
-            source.SetGain(_volume * component.VolumeMultiplier);
+            source.SetGain(_logarithmicVolume * component.VolumeMultiplier);
             source.SetPitch(component.Pitch);
             source.SetReferenceDistance(component.AttenuationDistance);
             
@@ -123,7 +127,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
                 source.Stop();
             }
             
-            source.SetGain(component.VolumeMultiplier * _volume);
+            source.SetGain(component.VolumeMultiplier * _logarithmicVolume);
         }
     }
 
@@ -185,15 +189,6 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         }
     }
 
-    private void CheckAlError(string context)
-    {
-        var error = AL.GetError();
-        if (error != ALError.NoError)
-        {
-            Log.Error("OpenAL Error ({Context}): {Error}", context, error);
-        }
-    }
-
     private void SwitchAudioDevice(string deviceName)
     {
         if (_device == ALDevice.Null)
@@ -220,10 +215,30 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
         CheckAlError("Reopen Device");
     }
+    
+    private void CheckAlError(string context)
+    {
+        var error = AL.GetError();
+        if (error != ALError.NoError)
+        {
+            Log.Error("OpenAL Error ({Context}): {Error}", context, error);
+        }
+    }
 
     public void DrawControls()
     {
-        ImGui.DragFloat("Global Volume", ref _volume);
+        if (ImGui.SliderFloat("Volume", ref _linearVolume, 0f, 1f, $"{_linearVolume * 100:F}%%"))
+        {
+            if (_linearVolume == 0f)
+            {
+                _logarithmicVolume = 0;
+                return;
+            }
+        
+            var db = MinDb + (MaxDb - MinDb) * _linearVolume;
+            _logarithmicVolume = MathF.Pow(10f, db / 20f);
+        }
+        
         if (ImGui.BeginCombo("Output Device", _selectedDevice))
         {
             foreach (var outputDevice in _outputDevices)
