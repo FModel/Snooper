@@ -81,7 +81,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
                 };
             }
             
-            _mapping.Update(component.Materials[0].DrawMetadata.DrawId, m);
+            _mapping.Update(component.Metadata.SectionDrawIds[0], m);
         }
         _mapping.Unbind();
         

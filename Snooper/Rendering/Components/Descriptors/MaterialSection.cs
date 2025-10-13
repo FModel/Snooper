@@ -9,11 +9,10 @@ public class MaterialSection(uint materialIndex)
     
     public readonly uint MaterialIndex = materialIndex;
 
-    public IndirectDrawMetadata DrawMetadata = new();
-    public IMaterialDataContainer? MaterialDataContainer = null;
+    public uint MaterialOffset = 0; // set when added to the material data buffer
+    public IMaterialDataContainer? MaterialDataContainer = null; // set when the material is loaded
 
     public bool IsTranslucent => MaterialDataContainer?.IsTranslucent ?? false;
-    public bool IsGenerated => DrawMetadata.BaseInstance >= 0;
 
     public override bool Equals(object? obj) => obj is MaterialSection section && section.SectionId.Equals(SectionId);
     public override int GetHashCode() => SectionId.GetHashCode();

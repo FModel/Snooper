@@ -33,6 +33,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     public bool IsVisible { get; protected init; } = true;
     public int OverrideLod { get; protected set; } = -1;
     
+    public ResourcesMetadata Metadata { get; private set; } = new();
+    
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
     }
@@ -44,13 +46,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
-        resources.Add(Id, Descriptor, Materials, GetPerInstanceData());
+        Metadata = resources.Add(Id, Descriptor, Materials, GetPerInstanceData());
         textureManager.AddRange(Materials);
     }
 
     public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
-        if (!Materials[0].IsGenerated)
+        if (!Metadata.IsGenerated)
         {
             Generate(resources, textureManager);
         }
@@ -167,43 +169,48 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 
                 ImGui.TreePop();
             }
+
+            if (ImGui.TreeNodeEx("Materials", ImGuiTreeNodeFlags.None))
+            {
+                EditorUI.PropertyValueTable(Header, () =>
+                {
+                    EditorUI.Property($"Materials ({Materials.Length})");
+                    ImGui.BeginGroup();
+            
+                    if (Materials.Length > 0)
+                    {
+                        var materialIndex = 0;
+                        var maxMaterial = Materials.Length - 1;
+                        
+                        if (maxMaterial == 0) ImGui.BeginDisabled();
+                        ImGui.SliderInt("##MaterialSlider", ref materialIndex, 0, maxMaterial);
+                        if (maxMaterial == 0) ImGui.EndDisabled();
+                        
+                        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
+                        ImGui.SetWindowFontScale(0.85f);
+                        
+                        var material = Materials[materialIndex];
+                        ImGui.TextUnformatted($"Material {materialIndex}: Material {material.MaterialIndex}, Offset {material.MaterialOffset}");
+                        
+                        ImGui.SetWindowFontScale(1.0f);
+                        ImGui.PopStyleVar();
+                    }
+                    else
+                    {
+                        ImGui.TextDisabled("No Materials?");
+                    }
+            
+                    ImGui.EndGroup();
+            
+                    // foreach (var material in Materials)
+                    // {
+                    //     material.MaterialDataContainer?.DrawControls();
+                    // }
+                });
+                
+                ImGui.TreePop();
+            }
         }
-        
-        EditorUI.CollapsingTable("Materials", ImGuiTreeNodeFlags.DefaultOpen, () =>
-        {
-            EditorUI.Property($"Materials ({Materials.Length})");
-            ImGui.BeginGroup();
-            
-            if (Materials.Length > 0)
-            {
-                var materialIndex = 0;
-                var maxMaterial = Materials.Length - 1;
-                        
-                if (maxMaterial == 0) ImGui.BeginDisabled();
-                ImGui.SliderInt("##MaterialSlider", ref materialIndex, 0, maxMaterial);
-                if (maxMaterial == 0) ImGui.EndDisabled();
-                        
-                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
-                ImGui.SetWindowFontScale(0.85f);
-                        
-                var material = Materials[materialIndex];
-                ImGui.TextUnformatted($"Material {materialIndex}: Material {material.MaterialIndex}, Offset {material.DrawMetadata.MaterialOffset}, DrawId {material.DrawMetadata.DrawId}");
-                        
-                ImGui.SetWindowFontScale(1.0f);
-                ImGui.PopStyleVar();
-            }
-            else
-            {
-                ImGui.TextDisabled("No Materials?");
-            }
-            
-            ImGui.EndGroup();
-            
-            // foreach (var material in Materials)
-            // {
-            //     material.MaterialDataContainer?.DrawControls();
-            // }
-        });
     }
 }
 

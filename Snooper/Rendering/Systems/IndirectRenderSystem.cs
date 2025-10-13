@@ -36,7 +36,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
                 throw new InvalidOperationException($"Material data container raw type {material.MaterialDataContainer.Raw.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
             }
             
-            Resources.Update((int)material.DrawMetadata.MaterialOffset, raw);
+            Resources.Update((int)material.MaterialOffset, raw);
             material.MaterialDataContainer?.Dispose();
         };
     }
@@ -103,11 +103,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     {
         base.OnActorComponentRemoved(component);
 
-        foreach (var material in component.Materials)
-        {
-            if (!material.IsGenerated) continue;
-            Resources.Remove(material.DrawMetadata);
-        }
+        Resources.Remove(component.Metadata);
     }
     
     public override void Dispose()

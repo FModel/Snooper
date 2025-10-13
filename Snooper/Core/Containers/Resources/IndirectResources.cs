@@ -46,10 +46,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         _materialData.Unbind();
     }
     
-    public void Add(uint pickingId, PrimitiveDescriptor<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
+    public ResourcesMetadata Add(uint pickingId, PrimitiveDescriptor<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
     {
-        Log.Debug("Adding draw data for primitive {Primitive} with {InstanceCount} instances and {MaterialCount} materials.", primitive.Path, instanceData.Length, materials.Length);
-        
         var handle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
         
         _instanceData.Bind();
@@ -60,15 +58,16 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         var baseMaterialOffset = (uint)_materialData.AddRange(new TPerMaterialData[materials.Length]);
         for (var i = 0u; i < materials.Length; i++)
         {
-            materials[i].DrawMetadata.MaterialOffset = baseMaterialOffset + i;
+            materials[i].MaterialOffset = baseMaterialOffset + i;
         }
         _materialData.Unbind();
-        
+
+        _commands.Current.Bind();
         var instanceCount = (uint)instanceData.Length;
-        var cmds = new DrawElementsIndirectCommand[primitive.Lods[0].Sections.Length];
-        for (var i = 0u; i < cmds.Length; i++)
+        var sectionDrawIds = new int[primitive.Lods[0].Sections.Length];
+        for (var i = 0u; i < sectionDrawIds.Length; i++)
         {
-            cmds[i] = new DrawElementsIndirectCommand
+            sectionDrawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
             {
                 IndexCount = primitive.Lods[0].Sections[i].IndexCount,
                 InstanceCount = instanceCount,
@@ -82,34 +81,29 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
                 OriginalBaseInstance = baseInstance,
                 ModelId = handle.ModelId,
                 SectionId = i,
-            };
-        }
-
-        _commands.Current.Bind();
-        for (var i = 0; i < cmds.Length; i++)
-        {
-            // TODO: change this shit it is badly made
-            // current issue: we use Materials[0] for a lot of thing, too many thing in fact and this cause issues when
-            // no sections use the first material, we keep generating this resource every frame because Materials[0].IsGenerated
-            
-            var materialIndex = cmds[i].MaterialIndex;
-            materials[materialIndex].DrawMetadata.BaseInstance = (int)baseInstance;
-            materials[materialIndex].DrawMetadata.ModelId = handle.ModelId;
-            materials[materialIndex].DrawMetadata.DrawId = _commands.Current.Add(cmds[i]);
+            });
         }
         _commands.Current.Unbind();
+        
+        return new ResourcesMetadata
+        {
+            ModelId = handle.ModelId,
+            BaseInstance = (int)baseInstance,
+            OverrideLod = -1,
+            BaseMaterialOffset = baseMaterialOffset,
+            SectionDrawIds = sectionDrawIds
+        };
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
-        if (component.Materials.Length < 1) return;
-        
-        var metadata = component.Materials[0].DrawMetadata;
+        var metadata = component.Metadata;
+        if (!metadata.IsGenerated) return;
         
         if (metadata.OverrideLod != component.OverrideLod)
         {
             _geometry.UpdateOverrideLod(metadata.ModelId, component.OverrideLod);
-            component.Materials[0].DrawMetadata.OverrideLod = component.OverrideLod;
+            metadata.OverrideLod = component.OverrideLod;
         }
         
         if (component.IsDirty)
@@ -132,25 +126,29 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         _materialData.Unbind();
     }
 
-    public void Remove(IndirectDrawMetadata metadata)
+    public void Remove(ResourcesMetadata metadata)
     {
-        Log.Debug("Removing draw data for draw ID {DrawId}.", metadata.DrawId);
+        Log.Debug("Removing primitive with ModelId {ModelId} and {SectionCount} sections.", metadata.ModelId, metadata.SectionDrawIds.Length);
         
+        // TODO: properly do this
+        
+        // Remove all draw commands for each section
         _commands.Current.Bind();
-        _commands.Current.Remove(metadata.DrawId);
+        foreach (var drawId in metadata.SectionDrawIds)
+        {
+            _commands.Current.Remove(drawId);
+        }
         _commands.Current.Unbind();
         
+        // Remove instance data
         _instanceData.Bind();
         _instanceData.Remove(metadata.BaseInstance);
         _instanceData.Unbind();
-        // EBO.Remove();
-        // VBO.Remove();
 
+        // Remove material data for all materials
         _materialData.Bind();
-        _materialData.Remove((int)metadata.MaterialOffset);
+        _materialData.Remove((int)metadata.BaseMaterialOffset);
         _materialData.Unbind();
-        
-        // _culling.Remove();
     }
 
     public void Cull(CameraComponent camera) => _geometry.Cull(camera, _instanceData, _commands.Current);
