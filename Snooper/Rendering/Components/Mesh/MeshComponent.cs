@@ -11,6 +11,7 @@ using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Extensions;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
@@ -26,7 +27,7 @@ public readonly struct Vertex(Vector3 position, Vector3 normal, Vector3 tangent,
     public readonly Vector2 TexCoord = texCoord;
 }
 
-public struct PerDrawMeshData : IPerDrawData
+public struct PerMaterialMeshData : IPerMaterialData
 {
     public bool IsReady { get; init; }
     public uint IsTranslucent;
@@ -40,13 +41,17 @@ public struct PerDrawMeshData : IPerDrawData
 
 [DefaultActorSystem(typeof(RenderSystem))]
 [DefaultActorSystem(typeof(DeferredRenderSystem))]
-public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerDrawMeshData>
+public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>
 {
     private readonly ResolvedObject?[] _materials;
+    
+    public sealed override MaterialSection[] Materials { get; }
 
     protected MeshComponent(ResolvedObject?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {
         _materials = materials;
+        
+        Materials = new MaterialSection[_materials.Length];
     }
 
     protected MeshComponent(ResolvedObject?[] materials, UMeshComponent component) : base(component)
@@ -61,36 +66,38 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 
             _materials[i] = overrideMaterials[i].ResolvedObject;
         }
+        
+        Materials = new MaterialSection[_materials.Length];
     }
 
     protected override void OnAddedToActor()
     {
         base.OnAddedToActor();
 
-        for (var i = 0; i < Materials.Length; i++)
+        for (var i = 0; i < _materials.Length; i++)
         {
             var index = i;
+            Materials[index] = new MaterialSection((uint)index);
             
             // TODO: do somewhere else
             Task.Run(() =>
             {
-                var materialIndex = Materials[index].MaterialIndex;
-                if (_materials[materialIndex]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
+                if (_materials[index]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
                 {
                     var parameters = new CMaterialParams2();
                     material.GetParams(parameters, EMaterialFormat.FirstLayer);
 
-                    Materials[index].DrawDataContainer = ParseMaterialParameters(parameters, material.Owner.Provider.ProjectName.ToUpperInvariant());
+                    Materials[index].MaterialDataContainer = ParseMaterialParameters(parameters, material.Owner.Provider.ProjectName.ToUpperInvariant());
                 }
                 else
                 {
-                    Log.Warning("Material at index {MatIndex} is not valid or could not be loaded.", materialIndex);
+                    Log.Warning("Material at index {MatIndex} is not valid or could not be loaded.", index);
                 }
             });
         }
     }
     
-    private DrawDataContainer? ParseMaterialParameters(CMaterialParams2 parameters, string projectName)
+    private MaterialDataContainer? ParseMaterialParameters(CMaterialParams2 parameters, string projectName)
     {
         UTexture? diffuse = null, normal = null, specular = null;
         var diffuseColor = Vector3.One;
@@ -156,7 +163,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             }
         }
         
-        return new DrawDataContainer(
+        return new MaterialDataContainer(
             new Texture2D(diffuse),
             normal != null ? new Texture2D(normal) : null,
             specularTex,
@@ -166,7 +173,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         );
     }
 
-    private class DrawDataContainer(Texture diffuse, Texture? normal, Texture? specular, Vector2? roughness = null, Vector3? diffuseColor = null, bool translucent = false) : IDrawDataContainer
+    private class MaterialDataContainer(Texture diffuse, Texture? normal, Texture? specular, Vector2? roughness = null, Vector3? diffuseColor = null, bool translucent = false) : IMaterialDataContainer
     {
         private BindlessTexture? _diffuse;
         private BindlessTexture? _normal;
@@ -226,7 +233,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 _specular.MakeResident();
             }
 
-            Raw = new PerDrawMeshData
+            Raw = new PerMaterialMeshData
             {
                 IsReady = true,
                 IsTranslucent = IsTranslucent ? 1u : 0,
@@ -238,7 +245,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             };
         }
 
-        public IPerDrawData? Raw { get; private set; }
+        public IPerMaterialData? Raw { get; private set; }
         
         public void DrawControls()
         {

@@ -7,12 +7,12 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
-    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerDrawData>(initialDrawCapacity, type)
+public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
+    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(initialDrawCapacity, type)
     where TVertex : unmanaged
-    where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
+    where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData
-    where TPerDrawData : unmanaged, IPerDrawData
+    where TPerMaterialData : unmanaged, IPerMaterialData
 {
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
@@ -60,11 +60,11 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerDr
     }
 }
 
-public class PrimitiveSystem<TComponent, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
-    : PrimitiveSystem<Vector3, TComponent, TInstanceData, TPerDrawData>(initialDrawCapacity, type)
-    where TComponent : PrimitiveComponent<Vector3, TInstanceData, TPerDrawData>
+public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
+    : PrimitiveSystem<Vector3, TComponent, TInstanceData, TPerMaterialData>(initialDrawCapacity, type)
+    where TComponent : PrimitiveComponent<Vector3, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData
-    where TPerDrawData : unmanaged, IPerDrawData
+    where TPerMaterialData : unmanaged, IPerMaterialData
 {
     protected override Action<int> VertexLayout { get; } = stride =>
     {
@@ -74,8 +74,8 @@ public class PrimitiveSystem<TComponent, TInstanceData, TPerDrawData>(int initia
 }
 
 public class PrimitiveSystem<TComponent>(int initialDrawCapacity)
-    : PrimitiveSystem<TComponent, PerInstanceData, PerDrawData>(initialDrawCapacity)
-    where TComponent : PrimitiveComponent<Vector3, PerInstanceData, PerDrawData>
+    : PrimitiveSystem<TComponent, PerInstanceData, PerMaterialData>(initialDrawCapacity)
+    where TComponent : PrimitiveComponent<Vector3, PerInstanceData, PerMaterialData>
 {
     protected override bool IsCulled => false; // disable culling for grid, skybox, and default primitives
 }

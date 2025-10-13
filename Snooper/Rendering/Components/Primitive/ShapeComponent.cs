@@ -38,7 +38,7 @@ public class BoxComponent : ShapeComponent
         var bounds = new CullingBounds(extent);
         Descriptor = new PrimitiveDescriptor<Vector3>(bounds, () => new Geometry(bounds));
         
-        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value, LineThickness);
+        Materials[0].MaterialDataContainer = new MaterialDataContainer(Color.Value, LineThickness);
     }
 }
 
@@ -56,7 +56,7 @@ public class SphereComponent : ShapeComponent
                 
         Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(radius), () => new Geometry(radius));
         
-        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value, LineThickness);
+        Materials[0].MaterialDataContainer = new MaterialDataContainer(Color.Value, LineThickness);
     }
 }
 
@@ -81,6 +81,6 @@ public class CapsuleComponent : ShapeComponent
         var bounds = new CullingBounds(Vector3.Zero, new Vector3(radius, halfHeight, radius), halfHeight);
         Descriptor = new PrimitiveDescriptor<Vector3>(bounds, () => new Geometry(radius, halfHeight));
         
-        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value, LineThickness);
+        Materials[0].MaterialDataContainer = new MaterialDataContainer(Color.Value, LineThickness);
     }
 }

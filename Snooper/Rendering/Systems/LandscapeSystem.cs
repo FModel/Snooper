@@ -12,7 +12,7 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Systems;
 
-public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerDrawLandscapeData>(100, PrimitiveType.Patches), IControllable
+public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerMaterialLandscapeData>(100, PrimitiveType.Patches), IControllable
 {
     public override uint Order => 21;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;

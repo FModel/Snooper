@@ -6,7 +6,7 @@ layout (location = 2) out vec4 gColor;
 layout (location = 3) out vec4 gSpecular;
 layout (location = 4) out uint gPicking;
 
-struct PerDrawData
+struct PerMaterialData
 {
     bool IsReady;
     uint IsTranslucent;
@@ -17,9 +17,9 @@ struct PerDrawData
     vec3 DiffuseColor;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
 {
-    PerDrawData uDrawDataBuffer[];
+    PerMaterialData uMaterialDataBuffer[];
 };
 
 uniform mat4 uViewMatrix;
@@ -37,17 +37,18 @@ in VS_OUT {
 
 void main()
 {
-    PerDrawData drawData = uDrawDataBuffer[gDrawID];
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex];
     
     vec3 color = fs_in.vDebugColor;
     vec3 spec = vec3(1.0);
-    if (uDebugColorMode == 0 && drawData.IsReady)
+    if (uDebugColorMode == 0 && materialData.IsReady)
     {
-        color = texture(drawData.Diffuse, fs_in.vTexCoords).rgb * drawData.DiffuseColor;
-        spec = texture(drawData.Specular, fs_in.vTexCoords).rgb;
+        color = texture(materialData.Diffuse, fs_in.vTexCoords).rgb * materialData.DiffuseColor;
+        spec = texture(materialData.Specular, fs_in.vTexCoords).rgb;
         
         // compute roughness
-        spec.b = mix(drawData.Roughness.x, drawData.Roughness.y, spec.b);
+        spec.b = mix(materialData.Roughness.x, materialData.Roughness.y, spec.b);
     }
     else if (uDebugColorMode == 4)
     {
@@ -59,9 +60,9 @@ void main()
     }
     
     vec3 normal = vec3(0.0, 0.0, 1.0);
-    if (drawData.IsReady)
+    if (materialData.IsReady)
     {
-        vec2 xy = texture(drawData.Normal, fs_in.vTexCoords).rg * 2.0 - 1.0;
+        vec2 xy = texture(materialData.Normal, fs_in.vTexCoords).rg * 2.0 - 1.0;
         float z = sqrt(max(0.0, 1.0 - dot(xy, xy)));
         normal = normalize(vec3(xy, z));
     }
@@ -72,5 +73,5 @@ void main()
     gColor.a = 1.0; // free space
     gSpecular.rgb = spec.rgb;
     gSpecular.a = 1.0; // free space
-    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
+    gPicking = cmd.PickingId;
 }

@@ -2,7 +2,7 @@
 
 layout (location = 1) out uint gPicking;
 
-struct PerDrawData
+struct PerMaterialData
 {
     bool IsReady;
     uint IsTranslucent;
@@ -13,9 +13,9 @@ struct PerDrawData
     vec3 DiffuseColor;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
 {
-    PerDrawData uDrawDataBuffer[];
+    PerMaterialData uMaterialDataBuffer[];
 };
 
 uniform int uDebugColorMode;
@@ -35,28 +35,29 @@ out vec4 FragColor;
 
 void main()
 {
-    PerDrawData drawData = uDrawDataBuffer[gDrawID];
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex];
 
     vec4 color = vec4(fs_in.vDebugColor, 1.0);
     vec3 spec = vec3(1.0);
-    if (uDebugColorMode == 0 && drawData.IsReady)
+    if (uDebugColorMode == 0 && materialData.IsReady)
     {
-        color = texture(drawData.Diffuse, fs_in.vTexCoords);
-        if (drawData.IsTranslucent == 1 && color.a < 0.1)
+        color = texture(materialData.Diffuse, fs_in.vTexCoords);
+        if (materialData.IsTranslucent == 1 && color.a < 0.1)
         {
             discard;
         }
         
-        color.rgb *= drawData.DiffuseColor;
-        spec = texture(drawData.Specular, fs_in.vTexCoords).rgb;
+        color.rgb *= materialData.DiffuseColor;
+        spec = texture(materialData.Specular, fs_in.vTexCoords).rgb;
         
-        spec.b = mix(drawData.Roughness.x, drawData.Roughness.y, spec.b);
+        spec.b = mix(materialData.Roughness.x, materialData.Roughness.y, spec.b);
     }
     
     vec3 normal = vec3(0.0, 0.0, 1.0);
-    if (drawData.IsReady)
+    if (materialData.IsReady)
     {
-        vec2 xy = texture(drawData.Normal, fs_in.vTexCoords).rg * 2.0 - 1.0;
+        vec2 xy = texture(materialData.Normal, fs_in.vTexCoords).rg * 2.0 - 1.0;
         float z = sqrt(max(0.0, 1.0 - dot(xy, xy)));
         normal = normalize(vec3(xy, z));
     }
@@ -103,5 +104,5 @@ void main()
     finalColor = pow(finalColor, vec3(1.0 / 2.2));
     FragColor = vec4(finalColor, 1.0);
 
-    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
+    gPicking = cmd.PickingId;
 }

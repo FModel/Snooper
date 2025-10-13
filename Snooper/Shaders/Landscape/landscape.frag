@@ -6,7 +6,7 @@ layout (location = 2) out vec4 gColor;
 layout (location = 3) out vec4 gSpecular;
 layout (location = 4) out uint gPicking;
 
-struct PerDrawData
+struct PerMaterialData
 {
     bool IsReady;
     uint WeightmapCount;
@@ -26,9 +26,9 @@ struct WeightHighlightMapping
     vec4 DebugColor;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
 {
-    PerDrawData uDrawDataBuffer[];
+    PerMaterialData uMaterialDataBuffer[];
 };
 
 layout(std430, binding = 3) restrict readonly buffer LandscapeScales
@@ -60,27 +60,27 @@ bool channelEnabled(uint mask, int channel)
     return ((mask >> channel) & 1u) != 0u;
 }
 
-vec3 getColorFromWeightmap(PerDrawData drawData, WeightHighlightMapping mapping)
+vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping mapping)
 {
     float quadFraction = 1.0 / uQuadCount;
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
 
-    int weightmapCount = int(drawData.WeightmapCount);
+    int weightmapCount = int(materialData.WeightmapCount);
 
     vec3 blendColor = vec3(0.0);
     float gray = 0.0;
 
     for (int i = 0; i < weightmapCount; i++)
     {
-        vec2 weightmapSize = textureSize(drawData.Weightmaps[i], 0);
+        vec2 weightmapSize = textureSize(materialData.Weightmaps[i], 0);
         vec2 texelSize = 1.0 / weightmapSize;
         vec2 weightmapUvSize = vec2(uSizeQuads) / weightmapSize;
 
-        vec2 uv2 = drawData.WeightmapScaleBias + subPatchOffset * weightmapUvSize + fs_in.vTessCoord * (weightmapUvSize * quadFraction);
+        vec2 uv2 = materialData.WeightmapScaleBias + subPatchOffset * weightmapUvSize + fs_in.vTessCoord * (weightmapUvSize * quadFraction);
         uv2 = uv2 * (1.0 - texelSize) + 0.5 * texelSize;
 
-        uint mask = drawData.EnabledChannels[i];
-        vec4 weightmapColor = texture(drawData.Weightmaps[i], uv2);
+        uint mask = materialData.EnabledChannels[i];
+        vec4 weightmapColor = texture(materialData.Weightmaps[i], uv2);
         for (int c = 0; c < 4; c++)
         {
             if (!channelEnabled(mask, c))
@@ -145,6 +145,8 @@ vec3 getColorFromHeight(float height)
 
 void main()
 {
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
+    
     vec3 color = vec3(1.0);
     if (uColorMode == 0)
     {
@@ -152,7 +154,7 @@ void main()
     }
     else if (uColorMode == 1)
     {
-        color = getColorFromWeightmap(uDrawDataBuffer[gDrawID], uWeightMappingBuffer[gDrawID]);
+        color = getColorFromWeightmap(uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex], uWeightMappingBuffer[gDrawID]);
     }
     
     gPosition = fs_in.vViewPos;
@@ -161,5 +163,5 @@ void main()
     gColor.a = 1.0; // free space
     gSpecular.rgb = vec3(0.0, 0.0, 0.0);
     gSpecular.a = 1.0; // free space
-    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
+    gPicking = cmd.PickingId;
 }

@@ -1,32 +1,35 @@
 ﻿layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
-flat in uint vDrawID[];
+#include "Buffers/PerDrawCommand.glsl"
 
-flat out uint gDrawID;
-
-struct PerDrawData
+struct PerMaterialData
 {
     bool IsReady;
     float LineThickness;
     vec3 LineColor;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
 {
-    PerDrawData uDrawDataBuffer[];
+    PerMaterialData uMaterialDataBuffer[];
 };
 
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform vec2 uViewportSize;
 
+flat in uint vDrawID[];
+
+flat out uint gDrawID;
+
 void main()
 {
     gDrawID = vDrawID[0];
-    
-    PerDrawData drawData = uDrawDataBuffer[gDrawID];
-    float thickness = drawData.LineThickness;
+
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex];
+    float thickness = materialData.LineThickness;
     
     // Get the two line endpoints in clip space
     vec4 p0 = gl_in[0].gl_Position;

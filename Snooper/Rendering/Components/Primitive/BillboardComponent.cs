@@ -9,7 +9,7 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Primitive;
 
-public struct PerDrawBillboardData : IPerDrawData
+public struct PerMaterialBillboardData : IPerMaterialData
 {
     public bool IsReady { get; init; }
     public float OpacityMask;
@@ -17,7 +17,7 @@ public struct PerDrawBillboardData : IPerDrawData
 }
 
 [DefaultActorSystem(typeof(BillboardSystem))]
-public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardData>
+public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboardData>
 {
     public BillboardComponent(UBillboardComponent component) : base(component)
     {
@@ -25,13 +25,13 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
 
         if (component.GetSprite() is { } sprite)
         {
-            Materials[0].DrawDataContainer = new DrawDataContainer(new Texture2D(sprite), component.GetOrDefault("OpacityMaskRefVal", 0.5f));
+            Materials[0].MaterialDataContainer = new MaterialDataContainer(new Texture2D(sprite), component.GetOrDefault("OpacityMaskRefVal", 0.5f));
         }
     }
     
     internal override string Icon => "chalkboard";
     
-    private class DrawDataContainer(Texture sprite, float opacityMask) : IDrawDataContainer
+    private class MaterialDataContainer(Texture sprite, float opacityMask) : IMaterialDataContainer
     {
         private BindlessTexture? _sprite;
         
@@ -59,7 +59,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
             _sprite.Generate();
             _sprite.MakeResident();
 
-            Raw = new PerDrawBillboardData
+            Raw = new PerMaterialBillboardData
             {
                 IsReady = true,
                 OpacityMask = opacityMask,
@@ -67,7 +67,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerDrawBillboardDa
             };
         }
         
-        public IPerDrawData? Raw { get; private set; }
+        public IPerMaterialData? Raw { get; private set; }
         
         public void DrawControls()
         {

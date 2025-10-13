@@ -17,7 +17,7 @@ public struct LayerMapping
     public Vector4 DebugColor;
 }
 
-public unsafe struct PerDrawLandscapeData : IPerDrawData
+public unsafe struct PerMaterialLandscapeData : IPerMaterialData
 {
     public bool IsReady { get; init; }
     public uint WeightmapCount;
@@ -31,7 +31,7 @@ public unsafe struct PerDrawLandscapeData : IPerDrawData
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
-public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandscapeData>
+public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLandscapeData>
 {
     public readonly uint SizeQuads;
     public readonly Vector2[] Scales;
@@ -54,7 +54,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             weightmaps[i] = new Texture2D(textures[i]);
         }
         
-        Materials[0].DrawDataContainer = new DrawDataContainer(
+        Materials[0].MaterialDataContainer = new MaterialDataContainer(
             new Texture2D(heightmap),
             new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
             weightmaps,
@@ -89,7 +89,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
     
     internal override string Icon => "mountain";
 
-    private class DrawDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, FWeightmapLayerAllocationInfo[] allocations) : IDrawDataContainer
+    private class MaterialDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, FWeightmapLayerAllocationInfo[] allocations) : IMaterialDataContainer
     {
         private BindlessTexture? _heightmap;
         private BindlessTexture?[]? _weightmaps = new BindlessTexture[weightmaps.Length];
@@ -138,7 +138,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             _heightmap.Generate();
             _heightmap.MakeResident();
             
-            var data = new PerDrawLandscapeData
+            var data = new PerMaterialLandscapeData
             {
                 IsReady = true,
                 
@@ -178,7 +178,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerDrawLandsca
             Raw = data;
         }
         
-        public IPerDrawData? Raw { get; private set; }
+        public IPerMaterialData? Raw { get; private set; }
         
         public void DrawControls()
         {

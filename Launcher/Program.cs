@@ -160,8 +160,8 @@ switch (provider.ProjectName)
     }
     case "Hk_project":
     {
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Hk_project/Content/Map/_MainGame/06_MidTown/remaster/MIDTOWN_Club_GRAPH.MIDTOWN_Club_GRAPH")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Hk_project/Content/Map/_MainGame/01_InsideTheWall/InsideTheWall_GRAPH.InsideTheWall_GRAPH")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Hk_project/Content/Map/_MainGame/06_MidTown/remaster/MIDTOWN_Club_GRAPH.MIDTOWN_Club_GRAPH")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Hk_project/Content/Map/_MainGame/01_InsideTheWall/InsideTheWall_GRAPH.InsideTheWall_GRAPH")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Hk_project/Content/Map/_MainGame/01_InsideTheWall/ToDeadCity_TRANS/ToDeadCity_GRAPH.ToDeadCity_GRAPH")));
         break;
     }
@@ -197,9 +197,9 @@ switch (provider.ProjectName)
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/0OQWBLU34Z8QW3PKAD337X3WZ.Hermes_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/E805Z66QYYDSR03ITPQKWIC9S.Hermes_Terrain")));
         
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/DelMarGame/Content/Environments/Desert/Levels/Level_DM_NeonCity_SmallBuilding_A.Level_DM_NeonCity_SmallBuilding_A")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/DelMarGame/Content/Environments/Desert/Levels/Level_DM_NeonCity_SmallBuilding_A.Level_DM_NeonCity_SmallBuilding_A")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Figment/Figment_S05_Map/Content/Athena_Terrain_S05.Athena_Terrain_S05"), WorldActorType.Landscape));
         break;
     }

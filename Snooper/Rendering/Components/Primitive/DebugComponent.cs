@@ -9,7 +9,7 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Primitive;
 
-public struct PerDrawDebugData : IPerDrawData
+public struct PerMaterialDebugData : IPerMaterialData
 {
     public bool IsReady { get; init; }
     public float LineThickness { get; init; }
@@ -18,7 +18,7 @@ public struct PerDrawDebugData : IPerDrawData
 }
 
 [DefaultActorSystem(typeof(DebugSystem))]
-public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
+public class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
 {
     public DebugComponent(PrimitiveData primitive, CullingBounds bounds, string? name = null) : base(primitive, bounds, null, name)
     {
@@ -29,7 +29,7 @@ public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
     {
         if (color != null)
         {
-            Materials[0].DrawDataContainer = new DrawDataContainer(color.Value, lineThickness);
+            Materials[0].MaterialDataContainer = new MaterialDataContainer(color.Value, lineThickness);
         }
     }
 
@@ -38,7 +38,7 @@ public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
         
     }
     
-    protected class DrawDataContainer(Vector3 color, float lineThickness = 1.0f) : IDrawDataContainer
+    protected class MaterialDataContainer(Vector3 color, float lineThickness = 1.0f) : IMaterialDataContainer
     {
         public bool HasTextures => false;
         public bool IsTranslucent => false;
@@ -47,7 +47,7 @@ public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
 
         public void FinalizeGpuData()
         {
-            Raw = new PerDrawDebugData
+            Raw = new PerMaterialDebugData
             {
                 IsReady = true,
                 LineColor = color,
@@ -55,7 +55,7 @@ public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
             };
         }
         
-        public IPerDrawData? Raw { get; private set; }
+        public IPerMaterialData? Raw { get; private set; }
         
         public void DrawControls()
         {

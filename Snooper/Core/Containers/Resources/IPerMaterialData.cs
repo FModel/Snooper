@@ -4,23 +4,20 @@ using System.Runtime.InteropServices;
 
 namespace Snooper.Core.Containers.Resources;
 
-/// <summary>
-/// read back: gl_DrawID
-/// </summary>
-public interface IPerDrawData
+public interface IPerMaterialData
 {
     public bool IsReady { get; }
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1, Size = 4)]
-public struct PerDrawData : IPerDrawData
+public struct PerMaterialData : IPerMaterialData
 {
     public bool IsReady { get; init; }
 }
 
-public interface IDrawDataContainer : IControllable, IDisposable
+public interface IMaterialDataContainer : IControllable, IDisposable
 {
-    public IPerDrawData? Raw { get; }
+    public IPerMaterialData? Raw { get; }
     public bool HasTextures { get; }
     public bool IsTranslucent { get; }
     

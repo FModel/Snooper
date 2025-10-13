@@ -70,15 +70,15 @@ public class TextureManager : IGameSystem
     {
         foreach (var material in materials)
         {
-            if (material.DrawDataContainer is null) continue;
+            if (material.MaterialDataContainer is null) continue;
             
-            if (!material.DrawDataContainer.HasTextures)
+            if (!material.MaterialDataContainer.HasTextures)
             {
                 OnMaterialReady?.Invoke(material);
                 continue;
             }
             
-            var textures = material.DrawDataContainer.GetTextures();
+            var textures = material.MaterialDataContainer.GetTextures();
             _sectionPendingTextures[material.SectionId] = (material, textures.Count);
             
             foreach (var kvp in textures)
@@ -120,7 +120,7 @@ public class TextureManager : IGameSystem
 
                         var (section, remaining) = entry;
 
-                        section.DrawDataContainer?.SetBindlessTexture(key, bindless);
+                        section.MaterialDataContainer?.SetBindlessTexture(key, bindless);
 
                         remaining--;
                         if (remaining <= 0)

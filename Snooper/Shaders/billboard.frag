@@ -2,16 +2,16 @@
 
 layout (location = 1) out uint gPicking;
 
-struct PerDrawData
+struct PerMaterialData
 {
     bool IsReady;
     float OpacityMask;
     sampler2D Sprite;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
 {
-    PerDrawData uDrawDataBuffer[];
+    PerMaterialData uMaterialDataBuffer[];
 };
 
 #include "Buffers/PerDrawCommand.glsl"
@@ -23,13 +23,14 @@ out vec4 FragColor;
 
 void main()
 {
-    PerDrawData drawData = uDrawDataBuffer[gDrawID];
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex];
     
     vec4 color = vec4(1.0);
-    if (drawData.IsReady)
+    if (materialData.IsReady)
     {
-        color = texture(drawData.Sprite, vTexCoords);
-        if (color.a < drawData.OpacityMask)
+        color = texture(materialData.Sprite, vTexCoords);
+        if (color.a < materialData.OpacityMask)
         {
             discard;
         }
@@ -37,5 +38,5 @@ void main()
 
     FragColor = pow(color, vec4(1.0 / 2.2));
     
-    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
+    gPicking = cmd.PickingId;
 }

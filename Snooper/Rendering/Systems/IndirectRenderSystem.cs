@@ -8,40 +8,36 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerDrawData>
+public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>
     : ActorSystem<TComponent>, ITexturedSystem, IMemorySizeProvider
     where TVertex : unmanaged
-    where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerDrawData>
+    where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData 
-    where TPerDrawData : unmanaged, IPerDrawData
+    where TPerMaterialData : unmanaged, IPerMaterialData
 {
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
     
     protected abstract Action<int> VertexLayout { get; }
 
-    protected IndirectResources<TVertex, TInstanceData, TPerDrawData> Resources { get; }
+    protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; }
     public TextureManager TextureManager { get; }
 
     protected IndirectRenderSystem(int initialDrawCapacity, PrimitiveType type)
     {
-        Resources = new IndirectResources<TVertex, TInstanceData, TPerDrawData>(initialDrawCapacity, type);
+        Resources = new IndirectResources<TVertex, TInstanceData, TPerMaterialData>(initialDrawCapacity, type);
         
         TextureManager = new TextureManager();
         TextureManager.OnMaterialReady += material =>
         {
-            // this is called when a managed texture has been decoded (async) and uploaded to the GPU
-            // it gives back the bindless representation of the texture for TPerDrawData to use
-            // at this point, TPerDrawData is still defaulted
-            
-            material.DrawDataContainer?.FinalizeGpuData();
-            if (material.DrawDataContainer?.Raw is not TPerDrawData raw)
+            material.MaterialDataContainer?.FinalizeGpuData();
+            if (material.MaterialDataContainer?.Raw is not TPerMaterialData raw)
             {
-                throw new InvalidOperationException($"Draw data container raw type {material.DrawDataContainer.Raw.GetType()} does not match expected type {typeof(TPerDrawData)}.");
+                throw new InvalidOperationException($"Material data container raw type {material.MaterialDataContainer.Raw.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
             }
             
-            Resources.Update(material.DrawMetadata.DrawId, raw);
-            material.DrawDataContainer?.Dispose();
+            Resources.Update((int)material.DrawMetadata.MaterialOffset, raw);
+            material.MaterialDataContainer?.Dispose();
         };
     }
 
@@ -50,7 +46,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.Load();
 
         Resources.Generate();
-        Resources.Allocate(_componentCount, _drawCount, _indices, _vertices);
+        Resources.Allocate(_componentCount, _drawCount, _materialCount, _indices, _vertices);
         
         TextureManager.Load();
         
@@ -81,6 +77,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     
     private uint _componentCount;
     private uint _drawCount;
+    private uint _materialCount;
     private uint _indices;
     private uint _vertices;
     private readonly HashSet<FGuid> _guids = [];
@@ -91,6 +88,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         
         _componentCount++;
         _drawCount += (uint)component.Descriptor.Lods[0].Sections.Length;
+        _materialCount += (uint)component.Materials.Length;
         if (_guids.Add(component.Descriptor.Guid))
         {
             foreach (var lod in component.Descriptor.Lods)

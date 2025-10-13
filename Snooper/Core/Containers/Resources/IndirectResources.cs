@@ -8,28 +8,28 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initialDrawCapacity, PrimitiveType type)
+public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type)
     : IMemorySizeProvider, IDisposable
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData 
-    where TPerDrawData : unmanaged, IPerDrawData
+    where TPerMaterialData : unmanaged, IPerMaterialData
 {
     private readonly GeometryPool<TVertex> _geometry = new(initialDrawCapacity);
     private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new(initialDrawCapacity);
-    private readonly ShaderStorageBuffer<TPerDrawData> _drawData = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new(initialDrawCapacity);
     
     public void Generate()
     {
         _geometry.Generate();
         _commands.Generate();
         _instanceData.Generate();
-        _drawData.Generate();
+        _materialData.Generate();
     }
     
     public void SetVertexLayout(Action<int> setter) => _geometry.SetVertexLayout(setter);
     
-    public void Allocate(uint componentCount, uint drawCount, uint indices, uint vertices)
+    public void Allocate(uint componentCount, uint drawCount, uint materialCount, uint indices, uint vertices)
     {
         _geometry.Allocate(componentCount, drawCount, indices, vertices);
 
@@ -41,43 +41,66 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _instanceData.Allocate(new TInstanceData[drawCount * 2]);
         _instanceData.Unbind();
 
-        _drawData.Bind();
-        _drawData.Allocate(new TPerDrawData[drawCount]);
-        _drawData.Unbind();
+        _materialData.Bind();
+        _materialData.Allocate(new TPerMaterialData[materialCount]);
+        _materialData.Unbind();
     }
     
     public void Add(uint pickingId, PrimitiveDescriptor<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
     {
+        Log.Debug("Adding draw data for primitive {Primitive} with {InstanceCount} instances and {MaterialCount} materials.", primitive.Path, instanceData.Length, materials.Length);
+        
         var handle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
         
         _instanceData.Bind();
         var baseInstance = (uint)_instanceData.AddRange(instanceData);
         _instanceData.Unbind();
         
-        _commands.Current.Bind();
-        var instanceCount = (uint)instanceData.Length;
+        _materialData.Bind();
+        var baseMaterialOffset = (uint)_materialData.AddRange(new TPerMaterialData[materials.Length]);
         for (var i = 0u; i < materials.Length; i++)
         {
-            materials[i].DrawMetadata.BaseInstance = (int)baseInstance;
-            materials[i].DrawMetadata.ModelId = handle.ModelId;
-            materials[i].DrawMetadata.DrawId = _commands.Current.Add(new DrawElementsIndirectCommand
+            materials[i].DrawMetadata.MaterialOffset = baseMaterialOffset + i;
+        }
+        _materialData.Unbind();
+        
+        var instanceCount = (uint)instanceData.Length;
+        var cmds = new DrawElementsIndirectCommand[primitive.Lods[0].Sections.Length];
+        for (var i = 0u; i < cmds.Length; i++)
+        {
+            cmds[i] = new DrawElementsIndirectCommand
             {
                 IndexCount = primitive.Lods[0].Sections[i].IndexCount,
                 InstanceCount = instanceCount,
                 FirstIndex = handle.FirstIndex + primitive.Lods[0].Sections[i].FirstIndex,
                 BaseVertex = handle.BaseVertex,
                 BaseInstance = baseInstance,
+                BaseMaterialOffset = baseMaterialOffset,
+                MaterialIndex = primitive.Lods[0].Sections[i].MaterialIndex,
                 PickingId = pickingId,
                 OriginalInstanceCount = instanceCount,
                 OriginalBaseInstance = baseInstance,
                 ModelId = handle.ModelId,
                 SectionId = i,
-            });
+            };
+        }
+
+        _commands.Current.Bind();
+        for (var i = 0; i < cmds.Length; i++)
+        {
+            // TODO: change this shit it is badly made
+            // current issue: we use Materials[0] for a lot of thing, too many thing in fact and this cause issues when
+            // no sections use the first material, we keep generating this resource every frame because Materials[0].IsGenerated
+            
+            var materialIndex = cmds[i].MaterialIndex;
+            materials[materialIndex].DrawMetadata.BaseInstance = (int)baseInstance;
+            materials[materialIndex].DrawMetadata.ModelId = handle.ModelId;
+            materials[materialIndex].DrawMetadata.DrawId = _commands.Current.Add(cmds[i]);
         }
         _commands.Current.Unbind();
     }
 
-    public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> component)
+    public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
         if (component.Materials.Length < 1) return;
         
@@ -99,14 +122,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         }
     }
     
-    public void Update(int drawId, TPerDrawData drawData)
+    public void Update(int offset, TPerMaterialData materialData)
     {
-        if (!drawData.IsReady) throw new InvalidOperationException("Draw data is not ready.");
-        Log.Debug("Updating draw data for draw ID {DrawId}.", drawId);
+        if (!materialData.IsReady) throw new InvalidOperationException("Material data is not ready.");
+        Log.Debug("Updating material data at offset {Offset}.", offset);
 
-        _drawData.Bind();
-        _drawData.Update(drawId, drawData);
-        _drawData.Unbind();
+        _materialData.Bind();
+        _materialData.Update(offset, materialData);
+        _materialData.Unbind();
     }
 
     public void Remove(IndirectDrawMetadata metadata)
@@ -123,9 +146,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         // EBO.Remove();
         // VBO.Remove();
 
-        _drawData.Bind();
-        _drawData.Remove(metadata.DrawId);
-        _drawData.Unbind();
+        _materialData.Bind();
+        _materialData.Remove((int)metadata.MaterialOffset);
+        _materialData.Unbind();
         
         // _culling.Remove();
     }
@@ -137,7 +160,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _commands.Current.Bind();
         _commands.Current.Bind(0);
         _instanceData.Bind(1);
-        _drawData.Bind(2);
+        _materialData.Bind(2);
         
         _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.Count, _commands.Current.Stride));
 
@@ -150,7 +173,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         _geometry.Dispose();
         _commands.Dispose();
         _instanceData.Dispose();
-        _drawData.Dispose();
+        _materialData.Dispose();
     }
 
     public string GetFormattedSpace()
@@ -158,8 +181,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerDrawData>(int initial
         var builder = new StringBuilder();
         builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}, {typeof(TInstanceData).Name}>:");
         builder.AppendLine(_geometry.GetFormattedSpace());
-        builder.AppendLine($"    x{_commands.Current.Count} Commands:     {_commands.Current.GetFormattedSpace()}");
-        builder.AppendLine($"    x{_drawData.Count} DrawData:     {_drawData.GetFormattedSpace()}");
+        builder.AppendLine($"    x{_commands.Current.Count} Commands: {_commands.Current.GetFormattedSpace()}");
+        builder.AppendLine($"    x{_materialData.Count} MaterialData: {_materialData.GetFormattedSpace()}");
         builder.AppendLine($"    x{_instanceData.Count} InstanceData: {_instanceData.GetFormattedSpace()}");
         return builder.ToString();
     }

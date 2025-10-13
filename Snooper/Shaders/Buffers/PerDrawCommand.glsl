@@ -6,6 +6,8 @@
     uint BaseVertex;
     uint BaseInstance;
     
+    uint BaseMaterialOffset;
+    uint MaterialIndex;
     uint PickingId;
     uint OriginalInstanceCount;
     uint OriginalBaseInstance;

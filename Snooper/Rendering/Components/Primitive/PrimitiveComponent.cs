@@ -14,29 +14,19 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Primitive;
 
-public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> : SpatialComponent
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> : SpatialComponent
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
-    where TPerDrawData : unmanaged, IPerDrawData
+    where TPerMaterialData : unmanaged, IPerMaterialData
 {
     private readonly PrimitiveDescriptor<TVertex>? _descriptor;
     public PrimitiveDescriptor<TVertex> Descriptor
     {
         get => _descriptor ?? throw new InvalidOperationException($"Descriptor not initialized for {Name} of type {GetType().Name}.");
-        protected init
-        {
-            _descriptor = value;
-            
-            // init materials for the first LOD only
-            Materials = new MaterialSection[_descriptor.Lods[0].Sections.Length];
-            for (var i = 0; i < Materials.Length; i++)
-            {
-                Materials[i] = new MaterialSection(_descriptor.Lods[0].Sections[i].MaterialIndex);
-            }
-        }
+        protected init => _descriptor = value;
     }
     
-    public MaterialSection[] Materials { get; private init; } = [];
+    public abstract MaterialSection[] Materials { get; }
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
@@ -52,13 +42,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         IsVisible = component.GetOrDefault("bVisible", IsVisible);
     }
 
-    public void Generate(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
+    public void Generate(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
         resources.Add(Id, Descriptor, Materials, GetPerInstanceData());
         textureManager.AddRange(Materials);
     }
 
-    public void Update(IndirectResources<TVertex, TInstanceData, TPerDrawData> resources, TextureManager textureManager)
+    public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
         if (!Materials[0].IsGenerated)
         {
@@ -115,8 +105,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
                 {
                     EditorUI.Text("Path", Descriptor.Path ?? "N/A");
                     EditorUI.Text("Guid", Descriptor.Guid.ToString(EGuidFormats.UniqueObjectGuid));
-                    
-                    // TODO: more shit
+                    EditorUI.Text("Is Visible", IsVisible.ToString());
                     
                     EditorUI.Property($"LODs ({Descriptor.Lods.Length})");
                     ImGui.BeginGroup();
@@ -125,9 +114,9 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
                     var value = OverrideLod;
                     var maxLod = Descriptor.Lods.Length - 1;
                     
-                    if (maxLod == 0) ImGui.BeginDisabled();
+                    if (!IsVisible || maxLod == 0) ImGui.BeginDisabled();
                     if (ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod)) OverrideLod = value;
-                    if (maxLod == 0) ImGui.EndDisabled();
+                    if (!IsVisible || maxLod == 0) ImGui.EndDisabled();
                     
                     ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                     ImGui.SetWindowFontScale(0.85f);
@@ -136,7 +125,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
                     switch (OverrideLod)
                     {
                         case -1:
-                            ImGui.TextUnformatted("Auto (Distance-Based)");
+                            ImGui.TextUnformatted("Auto (Screen Size Based)");
                             break;
                         case >= 0 when OverrideLod < Descriptor.Lods.Length:
                             ImGui.TextUnformatted($"LOD {OverrideLod}: {lod.VertexCount} vertices, {lod.IndexCount} indices, {lod.ScreenSize} screen size");
@@ -182,10 +171,38 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
         
         EditorUI.CollapsingTable("Materials", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
-            foreach (var material in Materials)
+            EditorUI.Property($"Materials ({Materials.Length})");
+            ImGui.BeginGroup();
+            
+            if (Materials.Length > 0)
             {
-                material.DrawDataContainer?.DrawControls();
+                var materialIndex = 0;
+                var maxMaterial = Materials.Length - 1;
+                        
+                if (maxMaterial == 0) ImGui.BeginDisabled();
+                ImGui.SliderInt("##MaterialSlider", ref materialIndex, 0, maxMaterial);
+                if (maxMaterial == 0) ImGui.EndDisabled();
+                        
+                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
+                ImGui.SetWindowFontScale(0.85f);
+                        
+                var material = Materials[materialIndex];
+                ImGui.TextUnformatted($"Material {materialIndex}: Material {material.MaterialIndex}, Offset {material.DrawMetadata.MaterialOffset}, DrawId {material.DrawMetadata.DrawId}");
+                        
+                ImGui.SetWindowFontScale(1.0f);
+                ImGui.PopStyleVar();
             }
+            else
+            {
+                ImGui.TextDisabled("No Materials?");
+            }
+            
+            ImGui.EndGroup();
+            
+            // foreach (var material in Materials)
+            // {
+            //     material.MaterialDataContainer?.DrawControls();
+            // }
         });
     }
 }
@@ -193,9 +210,9 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
 /// <summary>
 /// primitive component that uses a single section for the entire primitive data.
 /// </summary>
-public class PrimitiveComponent<TVertex, TPerDrawData> : PrimitiveComponent<TVertex, PerInstanceData, TPerDrawData>
+public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<TVertex, PerInstanceData, TPerMaterialData>
     where TVertex : unmanaged
-    where TPerDrawData : unmanaged, IPerDrawData
+    where TPerMaterialData : unmanaged, IPerMaterialData
 {
     protected PrimitiveComponent(TPrimitiveData<TVertex> primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -206,11 +223,13 @@ public class PrimitiveComponent<TVertex, TPerDrawData> : PrimitiveComponent<TVer
     {
         
     }
+
+    public sealed override MaterialSection[] Materials { get; } = [new(0)];
 }
 
 /// <inheritdoc />
-public class PrimitiveComponent<TPerDrawData> : PrimitiveComponent<Vector3, TPerDrawData>
-    where TPerDrawData : unmanaged, IPerDrawData
+public class PrimitiveComponent<TPerMaterialData> : PrimitiveComponent<Vector3, TPerMaterialData>
+    where TPerMaterialData : unmanaged, IPerMaterialData
 {
     protected PrimitiveComponent(PrimitiveData primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(primitive, bounds, transform, name)
     {
@@ -225,7 +244,7 @@ public class PrimitiveComponent<TPerDrawData> : PrimitiveComponent<Vector3, TPer
 
 /// <inheritdoc />
 [DefaultActorSystem(typeof(PrimitiveSystem))]
-public class PrimitiveComponent : PrimitiveComponent<PerDrawData>
+public class PrimitiveComponent : PrimitiveComponent<PerMaterialData>
 {
     public PrimitiveComponent(PrimitiveData primitive, Transform? transform = null, string? name = null) : base(primitive, new FBox(), transform, name)
     {

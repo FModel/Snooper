@@ -70,7 +70,8 @@ bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
         a.InstanceCount == b.InstanceCount &&
         a.IndexCount == b.IndexCount &&
         a.FirstIndex == b.FirstIndex &&
-        a.BaseVertex == b.BaseVertex;
+        a.BaseVertex == b.BaseVertex &&
+        a.MaterialIndex == b.MaterialIndex;
 }
 
 void main()
@@ -186,6 +187,7 @@ void main()
                 newCmd.IndexCount = section.count;
                 newCmd.FirstIndex = primitive.firstIndex[lodGroup][lodSub] + section.firstIndex;
                 newCmd.BaseVertex = primitive.baseVertex[lodGroup][lodSub];
+                newCmd.MaterialIndex = section.materialIndex;
             }
         }
     }
@@ -201,5 +203,6 @@ void main()
         uDrawCommandBuffer[drawId].FirstIndex    = newCmd.FirstIndex;
         uDrawCommandBuffer[drawId].BaseVertex    = newCmd.BaseVertex;
         uDrawCommandBuffer[drawId].BaseInstance  = newCmd.BaseInstance;
+        uDrawCommandBuffer[drawId].MaterialIndex = newCmd.MaterialIndex;
     }
 }

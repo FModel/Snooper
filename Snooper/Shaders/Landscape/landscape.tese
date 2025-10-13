@@ -5,7 +5,7 @@ layout (quads, fractional_odd_spacing, ccw) in;
 #include "Buffers/PerDrawCommand.glsl"
 #include "Buffers/PerInstanceData.glsl"
 
-struct PerDrawData
+struct PerMaterialData
 {
     bool IsReady;
     uint WeightmapCount;
@@ -18,9 +18,9 @@ struct PerDrawData
     vec2 WeightmapScaleBias;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
+layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
 {
-    PerDrawData uDrawDataBuffer[];
+    PerMaterialData uMaterialDataBuffer[];
 };
 
 layout(std430, binding = 3) restrict readonly buffer LandscapeScales
@@ -65,8 +65,9 @@ void main()
 
     mat4 matrix = uInstanceDataBuffer[tcInstanceID[0]].Matrix;
 
-    PerDrawData drawData = uDrawDataBuffer[gDrawID];
-    if (!drawData.IsReady)
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex];
+    if (!materialData.IsReady)
     {
         te_out.vViewPos = vec3(0.0);
         te_out.TBN = mat3(uViewMatrix);
@@ -75,16 +76,16 @@ void main()
         return;
     }
     
-    vec2 heightmapSize = textureSize(drawData.Heightmap, 0);
+    vec2 heightmapSize = textureSize(materialData.Heightmap, 0);
     vec2 texelSize = 1.0 / heightmapSize;
     vec2 componentUvSize = vec2(uSizeQuads) / heightmapSize;
     float quadFraction = 1.0 / uQuadCount;
     
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
-    vec2 uv = drawData.HeightmapScaleBias + subPatchOffset * componentUvSize + vec2(u, v) * (componentUvSize * quadFraction);
+    vec2 uv = materialData.HeightmapScaleBias + subPatchOffset * componentUvSize + vec2(u, v) * (componentUvSize * quadFraction);
     uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
 
-    vec4 color = texture(drawData.Heightmap, uv);
+    vec4 color = texture(materialData.Heightmap, uv);
     float R = color.r * 255.0;
     float G = color.g * 255.0;
     te_out.vHeight = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
