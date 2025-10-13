@@ -3,6 +3,7 @@
 struct PerDrawData
 {
     bool IsReady;
+    float LineThickness;
     vec3 LineColor;
 };
 
@@ -12,7 +13,8 @@ layout(std430, binding = 2) restrict readonly buffer PerDrawDataBuffer
 };
 
 #include "Buffers/PerDrawCommand.glsl"
-#include "Buffers/common.frag"
+
+in flat uint gDrawID;
 
 out vec4 FragColor;
 

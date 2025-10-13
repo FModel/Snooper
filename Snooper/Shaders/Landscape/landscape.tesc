@@ -11,10 +11,10 @@ in gl_PerVertex
 
 uniform mat4 uViewMatrix;
 
-in flat int vInstanceIndex[];
-in flat int vDrawIndex[];
-out flat int tcInstanceIndex[];
-out flat int tcDrawIndex[];
+in flat uint vInstanceID[];
+in flat uint vDrawID[];
+out flat uint tcInstanceID[];
+out flat uint tcDrawID[];
 
 float getTessLevel(vec4 pos)
 {
@@ -34,15 +34,15 @@ float getTessLevel(vec4 pos)
 void main()
 {
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-    tcInstanceIndex[gl_InvocationID] = vInstanceIndex[gl_InvocationID];
-    tcDrawIndex[gl_InvocationID] = vDrawIndex[gl_InvocationID];
+    tcInstanceID[gl_InvocationID] = vInstanceID[gl_InvocationID];
+    tcDrawID[gl_InvocationID] = vDrawID[gl_InvocationID];
 
     if (gl_InvocationID == 0)
     {
-        vec4 eyeSpacePos00 = uViewMatrix * uInstanceDataBuffer[vInstanceIndex[0]].Matrix * gl_in[0].gl_Position;
-        vec4 eyeSpacePos01 = uViewMatrix * uInstanceDataBuffer[vInstanceIndex[1]].Matrix * gl_in[1].gl_Position;
-        vec4 eyeSpacePos10 = uViewMatrix * uInstanceDataBuffer[vInstanceIndex[2]].Matrix * gl_in[2].gl_Position;
-        vec4 eyeSpacePos11 = uViewMatrix * uInstanceDataBuffer[vInstanceIndex[3]].Matrix * gl_in[3].gl_Position;
+        vec4 eyeSpacePos00 = uViewMatrix * uInstanceDataBuffer[vInstanceID[0]].Matrix * gl_in[0].gl_Position;
+        vec4 eyeSpacePos01 = uViewMatrix * uInstanceDataBuffer[vInstanceID[1]].Matrix * gl_in[1].gl_Position;
+        vec4 eyeSpacePos10 = uViewMatrix * uInstanceDataBuffer[vInstanceID[2]].Matrix * gl_in[2].gl_Position;
+        vec4 eyeSpacePos11 = uViewMatrix * uInstanceDataBuffer[vInstanceID[3]].Matrix * gl_in[3].gl_Position;
 
         float tessLevel0 = getTessLevel(eyeSpacePos00);
         float tessLevel1 = getTessLevel(eyeSpacePos01);

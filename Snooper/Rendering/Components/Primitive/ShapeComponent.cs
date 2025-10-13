@@ -8,6 +8,7 @@ namespace Snooper.Rendering.Components.Primitive;
 public abstract class ShapeComponent : DebugComponent
 {
     protected Vector3? Color;
+    protected readonly float LineThickness = 2.0f;
 
     protected ShapeComponent(UShapeComponent component) : base(component)
     {
@@ -15,6 +16,8 @@ public abstract class ShapeComponent : DebugComponent
         {
             Color = new Vector3(color.R, color.G, color.B) / 255f;
         }
+
+        LineThickness = component.GetOrDefault("LineThickness", LineThickness);
     }
     
     internal override string Icon => "circle-dashed";
@@ -26,16 +29,16 @@ public class BoxComponent : ShapeComponent
     {
         Color ??= new Vector3(0.45f, 0.15f, 0.15f);
                 
-        var extent = FVector.OneVector / 2;
+        var extent = Vector3.One / 2;
         if (component.TryGetValue(out FVector boxExtent, "BoxExtent"))
         {
-            extent = boxExtent * Settings.GlobalScale;
+            extent = new Vector3(boxExtent.X, boxExtent.Z, boxExtent.Y) * Settings.GlobalScale;
         }
                 
         var bounds = new CullingBounds(extent);
         Descriptor = new PrimitiveDescriptor<Vector3>(bounds, () => new Geometry(bounds));
         
-        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value);
+        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value, LineThickness);
     }
 }
 
@@ -53,7 +56,7 @@ public class SphereComponent : ShapeComponent
                 
         Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(radius), () => new Geometry(radius));
         
-        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value);
+        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value, LineThickness);
     }
 }
 
@@ -78,6 +81,6 @@ public class CapsuleComponent : ShapeComponent
         var bounds = new CullingBounds(Vector3.Zero, new Vector3(radius, halfHeight, radius), halfHeight);
         Descriptor = new PrimitiveDescriptor<Vector3>(bounds, () => new Geometry(radius, halfHeight));
         
-        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value);
+        Materials[0].DrawDataContainer = new DrawDataContainer(Color.Value, LineThickness);
     }
 }

@@ -8,7 +8,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
 {
     public string Vertex { get; set; } = vertex;
     public string Fragment { get; set; } = fragment;
-    public string? Geometry { get; set; }
+    public string? Geometry { get; init; }
     public string? TessellationControl { get; init; }
     public string? TessellationEvaluation { get; init; }
     public string? Compute { get; init; }

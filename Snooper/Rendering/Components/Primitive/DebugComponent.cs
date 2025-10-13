@@ -12,6 +12,7 @@ namespace Snooper.Rendering.Components.Primitive;
 public struct PerDrawDebugData : IPerDrawData
 {
     public bool IsReady { get; init; }
+    public float LineThickness { get; init; }
     public ulong Padding { get; init; }
     public Vector3 LineColor { get; init; }
 }
@@ -24,11 +25,11 @@ public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
         
     }
     
-    public DebugComponent(CullingBounds bounds, Vector3? color = null, string? name = null) : this(new Geometry(bounds), bounds, name)
+    public DebugComponent(CullingBounds bounds, Vector3? color = null, float lineThickness = 1.0f, string? name = null) : this(new Geometry(bounds), bounds, name)
     {
         if (color != null)
         {
-            Materials[0].DrawDataContainer = new DrawDataContainer(color.Value);
+            Materials[0].DrawDataContainer = new DrawDataContainer(color.Value, lineThickness);
         }
     }
 
@@ -37,7 +38,7 @@ public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
         
     }
     
-    protected class DrawDataContainer(Vector3 color) : IDrawDataContainer
+    protected class DrawDataContainer(Vector3 color, float lineThickness = 1.0f) : IDrawDataContainer
     {
         public bool HasTextures => false;
         public bool IsTranslucent => false;
@@ -50,6 +51,7 @@ public class DebugComponent : PrimitiveComponent<PerDrawDebugData>
             {
                 IsReady = true,
                 LineColor = color,
+                LineThickness = lineThickness,
             };
         }
         

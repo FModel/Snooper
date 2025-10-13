@@ -28,8 +28,8 @@ layout(std430, binding = 3) restrict readonly buffer LandscapeScales
     vec2 uLandscapeScales[];
 };
 
-in flat int tcInstanceIndex[];
-in flat int tcDrawIndex[];
+in flat uint tcInstanceID[];
+in flat uint tcDrawID[];
 
 uniform float uSizeQuads;
 uniform float uQuadCount;
@@ -37,7 +37,7 @@ uniform float uGlobalScale;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 
-out flat int gDrawID;
+out flat uint gDrawID;
 out TE_OUT {
     vec3 vViewPos;
     mat3 TBN;
@@ -47,7 +47,7 @@ out TE_OUT {
 
 void main()
 {
-    gDrawID = tcDrawIndex[0];
+    gDrawID = tcDrawID[0];
     
     te_out.vTessCoord = gl_TessCoord.xy;
     
@@ -63,7 +63,7 @@ void main()
     vec4 p1 = (p11 - p10) * u + p10;
     vec4 p = (p1 - p0) * v + p0;
 
-    mat4 matrix = uInstanceDataBuffer[tcInstanceIndex[0]].Matrix;
+    mat4 matrix = uInstanceDataBuffer[tcInstanceID[0]].Matrix;
 
     PerDrawData drawData = uDrawDataBuffer[gDrawID];
     if (!drawData.IsReady)

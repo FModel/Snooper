@@ -118,7 +118,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerDrawData> :
                     
                     // TODO: more shit
                     
-                    EditorUI.Property($"LOD{(Descriptor.Lods.Length > 1 ? "s" : string.Empty)} ({Descriptor.Lods.Length})");
+                    EditorUI.Property($"LODs ({Descriptor.Lods.Length})");
                     ImGui.BeginGroup();
 
                     const int minLod = -1;

@@ -1,8 +1,8 @@
-﻿flat out int gVertexID;
-flat out int gInstanceID;
-flat out int gDrawID;
-flat out int gBaseVertex;
-flat out int gBaseInstance;
+﻿flat out uint gVertexID;
+flat out uint gInstanceID;
+flat out uint gDrawID;
+flat out uint gBaseVertex;
+flat out uint gBaseInstance;
 
 void SetCommonVSOut()
 {

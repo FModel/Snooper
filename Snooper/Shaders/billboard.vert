@@ -14,8 +14,7 @@ void main()
 {
     SetCommonVSOut();
 
-    int id = gBaseInstance + gInstanceID;
-    mat4 matrix = uInstanceDataBuffer[id].Matrix;
+    mat4 matrix = uInstanceDataBuffer[gBaseInstance + gInstanceID].Matrix;
     
     vec3 worldPos = matrix[3].xyz;
     vec4 viewPos = uViewMatrix * vec4(worldPos, 1.0);

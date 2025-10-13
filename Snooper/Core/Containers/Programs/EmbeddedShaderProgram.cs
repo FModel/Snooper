@@ -7,6 +7,8 @@ public class EmbeddedShaderProgram(string vertex, string fragment) : ShaderProgr
 {
     private readonly Assembly _assembly = Assembly.GetExecutingAssembly();
     
+    public string[]? Defines { get; init; }
+    
     public EmbeddedShaderProgram(string file) : this($"{file}.vert", $"{file}.frag")
     {
         
@@ -16,6 +18,11 @@ public class EmbeddedShaderProgram(string vertex, string fragment) : ShaderProgr
     {
         var content = GetFileContent(file);
         ResolveIncludes(ref content);
+        
+        if (Defines is { Length: > 0 })
+        {
+            content = string.Join("\n", Defines.Select(d => $"#define {d}")) + "\n" + content;
+        }
         
         return base.CompileShader(type, "#version 460 core\n\n" + content);
     }

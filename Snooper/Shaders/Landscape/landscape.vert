@@ -2,13 +2,13 @@
 
 uniform float uGlobalScale;
 
-out flat int vInstanceIndex;
-out flat int vDrawIndex;
+out flat uint vInstanceID;
+out flat uint vDrawID;
 
 void main()
 {
     gl_Position = vec4(aPos.x * uGlobalScale, 0.0, aPos.y * uGlobalScale, 1.0);
 
-    vInstanceIndex = gl_BaseInstance + gl_InstanceID;
-    vDrawIndex = gl_DrawID;
+    vInstanceID = gl_BaseInstance + gl_InstanceID;
+    vDrawID = gl_DrawID;
 }
