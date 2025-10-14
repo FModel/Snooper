@@ -33,8 +33,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
     public bool IsVisible { get; protected init; } = true;
-    public int OverrideLod { get; protected set; } = -1;
-    
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -114,24 +112,25 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     ImGui.BeginGroup();
 
                     const int minLod = -1;
-                    var value = OverrideLod;
+                    var value = Metadata.GeometryHandle.OverrideLod;
                     var maxLod = Descriptor.Lods.Length - 1;
                     
                     if (!IsVisible || maxLod == 0) ImGui.BeginDisabled();
-                    if (ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod)) OverrideLod = value;
+                    if (ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod))
+                        Metadata.GeometryHandle.OverrideLod = value;
                     if (!IsVisible || maxLod == 0) ImGui.EndDisabled();
                     
                     ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                     ImGui.SetWindowFontScale(0.85f);
                     
-                    var lod = Descriptor.Lods[Math.Max(0, OverrideLod)];
-                    switch (OverrideLod)
+                    var lod = Descriptor.Lods[Math.Max(0, value)];
+                    switch (value)
                     {
                         case -1:
                             ImGui.TextUnformatted("Auto (Screen Size Based)");
                             break;
-                        case >= 0 when OverrideLod < Descriptor.Lods.Length:
-                            ImGui.TextUnformatted($"LOD {OverrideLod}: {lod.VertexCount} vertices, {lod.IndexCount} indices, {lod.ScreenSize} screen size");
+                        case >= 0 when value < Descriptor.Lods.Length:
+                            ImGui.TextUnformatted($"LOD {value}: {lod.VertexCount} vertices, {lod.IndexCount} indices, {lod.ScreenSize} screen size");
                             break;
                     }
                     
@@ -230,7 +229,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     ImGui.AlignTextToFramePadding();
                     ImGui.TextUnformatted("Geometry");
                     ImGui.TableSetColumnIndex(1);
-                    ImGui.TextUnformatted(Metadata.BaseGeometry.ToString());
+                    ImGui.TextUnformatted(Metadata.GeometryHandle.BaseGeometry.ToString());
                     ImGui.TableSetColumnIndex(2);
                     ImGui.AlignTextToFramePadding();
                     ImGui.TextUnformatted("Instances");

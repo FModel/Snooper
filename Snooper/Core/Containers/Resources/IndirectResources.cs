@@ -85,7 +85,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         }
         _commands.Current.Unbind();
         
-        return new ResourcesMetadata((int)handle.BaseGeometry, (int)baseInstance, (int)baseMaterial, drawIds);
+        return new ResourcesMetadata(handle, (int)baseInstance, (int)baseMaterial, drawIds);
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
@@ -93,10 +93,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         var metadata = component.Metadata;
         if (!metadata.IsGenerated) return;
         
-        if (metadata.OverrideLod != component.OverrideLod)
+        if (metadata.GeometryHandle.IsDirty)
         {
-            _geometry.UpdateOverrideLod(metadata.BaseGeometry, component.OverrideLod);
-            metadata.OverrideLod = component.OverrideLod;
+            _geometry.UpdateOverrideLod((int)metadata.GeometryHandle.BaseGeometry, metadata.GeometryHandle.OverrideLod);
+            metadata.GeometryHandle.MarkClean();
         }
         
         if (component.IsDirty)
@@ -121,7 +121,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
 
     public void Remove(ResourcesMetadata metadata)
     {
-        Log.Debug("Removing primitive with Geometry {GeometryId} and {SectionCount} sections.", metadata.BaseGeometry, metadata.DrawIds.Length);
+        Log.Debug("Removing primitive with Geometry {GeometryId} and {SectionCount} sections.", metadata.GeometryHandle.BaseGeometry, metadata.DrawIds.Length);
         
         // TODO: properly do this
         

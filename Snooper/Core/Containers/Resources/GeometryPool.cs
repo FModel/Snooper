@@ -6,11 +6,28 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
-public struct GeometryHandle(uint firstIndex, uint baseVertex, uint baseGeometry)
+public class GeometryHandle(uint firstIndex, uint baseVertex, uint baseGeometry)
 {
-    public readonly uint FirstIndex = firstIndex;
-    public readonly uint BaseVertex = baseVertex;
+    public readonly uint FirstIndex = firstIndex; // first index of lod 0
+    public readonly uint BaseVertex = baseVertex; // base vertex of lod 0
     public readonly uint BaseGeometry = baseGeometry;
+    
+    private int _overrideLod = -1;
+    public int OverrideLod
+    {
+        get => _overrideLod;
+        internal set
+        {
+            if (_overrideLod == value) return;
+            
+            _overrideLod = value;
+            IsDirty = true;
+        }
+    }
+    
+    public bool IsDirty { get; private set; }
+    
+    public void MarkClean() => IsDirty = false;
 }
 
 public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemorySizeProvider where TVertex : unmanaged
