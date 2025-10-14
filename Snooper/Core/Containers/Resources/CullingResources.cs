@@ -47,16 +47,16 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
     public int Add(PrimitiveOffsets offsets)
     {
         _primitives.Bind();
-        var modelId = _primitives.Add(offsets);
+        var index = _primitives.Add(offsets);
         _primitives.Unbind();
         
-        return modelId;
+        return index;
     }
     
-    public void UpdateOverrideLod(int modelId, int overrideLod)
+    public void UpdateOverrideLod(int index, int overrideLod)
     {
         _primitives.Bind();
-        GL.BufferSubData(BufferTarget.ShaderStorageBuffer, modelId * _primitives.Stride + 32, 4, ref overrideLod);
+        GL.BufferSubData(BufferTarget.ShaderStorageBuffer, index * _primitives.Stride + 32, 4, ref overrideLod);
         _primitives.Unbind();
     }
     

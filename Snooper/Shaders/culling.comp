@@ -83,7 +83,7 @@ void main()
     if (drawId >= uDrawCommandBuffer.length()) return;
 
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[drawId];
-    PrimitiveDescriptor primitive = uPrimitiveDescriptors[cmd.ModelId];
+    PrimitiveDescriptor primitive = uPrimitiveDescriptors[cmd.BaseGeometry];
     uint instanceCount = cmd.OriginalInstanceCount;
     uint baseInstance = cmd.OriginalBaseInstance;
 

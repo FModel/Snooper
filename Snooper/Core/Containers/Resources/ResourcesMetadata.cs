@@ -1,17 +1,14 @@
 ﻿namespace Snooper.Core.Containers.Resources;
 
-public class ResourcesMetadata
+public struct ResourcesMetadata(int baseGeometry, int baseInstance, int baseMaterial, int[] drawIds)
 {
-    public uint ModelId { get; init; } = 0;
-    public int BaseInstance { get; init; } = -1;
+    public readonly int BaseGeometry = baseGeometry;
+    public readonly int BaseInstance = baseInstance;
+    public readonly int BaseMaterial = baseMaterial;
+    public readonly int[] DrawIds = drawIds; // we create one draw per section in lod 0
+    
     public int OverrideLod { get; set; } = -1;
-    public uint BaseMaterialOffset { get; init; } = 0;
     
-    /// <summary>
-    /// Draw IDs for each section in LOD 0
-    /// </summary>
-    public int[] SectionDrawIds { get; init; } = [];
-    
-    public bool IsGenerated => BaseInstance >= 0;
+    public bool IsGenerated => DrawIds.Length > 0;
 }
 

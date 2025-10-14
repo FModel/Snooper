@@ -5,13 +5,13 @@
     uint FirstIndex;
     uint BaseVertex;
     uint BaseInstance;
-    
-    uint BaseMaterialOffset;
-    uint MaterialIndex;
+
+    uint BaseGeometry; // offset of this geometry in the culling buffer
+    uint BaseMaterial; // offset of the first material this geometry uses in the material buffer
+    uint MaterialIndex; // index of the material relative to BaseMaterial
     uint PickingId;
     uint OriginalInstanceCount;
     uint OriginalBaseInstance;
-    uint ModelId; // model offset in PrimitiveDescriptorsBuffer
     uint SectionId; // section index in the current model (0-X)
 };
 

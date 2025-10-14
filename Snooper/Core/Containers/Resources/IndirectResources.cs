@@ -55,44 +55,37 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         _instanceData.Unbind();
         
         _materialData.Bind();
-        var baseMaterialOffset = (uint)_materialData.AddRange(new TPerMaterialData[materials.Length]);
+        var baseMaterial = (uint)_materialData.AddRange(new TPerMaterialData[materials.Length]);
         for (var i = 0u; i < materials.Length; i++)
         {
-            materials[i].MaterialOffset = baseMaterialOffset + i;
+            materials[i].MaterialOffset = baseMaterial + i;
         }
         _materialData.Unbind();
 
         _commands.Current.Bind();
         var instanceCount = (uint)instanceData.Length;
-        var sectionDrawIds = new int[primitive.Lods[0].Sections.Length];
-        for (var i = 0u; i < sectionDrawIds.Length; i++)
+        var drawIds = new int[primitive.Lods[0].Sections.Length];
+        for (var i = 0u; i < drawIds.Length; i++)
         {
-            sectionDrawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
+            drawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
             {
                 IndexCount = primitive.Lods[0].Sections[i].IndexCount,
                 InstanceCount = instanceCount,
                 FirstIndex = handle.FirstIndex + primitive.Lods[0].Sections[i].FirstIndex,
                 BaseVertex = handle.BaseVertex,
                 BaseInstance = baseInstance,
-                BaseMaterialOffset = baseMaterialOffset,
+                BaseGeometry = handle.BaseGeometry,
+                BaseMaterial = baseMaterial,
                 MaterialIndex = primitive.Lods[0].Sections[i].MaterialIndex,
                 PickingId = pickingId,
                 OriginalInstanceCount = instanceCount,
                 OriginalBaseInstance = baseInstance,
-                ModelId = handle.ModelId,
                 SectionId = i,
             });
         }
         _commands.Current.Unbind();
         
-        return new ResourcesMetadata
-        {
-            ModelId = handle.ModelId,
-            BaseInstance = (int)baseInstance,
-            OverrideLod = -1,
-            BaseMaterialOffset = baseMaterialOffset,
-            SectionDrawIds = sectionDrawIds
-        };
+        return new ResourcesMetadata((int)handle.BaseGeometry, (int)baseInstance, (int)baseMaterial, drawIds);
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
@@ -102,7 +95,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         
         if (metadata.OverrideLod != component.OverrideLod)
         {
-            _geometry.UpdateOverrideLod(metadata.ModelId, component.OverrideLod);
+            _geometry.UpdateOverrideLod(metadata.BaseGeometry, component.OverrideLod);
             metadata.OverrideLod = component.OverrideLod;
         }
         
@@ -128,13 +121,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
 
     public void Remove(ResourcesMetadata metadata)
     {
-        Log.Debug("Removing primitive with ModelId {ModelId} and {SectionCount} sections.", metadata.ModelId, metadata.SectionDrawIds.Length);
+        Log.Debug("Removing primitive with Geometry {GeometryId} and {SectionCount} sections.", metadata.BaseGeometry, metadata.DrawIds.Length);
         
         // TODO: properly do this
         
         // Remove all draw commands for each section
         _commands.Current.Bind();
-        foreach (var drawId in metadata.SectionDrawIds)
+        foreach (var drawId in metadata.DrawIds)
         {
             _commands.Current.Remove(drawId);
         }
@@ -147,7 +140,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
 
         // Remove material data for all materials
         _materialData.Bind();
-        _materialData.Remove((int)metadata.BaseMaterialOffset);
+        _materialData.Remove(metadata.BaseMaterial);
         _materialData.Unbind();
     }
 

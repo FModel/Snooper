@@ -76,4 +76,26 @@ public static class EditorUI
             ImGui.EndTable();
         }
     }
+    
+    /// <summary>
+    /// Creates a tree node with shared state.
+    /// Temporarily pops the current ID scope so the tree node state is global,
+    /// then pushes it back for the content inside.
+    /// </summary>
+    public static bool SharedTreeNode(string label, ImGuiTreeNodeFlags flags, uint id, Action content)
+    {
+        ImGui.PopID();
+        var isOpen = ImGui.TreeNodeEx(label, flags);
+        
+        if (isOpen)
+        {
+            ImGui.PushID((int)id);
+            content.Invoke();
+            ImGui.PopID();
+            ImGui.TreePop();
+        }
+        
+        ImGui.PushID((int)id);
+        return isOpen;
+    }
 }

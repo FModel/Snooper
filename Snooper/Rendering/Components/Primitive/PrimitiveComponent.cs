@@ -26,6 +26,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         protected init => _descriptor = value;
     }
     
+    public ResourcesMetadata Metadata { get; private set; }
+    
     public abstract MaterialSection[] Materials { get; }
 
     public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
@@ -33,7 +35,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     public bool IsVisible { get; protected init; } = true;
     public int OverrideLod { get; protected set; } = -1;
     
-    public ResourcesMetadata Metadata { get; private set; } = new();
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -101,9 +102,9 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         
         if (ImGui.CollapsingHeader(Header, ImGuiTreeNodeFlags.DefaultOpen))
         {
-            if (ImGui.TreeNodeEx("Descriptor", ImGuiTreeNodeFlags.DefaultOpen))
+            EditorUI.SharedTreeNode("Descriptor", ImGuiTreeNodeFlags.DefaultOpen, Id, () =>
             {
-                EditorUI.PropertyValueTable(Header, () =>
+                EditorUI.PropertyValueTable("Descriptor", () =>
                 {
                     EditorUI.Text("Path", Descriptor.Path ?? "N/A");
                     EditorUI.Text("Guid", Descriptor.Guid.ToString(EGuidFormats.UniqueObjectGuid));
@@ -166,13 +167,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     
                     ImGui.EndGroup();
                 });
-                
-                ImGui.TreePop();
-            }
+            });
 
-            if (ImGui.TreeNodeEx("Materials", ImGuiTreeNodeFlags.None))
+            EditorUI.SharedTreeNode("Materials", ImGuiTreeNodeFlags.None, Id, () =>
             {
-                EditorUI.PropertyValueTable(Header, () =>
+                EditorUI.PropertyValueTable("Materials", () =>
                 {
                     EditorUI.Property($"Materials ({Materials.Length})");
                     ImGui.BeginGroup();
@@ -207,9 +206,53 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     //     material.MaterialDataContainer?.DrawControls();
                     // }
                 });
-                
-                ImGui.TreePop();
-            }
+            });
+            
+            EditorUI.SharedTreeNode("Metadata", ImGuiTreeNodeFlags.None, Id, () =>
+            {
+                if (ImGui.BeginTable("Metadata", 4))
+                {
+                    ImGui.TableSetupColumn("Property1", ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableSetupColumn("Value1", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+                    ImGui.TableSetupColumn("Property2", ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableSetupColumn("Value2", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+                    ImGui.Indent();
+                    
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.TextUnformatted("ID");
+                    ImGui.TableSetColumnIndex(1);
+                    ImGui.TextUnformatted(Id.ToString());
+                    
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.TextUnformatted("Geometry");
+                    ImGui.TableSetColumnIndex(1);
+                    ImGui.TextUnformatted(Metadata.BaseGeometry.ToString());
+                    ImGui.TableSetColumnIndex(2);
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.TextUnformatted("Instances");
+                    ImGui.TableSetColumnIndex(3);
+                    ImGui.TextUnformatted(Metadata.BaseInstance.ToString());
+                    
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.TextUnformatted("Materials");
+                    ImGui.TableSetColumnIndex(1);
+                    ImGui.TextUnformatted(Metadata.BaseMaterial.ToString());
+                    ImGui.TableSetColumnIndex(2);
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.TextUnformatted($"Draw IDs ({Metadata.DrawIds.Length})");
+                    ImGui.TableSetColumnIndex(3);
+                    ImGui.TextUnformatted(string.Join(", ", Metadata.DrawIds));
+                    
+                    ImGui.Unindent();
+                    ImGui.EndTable();
+                }
+            });
         }
     }
 }

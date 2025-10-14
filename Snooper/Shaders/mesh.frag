@@ -36,7 +36,7 @@ out vec4 FragColor;
 void main()
 {
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex];
+    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
 
     vec4 color = vec4(fs_in.vDebugColor, 1.0);
     vec3 spec = vec3(1.0);
@@ -52,6 +52,14 @@ void main()
         spec = texture(materialData.Specular, fs_in.vTexCoords).rgb;
         
         spec.b = mix(materialData.Roughness.x, materialData.Roughness.y, spec.b);
+    }
+    else if (uDebugColorMode == 4)
+    {
+        color.rgb = mix(vec3(0.25), vec3(1.0), vec3(
+            float((gl_PrimitiveID * 61u) % 255u) / 255.0,
+            float((gl_PrimitiveID * 149u) % 255u) / 255.0,
+            float((gl_PrimitiveID * 233u) % 255u) / 255.0
+        ));
     }
     
     vec3 normal = vec3(0.0, 0.0, 1.0);

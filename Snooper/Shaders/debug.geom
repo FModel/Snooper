@@ -28,7 +28,7 @@ void main()
     gDrawID = vDrawID[0];
 
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex];
+    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
     float thickness = materialData.LineThickness;
     
     // Get the two line endpoints in clip space

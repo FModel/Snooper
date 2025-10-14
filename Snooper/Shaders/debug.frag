@@ -21,7 +21,7 @@ out vec4 FragColor;
 void main()
 {
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterialOffset + cmd.MaterialIndex];
+    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
     
     vec3 color = vec3(0.75);
     if (materialData.IsReady)

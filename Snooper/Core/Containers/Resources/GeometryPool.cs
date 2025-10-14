@@ -6,11 +6,11 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
-public struct GeometryHandle(uint firstIndex, uint baseVertex, uint modelId)
+public struct GeometryHandle(uint firstIndex, uint baseVertex, uint baseGeometry)
 {
     public readonly uint FirstIndex = firstIndex;
     public readonly uint BaseVertex = baseVertex;
-    public readonly uint ModelId = modelId;
+    public readonly uint BaseGeometry = baseGeometry;
 }
 
 public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemorySizeProvider where TVertex : unmanaged
@@ -101,7 +101,7 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands)
         where TInstanceData : unmanaged, IPerInstanceData => _culling.Cull(camera, instances, commands);
     
-    public void UpdateOverrideLod(uint modelId, int overrideLod) => _culling.UpdateOverrideLod((int)modelId, overrideLod);
+    public void UpdateOverrideLod(int index, int overrideLod) => _culling.UpdateOverrideLod(index, overrideLod);
     
     public void Render(Action mdi)
     {

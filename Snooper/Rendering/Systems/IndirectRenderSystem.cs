@@ -46,7 +46,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.Load();
 
         Resources.Generate();
-        Resources.Allocate(_componentCount, _drawCount, _materialCount, _indices, _vertices);
+        Resources.Allocate((uint)ComponentsCount, _drawCount, _materialCount, _indices, _vertices);
         
         TextureManager.Load();
         
@@ -75,7 +75,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Render();
     }
     
-    private uint _componentCount;
     private uint _drawCount;
     private uint _materialCount;
     private uint _indices;
@@ -86,7 +85,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     {
         base.OnActorComponentEnqueued(component);
         
-        _componentCount++;
         _drawCount += (uint)component.Descriptor.Lods[0].Sections.Length;
         _materialCount += (uint)component.Materials.Length;
         if (_guids.Add(component.Descriptor.Guid))
