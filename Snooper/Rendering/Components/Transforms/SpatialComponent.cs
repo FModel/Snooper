@@ -67,7 +67,7 @@ public class SpatialComponent : ActorComponent, IControllable
         get => _relation;
         set
         {
-            if (_relation == value) return;
+            if (this == value || _relation == value) return;
 
             _relation?.Children.Remove(this);
             _relation = value;

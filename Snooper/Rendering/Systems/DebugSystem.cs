@@ -18,11 +18,11 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
         Defines = ["USE_GEOMETRY_SHADER"]
     };
 
-    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
+    protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
-        base.PreRender(camera, batchIndex);
+        base.PreRender(camera, shader);
         
         // Pass viewport size for line thickness calculations in geometry shader
-        Shader.SetUniform("uViewportSize", new Vector2(camera.ViewportSize.X, camera.ViewportSize.Y));
+        shader.SetUniform("uViewportSize", new Vector2(camera.ViewportSize.X, camera.ViewportSize.Y));
     }
 }

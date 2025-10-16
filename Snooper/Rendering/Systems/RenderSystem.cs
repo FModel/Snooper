@@ -23,11 +23,11 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
         GL.EnableVertexAttribArray(3);
     };
 
-    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
+    protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
-        base.PreRender(camera, batchIndex);
+        base.PreRender(camera, shader);
         
-        Shader.SetUniform("uDebugColorMode", (int)DebugColorMode);
+        shader.SetUniform("uDebugColorMode", (int)DebugColorMode);
     }
 
     public override bool Accepts(Type type) => type != typeof(SplineMeshComponent) && base.Accepts(type); // TODO: improve this

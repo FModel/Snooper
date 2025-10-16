@@ -47,26 +47,24 @@ public class Actor
     public Actor? Parent
     {
         get => _parent;
-        set
+        private set
         {
-            var old = _parent;
-            if (old == value) return;
-
-            old?.Children.Remove(this);
+            if (this == value || _parent == value) return;
+            
+            _parent?.Children.Remove(this);
             value?.Children.Add(this);
         }
     }
 
     public ActorManager? ActorManager { get; internal set; }
     
-    private ActorComponent? _rootComponent;
-    public ActorComponent? RootComponent
+    private SpatialComponent? _rootComponent;
+    public SpatialComponent? RootComponent
     {
         get => _rootComponent;
         private set
         {
-            if (_rootComponent == value)
-                return;
+            if (_rootComponent == value) return;
             
             _rootComponent = value;
             
@@ -86,9 +84,9 @@ public class Actor
         
         actor._parent = this;
         
-        if (actor.RootComponent is SpatialComponent spatial && RootComponent is SpatialComponent parentSpatial)
+        if (actor.RootComponent != null)
         {
-            spatial.Relation = parentSpatial;
+            actor.RootComponent.Relation = RootComponent;
         }
     }
 
@@ -100,6 +98,11 @@ public class Actor
         }
 
         actor._parent = null;
+        
+        if (actor.RootComponent != null)
+        {
+            actor.RootComponent.Relation = null;
+        }
     }
 
     private void AddInternal(ActorComponent component)
@@ -109,7 +112,10 @@ public class Actor
             throw new InvalidOperationException("An actor component cannot be set on more than one actor.");
         }
         
-        RootComponent ??= component;
+        if (RootComponent == null && component is SpatialComponent spatial)
+        {
+            RootComponent = spatial;
+        }
 
         component.Actor = this;
     }

@@ -70,9 +70,9 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         Materials = new MaterialSection[_materials.Length];
     }
 
-    protected override void OnAddedToActor()
+    protected override void OnReworkThis()
     {
-        base.OnAddedToActor();
+        base.OnReworkThis();
 
         for (var i = 0; i < _materials.Length; i++)
         {

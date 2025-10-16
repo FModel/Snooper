@@ -12,25 +12,25 @@ public class SkyboxSystem() : PrimitiveSystem<CubeComponent>(1)
     protected override bool AllowDerivation => true;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("Skybox/skybox");
 
-    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
+    protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
         var view = camera.ViewMatrix;
         view.M41 = 0;
         view.M42 = 0;
         view.M43 = 0;
         
-        Shader.Use();
-        Shader.SetUniform("uViewMatrix", view);
-        Shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
+        shader.Use();
+        shader.SetUniform("uViewMatrix", view);
+        shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
 
         switch (_component)
         {
             case AtmosphericComponent atmospheric:
             {
-                Shader.SetUniform("uSunPos", atmospheric.Sun.Position);
-                Shader.SetUniform("uSunIntensity", atmospheric.Sun.Intensity);
-                Shader.SetUniform("uSunRadius", atmospheric.Sun.Radius);
-                Shader.SetUniform("uSunAtmosphereRadius", atmospheric.Sun.AtmosphereRadius);
+                shader.SetUniform("uSunPos", atmospheric.Sun.Position);
+                shader.SetUniform("uSunIntensity", atmospheric.Sun.Intensity);
+                shader.SetUniform("uSunRadius", atmospheric.Sun.Radius);
+                shader.SetUniform("uSunAtmosphereRadius", atmospheric.Sun.AtmosphereRadius);
                 break;
             }
         }
@@ -39,7 +39,7 @@ public class SkyboxSystem() : PrimitiveSystem<CubeComponent>(1)
         GL.DepthMask(false);
     }
     
-    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
+    protected override void PostRender(CameraComponent camera, ShaderProgram shader)
     {
         GL.DepthMask(true);
         GL.DepthFunc(DepthFunction.Less);

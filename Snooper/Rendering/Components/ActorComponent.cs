@@ -1,6 +1,7 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
@@ -52,13 +53,17 @@ public abstract partial class ActorComponent
         get => _actor;
         internal set
         {
-            if (_actor == value || value is null)
-                return;
+            if (_actor == value) return;
+
+            if (_actor == null)
+                OnReworkThis();
             
-            var old = _actor;
             _actor = value;
             
-            if (old == null) OnAddedToActor();
+            if (this is SpatialComponent { Relation: null } spatial)
+            {
+                spatial.Relation = _actor?.RootComponent;
+            }
         }
     }
     
@@ -66,9 +71,11 @@ public abstract partial class ActorComponent
     internal virtual void MarkDirty() => IsDirty = true; // spatial components will override this to propagate to children
     internal virtual void MarkClean() => IsDirty = false;
 
-    protected virtual void OnAddedToActor()
+    protected virtual void OnReworkThis()
     {
-        
+        // TODO: this is used to start parsing materials asynchronously in MeshComponent
+        // it is triggered by the component being assigned to an actor for "the first time"
+        // but this is not a great way to handle materials specifically and it can be retriggered if the component is moved between actors
     }
     
     internal void DrawInterface()

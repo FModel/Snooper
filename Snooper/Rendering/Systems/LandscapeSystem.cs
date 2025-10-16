@@ -88,14 +88,14 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         _updateMapping = false;
     }
 
-    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
+    protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
-        base.PreRender(camera, batchIndex);
+        base.PreRender(camera, shader);
     
-        Shader.SetUniform("uColorMode", (uint)_colorMode);
-        Shader.SetUniform("uSizeQuads", _sizeQuads);
-        Shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
-        Shader.SetUniform("uGlobalScale", Settings.GlobalScale);
+        shader.SetUniform("uColorMode", (uint)_colorMode);
+        shader.SetUniform("uSizeQuads", _sizeQuads);
+        shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
+        shader.SetUniform("uGlobalScale", Settings.GlobalScale);
         
         _scales.Bind(3);
         _mapping.Bind(4);

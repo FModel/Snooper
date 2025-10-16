@@ -1,4 +1,5 @@
 ﻿using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Programs;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
@@ -28,9 +29,9 @@ public class SplineRenderSystem : DeferredRenderSystem
         _params.Unbind();
     }
     
-    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
+    protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
-        base.PreRender(camera, batchIndex);
+        base.PreRender(camera, shader);
     
         _params.Bind(3);
     }

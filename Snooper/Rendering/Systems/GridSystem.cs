@@ -10,17 +10,17 @@ public class GridSystem() : PrimitiveSystem<GridComponent>(1)
     public override uint Order => 2;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("grid");
 
-    protected override void PreRender(CameraComponent camera, int batchIndex = 0)
+    protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
-        base.PreRender(camera, batchIndex);
+        base.PreRender(camera, shader);
         
-        Shader.SetUniform("uNear", camera.NearPlaneDistance);
-        Shader.SetUniform("uFar", camera.FarPlaneDistance);
+        shader.SetUniform("uNear", camera.NearPlaneDistance);
+        shader.SetUniform("uFar", camera.FarPlaneDistance);
         
         GL.DepthMask(false);
     }
     
-    protected override void PostRender(CameraComponent camera, int batchIndex = 0)
+    protected override void PostRender(CameraComponent camera, ShaderProgram shader)
     {
         GL.DepthMask(true);
     }

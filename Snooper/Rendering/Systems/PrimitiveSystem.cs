@@ -19,7 +19,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     protected virtual bool IsRenderable => true;
     protected virtual bool IsCulled => true;
     protected virtual ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default");
-
+    
     public override void Load()
     {
         base.Load();
@@ -34,11 +34,11 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         base.Update(delta);
     }
 
-    protected virtual void PreRender(CameraComponent camera, int batchIndex = 0)
+    protected virtual void PreRender(CameraComponent camera, ShaderProgram shader)
     {
-        Shader.Use();
-        Shader.SetUniform("uViewMatrix", camera.ViewMatrix);
-        Shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
+        shader.Use();
+        shader.SetUniform("uViewMatrix", camera.ViewMatrix);
+        shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
     }
 
     public sealed override void Render(CameraComponent camera)
@@ -49,12 +49,12 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         if (IsCulled)
             Resources.Cull(camera);
         
-        PreRender(camera);
+        PreRender(camera, Shader);
         base.Render(camera);
-        PostRender(camera);
+        PostRender(camera, Shader);
     }
 
-    protected virtual void PostRender(CameraComponent camera, int batchIndex = 0)
+    protected virtual void PostRender(CameraComponent camera, ShaderProgram shader)
     {
         
     }

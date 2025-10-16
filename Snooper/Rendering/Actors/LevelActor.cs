@@ -123,19 +123,11 @@ public class LevelActor : Actor
             case UActorComponent actorComponent:
             {
                 component = new SpatialComponent(actorComponent);
-                if (RootComponent is SpatialComponent root)
-                {
-                    component.Relation = root;
-                }
                 break;
             }
             default: // uobject
             {
                 component = new SpatialComponent(null, $"{data?.Name} ({data?.GetType().Name})");
-                if (RootComponent is SpatialComponent root)
-                {
-                    component.Relation = root;
-                }
                 break;
             }
         }

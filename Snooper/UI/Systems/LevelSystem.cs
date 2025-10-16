@@ -159,7 +159,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 {
                     ImGui.TextUnformatted($"Time: {system.Time:F3} s");
                     
-                    if (ImGui.TreeNode($"x{system.ComponentsCount} {system.ComponentType?.Name}{(system.ComponentsCount > 1 ? "s" : "")}"))
+                    if (ImGui.TreeNode($"x{system.ComponentsCount} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}"))
                     {
                         if (system is IMemorySizeProvider provider)
                         {
