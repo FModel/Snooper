@@ -1,4 +1,5 @@
-﻿using OpenTK.Audio.OpenAL;
+﻿using System.Numerics;
+using OpenTK.Audio.OpenAL;
 
 namespace Snooper.Rendering.Components.Audio;
 
@@ -43,6 +44,7 @@ public class AudioSource : IDisposable
         AL.SourceRewind(_sourceId);
     }
 
+    public void SetPosition(Vector3 position) => SetPosition(position.X, position.Y, position.Z);
     public void SetPosition(float x, float y, float z)
     {
         AL.Source(_sourceId, ALSource3f.Position, x, y, z);
@@ -51,6 +53,12 @@ public class AudioSource : IDisposable
     public void SetVelocity(float x, float y, float z)
     {
         AL.Source(_sourceId, ALSource3f.Velocity, x, y, z);
+    }
+    
+    public void SetDirection(Vector3 direction) => SetDirection(direction.X, direction.Y, direction.Z);
+    public void SetDirection(float x, float y, float z)
+    {
+        AL.Source(_sourceId, ALSource3f.Direction, x, y, z);
     }
 
     public void SetGain(float gain)
