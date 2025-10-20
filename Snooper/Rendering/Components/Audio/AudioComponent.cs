@@ -12,21 +12,15 @@ namespace Snooper.Rendering.Components.Audio;
 public class AudioComponent : SpatialComponent
 {
     public readonly USoundBase? Sound;
-    
+    public readonly float VolumeMultiplier = 1.0f;
+    public readonly float AttenuationDistance = 1.0f;
+
     public bool ShouldPlay;
-    public bool IsLooping { get; } = true;
-    public float Volume { get; } = 1.0f;
-    public float Pitch { get; } = 1.0f;
-    public float AttenuationDistance { get; private set; } = 1.0f;
-    
-    public AudioComponent(USoundBase? sound = null, Transform? transform = null, string? name = null) : base(transform, name)
-    {
-        Sound = sound;
-    }
-    
+
     public AudioComponent(UAudioComponent component) : base(component)
     {
         Sound = component.GetOrDefault<USoundBase?>(nameof(Sound));
+        VolumeMultiplier = component.GetOrDefault(nameof(VolumeMultiplier), VolumeMultiplier);
         
         var overrideAttenuation = component.GetOrDefault<bool>("bOverrideAttenuation");
         if (overrideAttenuation && component.TryGetValue(out FSoundAttenuationSettings attenuation, "AttenuationOverrides"))
@@ -44,6 +38,9 @@ public class AudioComponent : SpatialComponent
         EditorUI.CollapsingTable("Audio", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Text("Sound", Sound?.Name ?? "N/A");
+            EditorUI.Text("Volume Multiplier", VolumeMultiplier.ToString("F"));
+            EditorUI.Text("Attenuation Distance", AttenuationDistance.ToString("F"));
+            
             EditorUI.Checkbox("Play", ref ShouldPlay);
         });
     }

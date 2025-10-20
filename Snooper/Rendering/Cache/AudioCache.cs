@@ -179,12 +179,17 @@ public class AudioCache : IDisposable
 
     private byte[]? ExtractAudioData(USoundWave soundWave, out ALFormat format, out int sampleRate)
     {
-        soundWave.Decode(true, out var audioFormat, out var data);
+        format = ALFormat.Mono16;
+        sampleRate = 48000;
         
+        if (File.Exists($"{soundWave.Name}.wav"))
+        {
+            return File.ReadAllBytes($"{soundWave.Name}.wav");
+        }
+        
+        soundWave.Decode(true, out var audioFormat, out var data);
         if (data == null || data.Length == 0)
         {
-            format = ALFormat.Mono16;
-            sampleRate = 48000;
             Log.Warning("Failed to decode audio data for: {Path}", soundWave.GetPathName());
             return null;
         }
@@ -206,9 +211,6 @@ public class AudioCache : IDisposable
             }
         }
 
-        // TODO:
-        format = ALFormat.Mono16;
-        sampleRate = 48000;
         return data;
     }
 

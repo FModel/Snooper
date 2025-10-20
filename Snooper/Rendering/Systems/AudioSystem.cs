@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using ImGuiNET;
 using OpenTK.Audio.OpenAL;
 using Serilog;
 using Snooper.Core.Systems;
@@ -16,20 +17,25 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     
     private ALDevice _device;
     private ALContext _context;
-    private readonly Dictionary<AudioComponent, AudioSource> _activeSources = [];
+    private readonly Dictionary<AudioComponent, AudioSource?> _sources = [];
     private readonly AudioCache _audioCache = new();
+    
+    private float _volume = 0.5f;
+    private bool _volumeChanged;
+    private const float MinDb = -35f;
+    private const float MaxDb = 0f;
 
     public override void Load()
     {
         base.Load();
         
-        // _device = ALC.OpenDevice(null);
+        _device = ALC.OpenDevice(null);
         if (_device == ALDevice.Null)
         {
             Log.Error("Failed to open OpenAL device");
             return;
         }
-
+        
         _context = ALC.CreateContext(_device, (int[])null!);
         if (_context == ALContext.Null)
         {
@@ -40,36 +46,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
         ALC.MakeContextCurrent(_context);
         CheckAlError("Context initialization");
-
-        Log.Information("OpenAL initialized successfully");
-        Log.Information("OpenAL Vendor: {Vendor}", AL.Get(ALGetString.Vendor));
-        Log.Information("OpenAL Renderer: {Renderer}", AL.Get(ALGetString.Renderer));
-        Log.Information("OpenAL Version: {Version}", AL.Get(ALGetString.Version));
-
-        foreach (var component in Components)
-        {
-            if (component.Sound == null) continue;
-            
-            var buffer = _audioCache.GetOrCreateBuffer(component.Sound);
-            if (buffer == 0)
-            {
-                Log.Warning("Failed to load audio buffer for {Sound}", component.Sound.Name);
-                return;
-            }
-        
-            Log.Debug("Creating audio source with buffer {BufferId} for component {Name}", buffer, component.Name);
-        
-            var source = new AudioSource(buffer);
-            source.SetLooping(component.IsLooping);
-            source.SetGain(component.Volume);
-            source.SetPitch(component.Pitch);
-            source.SetReferenceDistance(component.AttenuationDistance);
-            
-            var position = component.WorldMatrix.Translation;
-            source.SetPosition(position.X, position.Y, position.Z);
-        
-            _activeSources[component] = source;
-        }
+        Log.Information("OpenAL initialized successfully (Version: {Version})", AL.Get(ALGetString.Version));
     }
 
     public override void Update(float delta)
@@ -78,24 +55,38 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
         if (_context == ALContext.Null) return;
 
-        foreach (var (component, source) in _activeSources)
+        foreach (var component in Components)
         {
-            if (component.Sound == null)
+            if (component.ShouldPlay && !_sources.ContainsKey(component))
             {
-                source.Stop();
-                continue;
+                _sources[component] = CreateAudioSource(component);
             }
-
+            
+            if (!_sources.TryGetValue(component, out var source) || source == null)
+                continue;
+            
+            if (component.IsDirty)
+            {
+                source.SetPosition(component.WorldMatrix.Translation);
+                source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));
+            }
+            
             if (component.ShouldPlay && !source.IsPlaying)
             {
                 source.Play();
             }
-            
-            if (source.IsPlaying && !component.ShouldPlay)
+            else if (!component.ShouldPlay && source.IsPlaying)
             {
                 source.Stop();
             }
+            
+            if (_volumeChanged)
+            {
+                source.SetGain(component.VolumeMultiplier * LinearToLogarithmicVolume(_volume));
+            }
         }
+        
+        _volumeChanged = false;
     }
 
     public override void Render(CameraComponent camera)
@@ -106,15 +97,9 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         var forward = Vector3.Transform(Vector3.UnitZ, camera.LocalTransform.Rotation);
         var up      = Vector3.Transform(Vector3.UnitY, camera.LocalTransform.Rotation);
 
-        float[] orientation =
-        [
-            forward.X, forward.Y, forward.Z,
-            up.X, up.Y, up.Z
-        ];
-
         ALC.MakeContextCurrent(_context);
         AL.Listener(ALListener3f.Position, position.X, position.Y, position.Z);
-        AL.Listener(ALListenerfv.Orientation, orientation);
+        AL.Listener(ALListenerfv.Orientation, [forward.X, forward.Y, forward.Z, up.X, up.Y, up.Z]);
         CheckAlError("Listener update");
     }
 
@@ -122,11 +107,51 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     {
         base.OnActorComponentRemoved(component);
         
-        if (_activeSources.TryGetValue(component, out var source))
+        if (_sources.TryGetValue(component, out var source))
         {
-            source.Stop();
-            source.Dispose();
-            _activeSources.Remove(component);
+            source?.Stop();
+            source?.Dispose();
+            _sources.Remove(component);
+        }
+    }
+    
+    private AudioSource? CreateAudioSource(AudioComponent component)
+    {
+        if (component.Sound == null) return null;
+        
+        var buffer = _audioCache.GetOrCreateBuffer(component.Sound);
+        if (buffer == 0)
+        {
+            Log.Warning("Failed to load audio buffer for {Sound}", component.Sound.Name);
+            return null;
+        }
+    
+        Log.Debug("Creating audio source with buffer {BufferId} for component {Name}", buffer, component.Name);
+    
+        var source = new AudioSource(buffer);
+        source.SetPosition(component.WorldMatrix.Translation);
+        source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));
+        source.SetLooping(true);
+        source.SetGain(component.VolumeMultiplier * LinearToLogarithmicVolume(_volume));
+        source.SetReferenceDistance(component.AttenuationDistance);
+
+        return source;
+    }
+    
+    private float LinearToLogarithmicVolume(float linearVolume)
+    {
+        if (linearVolume <= 0f) return 0f;
+        
+        var db = MinDb + (MaxDb - MinDb) * linearVolume;
+        return MathF.Pow(10f, db / 20f);
+    }
+    
+    private void CheckAlError(string context)
+    {
+        var error = AL.GetError();
+        if (error != ALError.NoError)
+        {
+            Log.Error("OpenAL Error ({Context}): {Error}", context, error);
         }
     }
 
@@ -134,11 +159,11 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     {
         base.Dispose();
         
-        foreach (var source in _activeSources.Values)
+        foreach (var source in _sources.Values)
         {
-            source.Dispose();
+            source?.Dispose();
         }
-        _activeSources.Clear();
+        _sources.Clear();
 
         _audioCache.Dispose();
 
@@ -156,18 +181,8 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         }
     }
 
-    private void CheckAlError(string context)
-    {
-        var error = AL.GetError();
-        if (error != ALError.NoError)
-        {
-            Log.Error("OpenAL Error ({Context}): {Error}", context, error);
-        }
-    }
-
     public void DrawControls()
     {
-        // TODO: select output device, etc
+        _volumeChanged = ImGui.SliderFloat("Volume", ref _volume, 0f, 1f, $"{_volume * 100:F0}%%");
     }
 }
-
