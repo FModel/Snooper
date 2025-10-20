@@ -17,10 +17,11 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     
     private ALDevice _device;
     private ALContext _context;
-    private readonly Dictionary<AudioComponent, AudioSource> _activeSources = [];
+    private readonly Dictionary<AudioComponent, AudioSource?> _sources = [];
     private readonly AudioCache _audioCache = new();
     
     private float _volume = 0.5f;
+    private bool _volumeChanged;
     private const float MinDb = -35f;
     private const float MaxDb = 0f;
 
@@ -46,11 +47,6 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         ALC.MakeContextCurrent(_context);
         CheckAlError("Context initialization");
         Log.Information("OpenAL initialized successfully (Version: {Version})", AL.Get(ALGetString.Version));
-
-        foreach (var component in Components)
-        {
-            CreateAudioSource(component);
-        }
     }
 
     public override void Update(float delta)
@@ -59,8 +55,16 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
         if (_context == ALContext.Null) return;
 
-        foreach (var (component, source) in _activeSources)
+        foreach (var component in Components)
         {
+            if (component.ShouldPlay && !_sources.ContainsKey(component))
+            {
+                _sources[component] = CreateAudioSource(component);
+            }
+            
+            if (!_sources.TryGetValue(component, out var source) || source == null)
+                continue;
+            
             if (component.IsDirty)
             {
                 source.SetPosition(component.WorldMatrix.Translation);
@@ -76,8 +80,13 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
                 source.Stop();
             }
             
-            source.SetGain(component.VolumeMultiplier * LinearToLogarithmicVolume(_volume));
+            if (_volumeChanged)
+            {
+                source.SetGain(component.VolumeMultiplier * LinearToLogarithmicVolume(_volume));
+            }
         }
+        
+        _volumeChanged = false;
     }
 
     public override void Render(CameraComponent camera)
@@ -98,23 +107,23 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     {
         base.OnActorComponentRemoved(component);
         
-        if (_activeSources.TryGetValue(component, out var source))
+        if (_sources.TryGetValue(component, out var source))
         {
-            source.Stop();
-            source.Dispose();
-            _activeSources.Remove(component);
+            source?.Stop();
+            source?.Dispose();
+            _sources.Remove(component);
         }
     }
     
-    private void CreateAudioSource(AudioComponent component)
+    private AudioSource? CreateAudioSource(AudioComponent component)
     {
-        if (component.Sound == null) return;
+        if (component.Sound == null) return null;
         
         var buffer = _audioCache.GetOrCreateBuffer(component.Sound);
         if (buffer == 0)
         {
             Log.Warning("Failed to load audio buffer for {Sound}", component.Sound.Name);
-            return;
+            return null;
         }
     
         Log.Debug("Creating audio source with buffer {BufferId} for component {Name}", buffer, component.Name);
@@ -122,11 +131,11 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         var source = new AudioSource(buffer);
         source.SetPosition(component.WorldMatrix.Translation);
         source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));
-        source.SetLooping(component.IsLooping);
+        source.SetLooping(true);
         source.SetGain(component.VolumeMultiplier * LinearToLogarithmicVolume(_volume));
         source.SetReferenceDistance(component.AttenuationDistance);
 
-        _activeSources[component] = source;
+        return source;
     }
     
     private float LinearToLogarithmicVolume(float linearVolume)
@@ -150,11 +159,11 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     {
         base.Dispose();
         
-        foreach (var source in _activeSources.Values)
+        foreach (var source in _sources.Values)
         {
-            source.Dispose();
+            source?.Dispose();
         }
-        _activeSources.Clear();
+        _sources.Clear();
 
         _audioCache.Dispose();
 
@@ -174,6 +183,6 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
     public void DrawControls()
     {
-        ImGui.SliderFloat("Volume", ref _volume, 0f, 1f, $"{_volume * 100:F0}%%");
+        _volumeChanged = ImGui.SliderFloat("Volume", ref _volume, 0f, 1f, $"{_volume * 100:F0}%%");
     }
 }

@@ -16,7 +16,6 @@ public class AudioComponent : SpatialComponent
     public readonly float AttenuationDistance = 1.0f;
 
     public bool ShouldPlay;
-    public bool IsLooping = true;
 
     public AudioComponent(UAudioComponent component) : base(component)
     {
@@ -42,7 +41,6 @@ public class AudioComponent : SpatialComponent
             EditorUI.Text("Volume Multiplier", VolumeMultiplier.ToString("F"));
             EditorUI.Text("Attenuation Distance", AttenuationDistance.ToString("F"));
             
-            EditorUI.Checkbox("Looping", ref IsLooping);
             EditorUI.Checkbox("Play", ref ShouldPlay);
         });
     }
