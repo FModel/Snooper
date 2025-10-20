@@ -33,7 +33,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             material.MaterialDataContainer?.FinalizeGpuData();
             if (material.MaterialDataContainer?.Raw is not TPerMaterialData raw)
             {
-                throw new InvalidOperationException($"Material data container raw type {material.MaterialDataContainer.Raw.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
+                throw new InvalidOperationException($"Material data container raw type {material.MaterialDataContainer?.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
             }
             
             Resources.Update((int)material.MaterialOffset, raw);
@@ -68,6 +68,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         {
             component.Update(Resources, TextureManager);
         }
+        
+        Resources.FlushUpdates();
     }
 
     public override void Render(CameraComponent camera)

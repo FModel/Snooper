@@ -19,6 +19,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new(initialDrawCapacity);
     private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new(initialDrawCapacity);
     
+    private readonly List<Action> _geometryUpdates = []; // TODO: remove this hack
+    
     public void Generate()
     {
         _geometry.Generate();
@@ -95,30 +97,41 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         
         if (metadata.GeometryHandle.IsDirty)
         {
-            _geometry.UpdateOverrideLod((int)metadata.GeometryHandle.BaseGeometry, metadata.GeometryHandle.OverrideLod);
-            metadata.GeometryHandle.MarkClean();
+            _geometryUpdates.Add(() =>
+            {
+                _geometry.UpdateOverrideLod((int)metadata.GeometryHandle.BaseGeometry, metadata.GeometryHandle.OverrideLod);
+                metadata.GeometryHandle.MarkClean();
+            });
         }
         
         if (component.IsDirty)
         {
-            _instanceData.Bind();
-            _instanceData.Update(metadata.BaseInstance, component.GetPerInstanceData());
-            _instanceData.Unbind();
-            
+            _instanceData.QueueUpdate(metadata.BaseInstance, component.GetPerInstanceData());
             component.MarkClean();
         }
     }
     
     public void Update(int offset, TPerMaterialData materialData)
     {
-        if (!materialData.IsReady) throw new InvalidOperationException("Material data is not ready.");
-        Log.Debug("Updating material data at offset {Offset}.", offset);
+        if (!materialData.IsReady) 
+            throw new InvalidOperationException("Material data is not ready.");
 
-        _materialData.Bind();
-        _materialData.Update(offset, materialData);
-        _materialData.Unbind();
+        _materialData.QueueUpdate(offset, materialData);
     }
-
+    
+    public void FlushUpdates()
+    {
+        if (_geometryUpdates.Count > 0)
+        {
+            foreach (var update in _geometryUpdates)
+                update();
+            _geometryUpdates.Clear();
+        }
+        
+        _instanceData.FlushUpdates();
+        _materialData.FlushUpdates();
+    }
+    
     public void Remove(ResourcesMetadata metadata)
     {
         Log.Debug("Removing primitive with Geometry {GeometryId} and {SectionCount} sections.", metadata.GeometryHandle.BaseGeometry, metadata.DrawIds.Length);
