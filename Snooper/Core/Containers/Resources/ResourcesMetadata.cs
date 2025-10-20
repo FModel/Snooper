@@ -6,6 +6,4 @@ public readonly struct ResourcesMetadata(GeometryHandle geometryHandle, int base
     public readonly int BaseInstance = baseInstance;
     public readonly int BaseMaterial = baseMaterial;
     public readonly int[] DrawIds = drawIds; // we create one draw per section in lod 0
-    
-    public bool IsGenerated => DrawIds.Length > 0;
 }

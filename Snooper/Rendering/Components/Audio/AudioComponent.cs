@@ -19,7 +19,7 @@ public class AudioComponent : SpatialComponent
 
     public AudioComponent(UAudioComponent component) : base(component)
     {
-        Sound = component.GetOrDefault<USoundBase?>(nameof(Sound));
+        Sound = component.Sound;
         VolumeMultiplier = component.GetOrDefault(nameof(VolumeMultiplier), VolumeMultiplier);
         
         var overrideAttenuation = component.GetOrDefault<bool>("bOverrideAttenuation");

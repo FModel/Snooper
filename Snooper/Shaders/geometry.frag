@@ -9,7 +9,7 @@ layout (location = 4) out uint gPicking;
 struct PerMaterialData
 {
     bool IsReady;
-    uint IsTranslucent;
+    uint TextureFlags; // Bit 0: HasDiffuse, Bit 1: HasNormal, Bit 2: HasSpecular, Bit 3: IsTranslucent
     sampler2D Diffuse;
     sampler2D Normal;
     sampler2D Specular;
@@ -40,15 +40,28 @@ void main()
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
     PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
     
+    bool hasDiffuse = (materialData.TextureFlags & 1u) != 0u;
+    bool hasNormal = (materialData.TextureFlags & 2u) != 0u;
+    bool hasSpecular = (materialData.TextureFlags & 4u) != 0u;
+    
     vec3 color = fs_in.vDebugColor;
     vec3 spec = vec3(1.0);
     if (uDebugColorMode == 0 && materialData.IsReady)
     {
-        color = texture(materialData.Diffuse, fs_in.vTexCoords).rgb * materialData.DiffuseColor;
-        spec = texture(materialData.Specular, fs_in.vTexCoords).rgb;
+        if (hasDiffuse)
+        {
+            color = texture(materialData.Diffuse, fs_in.vTexCoords).rgb * materialData.DiffuseColor;
+        }
         
-        // compute roughness
-        spec.b = mix(materialData.Roughness.x, materialData.Roughness.y, spec.b);
+        if (hasSpecular)
+        {
+            spec = texture(materialData.Specular, fs_in.vTexCoords).rgb;
+            spec.b = mix(materialData.Roughness.x, materialData.Roughness.y, spec.b);
+        }
+        else
+        {
+            spec = vec3(0.5, 0.5, materialData.Roughness.y);
+        }
     }
     else if (uDebugColorMode == 4)
     {
@@ -60,7 +73,7 @@ void main()
     }
     
     vec3 normal = vec3(0.0, 0.0, 1.0);
-    if (materialData.IsReady)
+    if (materialData.IsReady && hasNormal)
     {
         vec2 xy = texture(materialData.Normal, fs_in.vTexCoords).rg * 2.0 - 1.0;
         float z = sqrt(max(0.0, 1.0 - dot(xy, xy)));

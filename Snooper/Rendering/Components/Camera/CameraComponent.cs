@@ -108,7 +108,7 @@ public sealed class CameraComponent : SpatialComponent
         EditorUI.CollapsingTable("Camera", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Checkbox("FXAA", ref bFXAA);
-            EditorUI.Checkbox("HBAO", ref bAmbientOcclusion);
+            EditorUI.Checkbox("Ambient Occlusion", ref bAmbientOcclusion);
             ImGui.BeginDisabled(!bAmbientOcclusion);
             EditorUI.Property("Radius");
             ImGui.SliderFloat("##Radius", ref SsaoRadius, 0.01f, 5.0f);

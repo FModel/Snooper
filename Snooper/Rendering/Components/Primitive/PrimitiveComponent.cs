@@ -26,7 +26,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         protected init => _descriptor = value;
     }
     
-    public ResourcesMetadata Metadata { get; private set; }
+    public ResourcesMetadata? Metadata { get; private set; }
     
     public abstract MaterialSection[] Materials { get; }
 
@@ -51,7 +51,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
-        if (!Metadata.IsGenerated)
+        if (Metadata is null)
         {
             Generate(resources, textureManager);
         }
@@ -112,17 +112,15 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     ImGui.BeginGroup();
 
                     const int minLod = -1;
-                    var value = Metadata.GeometryHandle.OverrideLod;
                     var maxLod = Descriptor.Lods.Length - 1;
-                    
-                    if (!IsVisible || maxLod == 0) ImGui.BeginDisabled();
-                    if (ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod))
-                        Metadata.GeometryHandle.OverrideLod = value;
-                    if (!IsVisible || maxLod == 0) ImGui.EndDisabled();
-                    
+                    var value = Metadata == null ? minLod : Metadata.Value.GeometryHandle.OverrideLod;
+
+                    if (ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod) && Metadata != null && IsVisible && maxLod > 0)
+                        Metadata.Value.GeometryHandle.OverrideLod = value;
+
                     ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                     ImGui.SetWindowFontScale(0.85f);
-                    
+
                     var lod = Descriptor.Lods[Math.Max(0, value)];
                     switch (value)
                     {
@@ -133,7 +131,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                             ImGui.TextUnformatted($"LOD {value}: {lod.VertexCount} vertices, {lod.IndexCount} indices, {lod.ScreenSize} screen size");
                             break;
                     }
-                    
+
                     ImGui.SetWindowFontScale(1.0f);
                     ImGui.PopStyleVar();
                     ImGui.EndGroup();
@@ -154,7 +152,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                         ImGui.SetWindowFontScale(0.85f);
                         
                         var section = lod.Sections[sectionIndex];
-                        ImGui.TextUnformatted($"Section {sectionIndex}: Material {section.MaterialIndex}, {section.IndexCount} indices (offset {section.FirstIndex})");
+                        ImGui.TextUnformatted($"Section {sectionIndex}: Material {section.MaterialIndex}, {section.IndexCount} indices, {section.FirstIndex} offset");
                         
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();
@@ -209,48 +207,55 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             
             EditorUI.SharedTreeNode("Metadata", ImGuiTreeNodeFlags.None, Id, () =>
             {
-                if (ImGui.BeginTable("Metadata", 4))
+                ImGui.Indent();
+                if (Metadata is { } metadata)
                 {
-                    ImGui.TableSetupColumn("Property1", ImGuiTableColumnFlags.WidthStretch);
-                    ImGui.TableSetupColumn("Value1", ImGuiTableColumnFlags.WidthStretch, 1.0f);
-                    ImGui.TableSetupColumn("Property2", ImGuiTableColumnFlags.WidthStretch);
-                    ImGui.TableSetupColumn("Value2", ImGuiTableColumnFlags.WidthStretch, 1.0f);
-                    ImGui.Indent();
-                    
-                    ImGui.TableNextRow();
-                    ImGui.TableSetColumnIndex(0);
-                    ImGui.AlignTextToFramePadding();
-                    ImGui.TextUnformatted("ID");
-                    ImGui.TableSetColumnIndex(1);
-                    ImGui.TextUnformatted(Id.ToString());
-                    
-                    ImGui.TableNextRow();
-                    ImGui.TableSetColumnIndex(0);
-                    ImGui.AlignTextToFramePadding();
-                    ImGui.TextUnformatted("Geometry");
-                    ImGui.TableSetColumnIndex(1);
-                    ImGui.TextUnformatted(Metadata.GeometryHandle.BaseGeometry.ToString());
-                    ImGui.TableSetColumnIndex(2);
-                    ImGui.AlignTextToFramePadding();
-                    ImGui.TextUnformatted("Instances");
-                    ImGui.TableSetColumnIndex(3);
-                    ImGui.TextUnformatted(Metadata.BaseInstance.ToString());
-                    
-                    ImGui.TableNextRow();
-                    ImGui.TableSetColumnIndex(0);
-                    ImGui.AlignTextToFramePadding();
-                    ImGui.TextUnformatted("Materials");
-                    ImGui.TableSetColumnIndex(1);
-                    ImGui.TextUnformatted(Metadata.BaseMaterial.ToString());
-                    ImGui.TableSetColumnIndex(2);
-                    ImGui.AlignTextToFramePadding();
-                    ImGui.TextUnformatted($"Draw IDs ({Metadata.DrawIds.Length})");
-                    ImGui.TableSetColumnIndex(3);
-                    ImGui.TextUnformatted(string.Join(", ", Metadata.DrawIds));
-                    
-                    ImGui.Unindent();
-                    ImGui.EndTable();
+                    if (ImGui.BeginTable("Metadata", 4))
+                    {
+                        ImGui.TableSetupColumn("Property1", ImGuiTableColumnFlags.WidthStretch);
+                        ImGui.TableSetupColumn("Value1", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+                        ImGui.TableSetupColumn("Property2", ImGuiTableColumnFlags.WidthStretch);
+                        ImGui.TableSetupColumn("Value2", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+                        
+                        ImGui.TableNextRow();
+                        ImGui.TableSetColumnIndex(0);
+                        ImGui.AlignTextToFramePadding();
+                        ImGui.TextUnformatted("ID");
+                        ImGui.TableSetColumnIndex(1);
+                        ImGui.TextUnformatted(Id.ToString());
+                        
+                        ImGui.TableNextRow();
+                        ImGui.TableSetColumnIndex(0);
+                        ImGui.AlignTextToFramePadding();
+                        ImGui.TextUnformatted("Geometry");
+                        ImGui.TableSetColumnIndex(1);
+                        ImGui.TextUnformatted(metadata.GeometryHandle.BaseGeometry.ToString());
+                        ImGui.TableSetColumnIndex(2);
+                        ImGui.AlignTextToFramePadding();
+                        ImGui.TextUnformatted("Instances");
+                        ImGui.TableSetColumnIndex(3);
+                        ImGui.TextUnformatted(metadata.BaseInstance.ToString());
+                        
+                        ImGui.TableNextRow();
+                        ImGui.TableSetColumnIndex(0);
+                        ImGui.AlignTextToFramePadding();
+                        ImGui.TextUnformatted("Materials");
+                        ImGui.TableSetColumnIndex(1);
+                        ImGui.TextUnformatted(metadata.BaseMaterial.ToString());
+                        ImGui.TableSetColumnIndex(2);
+                        ImGui.AlignTextToFramePadding();
+                        ImGui.TextUnformatted($"Draw IDs ({metadata.DrawIds.Length})");
+                        ImGui.TableSetColumnIndex(3);
+                        ImGui.TextUnformatted(string.Join(", ", metadata.DrawIds));
+                        
+                        ImGui.EndTable();
+                    }
                 }
+                else
+                {
+                    ImGui.TextColored(new Vector4(1f, 0.5f, 0f, 1f), "No resources allocated");
+                }
+                ImGui.Unindent();
             });
         }
     }

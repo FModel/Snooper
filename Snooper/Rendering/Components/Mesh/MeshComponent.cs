@@ -30,7 +30,7 @@ public readonly struct Vertex(Vector3 position, Vector3 normal, Vector3 tangent,
 public struct PerMaterialMeshData : IPerMaterialData
 {
     public bool IsReady { get; init; }
-    public uint IsTranslucent;
+    public uint TextureFlags; // Bit 0: HasDiffuse, Bit 1: HasNormal, Bit 2: HasSpecular, Bit 3: IsTranslucent
     public ulong Diffuse;
     public ulong Normal;
     public ulong Specular;
@@ -221,22 +221,31 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             _diffuse.Generate();
             _diffuse.MakeResident();
             
+            uint textureFlags = 1u; // Bit 0: HasDiffuse (always present)
+            
             if (_normal != null)
             {
                 _normal.Generate();
                 _normal.MakeResident();
+                textureFlags |= 2u; // Bit 1: HasNormal
             }
 
             if (_specular != null)
             {
                 _specular.Generate();
                 _specular.MakeResident();
+                textureFlags |= 4u; // Bit 2: HasSpecular
+            }
+            
+            if (IsTranslucent)
+            {
+                textureFlags |= 8u; // Bit 3: IsTranslucent
             }
 
             Raw = new PerMaterialMeshData
             {
                 IsReady = true,
-                IsTranslucent = IsTranslucent ? 1u : 0,
+                TextureFlags = textureFlags,
                 Diffuse = _diffuse,
                 Normal = _normal ?? 0UL,
                 Specular = _specular ?? 0UL,

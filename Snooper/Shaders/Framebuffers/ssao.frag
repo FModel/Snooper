@@ -2,63 +2,106 @@
 
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
-uniform sampler2D noiseTexture;
 
-uniform vec3 samples[64];
-uniform vec2 noiseScale;
+uniform int uDirectionCount;
+uniform int uStepsPerDirection;
+uniform int uFrameCount;
 
 uniform float radius;
 uniform mat4 uProjectionMatrix;
 
 out float FragColor;
 
-const int kernelSize = 64;
+const float PI = 3.14159265359;
+
+// Interleaved gradient noise
+float InterleavedGradientNoise(vec2 position, int frameCount)
+{
+    position += float(frameCount) * 5.588238;
+    return fract(52.9829189 * fract(dot(position, vec2(0.06711056, 0.00583715))));
+}
 
 void main()
 {
-    vec3 fragPos = texture(gPosition, vTexCoords).xyz;
-    vec3 normal = texture(gNormal, vTexCoords).xyz;
-    vec3 randomVec = normalize(texture(noiseTexture, vTexCoords * noiseScale).xyz);
-
-    // Construct TBN matrix from normal and randomVec
-    vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
-    vec3 bitangent = cross(normal, tangent);
-    mat3 TBN = mat3(tangent, bitangent, normal);
-
-    float occlusion = 0.0;
-    float depth = abs(fragPos.z);
-    float adaptiveRadius = radius * clamp(depth / 10.0, 0.1, 3.0);
-    float adaptiveBias = mix(0.005, 0.05, clamp(depth / 30.0, 0.0, 1.0));
-
-    for (int i = 0; i < kernelSize; ++i)
+    vec3 viewPos = texture(gPosition, vTexCoords).xyz;
+    vec3 viewNormal = texture(gNormal, vTexCoords).xyz;
+    
+    // Early exit for skybox/background
+    if (length(viewNormal) < 0.1 || viewPos.z >= -0.001)
     {
-        // Transform sample to view space
-        vec3 sampleVec = TBN * samples[i];
-        vec3 samplePos = fragPos + sampleVec * adaptiveRadius;
-
-        // Project sample position into screen space
-        vec4 offset = vec4(samplePos, 1.0);
-        offset = uProjectionMatrix * offset;
-        offset.xyz /= offset.w;
-        offset.xyz = offset.xyz * 0.5 + 0.5; // NDC to screen space
-
-        if (offset.x < 0.0 || offset.x > 1.0 || offset.y < 0.0 || offset.y > 1.0)
-        {
-            continue;
-        }
-
-        float sampleDepth = texture(gPosition, offset.xy).z;
-        float rangeCheck = smoothstep(0.0, 1.0, adaptiveRadius / abs(fragPos.z - sampleDepth) + 0.0001);
-
-        float depthDiff = sampleDepth - samplePos.z;
-        float visibility = depthDiff > adaptiveBias ? 1.0 : 0.0;
-
-        occlusion += visibility * rangeCheck;
+        FragColor = 1.0;
+        return;
     }
-
-    // Normalize and apply curve
-    occlusion = occlusion / float(kernelSize);
-    occlusion = pow(clamp(1.0 - occlusion, 0.0, 1.0), 0.7); // control darkness with exponent
-
+    
+    vec2 texelSize = 1.0 / vec2(textureSize(gPosition, 0));
+    float depth = -viewPos.z;
+    
+    // Adaptive radius
+    float adaptiveRadius = radius * clamp(depth * 0.1, 0.5, 2.5);
+    
+    // Screen-space radius in pixels
+    vec4 projRadius = uProjectionMatrix * vec4(adaptiveRadius, 0.0, viewPos.z, 1.0);
+    float radiusPixels = abs(projRadius.x / projRadius.w) * float(textureSize(gPosition, 0).x) * 0.5;
+    radiusPixels = clamp(radiusPixels, 10.0, 80.0);
+    
+    // Temporal rotation
+    float temporalRotation = InterleavedGradientNoise(gl_FragCoord.xy, uFrameCount) * 2.0 * PI;
+    
+    float occlusion = 0.0;
+    int validSamples = 0;
+    
+    // Sample in circular directions
+    for (int i = 0; i < uDirectionCount; i++)
+    {
+        float angle = (float(i) / float(uDirectionCount)) * PI + temporalRotation;
+        vec2 direction = vec2(cos(angle), sin(angle));
+        
+        // March along direction
+        for (int j = 1; j <= uStepsPerDirection; j++)
+        {
+            float stepRatio = float(j) / float(uStepsPerDirection);
+            vec2 sampleUV = vTexCoords + direction * stepRatio * radiusPixels * texelSize;
+            
+            // Bounds check
+            if (sampleUV.x < 0.0 || sampleUV.x > 1.0 || sampleUV.y < 0.0 || sampleUV.y > 1.0)
+                continue;
+            
+            vec3 samplePos = texture(gPosition, sampleUV).xyz;
+            
+            // Skip invalid samples
+            if (samplePos.z >= -0.001)
+                continue;
+            
+            vec3 diff = samplePos - viewPos;
+            float dist = length(diff);
+            
+            // Skip very close samples and distant samples
+            if (dist < 0.05 || dist > adaptiveRadius)
+                continue;
+            
+            vec3 diffDir = diff / dist;
+            
+            // Check if sample is above the surface
+            float normalDot = max(0.0, dot(diffDir, viewNormal));
+            
+            // Distance-based falloff
+            float distFactor = dist / adaptiveRadius;
+            float falloff = 1.0 - distFactor * distFactor;
+            falloff = max(0.0, falloff);
+            
+            occlusion += normalDot * falloff;
+            validSamples++;
+        }
+    }
+    
+    // Average and normalize
+    if (validSamples > 0)
+    {
+        occlusion = occlusion / float(validSamples);
+    }
+    
+    // Invert: high occlusion = dark (0), low occlusion = bright (1)
+    occlusion = 1.0 - clamp(occlusion * 2.0, 0.0, 1.0);
+    
     FragColor = occlusion;
 }

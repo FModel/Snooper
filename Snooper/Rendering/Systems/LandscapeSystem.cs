@@ -70,6 +70,9 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         _mapping.Bind();
         foreach (var component in Components)
         {
+            if (component.Metadata is not { } metadata || metadata.DrawIds.Length == 0)
+                continue;
+            
             var m = new WeightHighlightMapping();
             if (component.Layers.TryGetValue(layer, out var mapping))
             {
@@ -81,7 +84,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
                 };
             }
             
-            _mapping.Update(component.Metadata.DrawIds[0], m);
+            _mapping.Update(metadata.DrawIds[0], m);
         }
         _mapping.Unbind();
         

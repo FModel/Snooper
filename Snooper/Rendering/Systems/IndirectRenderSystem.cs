@@ -102,8 +102,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     protected override void OnActorComponentRemoved(TComponent component)
     {
         base.OnActorComponentRemoved(component);
-
-        Resources.Remove(component.Metadata);
+        
+        if (component.Metadata is { } m)
+            Resources.Remove(m);
     }
     
     public override void Dispose()

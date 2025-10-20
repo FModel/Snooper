@@ -92,8 +92,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
-        var metadata = component.Metadata;
-        if (!metadata.IsGenerated) return;
+        if (component.Metadata is not { } metadata) return;
         
         if (metadata.GeometryHandle.IsDirty)
         {

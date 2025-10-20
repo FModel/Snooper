@@ -64,17 +64,17 @@ public static class EditorUI
     
     public static void PropertyValueTable(string label, Action draws)
     {
+        ImGui.Indent();
         if (ImGui.BeginTable(label + "ControlsTable", 2))
         {
             ImGui.TableSetupColumn("Property", ImGuiTableColumnFlags.WidthStretch, 1.0f);
             ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch, 2.0f);
-
-            ImGui.Indent();
+            
             draws.Invoke();
-            ImGui.Unindent();
 
             ImGui.EndTable();
         }
+        ImGui.Unindent();
     }
     
     /// <summary>
