@@ -10,10 +10,12 @@ public abstract class Texture(
     int width, int height, TextureTarget target,
     PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
     PixelFormat format = PixelFormat.Rgba,
-    PixelType type = PixelType.UnsignedByte) : HandledObject, IBind, IResizable
+    PixelType type = PixelType.UnsignedByte,
+    string? name = null) : HandledObject, IBind, IResizable
 {
-    public abstract GetPName Name { get; }
+    public abstract GetPName PName { get; }
 
+    public string Name { get; } = name ?? "Unnamed";
     public FGuid Guid { get; protected init; }
     public TextureTarget Target { get; } = target;
     
@@ -44,7 +46,7 @@ public abstract class Texture(
 
     public void Bind()
     {
-        PreviousHandle = GL.GetInteger(Name);
+        PreviousHandle = GL.GetInteger(PName);
         GL.BindTexture(Target, Handle);
     }
 

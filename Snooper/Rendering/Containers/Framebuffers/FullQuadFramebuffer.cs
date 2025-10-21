@@ -78,5 +78,5 @@ public class FullQuadFramebuffer(
         _color.Resize(newWidth, newHeight);
     }
 
-    public override IntPtr GetPointer() => _color.GetPointer();
+    public override Texture[] GetTextures() => [_color];
 }

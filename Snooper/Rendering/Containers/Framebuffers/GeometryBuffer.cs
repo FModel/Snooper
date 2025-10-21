@@ -116,12 +116,11 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         _fullQuad.Resize(newWidth, newHeight);
     }
 
-    public override IntPtr GetPointer() => _fullQuad.GetPointer();
-    public IntPtr[] GetTexturePointers() =>
+    public override Texture[] GetTextures() =>
     [
-        _position.GetPointer(),
-        _normal.GetPointer(),
-        _color.GetPointer(),
-        _specular.GetPointer(),
+        _position,
+        _normal,
+        _color,
+        _specular,
     ];
 }

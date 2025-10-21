@@ -4,7 +4,7 @@ namespace Snooper.Core.Containers;
 
 public sealed class VertexArray : HandledObject, IBind
 {
-    public GetPName Name => GetPName.VertexArrayBinding;
+    public GetPName PName => GetPName.VertexArrayBinding;
     public int PreviousHandle { get; private set; }
 
     public override void Generate()
@@ -14,7 +14,7 @@ public sealed class VertexArray : HandledObject, IBind
 
     public void Bind()
     {
-        PreviousHandle = GL.GetInteger(Name);
+        PreviousHandle = GL.GetInteger(PName);
         GL.BindVertexArray(Handle); // this automatically binds the EBO
     }
 

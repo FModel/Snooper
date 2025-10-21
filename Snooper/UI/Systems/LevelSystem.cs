@@ -42,10 +42,10 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 largest.X -= ImGui.GetScrollX();
                 largest.Y -= ImGui.GetScrollY();
 
-                var framebuffers = pair.GetFramebuffers();
+                var framebuffers = pair.GetTextures();
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
-                ImGui.Image(framebuffers[^1], size, Vector2.UnitY, Vector2.UnitX);
+                ImGui.Image(framebuffers[^1].GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
                 DrawAtOrigin(SelectedComponent, pair.Camera, ImGui.GetWindowDrawList(), 8f, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
 
                 if (ImGui.IsItemHovered())
@@ -95,7 +95,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                         var pMin = topRight with { Y = topRight.Y + i * (miniSize.Y + margin) };
                         var pMax = pMin + miniSize;
 
-                        drawList.AddImage(framebuffers[i], pMin, pMax, Vector2.UnitY, Vector2.UnitX);
+                        drawList.AddImage(framebuffers[i].GetPointer(), pMin, pMax, Vector2.UnitY, Vector2.UnitX);
                         drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
                     }
                 }

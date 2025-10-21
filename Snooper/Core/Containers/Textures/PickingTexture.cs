@@ -2,7 +2,7 @@
 
 namespace Snooper.Core.Containers.Textures;
 
-public class PickingTexture(int width, int height) : Texture2D(width, height, PixelInternalFormat.R32ui, PixelFormat.RedInteger, PixelType.UnsignedInt)
+public class PickingTexture(int width, int height, string? name = null) : Texture2D(width, height, PixelInternalFormat.R32ui, PixelFormat.RedInteger, PixelType.UnsignedInt, name)
 {
     public override void Generate()
     {

@@ -5,7 +5,7 @@ namespace Snooper.Core.Containers.Buffers;
 
 public sealed class ShaderStorageBuffer<T>(int capacity, BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<T>(capacity, BufferTarget.ShaderStorageBuffer, usageHint) where T : unmanaged
 {
-    public override GetPName Name => GetPName.ShaderStorageBufferBinding;
+    public override GetPName PName => GetPName.ShaderStorageBufferBinding;
     
     private readonly BufferUpdateBatcher<T> _batcher = new();
 

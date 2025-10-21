@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Programs;
+using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
@@ -11,8 +12,8 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
 
     private readonly FullQuadFramebuffer _blur = new(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red, PixelType.Float);
 
-    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/ssao.vert", "Framebuffers/ssao.frag");
-    private readonly ShaderProgram _blurShader = new EmbeddedShaderProgram("Framebuffers/ssao.vert", "Framebuffers/ssao_blur.frag");
+    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/ssao.frag");
+    private readonly ShaderProgram _blurShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/ssao_blur.frag");
 
     private int _frameCount;
 
@@ -37,7 +38,6 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
         {
             _shader.Use();
             callback?.Invoke(_shader);
-            _shader.SetUniform("uScaleRatio", ScaleRatio);
             _shader.SetUniform("uDirectionCount", DirectionCount);
             _shader.SetUniform("uStepsPerDirection", StepsPerDirection);
             _shader.SetUniform("uFrameCount", ++_frameCount);
@@ -61,13 +61,11 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
 
     public override void Resize(int newWidth, int newHeight)
     {
-        newWidth /= ScaleRatio;
-        newHeight /= ScaleRatio;
         base.Resize(newWidth, newHeight);
-        _blur.Resize(newWidth, newHeight);
+        _blur.Resize(newWidth / ScaleRatio, newHeight / ScaleRatio);
         
         _frameCount = 0;
     }
 
-    public override IntPtr GetPointer() => _blur.GetPointer();
+    public override Texture[] GetTextures() => [.._blur.GetTextures()];
 }

@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers.Framebuffers;
@@ -160,11 +161,11 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         _picking.Resize(newWidth, newHeight);
     }
 
-    public IntPtr[] GetFramebuffers() =>
+    public Texture[] GetTextures() =>
     [
-        .._geometry.GetTexturePointers(),
-        _ssao.GetPointer(),
-        _forward.GetPointer(),
-        Camera.bFXAA ? _fxaa.GetPointer() : _combined.GetPointer(),
+        .._geometry.GetTextures(),
+        .._ssao.GetTextures(),
+        .._forward.GetTextures(),
+        ..Camera.bFXAA ? _fxaa.GetTextures() : _combined.GetTextures(),
     ];
 }

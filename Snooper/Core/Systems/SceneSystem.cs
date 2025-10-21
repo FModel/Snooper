@@ -4,7 +4,6 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
-using Snooper.Rendering.Systems;
 
 namespace Snooper.Core.Systems;
 

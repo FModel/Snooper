@@ -6,14 +6,15 @@ namespace Snooper.Core.Containers.Textures;
 public class Texture2D(int width, int height,
     PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
     PixelFormat format = PixelFormat.Rgba,
-    PixelType type = PixelType.UnsignedByte)
-    : Texture(width, height, TextureTarget.Texture2D, internalFormat, format, type)
+    PixelType type = PixelType.UnsignedByte,
+    string? name = null)
+    : Texture(width, height, TextureTarget.Texture2D, internalFormat, format, type, name)
 {
-    public override GetPName Name => GetPName.TextureBinding2D;
+    public override GetPName PName => GetPName.TextureBinding2D;
 
     private UTexture? _owner;
 
-    public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY)
+    public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, name: texture.Name)
     {
         _owner = texture;
         

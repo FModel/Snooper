@@ -9,7 +9,7 @@ public class EmbeddedTexture2D(string file,
     int width = 24, int height = 24,
     PixelInternalFormat internalFormat = PixelInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
-    PixelType type = PixelType.UnsignedByte) : Texture2D(width, height, internalFormat, format, type)
+    PixelType type = PixelType.UnsignedByte) : Texture2D(width, height, internalFormat, format, type, Path.GetFileName(file))
 {
     private readonly Assembly _assembly = Assembly.GetExecutingAssembly();
 

@@ -4,7 +4,7 @@ namespace Snooper.Core.Containers;
 
 public interface IBind
 {
-    public GetPName Name { get; }
+    public GetPName PName { get; }
     public int PreviousHandle { get; }
 
     public void Bind();

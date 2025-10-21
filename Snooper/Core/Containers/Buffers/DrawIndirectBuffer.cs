@@ -4,7 +4,7 @@ namespace Snooper.Core.Containers.Buffers;
 
 public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<DrawElementsIndirectCommand>(capacity, BufferTarget.DrawIndirectBuffer, usageHint)
 {
-    public override GetPName Name => GetPName.DrawIndirectBufferBinding;
+    public override GetPName PName => GetPName.DrawIndirectBufferBinding;
     
     public void Bind(int index)
     {

@@ -7,7 +7,7 @@ namespace Snooper.Core.Containers.Buffers;
 
 public abstract class Buffer<T>(int initialCapacity, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind, IMemorySizeProvider where T : unmanaged
 {
-    public abstract GetPName Name { get; }
+    public abstract GetPName PName { get; }
 
     public int PreviousHandle { get; private set; }
     public int Count { get; private set; }
@@ -25,7 +25,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
 
     public void Bind()
     {
-        PreviousHandle = GL.GetInteger(Name);
+        PreviousHandle = GL.GetInteger(PName);
         GL.BindBuffer(Target, Handle);
     }
 
@@ -39,7 +39,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         if (newSize <= _capacity) return;
 
         newSize = (int) Math.Max(_capacity * factor, newSize);
-        Log.Verbose("Resizing buffer {0} ({1}) from {2} to {3} (initialized ? {4})", Handle, Name, _capacity, newSize, _bInitialized);
+        Log.Verbose("Resizing buffer {0} ({1}) from {2} to {3} (initialized ? {4})", Handle, PName, _capacity, newSize, _bInitialized);
         _capacity = newSize;
 
         if (_bInitialized)
@@ -78,7 +78,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
                 }
                 Bind();
 
-                Log.Verbose("Buffer {OldBuffer} ({GetPName}) has a new handle {I}.", oldBuffer, Name, Handle);
+                Log.Verbose("Buffer {OldBuffer} ({GetPName}) has a new handle {I}.", oldBuffer, PName, Handle);
             }
             else
             {
@@ -177,7 +177,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         if (index >= _capacity)
         {
-            Log.Verbose("attempt to insert at index {Index} in buffer {I} ({GetPName}) with capacity {Capacity}. Resizing...", index, Handle, Name, _capacity);
+            Log.Verbose("attempt to insert at index {Index} in buffer {I} ({GetPName}) with capacity {Capacity}. Resizing...", index, Handle, PName, _capacity);
             ResizeIfNeeded(index + 1, copy: true);
         }
 
@@ -188,7 +188,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
     public void Remove(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
-        if (index >= _capacity) throw new ArgumentOutOfRangeException(nameof(index), $"Cannot remove at index {index} in buffer {Handle} ({Name}) with capacity {_capacity}.");
+        if (index >= _capacity) throw new ArgumentOutOfRangeException(nameof(index), $"Cannot remove at index {index} in buffer {Handle} ({PName}) with capacity {_capacity}.");
 
         _freeRanges.Push(new Range(index, 1));
     }
@@ -196,7 +196,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
     public virtual void RemoveRange(int[] indices)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(indices.Length);
-        if (indices.Length > _capacity) throw new ArgumentOutOfRangeException(nameof(indices), $"Cannot remove range of {indices.Length} indices in buffer {Handle} ({Name}) with capacity {_capacity}.");
+        if (indices.Length > _capacity) throw new ArgumentOutOfRangeException(nameof(indices), $"Cannot remove range of {indices.Length} indices in buffer {Handle} ({PName}) with capacity {_capacity}.");
         
         _freeRanges.Push(new Range(indices[0], indices.Length - 1));
     }
@@ -212,7 +212,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         var count = index + length;
         if (count > _capacity)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Cannot update at index {index} with size {length} in buffer {Handle} ({Name}) with capacity {_capacity}. Consider resizing the buffer.");
+            throw new ArgumentOutOfRangeException(nameof(index), $"Cannot update at index {index} with size {length} in buffer {Handle} ({PName}) with capacity {_capacity}. Consider resizing the buffer.");
         }
 
         GL.BufferSubData(Target, index * Stride, length * Stride, data);
