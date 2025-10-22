@@ -6,7 +6,7 @@ namespace Snooper.Core.Containers.Resources;
 
 public interface IPerMaterialData
 {
-    public bool IsReady { get; }
+    public bool IsReady { get; } // TODO: get rid of this
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1, Size = 4)]

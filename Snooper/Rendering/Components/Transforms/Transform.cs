@@ -11,6 +11,22 @@ public class Transform()
     public Quaternion Rotation = Quaternion.Identity;
     public Vector3 Scale = Vector3.One;
     
+    public Transform(Vector3 position, Quaternion rotation) : this()
+    {
+        Position = position;
+        Rotation = rotation;
+    }
+
+    public Transform(Vector3 position) : this(position, Quaternion.Identity)
+    {
+        
+    }
+    
+    public Transform(Quaternion rotation) : this(Vector3.Zero, rotation)
+    {
+        
+    }
+    
     public Transform(FTransform transform) : this()
     {
         Position = new Vector3(transform.Translation.X, transform.Translation.Z, transform.Translation.Y) * Settings.GlobalScale;

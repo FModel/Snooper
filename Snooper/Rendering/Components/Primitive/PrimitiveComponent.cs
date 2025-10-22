@@ -36,6 +36,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
+        
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
@@ -272,6 +273,11 @@ public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<
     {
         Descriptor = new PrimitiveDescriptor<TVertex>(bounds, () => primitive);
     }
+    
+    protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
+    {
+        
+    }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
@@ -290,6 +296,11 @@ public class PrimitiveComponent<TPerMaterialData> : PrimitiveComponent<Vector3, 
         
     }
     
+    protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
+    {
+        
+    }
+    
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
         
@@ -301,6 +312,11 @@ public class PrimitiveComponent<TPerMaterialData> : PrimitiveComponent<Vector3, 
 public class PrimitiveComponent : PrimitiveComponent<PerMaterialData>
 {
     public PrimitiveComponent(PrimitiveData primitive, Transform? transform = null, string? name = null) : base(primitive, new FBox(), transform, name)
+    {
+        
+    }
+    
+    protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
         
     }
