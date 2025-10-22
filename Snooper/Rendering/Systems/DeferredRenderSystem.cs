@@ -17,6 +17,6 @@ public class DeferredRenderSystem : RenderSystem
 
     protected override bool CanEnqueueActorComponent(MeshComponent component)
     {
-        return component is { IsTranslucent: false, IsVisible: true };
+        return component is { IsOpaque: true, IsVisible: true };
     }
 }

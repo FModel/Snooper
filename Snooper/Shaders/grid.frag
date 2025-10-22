@@ -11,6 +11,9 @@ in VS_OUT {
 
 out vec4 FragColor;
 
+uniform bool uIsOpaque;
+uniform sampler2D uTexture;
+
 vec4 grid(vec3 fragPos, float scale)
 {
     vec2 coord = fragPos.xz * scale;
@@ -56,10 +59,17 @@ void main()
     gl_FragDepth = computeDepth(fragPos3D);
 
     float linearDepth = computeLinearDepth(fragPos3D);
-    float fading = max(0, (0.5 - linearDepth));
 
-    FragColor = (grid(fragPos3D, 10) + grid(fragPos3D, 1)) * float(t > 0);
-    FragColor.a *= fading;
+    if (uIsOpaque)
+    {
+        FragColor.rgb = texture(uTexture, fragPos3D.xz).rgb * vec3(0.3921, 0.4117, 0.4705);
+        FragColor.a = 1.0 - smoothstep(0.0, 0.1, linearDepth);
+    }
+    else
+    {
+        FragColor = (grid(fragPos3D, 10) + grid(fragPos3D, 1)) * float(t > 0);
+        FragColor.a *= max(0, (0.5 - linearDepth));
+    }
 
     gPicking = 0u;
 }

@@ -170,6 +170,9 @@ public class Actor
                     RemoveInternal(component);
                 }
                 break;
+            case NotifyCollectionChangedAction.Reset:
+                RootComponent = null;
+                break;
         }
     }
     

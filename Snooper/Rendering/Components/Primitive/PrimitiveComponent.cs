@@ -30,7 +30,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     
     public abstract MaterialSection[] Materials { get; }
 
-    public bool IsTranslucent => Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
+    public bool IsOpaque => Materials.Any(m => !m.IsTranslucent); // TODO: this is delayed by tasks
 
     public bool IsVisible { get; protected init; } = true;
     

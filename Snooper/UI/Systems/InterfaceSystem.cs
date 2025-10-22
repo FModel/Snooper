@@ -59,13 +59,13 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         
         var icons = Assembly.GetExecutingAssembly().GetManifestResourceNames()
             .Where(x => x.StartsWith("Snooper.UI.Textures.") && x.EndsWith(".png"))
-            .Select(x => x["Snooper.UI.Textures.".Length..]).ToList();
+            .Select(x => x["Snooper.".Length..]).ToList();
         foreach (var icon in icons)
         {
             var texture = new EmbeddedTexture2D(icon);
             texture.Generate();
                 
-            Icons.Add(icon[..^4], texture);
+            Icons.Add(icon["UI.Textures.".Length..^4], texture);
         }
         
         base.Load();

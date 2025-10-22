@@ -20,9 +20,11 @@
     <ItemGroup>
         <None Remove="Shaders\**\*" />
         <None Remove="UI\Textures\*" />
+        <None Remove="Rendering\Resources\*" />
         
         <EmbeddedResource Include="Shaders\**\*" />
         <EmbeddedResource Include="UI\Textures\*" />
+        <EmbeddedResource Include="Rendering\Resources\*" />
     </ItemGroup>
 
 </Project>

@@ -31,3 +31,5 @@ public class GridComponent() : PrimitiveComponent(new Geometry())
         }
     }
 }
+
+public class OpaqueGridComponent : GridComponent;

@@ -8,7 +8,7 @@ namespace Snooper.Rendering.Systems;
 
 public class SkyboxSystem() : PrimitiveSystem<CubeComponent>(1)
 {
-    public override uint Order => 1;
+    public override uint Order => 98;
     protected override bool AllowDerivation => true;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("Skybox/skybox");
 

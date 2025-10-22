@@ -9,7 +9,7 @@ namespace Snooper.Rendering.Systems;
 
 public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, PerMaterialDebugData>(500, PrimitiveType.Lines)
 {
-    public override uint Order => 99;
+    public override uint Order => 97;
     protected override bool AllowDerivation => true;
     protected override bool IsCulled => false;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default.vert", "debug.frag")

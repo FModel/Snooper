@@ -19,9 +19,9 @@ public class AtmosphericComponent : CubeComponent
 {
     public Planet Sun = new()
     {
-        Position = Vector3.One,
-        Intensity = 22.0f,
-        Radius = 6371e3f,
+        Position = new Vector3(0, 1, 0),
+        Intensity = 56.0f,
+        Radius = 6363e3f,
         AtmosphereRadius = 6381e3f
     };
     

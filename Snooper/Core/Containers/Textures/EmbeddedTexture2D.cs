@@ -17,26 +17,26 @@ public class EmbeddedTexture2D(string file,
     {
         base.Generate();
         if (FormatInfo is not TextureFormatInfo info) return;
-        
+
         ProcessPixels(info);
-        
+
         GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
         GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
         GL.TexParameter(Target, TextureParameterName.TextureWrapR, (int) TextureWrapMode.ClampToEdge);
         GL.TexParameter(Target, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
         GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
     }
-    
+
     private void ProcessPixels(TextureFormatInfo info)
     {
         var assemblyName = _assembly.GetName().Name;
-        using var stream = _assembly.GetManifestResourceStream($"{assemblyName}.UI.Textures.{file.Replace('\\', '.').Replace('/', '.')}");
+        using var stream = _assembly.GetManifestResourceStream($"{assemblyName}.{file.Replace('\\', '.').Replace('/', '.')}");
         if (stream == null)
             throw new FileNotFoundException($"Embedded texture file '{file}' not found in assembly '{assemblyName}'.");
-        
+
         using var img = Image.Load<Rgba32>(stream);
         Resize(img.Width, img.Height);
-        
+
         img.ProcessPixelRows(accessor =>
         {
             for (var y = 0; y < accessor.Height; y++)
