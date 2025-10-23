@@ -8,11 +8,13 @@ namespace Snooper.Rendering.Systems;
 
 public class GridSystem() : PrimitiveSystem<GridComponent>(1)
 {
-    public override uint Order => 99;
+    public override uint Order => 2;
     protected override bool AllowDerivation => true;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("grid");
 
     private Texture? _texture;
+    
+    public bool IsOpaque => _texture is not null;
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
@@ -20,11 +22,11 @@ public class GridSystem() : PrimitiveSystem<GridComponent>(1)
         
         shader.SetUniform("uNear", camera.NearPlaneDistance);
         shader.SetUniform("uFar", camera.FarPlaneDistance);
-        shader.SetUniform("uIsOpaque", _texture is not null);
+        shader.SetUniform("uIsOpaque", IsOpaque);
         _texture?.Bind(TextureUnit.Texture0);
         shader.SetUniform("uTexture", 0);
         
-        GL.DepthMask(false);
+        if (!IsOpaque) GL.DepthMask(false);
     }
     
     protected override void PostRender(CameraComponent camera, ShaderProgram shader)
@@ -32,7 +34,7 @@ public class GridSystem() : PrimitiveSystem<GridComponent>(1)
         base.PostRender(camera, shader);
         
         _texture?.Unbind();
-        GL.DepthMask(true);
+        if (!IsOpaque) GL.DepthMask(true);
     }
 
     protected override void OnActorComponentAdded(GridComponent component)

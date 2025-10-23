@@ -11,16 +11,16 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Systems;
 
-public class TextRenderSystem() : PrimitiveSystem<TextVertex, TextRenderComponent, PerInstanceData, PerMaterialTextData>(5), IControllable
+public class TextRenderSystem() : PrimitiveSystem<Vector4, TextRenderComponent, PerInstanceData, PerMaterialTextData>(5), IControllable
 {
     public override uint Order => 30;
     protected override bool IsCulled => false; // TODO: properly calculate bounding box then re-enable
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("text");
     protected override Action<int> VertexLayout { get; } = stride =>
     {
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, 0);
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
         GL.EnableVertexAttribArray(0);
-        GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, stride, 12);
+        GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, stride, 8);
         GL.EnableVertexAttribArray(1);
     };
 

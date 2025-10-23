@@ -15,12 +15,6 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Primitive;
 
-public readonly struct TextVertex(Vector3 position, Vector2 texCoord)
-{
-    public readonly Vector3 Position = position;
-    public readonly Vector2 TexCoord = texCoord;
-}
-
 public struct PerMaterialTextData : IPerMaterialData
 {
     public bool IsReady { get; set; }
@@ -30,7 +24,7 @@ public struct PerMaterialTextData : IPerMaterialData
 }
 
 [DefaultActorSystem(typeof(TextRenderSystem))]
-public class TextRenderComponent : PrimitiveComponent<TextVertex, PerInstanceData, PerMaterialTextData>
+public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, PerMaterialTextData>
 {
     public sealed override MaterialSection[] Materials { get; } = [new(0)];
 
@@ -46,7 +40,7 @@ public class TextRenderComponent : PrimitiveComponent<TextVertex, PerInstanceDat
         
         var fontAtlas = FontAtlasTexture.Instance;
         var textQuad = new Geometry(_text, fontAtlas, _horizontalAlignment, _verticalAlignment, fontSize);
-        Descriptor = new PrimitiveDescriptor<TextVertex>(new FBox(), () => textQuad);
+        Descriptor = new PrimitiveDescriptor<Vector4>(new FBox(), () => textQuad);
 
         if (color is { } c)
         {
@@ -65,7 +59,7 @@ public class TextRenderComponent : PrimitiveComponent<TextVertex, PerInstanceDat
         
         var fontAtlas = FontAtlasTexture.Instance;
         var textQuad = new Geometry(_text, fontAtlas, _horizontalAlignment, _verticalAlignment, worldSize);
-        Descriptor = new PrimitiveDescriptor<TextVertex>(new FBox(), () => textQuad);
+        Descriptor = new PrimitiveDescriptor<Vector4>(new FBox(), () => textQuad);
         
         if (color is { } c)
         {
@@ -116,7 +110,7 @@ public class TextRenderComponent : PrimitiveComponent<TextVertex, PerInstanceDat
         }
     }
     
-    private class Geometry : PrimitiveData<TextVertex>
+    private class Geometry : PrimitiveData<Vector4>
     {
         public Geometry(string text, FontAtlasTexture fontAtlas, EHorizTextAligment hAlign, EVerticalTextAligment vAlign, float scale)
         {
@@ -127,7 +121,7 @@ public class TextRenderComponent : PrimitiveComponent<TextVertex, PerInstanceDat
                 return;
             }
             
-            var vertices = new List<TextVertex>();
+            var vertices = new List<Vector4>();
             var indices = new List<uint>();
             
             var pixelToWorld = Settings.GlobalScale / fontAtlas.FontSize;
@@ -209,10 +203,10 @@ public class TextRenderComponent : PrimitiveComponent<TextVertex, PerInstanceDat
                     var baseIndex = (uint)vertices.Count;
                     
                     // Create quad for this character (y1 is bottom, y0 is top)
-                    vertices.Add(new TextVertex(new Vector3(x0, y1, 0), new Vector2(charInfo.U0, charInfo.V1))); // Bottom-left
-                    vertices.Add(new TextVertex(new Vector3(x1, y1, 0), new Vector2(charInfo.U1, charInfo.V1))); // Bottom-right
-                    vertices.Add(new TextVertex(new Vector3(x1, y0, 0), new Vector2(charInfo.U1, charInfo.V0))); // Top-right
-                    vertices.Add(new TextVertex(new Vector3(x0, y0, 0), new Vector2(charInfo.U0, charInfo.V0))); // Top-left
+                    vertices.Add(new Vector4(x0, y1, charInfo.U0, charInfo.V1)); // Bottom-left
+                    vertices.Add(new Vector4(x1, y1, charInfo.U1, charInfo.V1)); // Bottom-right
+                    vertices.Add(new Vector4(x1, y0, charInfo.U1, charInfo.V0)); // Top-right
+                    vertices.Add(new Vector4(x0, y0, charInfo.U0, charInfo.V0)); // Top-left
                     
                     // Two triangles
                     indices.Add(baseIndex + 0);
