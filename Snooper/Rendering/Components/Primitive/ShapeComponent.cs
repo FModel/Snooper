@@ -78,7 +78,7 @@ public class CapsuleComponent : ShapeComponent
             halfHeight = capsuleHalfHeight * Settings.GlobalScale;
         }
 
-        var bounds = new CullingBounds(Vector3.Zero, new Vector3(radius, halfHeight, radius), halfHeight);
+        var bounds = new CullingBounds(Vector3.Zero, new Vector3(radius, halfHeight, radius));
         Descriptor = new PrimitiveDescriptor<Vector3>(bounds, () => new Geometry(radius, halfHeight));
         
         Materials[0].MaterialDataContainer = new MaterialDataContainer(Color.Value, LineThickness);

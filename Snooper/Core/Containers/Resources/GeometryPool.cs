@@ -106,7 +106,7 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
                 
                 maxLod++;
             }
-            o.Bounds.MaxLevelOfDetail = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
+            o.MaxLOD = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
 
             _vbo.Unbind();
             _ebo.Unbind();

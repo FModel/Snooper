@@ -40,7 +40,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         
         var fontAtlas = FontAtlasTexture.Instance;
         var textQuad = new Geometry(_text, fontAtlas, _horizontalAlignment, _verticalAlignment, fontSize);
-        Descriptor = new PrimitiveDescriptor<Vector4>(new FBox(), () => textQuad);
+        Descriptor = new PrimitiveDescriptor<Vector4>(ComputeBounds(textQuad), () => textQuad);
 
         if (color is { } c)
         {
@@ -59,12 +59,34 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         
         var fontAtlas = FontAtlasTexture.Instance;
         var textQuad = new Geometry(_text, fontAtlas, _horizontalAlignment, _verticalAlignment, worldSize);
-        Descriptor = new PrimitiveDescriptor<Vector4>(new FBox(), () => textQuad);
+        
+        Descriptor = new PrimitiveDescriptor<Vector4>(ComputeBounds(textQuad), () => textQuad);
         
         if (color is { } c)
         {
             Materials[0].MaterialDataContainer = new MaterialDataContainer(new Vector3(c.R, c.G, c.B) / 255f);
         }
+    }
+    
+    private CullingBounds ComputeBounds(Geometry geometry)
+    {
+        if (geometry.Vertices is { Length: > 0 } vertices)
+        {
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minY = float.MaxValue, maxY = float.MinValue;
+            foreach (var v in vertices)
+            {
+                minX = Math.Min(minX, v.X);
+                maxX = Math.Max(maxX, v.X);
+                minY = Math.Min(minY, v.Y);
+                maxY = Math.Max(maxY, v.Y);
+            }
+            var center = new Vector3((minX + maxX) / 2, (minY + maxY) / 2, 0);
+            var extents = new Vector3((maxX - minX) / 2, (maxY - minY) / 2, 0);
+            return new CullingBounds(center, extents);
+        }
+        
+        return new CullingBounds(Vector3.Zero, Vector3.One);
     }
 
     internal override string Icon => "text";
@@ -158,6 +180,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
                 _ => 0
             } * finalScale;
             
+            // TODO: it's broken but it's fine for now
             var baseOffsetY = vAlign switch
             {
                 EVerticalTextAligment.EVRTA_TextTop or EVerticalTextAligment.EVRTA_QuadTop => 0f,
@@ -196,9 +219,9 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
                     // Position from cursor baseline
                     var x0 = cursorX + charInfo.OffsetX * finalScale;
                     var y0 = cursorY - charInfo.OffsetY * finalScale;
-                    // Use CELL dimensions for quad size to match UV coverage
-                    var x1 = x0 + charInfo.CellWidth * finalScale;
-                    var y1 = y0 - charInfo.CellHeight * finalScale;
+                    // Use glyph dimensions for quad size to match UV coverage
+                    var x1 = x0 + charInfo.Width * finalScale;
+                    var y1 = y0 - charInfo.Height * finalScale;
                     
                     var baseIndex = (uint)vertices.Count;
                     

@@ -3,39 +3,27 @@ using CUE4Parse.UE4.Objects.Core.Math;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public struct CullingBounds
+public readonly struct CullingBounds
 {
     public readonly Vector3 Center;
-    public readonly float SphereRadius;
     public readonly Vector3 Extents;
-    public uint MaxLevelOfDetail;
-
-    public CullingBounds(Vector3 center, Vector3 extents, float sphereRadius)
-    {
-        Center = center;
-        Extents = extents;
-        SphereRadius = sphereRadius;
-    }
 
     public CullingBounds(Vector3 center, Vector3 extents)
     {
         Center = center;
         Extents = extents;
-        SphereRadius = extents.Length();
     }
     
     public CullingBounds(Vector3 extents)
     {
         Center = Vector3.Zero;
         Extents = extents;
-        SphereRadius = extents.Length();
     }
     
     public CullingBounds(float sphereRadius)
     {
         Center = Vector3.Zero;
         Extents = new Vector3(sphereRadius);
-        SphereRadius = sphereRadius;
     }
 
     public CullingBounds(FBox box)
@@ -45,10 +33,9 @@ public struct CullingBounds
         
         Center = new Vector3(center.X, center.Z, center.Y);
         Extents = new Vector3(extents.X, extents.Z, extents.Y);
-        SphereRadius = extents.Size();
     }
     
     public static implicit operator CullingBounds(FBox box) => new(box);
 
-    public override string ToString() => $"Center: {Center}, Extents: {Extents}, SphereRadius: {SphereRadius}";
+    public override string ToString() => $"Center: {Center}, Extents: {Extents}";
 }

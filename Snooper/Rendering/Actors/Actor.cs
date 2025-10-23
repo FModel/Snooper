@@ -1,11 +1,13 @@
 ﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Skybox;
 using Snooper.Rendering.Components.Transforms;
 
@@ -118,6 +120,13 @@ public class Actor
         }
 
         component.Actor = this;
+
+#if DEBUG
+        if (component is TextRenderComponent mesh)
+        {
+            Components.Add(new DebugComponent(mesh.Descriptor.Bounds, new Vector3(1, 0, 1), 1, $"{mesh.Name} (Bounds)") { Relation = mesh });
+        }
+#endif
     }
 
     private void RemoveInternal(ActorComponent component)

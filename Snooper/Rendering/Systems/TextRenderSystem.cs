@@ -13,8 +13,7 @@ namespace Snooper.Rendering.Systems;
 
 public class TextRenderSystem() : PrimitiveSystem<Vector4, TextRenderComponent, PerInstanceData, PerMaterialTextData>(5), IControllable
 {
-    public override uint Order => 30;
-    protected override bool IsCulled => false; // TODO: properly calculate bounding box then re-enable
+    public override uint Order => 51;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("text");
     protected override Action<int> VertexLayout { get; } = stride =>
     {

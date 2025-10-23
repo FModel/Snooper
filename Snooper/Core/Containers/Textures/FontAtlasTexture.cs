@@ -76,11 +76,11 @@ public class FontAtlasTexture : Texture2D
             var col = i % _charsPerRow;
             var row = i / _charsPerRow;
             
-            // UV coordinates cover the FULL cell (not just character bounds)
-            var u0 = (col * _cellWidth) / (float)_atlasWidth;
-            var v0 = (row * _cellHeight) / (float)_atlasHeight;
-            var u1 = ((col + 1) * _cellWidth) / (float)_atlasWidth;
-            var v1 = ((row + 1) * _cellHeight) / (float)_atlasHeight;
+            // UV coordinates cover the character bounds
+            var u0 = (col * _cellWidth + _padding) / (float)_atlasWidth;
+            var v0 = (row * _cellHeight + _padding) / (float)_atlasHeight;
+            var u1 = (col * _cellWidth + _padding + bounds.Width) / _atlasWidth;
+            var v1 = (row * _cellHeight + _padding + bounds.Height) / _atlasHeight;
             
             Characters[c] = new CharacterInfo
             {

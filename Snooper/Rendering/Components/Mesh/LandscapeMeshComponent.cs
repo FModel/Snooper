@@ -40,6 +40,8 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
         var sizeQuads = (uint)component.ComponentSizeQuads;
+        // frustum culling is broken because the bounding box is for the cached geometry, not the actual tessellated one
+        // do not cache the geometry to fix this
         Descriptor = PrimitiveDescriptor<Vector2>.GetOrCreate(sizeQuads, component.CachedLocalBox, id => new Geometry(id));
         
         if (component.GetHeightmap() is not { } heightmap)
