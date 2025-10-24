@@ -2,7 +2,9 @@
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
+using CUE4Parse.UE4.Objects.Meshes;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Primitives;
 
@@ -29,7 +31,7 @@ public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanage
         Lods = [new LodDescriptor<TVertex>(factory(id))];
     }
     
-    private PrimitiveDescriptor(UStaticMesh owner, Func<CMeshVertex[], uint[], TPrimitiveData<TVertex>> factory)
+    private PrimitiveDescriptor(UStaticMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Path = owner.Name;
         Guid = owner.LightingGuid;
@@ -48,7 +50,7 @@ public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanage
         }
     }
     
-    private PrimitiveDescriptor(USkeletalMesh owner, Func<CMeshVertex[], uint[], TPrimitiveData<TVertex>> factory)
+    private PrimitiveDescriptor(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Path = owner.Name;
         Guid = new FGuid((uint)owner.Name.GetHashCode());
@@ -78,14 +80,14 @@ public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanage
     /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> for the given static mesh.
     /// The factory function is used to generate the primitive data if it doesn't already exist in the cache.
     /// </summary>
-    public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<CMeshVertex[], uint[], TPrimitiveData<TVertex>> factory)
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.LightingGuid, () => new PrimitiveDescriptor<TVertex>(owner, factory));
     
     /// <summary>
     /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> for the given skeletal mesh.
     /// The factory function is used to generate the primitive data if it doesn't already exist in the
     /// </summary>
-    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<CMeshVertex[], uint[], TPrimitiveData<TVertex>> factory)
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(new FGuid((uint)owner.Name.GetHashCode()), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
     public void Dispose()

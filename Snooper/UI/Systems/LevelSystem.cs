@@ -149,7 +149,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             ImGui.SeparatorText("Options");
             ImGui.Checkbox("Show Framebuffers", ref ShowFramebuffers);
             var c = (int) DebugColorMode;
-            ImGui.Combo("DebugColorMode", ref c, "None\0Per Component\0Per Instance\0Per Material\0Per Primitive\0");
+            ImGui.Combo("DebugColorMode", ref c, "None\0Per Component\0Per Instance\0Per Material\0Per Primitive\0Vertex Colors\0");
             DebugColorMode = (ActorDebugColorMode) c;
             
             ImGui.SeparatorText("Systems");

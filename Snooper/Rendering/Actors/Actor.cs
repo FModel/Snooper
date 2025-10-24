@@ -122,7 +122,7 @@ public class Actor
         component.Actor = this;
 
 #if DEBUG
-        if (component is TextRenderComponent mesh)
+        if (component is MeshComponent { IsVisible: false } mesh)
         {
             Components.Add(new DebugComponent(mesh.Descriptor.Bounds, new Vector3(1, 0, 1), 1, $"{mesh.Name} (Bounds)") { Relation = mesh });
         }

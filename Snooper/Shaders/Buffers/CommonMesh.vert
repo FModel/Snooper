@@ -7,14 +7,36 @@ uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform int uDebugColorMode;
 
+#include "Buffers/PerDrawCommand.glsl"
 #include "Buffers/PerInstanceData.glsl"
+
+layout(std430, binding = 5) buffer PerVertexColorBuffer
+{
+    int uVertexColorBuffer[];
+};
+
+layout(std430, binding = 6) buffer PerExtraUvBuffer
+{
+    vec2 uExtraUvBuffer[];
+};
 
 out VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
+    vec4 vColor;
+    vec2 vExtraTexCoords;
     mat3 TBN;
     vec3 vDebugColor;
 } vs_out;
+
+vec4 UnpackColor(int color)
+{
+    float a = float((color >> 24) & 0xFF);
+    float r = float((color >> 16) & 0xFF);
+    float g = float((color >> 8) & 0xFF);
+    float b = float((color >> 0) & 0xFF);
+    return vec4(r, g, b, a) / 255.0;
+}
 
 void CommonMeshMain()
 {
@@ -41,8 +63,26 @@ void CommonMeshMain()
     vec3 N = normalize(vec3(vec4(nMatrix * aNormal, 0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gl_DrawID];
+    
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
+    if (cmd.BaseColor != 0xFFFFFFFFu)
+    {
+        vs_out.vColor = UnpackColor(uVertexColorBuffer[cmd.BaseColor + (gl_VertexID - gl_BaseVertex)]);
+    }
+    else
+    {
+        vs_out.vColor = vec4(vec3(0.3333), 1.0);
+    }
+    if (cmd.BaseExtraUv == 0xFFFFFFFFu)
+    {
+        vs_out.vExtraTexCoords = uExtraUvBuffer[cmd.BaseExtraUv + (gl_VertexID - gl_BaseVertex)];
+    }
+    else
+    {
+        vs_out.vExtraTexCoords = vec2(0.0);
+    }
     vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
 
     vs_out.vDebugColor = vec3(0.75);
@@ -62,4 +102,3 @@ void CommonMeshMain()
         float((id * 31u) % 255u) / 255.0
     ));
 }
-

@@ -4,6 +4,8 @@ using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Texture;
+using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
@@ -277,7 +279,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     protected class Geometry : PrimitiveData<Vertex>
     {
-        public Geometry(CMeshVertex[] vertices, uint[] indices)
+        public Geometry(CMeshVertex[] vertices, uint[] indices, FColor[]? colors, FMeshUVFloat[]? extraUvs)
         {
             Vertices = new Vertex[vertices.Length];
             for (var i = 0; i < Vertices.Length; i++)
@@ -292,6 +294,24 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             }
 
             Indices = indices;
+            
+            if (colors != null)
+            {
+                Colors = new int[colors.Length];
+                for (var i = 0; i < Colors.Length; i++)
+                {
+                    Colors[i] = colors[i].ToPackedARGB();
+                }
+            }
+            
+            if (extraUvs != null)
+            {
+                ExtraUvs = new Vector2[extraUvs.Length];
+                for (var i = 0; i < ExtraUvs.Length; i++)
+                {
+                    ExtraUvs[i] = new Vector2(extraUvs[i].U, extraUvs[i].V);
+                }
+            }
         }
     }
 }

@@ -17,6 +17,8 @@ struct PrimitiveDescriptor
     vec4 screenSize[2];
     uvec4 sectionCount[2]; // number of sections for each LOD
     uvec4 sectionOffset[2]; // section offsets for each LOD in SectionDescriptorsBuffer
+    uvec4 baseColor[2]; // Color buffer offsets for each LOD
+    uvec4 baseExtraUV[2]; // Extra UV buffer offsets for each LOD
 };
 
 struct SectionDescriptor
@@ -71,6 +73,8 @@ bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
         a.IndexCount == b.IndexCount &&
         a.FirstIndex == b.FirstIndex &&
         a.BaseVertex == b.BaseVertex &&
+        a.BaseColor == b.BaseColor &&
+        a.BaseExtraUv == b.BaseExtraUv &&
         a.MaterialIndex == b.MaterialIndex;
 }
 
@@ -187,6 +191,8 @@ void main()
                 newCmd.IndexCount = section.count;
                 newCmd.FirstIndex = primitive.firstIndex[lodGroup][lodSub] + section.firstIndex;
                 newCmd.BaseVertex = primitive.baseVertex[lodGroup][lodSub];
+                newCmd.BaseColor = primitive.baseColor[lodGroup][lodSub];
+                newCmd.BaseExtraUv = primitive.baseExtraUV[lodGroup][lodSub];
                 newCmd.MaterialIndex = section.materialIndex;
             }
         }
@@ -203,6 +209,8 @@ void main()
         uDrawCommandBuffer[drawId].FirstIndex    = newCmd.FirstIndex;
         uDrawCommandBuffer[drawId].BaseVertex    = newCmd.BaseVertex;
         uDrawCommandBuffer[drawId].BaseInstance  = newCmd.BaseInstance;
+        uDrawCommandBuffer[drawId].BaseColor     = newCmd.BaseColor;
+        uDrawCommandBuffer[drawId].BaseExtraUv   = newCmd.BaseExtraUv;
         uDrawCommandBuffer[drawId].MaterialIndex = newCmd.MaterialIndex;
     }
 }

@@ -8,12 +8,12 @@ public class SkeletalMeshComponent : MeshComponent
 {
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh) : base(skeletalMesh.Materials, null, skeletalMesh.Name)
     {
-        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices) => new Geometry(vertices, indices));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
     
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh, USkeletalMeshComponent component) : base(skeletalMesh.Materials, component)
     {
-        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices) => new Geometry(vertices, indices));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
     
     internal override string Icon => "man";

@@ -31,6 +31,8 @@ uniform int uDebugColorMode;
 in VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
+    vec4 vColor;
+    vec2 vExtraTexCoords;
     mat3 TBN;
     vec3 vDebugColor;
 } fs_in;
@@ -70,6 +72,10 @@ void main()
             float((gl_PrimitiveID * 149u) % 255u) / 255.0,
             float((gl_PrimitiveID * 233u) % 255u) / 255.0
         ));
+    }
+    else if (uDebugColorMode == 5)
+    {
+        color = fs_in.vColor.rgb;
     }
     
     vec3 normal = vec3(0.0, 0.0, 1.0);

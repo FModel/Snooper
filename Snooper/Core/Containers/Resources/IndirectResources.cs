@@ -66,19 +66,22 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
 
         _commands.Current.Bind();
         var instanceCount = (uint)instanceData.Length;
-        var drawIds = new int[primitive.Lods[0].Sections.Length];
+        const uint currentLod = 0u;
+        var drawIds = new int[primitive.Lods[currentLod].Sections.Length];
         for (var i = 0u; i < drawIds.Length; i++)
         {
             drawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
             {
-                IndexCount = primitive.Lods[0].Sections[i].IndexCount,
+                IndexCount = primitive.Lods[currentLod].Sections[i].IndexCount,
                 InstanceCount = instanceCount,
-                FirstIndex = handle.FirstIndex + primitive.Lods[0].Sections[i].FirstIndex,
+                FirstIndex = handle.FirstIndex + primitive.Lods[currentLod].Sections[i].FirstIndex,
                 BaseVertex = handle.BaseVertex,
                 BaseInstance = baseInstance,
                 BaseGeometry = handle.BaseGeometry,
+                BaseColor = handle.BaseColor,
+                BaseExtraUv = handle.BaseExtraUv,
                 BaseMaterial = baseMaterial,
-                MaterialIndex = primitive.Lods[0].Sections[i].MaterialIndex,
+                MaterialIndex = primitive.Lods[currentLod].Sections[i].MaterialIndex,
                 PickingId = pickingId,
                 OriginalInstanceCount = instanceCount,
                 OriginalBaseInstance = baseInstance,

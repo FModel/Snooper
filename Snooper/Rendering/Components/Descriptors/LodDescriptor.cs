@@ -1,4 +1,6 @@
 ﻿using CUE4Parse_Conversion.Meshes.PSK;
+using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Objects.Meshes;
 using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Descriptors;
@@ -24,7 +26,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         Sections = [new SectionDescriptor(0, IndexCount, 0)];
     }
 
-    public LodDescriptor(CBaseMeshLod lod, Func<CMeshVertex[], uint[], TPrimitiveData<TVertex>> factory)
+    public LodDescriptor(CBaseMeshLod lod, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         var vertices = lod switch
         {
@@ -58,7 +60,21 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         var cIndices = new uint[indices.Length];
         Array.Copy(indices, cIndices, indices.Length);
         
-        _factory = () => factory(cVertices, cIndices);
+        FColor[]? cColors = null;
+        if (lod.VertexColors is { Length: > 0 } colors)
+        {
+            cColors = new FColor[colors.Length];
+            Array.Copy(colors, cColors, colors.Length);
+        }
+        
+        FMeshUVFloat[]? cExtraUvs = null;
+        if (lod.ExtraUV?.Value is { Length: > 0 } extraUvs && extraUvs[0] is { Length: > 0 } extraUv1)
+        {
+            cExtraUvs = new FMeshUVFloat[extraUv1.Length];
+            Array.Copy(extraUv1, cExtraUvs, extraUv1.Length);
+        }
+        
+        _factory = () => factory(cVertices, cIndices, cColors, cExtraUvs);
     }
     
     internal TPrimitiveData<TVertex> CreatePrimitive()

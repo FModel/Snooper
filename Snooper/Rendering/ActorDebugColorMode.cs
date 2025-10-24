@@ -7,4 +7,5 @@ public enum ActorDebugColorMode : byte
     PerInstance,
     PerMaterial,
     PerPrimitive,
+    VertexColors
 }
