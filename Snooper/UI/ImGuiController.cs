@@ -249,9 +249,12 @@ void main()
             {
                 var pcmd = cmd.CmdBuffer[j];
                 if (pcmd.UserCallback != IntPtr.Zero) throw new NotImplementedException();
+                
+                var texture = (int)pcmd.TextureId;
+                if (!GL.IsTexture(texture)) continue;
 
                 GL.ActiveTexture(TextureUnit.Texture0);
-                GL.BindTexture(TextureTarget.Texture2D, (int)pcmd.TextureId);
+                GL.BindTexture(TextureTarget.Texture2D, texture);
                 CheckForErrors("Texture");
 
                 // We do _windowHeight - (int)clip.W instead of (int)clip.Y because gl has flipped Y when it comes to these coordinates

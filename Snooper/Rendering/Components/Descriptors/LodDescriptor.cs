@@ -10,6 +10,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
     public uint IndexCount { get; }
     public uint VertexCount { get; }
     public float ScreenSize { get; }
+    public uint LayerCount { get; }
     public SectionDescriptor[] Sections { get; }
 
     private TPrimitiveData<TVertex>? _primitive;
@@ -23,6 +24,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         IndexCount = (uint)(_primitive?.Indices?.Length ?? 0);
         VertexCount = (uint)(_primitive?.Vertices?.Length ?? 0);
         ScreenSize = 0.0f;
+        LayerCount = 1;
         Sections = [new SectionDescriptor(0, IndexCount, 0)];
     }
 
@@ -45,6 +47,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         IndexCount = (uint)indices.Length;
         VertexCount = (uint)vertices.Length;
         ScreenSize = lod.ScreenSize;
+        LayerCount = (uint)Math.Max(1, lod.NumTexCoords);
         
         Sections = new SectionDescriptor[sections.Length];
         for (var i = 0; i < Sections.Length; i++)

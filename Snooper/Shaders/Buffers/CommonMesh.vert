@@ -2,6 +2,7 @@
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec3 aTangent;
 layout (location = 3) in vec2 aTexCoords;
+layout (location = 4) in uint aTexLayer;
 
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
@@ -15,16 +16,11 @@ layout(std430, binding = 5) buffer PerVertexColorBuffer
     int uVertexColorBuffer[];
 };
 
-layout(std430, binding = 6) buffer PerExtraUvBuffer
-{
-    vec2 uExtraUvBuffer[];
-};
-
+flat out uint vTexLayer;
 out VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
     vec4 vColor;
-    vec2 vExtraTexCoords;
     mat3 TBN;
     vec3 vDebugColor;
 } vs_out;
@@ -67,25 +63,18 @@ void CommonMeshMain()
     
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
+    vTexLayer = aTexLayer;
     if (cmd.BaseColor != 0xFFFFFFFFu)
     {
         vs_out.vColor = UnpackColor(uVertexColorBuffer[cmd.BaseColor + (gl_VertexID - gl_BaseVertex)]);
     }
     else
     {
-        vs_out.vColor = vec4(vec3(0.3333), 1.0);
-    }
-    if (cmd.BaseExtraUv == 0xFFFFFFFFu)
-    {
-        vs_out.vExtraTexCoords = uExtraUvBuffer[cmd.BaseExtraUv + (gl_VertexID - gl_BaseVertex)];
-    }
-    else
-    {
-        vs_out.vExtraTexCoords = vec2(0.0);
+        vs_out.vColor = vec4(vec3(0.5), 1.0);
     }
     vs_out.TBN = mat3(T, normalize(cross(N, T)), N);
 
-    vs_out.vDebugColor = vec3(0.75);
+    vs_out.vDebugColor = vec3(0.5);
     if (uDebugColorMode == 0) return;
     else if (uDebugColorMode == 1)
     {

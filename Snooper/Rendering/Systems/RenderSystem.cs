@@ -17,10 +17,12 @@ public class RenderSystem() : PrimitiveSystem<Vertex, MeshComponent, PerInstance
         GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, stride, 12);
         GL.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, stride, 24);
         GL.VertexAttribPointer(3, 2, VertexAttribPointerType.Float, false, stride, 36);
+        GL.VertexAttribIPointer(4, 1, VertexAttribIntegerType.UnsignedInt, stride, 44);
         GL.EnableVertexAttribArray(0);
         GL.EnableVertexAttribArray(1);
         GL.EnableVertexAttribArray(2);
         GL.EnableVertexAttribArray(3);
+        GL.EnableVertexAttribArray(4);
     };
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)

@@ -79,7 +79,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
                 BaseInstance = baseInstance,
                 BaseGeometry = handle.BaseGeometry,
                 BaseColor = handle.BaseColor,
-                BaseExtraUv = handle.BaseExtraUv,
                 BaseMaterial = baseMaterial,
                 MaterialIndex = primitive.Lods[currentLod].Sections[i].MaterialIndex,
                 PickingId = pickingId,

@@ -201,6 +201,10 @@ switch (provider.ProjectName)
         var actor = new Actor("Origin Indicator");
         actor.Components.Add(new TextRenderComponent("Origin", 54, new Vector3(1.0f, 0, 0), transform: new Transform(new Vector3(0, 0.001f, 0), new Quaternion(-1, 0, 0, 1))));
         scene.Children.Add(actor);
+        
+        var overhang = new MeshActor(provider.LoadPackageObject<UStaticMesh>("FortniteGame/Content/Environments/Asteria/Sets/Dojo/Meshes/SM_Asteria_Dojo_Overhang_Outer_Crn_A_A.SM_Asteria_Dojo_Overhang_Outer_Crn_A_A"), new Transform(new Vector3(0, 4, -3)));
+        overhang.Components.Add(new TextRenderComponent("Asteria Dojo Overhang", 32, transform: new Transform(new Vector3(0, -1.5f, 0))));
+        scene.Children.Add(overhang);
         break;
         
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/45a59717-4e0e-0359-cd14-b08bf44c08d9/Content/HammerFall_Level.HammerFall_Level")));

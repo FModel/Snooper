@@ -95,6 +95,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     
     internal override string Icon => "primitive";
 
+    private int _materialIndex;
     public override void DrawControls()
     {
         base.DrawControls();
@@ -129,7 +130,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                             ImGui.TextUnformatted("Auto (Screen Size Based)");
                             break;
                         case >= 0 when value < Descriptor.Lods.Length:
-                            ImGui.TextUnformatted($"LOD {value}: {lod.VertexCount} vertices, {lod.IndexCount} indices, {lod.ScreenSize} screen size");
+                            ImGui.TextUnformatted($"{lod.VertexCount} Vertices, {lod.IndexCount} Indices, {lod.LayerCount} UV{(lod.LayerCount > 1 ? "s" : "")}, {lod.ScreenSize} Screen Size");
                             break;
                     }
 
@@ -145,15 +146,15 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                         var sectionIndex = 0;
                         var maxSection = lod.Sections.Length - 1;
                         
-                        if (maxSection == 0) ImGui.BeginDisabled();
+                        ImGui.BeginDisabled(maxSection == 0);
                         ImGui.SliderInt("##SectionSlider", ref sectionIndex, 0, maxSection);
-                        if (maxSection == 0) ImGui.EndDisabled();
+                        ImGui.EndDisabled();
                         
                         ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                         ImGui.SetWindowFontScale(0.85f);
                         
                         var section = lod.Sections[sectionIndex];
-                        ImGui.TextUnformatted($"Section {sectionIndex}: Material {section.MaterialIndex}, {section.IndexCount} indices, {section.FirstIndex} offset");
+                        ImGui.TextUnformatted($"Material {section.MaterialIndex}, {section.IndexCount} Indices, {section.FirstIndex} Offset");
                         
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();
@@ -173,36 +174,37 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 {
                     EditorUI.Property($"Materials ({Materials.Length})");
                     ImGui.BeginGroup();
-            
+
+                    MaterialSection? material = null;
                     if (Materials.Length > 0)
                     {
-                        var materialIndex = 0;
                         var maxMaterial = Materials.Length - 1;
                         
                         if (maxMaterial == 0) ImGui.BeginDisabled();
-                        ImGui.SliderInt("##MaterialSlider", ref materialIndex, 0, maxMaterial);
+                        ImGui.SliderInt("##MaterialSlider", ref _materialIndex, 0, maxMaterial);
                         if (maxMaterial == 0) ImGui.EndDisabled();
                         
                         ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                         ImGui.SetWindowFontScale(0.85f);
                         
-                        var material = Materials[materialIndex];
-                        ImGui.TextUnformatted($"Material {materialIndex}: Material {material.MaterialIndex}, Offset {material.MaterialOffset}");
+                        material = Materials[_materialIndex];
+                        ImGui.TextUnformatted($"Material {material.MaterialIndex}, {material.MaterialOffset} Offset");
                         
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();
                     }
-                    else
-                    {
-                        ImGui.TextDisabled("No Materials?");
-                    }
             
                     ImGui.EndGroup();
-            
-                    // foreach (var material in Materials)
-                    // {
-                    //     material.MaterialDataContainer?.DrawControls();
-                    // }
+
+                    if (material?.MaterialDataContainer != null)
+                    {
+                        material.MaterialDataContainer.DrawControls();
+                    }
+                    else
+                    {
+                        EditorUI.Property("Data Container");
+                        ImGui.TextColored(new Vector4(1f, 0.5f, 0f, 1f), "No material data container assigned");
+                    }
                 });
             });
             

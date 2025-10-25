@@ -18,7 +18,6 @@ public unsafe struct PrimitiveOffsets
     public fixed uint LOD_SectionCount[Settings.MaxNumberOfLods];
     public fixed uint LOD_SectionOffset[Settings.MaxNumberOfLods];
     public fixed uint LOD_BaseColor[Settings.MaxNumberOfLods];
-    public fixed uint LOD_BaseExtraUv[Settings.MaxNumberOfLods];
 
     public PrimitiveOffsets(CullingBounds bounds)
     {
@@ -29,7 +28,6 @@ public unsafe struct PrimitiveOffsets
         for (var i = 0; i < Settings.MaxNumberOfLods; i++)
         {
             LOD_BaseColor[i] = uint.MaxValue;
-            LOD_BaseExtraUv[i] = uint.MaxValue;
         }
     }
 }

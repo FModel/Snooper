@@ -27,6 +27,8 @@ public class BindlessTexture(Texture texture) : ArbHandledObject
 
     private bool IsResident() => GL.Arb.IsTextureHandleResident(ArbHandle);
     
+    public IntPtr GetPointer() => texture.GetPointer();
+    
     public override void Dispose()
     {
         if (ArbHandle > 0)

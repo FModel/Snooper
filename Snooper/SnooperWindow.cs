@@ -7,7 +7,6 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Serilog;
 using Snooper.Core.Systems;
-using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Systems;

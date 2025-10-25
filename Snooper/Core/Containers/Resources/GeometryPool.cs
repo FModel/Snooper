@@ -7,13 +7,12 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class GeometryHandle(uint firstIndex, uint baseVertex, uint baseGeometry, uint baseColor, uint baseExtraUv)
+public class GeometryHandle(uint firstIndex, uint baseVertex, uint baseGeometry, uint baseColor)
 {
     public readonly uint FirstIndex = firstIndex; // first index of lod 0
     public readonly uint BaseVertex = baseVertex; // base vertex of lod 0
     public readonly uint BaseGeometry = baseGeometry;
     public readonly uint BaseColor = baseColor;
-    public readonly uint BaseExtraUv = baseExtraUv;
     
     private int _overrideLod = -1;
     public int OverrideLod
@@ -39,7 +38,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
     private readonly ElementArrayBuffer<uint> _ebo = new(initialDrawCapacity);
     private readonly ArrayBuffer<TVertex> _vbo = new(initialDrawCapacity);
     private readonly ShaderStorageBuffer<int> _colors = new(initialDrawCapacity);
-    private readonly ShaderStorageBuffer<Vector2> _extraUvs = new(initialDrawCapacity);
     private readonly CullingResources _culling = new(initialDrawCapacity);
     
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
@@ -50,7 +48,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         _ebo.Generate();
         _vbo.Generate();
         _colors.Generate();
-        _extraUvs.Generate();
         _culling.Generate();
     }
 
@@ -79,10 +76,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         _colors.Allocate(new int[vertices]);
         _colors.Unbind();
 
-        _extraUvs.Bind();
-        _extraUvs.Allocate(new Vector2[vertices]);
-        _extraUvs.Unbind();
-
         _culling.Allocate(componentCount, drawCount);
     }
     
@@ -90,14 +83,14 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
     {
         if (!_cache.TryGetValue(guid, out var handle))
         {
-            var (firstIndex, baseVertex, baseColor, baseExtraUv, offsets) = CreateOffsets();
-            handle = new GeometryHandle(firstIndex, baseVertex, (uint)_culling.Add(offsets), baseColor, baseExtraUv);
+            var (firstIndex, baseVertex, baseColor, offsets) = CreateOffsets();
+            handle = new GeometryHandle(firstIndex, baseVertex, (uint)_culling.Add(offsets), baseColor);
             _cache.Add(guid, handle);
         }
         
         return handle;
 
-        unsafe (uint, uint, uint, uint, PrimitiveOffsets) CreateOffsets()
+        unsafe (uint, uint, uint, PrimitiveOffsets) CreateOffsets()
         {
             _ebo.Bind();
             _vbo.Bind();
@@ -126,13 +119,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
                     _colors.Unbind();
                 }
 
-                if (primitive.ExtraUvs != null)
-                {
-                    _extraUvs.Bind();
-                    o.LOD_BaseExtraUv[i] = (uint)_extraUvs.AddRange(primitive.ExtraUvs);
-                    _extraUvs.Unbind();
-                }
-                
                 maxLod++;
             }
             o.MaxLOD = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
@@ -140,7 +126,7 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
             _vbo.Unbind();
             _ebo.Unbind();
             
-            return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], o.LOD_BaseExtraUv[0], o);
+            return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], o);
         }
     }
     
@@ -152,7 +138,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
     public void Render(Action mdi)
     {
         _colors.Bind(5);
-        _extraUvs.Bind(6);
         
         _vao.Bind();
         _ebo.Bind();
@@ -169,7 +154,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         _ebo.Dispose();
         _vbo.Dispose();
         _colors.Dispose();
-        _extraUvs.Dispose();
         _culling.Dispose();
     }
 
@@ -179,7 +163,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         builder.AppendLine($"    x{_ebo.Count} Indices:      {_ebo.GetFormattedSpace()}");
         builder.AppendLine($"    x{_vbo.Count} Vertices:     {_vbo.GetFormattedSpace()}");
         builder.AppendLine($"    x{_colors.Count} Colors:       {_colors.GetFormattedSpace()}");
-        builder.AppendLine($"    x{_extraUvs.Count} ExtraUvs:     {_extraUvs.GetFormattedSpace()}");
         return builder.ToString();
     }
 }

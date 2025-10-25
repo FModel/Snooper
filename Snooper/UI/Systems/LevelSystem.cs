@@ -200,6 +200,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             DrawActorInspector();
         }
         ImGui.End();
+        
+        TexturePreviewWindow.DrawAll();
     }
     
     private void DrawAtOrigin(

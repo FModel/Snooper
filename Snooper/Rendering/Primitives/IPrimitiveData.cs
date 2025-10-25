@@ -9,7 +9,6 @@ public interface TPrimitiveData<T> : IDisposable where T : unmanaged
     
     // optional data
     public int[]? Colors { get; }
-    public Vector2[]? ExtraUvs { get; } // we support one extra UV set for now, TODO: actually implement this
 }
 
 public abstract class PrimitiveData<T> : TPrimitiveData<T> where T : unmanaged
@@ -18,7 +17,6 @@ public abstract class PrimitiveData<T> : TPrimitiveData<T> where T : unmanaged
     public uint[]? Indices { get; protected set; }
     
     public int[]? Colors { get; protected set; }
-    public Vector2[]? ExtraUvs { get; protected set; }
 
     public void Dispose()
     {
@@ -38,12 +36,6 @@ public abstract class PrimitiveData<T> : TPrimitiveData<T> where T : unmanaged
         {
             Array.Clear(Colors);
             Colors = null;
-        }
-        
-        if (ExtraUvs is not null)
-        {
-            Array.Clear(ExtraUvs);
-            ExtraUvs = null;
         }
     }
 }
