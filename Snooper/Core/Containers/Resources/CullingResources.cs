@@ -9,7 +9,7 @@ namespace Snooper.Core.Containers.Resources;
 public class CullingResources(int initialDrawCapacity) : IDisposable
 {
     private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new(initialDrawCapacity);
-    private readonly ShaderStorageBuffer<SectionDescriptor> _sections = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<SectionOffsets> _sections = new(initialDrawCapacity);
     private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
     {
         Compute = "culling.comp"
@@ -24,21 +24,27 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         _compute.Link();
     }
     
-    public void Allocate(uint componentCount, uint drawCount)
+    public void Allocate(AllocationCounts counts)
     {
         _primitives.Bind();
-        _primitives.Allocate(new PrimitiveOffsets[componentCount]);
+        _primitives.Allocate(new PrimitiveOffsets[counts.UniqueComponents]);
         _primitives.Unbind();
         
         _sections.Bind();
-        _sections.Allocate(new SectionDescriptor[drawCount]);
+        _sections.Allocate(new SectionOffsets[counts.Draws]);
         _sections.Unbind();
     }
     
     public int Add(SectionDescriptor[] sections)
     {
+        var offsets = new SectionOffsets[sections.Length];
+        for (var i = 0; i < sections.Length; i++)
+        {
+            offsets[i] = new SectionOffsets(sections[i]);
+        }
+        
         _sections.Bind();
-        var sectionOffset = _sections.AddRange(sections);
+        var sectionOffset = _sections.AddRange(offsets);
         _sections.Unbind();
         
         return sectionOffset;

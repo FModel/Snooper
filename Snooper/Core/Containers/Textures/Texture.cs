@@ -1,8 +1,11 @@
-﻿using CUE4Parse.UE4.Assets.Exports.Texture;
+﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Misc;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Extensions;
+using Snooper.UI;
 
 namespace Snooper.Core.Containers.Textures;
 
@@ -11,7 +14,7 @@ public abstract class Texture(
     PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
-    string? name = null) : HandledObject, IBind, IResizable
+    string? name = null) : HandledObject, IBind, IResizable, IControllable
 {
     public abstract GetPName PName { get; }
 
@@ -94,6 +97,22 @@ public abstract class Texture(
     }
 
     public IntPtr GetPointer() => Handle;
+    
+    public void DrawControls()
+    {
+        const float previewSize = 64.0f;
+        
+        ImGui.Image(GetPointer(), new Vector2(previewSize, previewSize), Vector2.Zero, Vector2.One, Vector4.One, Vector4.One / 2);
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        {
+            TexturePreviewWindow.Open(
+                Guid.ToString(EGuidFormats.UniqueObjectGuid),
+                $"Diffuse - {Name}",
+                GetPointer(),
+                new Vector2(Width, Height)
+            );
+        }
+    }
 
     public override bool Equals(object? obj) => obj is Texture texture && Guid.Equals(texture.Guid);
     public override int GetHashCode() => Guid.GetHashCode();

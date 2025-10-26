@@ -11,6 +11,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
     public uint VertexCount { get; }
     public float ScreenSize { get; }
     public uint LayerCount { get; }
+    public bool HasVertexColors { get; }
     public SectionDescriptor[] Sections { get; }
 
     private TPrimitiveData<TVertex>? _primitive;
@@ -25,6 +26,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         VertexCount = (uint)(_primitive?.Vertices?.Length ?? 0);
         ScreenSize = 0.0f;
         LayerCount = 1;
+        HasVertexColors = false;
         Sections = [new SectionDescriptor(0, IndexCount, 0)];
     }
 
@@ -53,7 +55,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         for (var i = 0; i < Sections.Length; i++)
         {
             var section = sections[i];
-            Sections[i] = new SectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex);
+            Sections[i] = new SectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex, section.MaterialName);
         }
         
         // capture vertices and indices for lazy factory creation
@@ -77,6 +79,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
             Array.Copy(extraUv1, cExtraUvs, extraUv1.Length);
         }
         
+        HasVertexColors = cColors != null;
         _factory = () => factory(cVertices, cIndices, cColors, cExtraUvs);
     }
     

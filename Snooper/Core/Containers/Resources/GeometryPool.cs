@@ -62,21 +62,24 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         _vao.Unbind();
     }
     
-    public void Allocate(uint componentCount, uint drawCount, uint indices, uint vertices)
+    public void Allocate(AllocationCounts counts)
     {
         _ebo.Bind();
-        _ebo.Allocate(new uint[indices]);
+        _ebo.Allocate(new uint[counts.Indices]);
         _ebo.Unbind();
         
         _vbo.Bind();
-        _vbo.Allocate(new TVertex[vertices]);
+        _vbo.Allocate(new TVertex[counts.Vertices]);
         _vbo.Unbind();
-        
-        _colors.Bind();
-        _colors.Allocate(new int[vertices]);
-        _colors.Unbind();
 
-        _culling.Allocate(componentCount, drawCount);
+        if (counts.ColoredVertices > 0)
+        {
+            _colors.Bind();
+            _colors.Allocate(new int[counts.ColoredVertices]);
+            _colors.Unbind();
+        }
+
+        _culling.Allocate(counts);
     }
     
     public GeometryHandle Add(FGuid guid, LodDescriptor<TVertex>[] lods, CullingBounds bounds)

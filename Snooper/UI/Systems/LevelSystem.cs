@@ -16,17 +16,18 @@ namespace Snooper.UI.Systems;
 
 public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 {
-    private bool _once;
+    private bool _firstRender;
+    private bool _scrollToSelected;
     
     protected override void RenderInterface()
     {
         ImGui.DockSpaceOverViewport();
         
         Notifications.DrawNotifications();
-        if (!_once)
+        if (!_firstRender)
         {
             NotifyOnFirstRender();
-            _once = true;
+            _firstRender = true;
         }
 
         ImGui.ShowDemoWindow();
@@ -66,6 +67,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                     {
                         SelectedComponentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
+                        _scrollToSelected = true;
                         ImGui.SetWindowFocus("Scene Hierarchy");
                     }
                 }
@@ -242,6 +244,14 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
     private readonly Vector2 _iconSize = new(20);
     
+    private bool HasSelectedDescendant(Actor actor)
+    {
+        if (actor.IsSelected) return true;
+        foreach (var child in actor.Children)
+            if (HasSelectedDescendant(child)) return true;
+        return false;
+    }
+    
     private void DrawActorTree(Actor actor)
     {
         ImGui.PushID(actor.Id);
@@ -250,6 +260,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick;
         if (actor.IsSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
+        
+        if (_scrollToSelected && HasSelectedDescendant(actor) && count > 0) ImGui.SetNextItemOpen(true);
         
         ImGui.AlignTextToFramePadding();
         var open = ImGui.TreeNodeEx("##tree", flags);
@@ -275,6 +287,12 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 DrawActorTree(child);
             
             ImGui.TreePop();
+        }
+        
+        if (actor.IsSelected && _scrollToSelected)
+        {
+            ImGui.SetScrollHereY();
+            _scrollToSelected = false;
         }
         
         ImGui.PopID();

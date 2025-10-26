@@ -30,7 +30,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     
     public abstract MaterialSection[] Materials { get; }
 
-    public bool IsOpaque => Materials.Any(m => !m.IsTranslucent); // TODO: this is delayed by tasks
+    public bool IsOpaque => !Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
     public bool IsVisible { get; protected init; } = true;
     
@@ -95,6 +95,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     
     internal override string Icon => "primitive";
 
+    private int _sectionIndex;
     private int _materialIndex;
     public override void DrawControls()
     {
@@ -117,13 +118,20 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     var maxLod = Descriptor.Lods.Length - 1;
                     var value = Metadata == null ? minLod : Metadata.Value.GeometryHandle.OverrideLod;
 
-                    if (ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod) && Metadata != null && IsVisible && maxLod > 0)
-                        Metadata.Value.GeometryHandle.OverrideLod = value;
+                    var slided1 = ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod);
+                    var lod = Descriptor.Lods[Math.Max(0, value)];
+                    if (slided1)
+                    {
+                        _sectionIndex = 0;
+                        if (Metadata != null && IsVisible && maxLod > 0)
+                        {
+                            Metadata.Value.GeometryHandle.OverrideLod = value;
+                        }
+                    }
 
                     ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                     ImGui.SetWindowFontScale(0.85f);
-
-                    var lod = Descriptor.Lods[Math.Max(0, value)];
+                    
                     switch (value)
                     {
                         case -1:
@@ -136,6 +144,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
                     ImGui.SetWindowFontScale(1.0f);
                     ImGui.PopStyleVar();
+                    ImGui.Spacing();
                     ImGui.EndGroup();
                     
                     EditorUI.Property($"Sections ({lod.Sections.Length})");
@@ -143,21 +152,22 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     
                     if (lod.Sections.Length > 0)
                     {
-                        var sectionIndex = 0;
                         var maxSection = lod.Sections.Length - 1;
                         
                         ImGui.BeginDisabled(maxSection == 0);
-                        ImGui.SliderInt("##SectionSlider", ref sectionIndex, 0, maxSection);
+                        var slided2 = ImGui.SliderInt("##SectionSlider", ref _sectionIndex, 0, maxSection);
                         ImGui.EndDisabled();
                         
                         ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                         ImGui.SetWindowFontScale(0.85f);
                         
-                        var section = lod.Sections[sectionIndex];
-                        ImGui.TextUnformatted($"Material {section.MaterialIndex}, {section.IndexCount} Indices, {section.FirstIndex} Offset");
+                        var section = lod.Sections[_sectionIndex];
+                        if (slided1 || slided2) _materialIndex = (int)section.MaterialIndex;
+                        ImGui.TextUnformatted($"{section.Name}: Material {section.MaterialIndex}, {section.IndexCount} Indices (offset {section.FirstIndex})");
                         
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();
+                        ImGui.Spacing();
                     }
                     else
                     {
@@ -188,10 +198,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                         ImGui.SetWindowFontScale(0.85f);
                         
                         material = Materials[_materialIndex];
-                        ImGui.TextUnformatted($"Material {material.MaterialIndex}, {material.MaterialOffset} Offset");
+                        ImGui.TextUnformatted($"{material.Name} (offset {material.MaterialOffset})");
                         
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();
+                        ImGui.Spacing();
                     }
             
                     ImGui.EndGroup();

@@ -100,6 +100,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                     var parameters = new CMaterialParams2();
                     material.GetParams(parameters, EMaterialFormat.FirstLayer);
 
+                    Materials[index].Name = material.Name;
                     Materials[index].MaterialDataContainer = ParseMaterialParameters(parameters, material.Owner.Provider.ProjectName.ToUpperInvariant());
                 }
                 else
@@ -313,45 +314,32 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 ImGui.TextDisabled("No layers available");
                 return;
             }
-            
+
             EditorUI.Property($"Layers ({layers.Length})");
-            
-            const float previewSize = 64.0f;
+
             var maxLayer = layers.Length - 1;
-            
+
             ImGui.BeginDisabled(maxLayer == 0);
             ImGui.SliderInt("##LayerSlider", ref _selectedLayer, 0, maxLayer);
             ImGui.EndDisabled();
-            
+
             ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
             ImGui.SetWindowFontScale(0.85f);
-            
+
             var layer = layers[_selectedLayer];
             ImGui.TextUnformatted($"Diffuse{(layer.Normal != null ? " + Normal" : "")}{(layer.Specular != null ? " + Specular" : "")}");
-            
+
             ImGui.SetWindowFontScale(1.0f);
             ImGui.PopStyleVar();
             ImGui.Spacing();
-            
+
             EditorUI.Property("Diffuse Texture");
             if (_diffuses?[_selectedLayer] is { } diffuse)
             {
-                var aspectRatio = (float)layer.Diffuse.Height / layer.Diffuse.Width;
-                ImGui.Image(diffuse.GetPointer(), new Vector2(previewSize, previewSize * aspectRatio), Vector2.Zero, Vector2.One, Vector4.One, Vector4.One / 2);
-                
-                if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-                {
-                    TexturePreviewWindow.Open(
-                        $"diffuse_{_selectedLayer}_{layer.Diffuse.Name}",
-                        $"Diffuse - {layer.Diffuse.Name}",
-                        diffuse.GetPointer(),
-                        new Vector2(layer.Diffuse.Width, layer.Diffuse.Height)
-                    );
-                }
-                
+                diffuse.DrawControls();
                 ImGui.SameLine();
             }
-            
+
             ImGui.BeginGroup();
             ImGui.TextUnformatted(layer.Diffuse.Name);
             ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
@@ -361,28 +349,16 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             ImGui.SetWindowFontScale(1.0f);
             ImGui.PopStyleVar();
             ImGui.EndGroup();
-            
+
             if (layer.Normal != null)
             {
                 EditorUI.Property("Normal Texture");
                 if (_normals?[_selectedLayer] is { } normal)
                 {
-                    var aspectRatio = (float)layer.Normal.Height / layer.Normal.Width;
-                    ImGui.Image(normal.GetPointer(), new Vector2(previewSize, previewSize * aspectRatio), Vector2.Zero, Vector2.One, Vector4.One, Vector4.One / 2);
-                
-                    if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-                    {
-                        TexturePreviewWindow.Open(
-                            $"normal_{_selectedLayer}_{layer.Normal.Name}",
-                            $"Normal - {layer.Normal.Name}",
-                            normal.GetPointer(),
-                            new Vector2(layer.Normal.Width, layer.Normal.Height)
-                        );
-                    }
-                
+                    normal.DrawControls();
                     ImGui.SameLine();
                 }
-                
+
                 ImGui.BeginGroup();
                 ImGui.TextUnformatted(layer.Normal.Name);
                 ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
@@ -393,28 +369,16 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 ImGui.PopStyleVar();
                 ImGui.EndGroup();
             }
-            
+
             if (layer.Specular != null)
             {
                 EditorUI.Property("Specular Texture");
                 if (_speculars?[_selectedLayer] is { } specular)
                 {
-                    var aspectRatio = (float)layer.Specular.Height / layer.Specular.Width;
-                    ImGui.Image(specular.GetPointer(), new Vector2(previewSize, previewSize * aspectRatio), Vector2.Zero, Vector2.One, Vector4.One, Vector4.One / 2);
-                
-                    if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-                    {
-                        TexturePreviewWindow.Open(
-                            $"specular_{_selectedLayer}_{layer.Specular.Name}",
-                            $"Specular - {layer.Specular.Name}",
-                            specular.GetPointer(),
-                            new Vector2(layer.Specular.Width, layer.Specular.Height)
-                        );
-                    }
-                
+                    specular.DrawControls();
                     ImGui.SameLine();
                 }
-                
+
                 ImGui.BeginGroup();
                 ImGui.TextUnformatted(layer.Specular.Name);
                 ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
@@ -425,78 +389,78 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 ImGui.PopStyleVar();
                 ImGui.EndGroup();
             }
-            
+
             EditorUI.Property("Diffuse Color");
             var diffuseColor = new Vector4(layer.DiffuseColor.X, layer.DiffuseColor.Y, layer.DiffuseColor.Z, 1.0f);
             ImGui.ColorButton("##DiffuseColor", diffuseColor, ImGuiColorEditFlags.NoAlpha | ImGuiColorEditFlags.NoPicker, new Vector2(40, 20));
             ImGui.SameLine();
             ImGui.TextUnformatted($"RGB({layer.DiffuseColor.X:F2}, {layer.DiffuseColor.Y:F2}, {layer.DiffuseColor.Z:F2})");
-            
+
             EditorUI.Property("Roughness");
             ImGui.TextUnformatted($"Min: {layer.Roughness.X:F2}, Max: {layer.Roughness.Y:F2}");
-            
+
             EditorUI.Property("Translucent");
             ImGui.TextUnformatted(IsTranslucent ? "Yes" : "No");
-            
+
             EditorUI.Property("GPU Status");
             if (Raw is PerMaterialMeshData { IsReady: true } gpuData)
             {
                 ImGui.TextColored(new Vector4(0.0f, 1.0f, 0.0f, 1.0f), "Ready");
-                    
+
                 ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                 ImGui.SetWindowFontScale(0.85f);
-                    
+
                 unsafe
                 {
                     var layerFlags = (gpuData.LayerTextureFlags >> (_selectedLayer * 3)) & 7u;
                     var hasDiff = (layerFlags & 1u) != 0u;
                     var hasNorm = (layerFlags & 2u) != 0u;
                     var hasSpec = (layerFlags & 4u) != 0u;
-                        
+
                     ImGui.TextUnformatted($"Flags: {(hasDiff ? "D" : "-")}{(hasNorm ? "N" : "-")}{(hasSpec ? "S" : "-")}");
                     ImGui.TextUnformatted($"Handles: D={gpuData.Diffuse[_selectedLayer]:X}, N={gpuData.Normal[_selectedLayer]:X}, S={gpuData.Specular[_selectedLayer]:X}");
                 }
-                    
+
                 ImGui.SetWindowFontScale(1.0f);
                 ImGui.PopStyleVar();
             }
             else
             {
-                ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), Raw == null ? "Sent" : "Not Ready");
+                ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "Uploading...");
             }
         }
 
         public void Dispose()
         {
-            // if (_diffuses is not null)
-            // {
-            //     for (var i = 0; i < _diffuses.Length; i++)
-            //     {
-            //         _diffuses[i]?.Dispose();
-            //     }
-            //     Array.Clear(_diffuses);
-            //     _diffuses = null;
-            // }
-            //
-            // if (_normals is not null)
-            // {
-            //     for (var i = 0; i < _normals.Length; i++)
-            //     {
-            //         _normals[i]?.Dispose();
-            //     }
-            //     Array.Clear(_normals);
-            //     _normals = null;
-            // }
-            //
-            // if (_speculars is not null)
-            // {
-            //     for (var i = 0; i < _speculars.Length; i++)
-            //     {
-            //         _speculars[i]?.Dispose();
-            //     }
-            //     Array.Clear(_speculars);
-            //     _speculars = null;
-            // }
+            if (_diffuses is not null)
+            {
+                for (var i = 0; i < _diffuses.Length; i++)
+                {
+                    _diffuses[i]?.Dispose();
+                }
+                Array.Clear(_diffuses);
+                _diffuses = null;
+            }
+            
+            if (_normals is not null)
+            {
+                for (var i = 0; i < _normals.Length; i++)
+                {
+                    _normals[i]?.Dispose();
+                }
+                Array.Clear(_normals);
+                _normals = null;
+            }
+            
+            if (_speculars is not null)
+            {
+                for (var i = 0; i < _speculars.Length; i++)
+                {
+                    _speculars[i]?.Dispose();
+                }
+                Array.Clear(_speculars);
+                _speculars = null;
+            }
             
             Raw = null;
         }

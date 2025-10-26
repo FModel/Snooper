@@ -4,6 +4,7 @@ using Snooper.Core.Containers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
@@ -37,7 +38,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             }
             
             Resources.Update((int)material.MaterialOffset, raw);
-            material.MaterialDataContainer?.Dispose();
         };
     }
 
@@ -46,7 +46,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.Load();
 
         Resources.Generate();
-        Resources.Allocate((uint)ComponentsCount, _drawCount, _materialCount, _indices, _vertices);
+        Resources.Allocate(_counts);
         
         TextureManager.Load();
         
@@ -77,24 +77,29 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Render();
     }
     
-    private uint _drawCount;
-    private uint _materialCount;
-    private uint _indices;
-    private uint _vertices;
+    private AllocationCounts _counts;
     private readonly HashSet<FGuid> _guids = [];
 
     protected override void OnActorComponentEnqueued(TComponent component)
     {
         base.OnActorComponentEnqueued(component);
         
-        _drawCount += (uint)component.Descriptor.Lods[0].Sections.Length;
-        _materialCount += (uint)component.Materials.Length;
+        _counts.Components++;
+        _counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
+        _counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
+        _counts.Materials += (uint)component.Materials.Length;
         if (_guids.Add(component.Descriptor.Guid))
         {
+            _counts.UniqueComponents++;
             foreach (var lod in component.Descriptor.Lods)
             {
-                _indices += lod.IndexCount;
-                _vertices += lod.VertexCount;
+                _counts.Indices += lod.IndexCount;
+                _counts.Vertices += lod.VertexCount;
+                
+                if (lod.HasVertexColors)
+                {
+                    _counts.ColoredVertices += lod.VertexCount;
+                }
             }
         }
     }
@@ -103,8 +108,33 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     {
         base.OnActorComponentRemoved(component);
         
+        // not used ig
+        _counts.Components--;
+        _counts.Instances -= component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
+        _counts.Draws -= (uint)component.Descriptor.Lods[0].Sections.Length;
+        _counts.Materials -= (uint)component.Materials.Length;
+        if (_guids.Remove(component.Descriptor.Guid))
+        {
+            _counts.UniqueComponents--;
+            foreach (var lod in component.Descriptor.Lods)
+            {
+                _counts.Indices -= lod.IndexCount;
+                _counts.Vertices -= lod.VertexCount;
+                
+                if (lod.HasVertexColors)
+                {
+                    _counts.ColoredVertices -= lod.VertexCount;
+                }
+            }
+        }
+        
         if (component.Metadata is { } m)
             Resources.Remove(m);
+        
+        foreach (var material in component.Materials)
+        {
+            material.Dispose();
+        }
     }
     
     public override void Dispose()

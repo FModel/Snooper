@@ -1,8 +1,9 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.UI;
 
 namespace Snooper.Core.Containers.Textures;
 
-public class BindlessTexture(Texture texture) : ArbHandledObject
+public class BindlessTexture(Texture texture) : ArbHandledObject, IControllable
 {
     public override void Generate()
     {
@@ -28,6 +29,8 @@ public class BindlessTexture(Texture texture) : ArbHandledObject
     private bool IsResident() => GL.Arb.IsTextureHandleResident(ArbHandle);
     
     public IntPtr GetPointer() => texture.GetPointer();
+    
+    public void DrawControls() => texture.DrawControls();
     
     public override void Dispose()
     {

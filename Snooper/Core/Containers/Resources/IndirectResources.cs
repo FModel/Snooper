@@ -8,6 +8,18 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Containers.Resources;
 
+public struct AllocationCounts
+{
+    public uint Components;
+    public uint UniqueComponents;
+    public uint Instances;
+    public uint Draws;
+    public uint Materials;
+    public uint Indices;
+    public uint Vertices;
+    public uint ColoredVertices;
+}
+
 public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type)
     : IMemorySizeProvider, IDisposable
     where TVertex : unmanaged
@@ -31,21 +43,34 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
     
     public void SetVertexLayout(Action<int> setter) => _geometry.SetVertexLayout(setter);
     
-    public void Allocate(uint componentCount, uint drawCount, uint materialCount, uint indices, uint vertices)
+    public void Allocate(AllocationCounts counts)
     {
-        _geometry.Allocate(componentCount, drawCount, indices, vertices);
+        _geometry.Allocate(counts);
 
         _commands.Current.Bind();
-        _commands.Current.Allocate(new DrawElementsIndirectCommand[drawCount]);
+        _commands.Current.Allocate(new DrawElementsIndirectCommand[counts.Draws]);
         _commands.Current.Unbind();
 
         _instanceData.Bind();
-        _instanceData.Allocate(new TInstanceData[drawCount * 2]);
+        _instanceData.Allocate(new TInstanceData[counts.Instances]);
         _instanceData.Unbind();
 
         _materialData.Bind();
-        _materialData.Allocate(new TPerMaterialData[materialCount]);
+        _materialData.Allocate(new TPerMaterialData[counts.Materials]);
         _materialData.Unbind();
+        
+        Log.Debug("Allocated IndirectResources<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
+            typeof(TVertex).Name,
+            typeof(TInstanceData).Name,
+            typeof(TPerMaterialData).Name,
+            counts.Components,
+            counts.UniqueComponents,
+            counts.Draws,
+            counts.Instances,
+            counts.Materials,
+            counts.Indices,
+            counts.Vertices,
+            counts.ColoredVertices);
     }
     
     public ResourcesMetadata Add(uint pickingId, PrimitiveDescriptor<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
@@ -184,7 +209,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
     public string GetFormattedSpace()
     {
         var builder = new StringBuilder();
-        builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}, {typeof(TInstanceData).Name}>:");
+        builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}, {typeof(TInstanceData).Name}, {typeof(TPerMaterialData).Name}>:");
         builder.AppendLine(_geometry.GetFormattedSpace());
         builder.AppendLine($"    x{_commands.Current.Count} Commands: {_commands.Current.GetFormattedSpace()}");
         builder.AppendLine($"    x{_materialData.Count} MaterialData: {_materialData.GetFormattedSpace()}");
