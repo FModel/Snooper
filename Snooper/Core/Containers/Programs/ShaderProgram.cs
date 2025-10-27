@@ -28,11 +28,17 @@ public class ShaderProgram(string vertex, string fragment) : Program
         if (!string.IsNullOrEmpty(Compute)) _shaderHandles.Add(CompileShader(ShaderType.ComputeShader, Compute));
     }
 
+    private long _allocated;
+    public override long Allocated => _allocated;
+    public override long Used => Allocated;
+
     public sealed override void Link()
     {
         foreach (var shaderHandle in _shaderHandles)
         {
             GL.AttachShader(Handle, shaderHandle);
+            GL.GetShader(shaderHandle, ShaderParameter.ShaderSourceLength, out var length);
+            _allocated += length;
         }
 
         base.Link();

@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -37,6 +38,21 @@ public class TextRenderSystem() : PrimitiveSystem<Vector4, TextRenderComponent, 
         var fontAtlas = FontAtlasTexture.Instance;
         fontAtlas.Bind(TextureUnit.Texture0);
         shader.SetUniform("uTextTexture", 0);
+    }
+    
+    public override long Allocated => base.Allocated + FontAtlasTexture.Instance.Allocated;
+    public override long Used => base.Used + FontAtlasTexture.Instance.Used;
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        yield return new MemoryDetail(
+            "Font Atlas Texture",
+            FontAtlasTexture.Instance.GetType().Name,
+            FontAtlasTexture.Instance.Allocated,
+            FontAtlasTexture.Instance.Used
+        );
     }
     
     public void DrawControls()

@@ -1,8 +1,9 @@
-﻿using Snooper.Core.Systems;
+﻿using Snooper.Core.Containers;
+using Snooper.Core.Systems;
 
 namespace Snooper.Rendering.Systems;
 
-public interface ITexturedSystem
+public interface ITexturedSystem : IMemoryDetailsProvider
 {
     public TextureManager TextureManager { get; }
 }

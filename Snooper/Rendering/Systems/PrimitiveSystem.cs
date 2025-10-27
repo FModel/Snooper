@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components.Camera;
@@ -57,6 +58,21 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     protected virtual void PostRender(CameraComponent camera, ShaderProgram shader)
     {
         
+    }
+
+    public override long Allocated => base.Allocated + Shader.Allocated;
+    public override long Used => base.Used + Shader.Used;
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        yield return new MemoryDetail(
+            "Main Shader",
+            Shader.GetType().Name,
+            Shader.Allocated,
+            Shader.Used
+        );
     }
 }
 

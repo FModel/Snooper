@@ -6,6 +6,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
@@ -259,5 +260,18 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         style.Colors[(int) ImGuiCol.NavWindowingHighlight]  = new Vector4(1.00f, 1.00f, 1.00f, 0.70f);
         style.Colors[(int) ImGuiCol.NavWindowingDimBg]      = new Vector4(0.80f, 0.80f, 0.80f, 0.20f);
         style.Colors[(int) ImGuiCol.ModalWindowDimBg]       = new Vector4(0.80f, 0.80f, 0.80f, 0.35f);
+    }
+
+    public override long Allocated => base.Allocated + Icons.Values.Sum(i => i.Allocated);
+    public override long Used => base.Used + Icons.Values.Sum(i => i.Used);
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        // foreach (var icon in Icons.Values)
+        // {
+        //     yield return new MemoryDetail(icon.Name, "InterfaceIcon", icon.Allocated, icon.Used);
+        // }
     }
 }

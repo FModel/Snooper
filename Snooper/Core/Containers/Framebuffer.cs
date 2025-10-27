@@ -3,7 +3,7 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Core.Containers;
 
-public abstract class Framebuffer : HandledObject, IBind, IResizable
+public abstract class Framebuffer : HandledObject, IBind, IResizable, IMemoryDetailsProvider
 {
     public abstract int Width { get; }
     public abstract int Height { get; }
@@ -30,6 +30,7 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable
     public abstract void Bind(TextureUnit unit);
     public abstract void Resize(int newWidth, int newHeight);
     public abstract Texture[] GetTextures();
+    public abstract IEnumerable<MemoryDetail> GetMemoryDetails();
 
     protected void CheckStatus()
     {

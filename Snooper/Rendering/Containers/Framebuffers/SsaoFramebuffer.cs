@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
@@ -68,4 +69,56 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
     }
 
     public override Texture[] GetTextures() => [.._blur.GetTextures()];
+
+    public override long Allocated
+    {
+        get
+        {
+            var total = base.Allocated;
+            total += _blur.Allocated;
+            total += _shader.Allocated;
+            total += _blurShader.Allocated;
+            return total;
+        }
+    }
+
+    public override long Used
+    {
+        get
+        {
+            var total = base.Used;
+            total += _blur.Used;
+            total += _shader.Used;
+            total += _blurShader.Used;
+            return total;
+        }
+    }
+
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        yield return new MemoryDetail(
+            "Blur Full Quad Framebuffer",
+            _blur.GetType().Name,
+            _blur.Allocated,
+            _blur.Used,
+            _blur
+        );
+        
+        yield return new MemoryDetail(
+            "Main Shader",
+            _shader.GetType().Name,
+            _shader.Allocated,
+            _shader.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Blur Shader",
+            _blurShader.GetType().Name,
+            _blurShader.Allocated,
+            _blurShader.Used
+        );
+    }
 }

@@ -129,6 +129,19 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
             pair.Resize(newWidth, newHeight);
     }
 
+    public override long Allocated => base.Allocated + Pairs.Sum(p => p.Allocated);
+    public override long Used => base.Used + Pairs.Sum(p => p.Used);
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+
+        foreach (var pair in Pairs)
+        {
+            yield return new MemoryDetail(pair.Camera.Actor?.Name ?? $"Camera {pair.Camera.PairIndex}", pair.GetType().Name, pair.Allocated, pair.Allocated, pair);
+        }
+    }
+
     public override void Dispose()
     {
         RootActor = null;

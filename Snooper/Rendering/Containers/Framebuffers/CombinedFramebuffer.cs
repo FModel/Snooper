@@ -1,4 +1,5 @@
-﻿using Snooper.Core.Containers.Programs;
+﻿using Snooper.Core.Containers;
+using Snooper.Core.Containers.Programs;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
@@ -24,5 +25,20 @@ public class CombinedFramebuffer(int originalWidth, int originalHeight) : FullQu
             _shader.SetUniform("outlineTexture", 2);
             callback?.Invoke(_shader);
         });
+    }
+    
+    public override long Allocated => base.Allocated + _shader.Allocated;
+    public override long Used => base.Used + _shader.Used;
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        yield return new MemoryDetail(
+            "Main Shader",
+            _shader.GetType().Name,
+            _shader.Allocated,
+            _shader.Used
+        );
     }
 }

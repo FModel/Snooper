@@ -79,4 +79,61 @@ public class FullQuadFramebuffer(
     }
 
     public override Texture[] GetTextures() => [_color];
+
+    public override long Allocated
+    {
+        get
+        {
+            long total = 0;
+            total += _color.Allocated;
+            total += _vao.Allocated;
+            total += _vbo.Allocated;
+            total += _ebo.Allocated;
+            return total;
+        }
+    }
+
+    public override long Used
+    {
+        get
+        {
+            long total = 0;
+            total += _color.Used;
+            total += _vao.Used;
+            total += _vbo.Used;
+            total += _ebo.Used;
+            return total;
+        }
+    }
+    
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail(
+            "Vertex Array",
+            _vao.GetType().Name,
+            _vao.Allocated,
+            _vao.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Index Buffer",
+            _ebo.GetType().Name,
+            _ebo.Allocated,
+            _ebo.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Vertex Buffer",
+            _vbo.GetType().Name,
+            _vbo.Allocated,
+            _vbo.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Color Texture",
+            _color.GetType().Name,
+            _color.Allocated,
+            _color.Used
+        );
+    }
 }

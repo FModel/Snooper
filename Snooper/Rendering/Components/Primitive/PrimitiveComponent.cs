@@ -178,7 +178,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 });
             });
 
-            EditorUI.SharedTreeNode("Materials", ImGuiTreeNodeFlags.None, Id, () =>
+            EditorUI.SharedTreeNode("Materials", ImGuiTreeNodeFlags.DefaultOpen, Id, () =>
             {
                 EditorUI.PropertyValueTable("Materials", () =>
                 {

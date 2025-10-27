@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-using System.Text;
-using CUE4Parse.UE4.Objects.Core.Misc;
+﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
@@ -32,13 +30,13 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, uint baseGeometry,
     public void MarkClean() => IsDirty = false;
 }
 
-public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemorySizeProvider where TVertex : unmanaged
+public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProvider, IDisposable where TVertex : unmanaged
 {
     private readonly VertexArray _vao = new();
     private readonly ElementArrayBuffer<uint> _ebo = new(initialDrawCapacity);
     private readonly ArrayBuffer<TVertex> _vbo = new(initialDrawCapacity);
     private readonly ShaderStorageBuffer<int> _colors = new(initialDrawCapacity);
-    private readonly CullingResources _culling = new(initialDrawCapacity);
+    private readonly CullingResources _culling = new();
     
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
 
@@ -160,12 +158,70 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IDisposable, IMemo
         _culling.Dispose();
     }
 
-    public string GetFormattedSpace()
+    public long Allocated
     {
-        var builder = new StringBuilder();
-        builder.AppendLine($"    x{_ebo.Count} Indices:      {_ebo.GetFormattedSpace()}");
-        builder.AppendLine($"    x{_vbo.Count} Vertices:     {_vbo.GetFormattedSpace()}");
-        builder.AppendLine($"    x{_colors.Count} Colors:       {_colors.GetFormattedSpace()}");
-        return builder.ToString();
+        get
+        {
+            long total = 0;
+            total += _vao.Allocated;
+            total += _ebo.Allocated;
+            total += _vbo.Allocated;
+            total += _colors.Allocated;
+            total += _culling.Allocated;
+            return total;
+        }
+    }
+
+    public long Used
+    {
+        get
+        {
+            long total = 0;
+            total += _vao.Used;
+            total += _ebo.Used;
+            total += _vbo.Used;
+            total += _colors.Used;
+            total += _culling.Used;
+            return total;
+        }
+    }
+    
+    public IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail(
+            "Vertex Array",
+            _vao.GetType().Name,
+            _vao.Allocated,
+            _vao.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Index Buffer",
+            _ebo.GetType().Name,
+            _ebo.Allocated,
+            _ebo.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Vertex Buffer",
+            _vbo.GetType().Name,
+            _vbo.Allocated,
+            _vbo.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Vertex Color Buffer",
+            _colors.GetType().Name,
+            _colors.Allocated,
+            _colors.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Culling Resources",
+            _culling.GetType().Name,
+            _culling.Allocated,
+            _culling.Used,
+            _culling
+        );
     }
 }

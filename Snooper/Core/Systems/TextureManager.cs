@@ -1,6 +1,8 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using Serilog;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 
@@ -9,7 +11,7 @@ namespace Snooper.Core.Systems;
 /// <summary>
 /// TODO: improve
 /// </summary>
-public class TextureManager : IGameSystem
+public class TextureManager : IGameSystem, IMemoryDetailsProvider
 {
     public int NumberOfTextures => _textures.Count;
     public int NumberOfBindlessTextures => _bindless.Count;
@@ -158,5 +160,44 @@ public class TextureManager : IGameSystem
         
         _textures.Clear();
         _bindless.Clear();
+    }
+
+    public long Allocated
+    {
+        get
+        {
+            long total = 0;
+            foreach (var texture in _textures.Values)
+            {
+                total += texture.Allocated;
+            }
+            return total;
+        }
+    }
+
+    public long Used
+    {
+        get
+        {
+            long total = 0;
+            foreach (var texture in _textures.Values)
+            {
+                total += texture.Used;
+            }
+            return total;
+        }
+    }
+    
+    public IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var texture in _textures.Values)
+        {
+            yield return new MemoryDetail(
+                texture.Name,
+                texture.GetType().Name,
+                texture.Allocated,
+                texture.Used
+            );
+        }
     }
 }

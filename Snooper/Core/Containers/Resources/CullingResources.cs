@@ -6,10 +6,10 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class CullingResources(int initialDrawCapacity) : IDisposable
+public class CullingResources : IMemoryDetailsProvider, IDisposable
 {
-    private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new(initialDrawCapacity);
-    private readonly ShaderStorageBuffer<SectionOffsets> _sections = new(initialDrawCapacity);
+    private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new(50);
+    private readonly ShaderStorageBuffer<SectionOffsets> _sections = new(100);
     private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
     {
         Compute = "culling.comp"
@@ -104,5 +104,53 @@ public class CullingResources(int initialDrawCapacity) : IDisposable
         _primitives.Dispose();
         _sections.Dispose();
         _compute.Dispose();
+    }
+
+    public long Allocated
+    {
+        get
+        {
+            long total = 0;
+            total += _primitives.Allocated;
+            total += _sections.Allocated;
+            total += _compute.Allocated;
+            return total;
+        }
+    }
+
+    public long Used
+    {
+        get
+        {
+            long total = 0;
+            total += _primitives.Used;
+            total += _sections.Used;
+            total += _compute.Used;
+            return total;
+        }
+    }
+    
+    public IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail(
+            "Primitive Offsets",
+            _primitives.GetType().Name,
+            _primitives.Allocated,
+            _primitives.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Section Offsets",
+            _sections.GetType().Name,
+            _sections.Allocated,
+            _sections.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Culling Compute Shader",
+            _compute.GetType().Name,
+            _compute.Allocated,
+            _compute.Used
+        );
     }
 }

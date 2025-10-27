@@ -123,4 +123,98 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         _color,
         _specular,
     ];
+
+    public override long Allocated
+    {
+        get
+        {
+            long total = 0;
+            total += _fullQuad.Allocated;
+            total += _position.Allocated;
+            total += _normal.Allocated;
+            total += _color.Allocated;
+            total += _specular.Allocated;
+            total += _picking.Allocated;
+            total += _depth.Allocated;
+            total += _shader.Allocated;
+            return total;
+        }
+    }
+
+    public override long Used
+    {
+        get
+        {
+            long total = 0;
+            total += _fullQuad.Used;
+            total += _position.Used;
+            total += _normal.Used;
+            total += _color.Used;
+            total += _specular.Used;
+            total += _picking.Used;
+            total += _depth.Used;
+            total += _shader.Used;
+            return total;
+        }
+    }
+    
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail(
+            "Full Quad Framebuffer",
+            _fullQuad.GetType().Name,
+            _fullQuad.Allocated,
+            _fullQuad.Used,
+            _fullQuad
+        );
+
+        yield return new MemoryDetail(
+            "Position Texture",
+            _position.GetType().Name,
+            _position.Allocated,
+            _position.Used
+        );
+
+        yield return new MemoryDetail(
+            "Normal Texture",
+            _normal.GetType().Name,
+            _normal.Allocated,
+            _normal.Used
+        );
+
+        yield return new MemoryDetail(
+            "Color Texture",
+            _color.GetType().Name,
+            _color.Allocated,
+            _color.Used
+        );
+
+        yield return new MemoryDetail(
+            "Specular Texture",
+            _specular.GetType().Name,
+            _specular.Allocated,
+            _specular.Used
+        );
+
+        yield return new MemoryDetail(
+            "Picking Texture",
+            _picking.GetType().Name,
+            _picking.Allocated,
+            _picking.Used
+        );
+
+        yield return new MemoryDetail(
+            "Depth Renderbuffer",
+            _depth.GetType().Name,
+            _depth.Allocated,
+            _depth.Used
+        );
+
+        yield return new MemoryDetail(
+            "Main Shader",
+            _shader.GetType().Name,
+            _shader.Allocated,
+            _shader.Used
+        );
+    }
 }

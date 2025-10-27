@@ -8,7 +8,7 @@ using Snooper.Rendering.Containers.Framebuffers;
 
 namespace Snooper.Rendering.Containers;
 
-public class CameraFramePair(CameraComponent camera) : IResizable
+public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetailsProvider
 {
     private const int DefaultWidthHeight = 1;
 
@@ -168,4 +168,44 @@ public class CameraFramePair(CameraComponent camera) : IResizable
         .._forward.GetTextures(),
         ..Camera.bFXAA ? _fxaa.GetTextures() : _combined.GetTextures(),
     ];
+
+    public long Allocated
+    {
+        get
+        {
+            long total = 0;
+            total += _geometry.Allocated;
+            total += _ssao.Allocated;
+            total += _forward.Allocated;
+            total += _combined.Allocated;
+            total += _fxaa.Allocated;
+            total += _picking.Allocated;
+            return total;
+        }
+    }
+
+    public long Used
+    {
+        get
+        {
+            long total = 0;
+            total += _geometry.Used;
+            total += _ssao.Used;
+            total += _forward.Used;
+            total += _combined.Used;
+            total += _fxaa.Used;
+            total += _picking.Used;
+            return total;
+        }
+    }
+
+    public IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail("GBuffer", _geometry.GetType().Name, _geometry.Allocated, _geometry.Used, _geometry);
+        yield return new MemoryDetail("SSAO", _ssao.GetType().Name, _ssao.Allocated, _ssao.Used, _ssao);
+        yield return new MemoryDetail("Forward", _forward.GetType().Name, _forward.Allocated, _forward.Used, _forward);
+        yield return new MemoryDetail("Combined", _combined.GetType().Name, _combined.Allocated, _combined.Used, _combined);
+        yield return new MemoryDetail("FXAA", _fxaa.GetType().Name, _fxaa.Allocated, _fxaa.Used, _fxaa);
+        yield return new MemoryDetail("Picking", _picking.GetType().Name, _picking.Allocated, _picking.Used, _picking);
+    }
 }

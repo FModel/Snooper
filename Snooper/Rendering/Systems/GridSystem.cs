@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components;
@@ -54,6 +55,24 @@ public class GridSystem() : PrimitiveSystem<GridComponent>(1)
             GL.TexParameter(_texture.Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.Repeat);
             GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
             _texture.Unbind();
+        }
+    }
+    
+    public override long Allocated => base.Allocated + _texture?.Allocated ?? 0;
+    public override long Used => base.Used + _texture?.Used ?? 0;
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        if (_texture is not null)
+        {
+            yield return new MemoryDetail(
+                "Grid Texture",
+                _texture.GetType().Name,
+                _texture.Allocated,
+                _texture.Used
+            );
         }
     }
 }

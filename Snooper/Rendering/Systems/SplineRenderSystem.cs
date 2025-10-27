@@ -1,4 +1,5 @@
-﻿using Snooper.Core.Containers.Buffers;
+﻿using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
@@ -39,4 +40,19 @@ public class SplineRenderSystem : DeferredRenderSystem
     public override bool Accepts(Type type) => type == typeof(SplineMeshComponent);
 
     protected override bool CanEnqueueActorComponent(MeshComponent component) => true;
+    
+    public override long Allocated => base.Allocated + _params.Allocated;
+    public override long Used => base.Used + _params.Used;
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        yield return new MemoryDetail(
+            "Params Buffer",
+            _params.GetType().Name,
+            _params.Allocated,
+            _params.Used
+        );
+    }
 }

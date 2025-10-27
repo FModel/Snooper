@@ -5,7 +5,7 @@ using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Buffers;
 
-public abstract class Buffer<T>(int initialCapacity, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind, IMemorySizeProvider where T : unmanaged
+public abstract class Buffer<T>(int initialCapacity, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind where T : unmanaged
 {
     public abstract GetPName PName { get; }
 
@@ -236,15 +236,14 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         GL.GetBufferSubData(Target, index * Stride, size * Stride, data);
         return data;
     }
-    
-    public long Allocated => _capacity * Stride;
-    public long Used => Count * Stride;
-    public string GetFormattedSpace() => Used.GetReadableSizeOutOf(Allocated);
 
     public override void Dispose()
     {
         GL.DeleteBuffer(Handle);
     }
+    
+    public override long Allocated => _capacity * Stride;
+    public override long Used => Count * Stride;
 
     private struct Range(int index, int length)
     {

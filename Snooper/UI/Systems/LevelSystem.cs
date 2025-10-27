@@ -5,6 +5,7 @@ using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core;
 using Snooper.Core.Containers;
+using Snooper.Extensions;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -153,7 +154,10 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             var c = (int) DebugColorMode;
             ImGui.Combo("DebugColorMode", ref c, "None\0Per Component\0Per Instance\0Per Material\0Per Primitive\0Vertex Colors\0");
             DebugColorMode = (ActorDebugColorMode) c;
-            
+
+            ImGui.SeparatorText($"GPU Memory Summary ({Allocated.GetReadableSize()})");
+            MemoryDetailsUI.DrawMemoryTable(this);
+
             ImGui.SeparatorText("Systems");
             foreach (var system in Systems.Values)
             {
@@ -161,11 +165,29 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 {
                     ImGui.TextUnformatted($"Time: {system.Time:F3} s");
                     
+                    ImGui.SetNextItemOpen(true, ImGuiCond.Appearing);
                     if (ImGui.TreeNode($"x{system.ComponentsCount} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}"))
                     {
                         if (system is IMemorySizeProvider provider)
                         {
-                            ImGui.TextUnformatted(provider.GetFormattedSpace());
+                            ImGui.Spacing();
+                            ImGui.SeparatorText("GPU Memory");
+                            MemoryDetailsUI.DrawMemorySummary(provider);
+                            
+                            ImGui.Spacing();
+                            ImGui.Separator();
+                            ImGui.Spacing();
+                            
+                            if (provider is IMemoryDetailsProvider detailsProvider)
+                            {
+                                ImGui.Text("Resource Breakdown:");
+                                ImGui.Spacing();
+                                MemoryDetailsUI.DrawMemoryDetails(detailsProvider);
+                            }
+                            else
+                            {
+                                ImGui.TextDisabled("No detailed breakdown available");
+                            }
                         }
                         ImGui.TreePop();
                     }

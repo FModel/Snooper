@@ -34,4 +34,26 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : FullQua
         _picking.Resize(newWidth, newHeight);
         _depth.Resize(newWidth, newHeight);
     }
+    
+    public override long Allocated => base.Allocated + _picking.Allocated + _depth.Allocated;
+    public override long Used => base.Used + _picking.Used + _depth.Used;
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        yield return new MemoryDetail(
+            "Picking Texture",
+            _picking.GetType().Name,
+            _picking.Allocated,
+            _picking.Used
+        );
+
+        yield return new MemoryDetail(
+            "Depth Renderbuffer",
+            _depth.GetType().Name,
+            _depth.Allocated,
+            _depth.Used
+        );
+    }
 }

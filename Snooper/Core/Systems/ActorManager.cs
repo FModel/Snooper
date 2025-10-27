@@ -1,6 +1,7 @@
 ﻿using System.Collections.Specialized;
 using System.Reflection;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
@@ -9,7 +10,7 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
 
-public abstract class ActorManager : IGameSystem
+public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
     
@@ -248,5 +249,49 @@ public abstract class ActorManager : IGameSystem
             system.Dispose();
         }
         Systems.Clear();
+    }
+
+    public virtual long Allocated
+    {
+        get
+        {
+            long total = 0;
+            foreach (var system in Systems.Values)
+            {
+                if (system is IMemorySizeProvider provider)
+                    total += provider.Allocated;
+            }
+            return total;
+        }
+    }
+
+    public virtual long Used
+    {
+        get
+        {
+            long total = 0;
+            foreach (var system in Systems.Values)
+            {
+                if (system is IMemorySizeProvider provider)
+                    total += provider.Used;
+            }
+            return total;
+        }
+    }
+
+    public virtual IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var system in Systems.Values)
+        {
+            switch (system)
+            {
+                case IMemoryDetailsProvider provider:
+                    yield return new MemoryDetail(system.GetType().Name, "ActorSystem", provider.Allocated, provider.Used, provider);
+                    break;
+                case IMemorySizeProvider sizeProvider:
+                    yield return new MemoryDetail(system.GetType().Name, "ActorSystem", sizeProvider.Allocated, sizeProvider.Used);
+                    break;
+            }
+        }
     }
 }

@@ -337,58 +337,21 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             if (_diffuses?[_selectedLayer] is { } diffuse)
             {
                 diffuse.DrawControls();
-                ImGui.SameLine();
             }
 
-            ImGui.BeginGroup();
-            ImGui.TextUnformatted(layer.Diffuse.Name);
-            ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
-            ImGui.SetWindowFontScale(0.85f);
-            ImGui.TextUnformatted($"{layer.Diffuse.Guid.ToString(EGuidFormats.UniqueObjectGuid)}");
-            ImGui.TextUnformatted($"{layer.Diffuse.Width}x{layer.Diffuse.Height}");
-            ImGui.SetWindowFontScale(1.0f);
-            ImGui.PopStyleVar();
-            ImGui.EndGroup();
-
-            if (layer.Normal != null)
+            EditorUI.Property("Normal Texture");
+            if (_normals?[_selectedLayer] is { } normal)
             {
-                EditorUI.Property("Normal Texture");
-                if (_normals?[_selectedLayer] is { } normal)
-                {
-                    normal.DrawControls();
-                    ImGui.SameLine();
-                }
-
-                ImGui.BeginGroup();
-                ImGui.TextUnformatted(layer.Normal.Name);
-                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
-                ImGui.SetWindowFontScale(0.85f);
-                ImGui.TextUnformatted($"{layer.Normal.Guid.ToString(EGuidFormats.UniqueObjectGuid)}");
-                ImGui.TextUnformatted($"{layer.Normal.Width}x{layer.Normal.Height}");
-                ImGui.SetWindowFontScale(1.0f);
-                ImGui.PopStyleVar();
-                ImGui.EndGroup();
+                normal.DrawControls();
             }
+            else ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "None");
 
-            if (layer.Specular != null)
+            EditorUI.Property("Specular Texture");
+            if (_speculars?[_selectedLayer] is { } specular)
             {
-                EditorUI.Property("Specular Texture");
-                if (_speculars?[_selectedLayer] is { } specular)
-                {
-                    specular.DrawControls();
-                    ImGui.SameLine();
-                }
-
-                ImGui.BeginGroup();
-                ImGui.TextUnformatted(layer.Specular.Name);
-                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
-                ImGui.SetWindowFontScale(0.85f);
-                ImGui.TextUnformatted($"{layer.Specular.Guid.ToString(EGuidFormats.UniqueObjectGuid)}");
-                ImGui.TextUnformatted($"{layer.Specular.Width}x{layer.Specular.Height}");
-                ImGui.SetWindowFontScale(1.0f);
-                ImGui.PopStyleVar();
-                ImGui.EndGroup();
+                specular.DrawControls();
             }
+            else ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "None");
 
             EditorUI.Property("Diffuse Color");
             var diffuseColor = new Vector4(layer.DiffuseColor.X, layer.DiffuseColor.Y, layer.DiffuseColor.Z, 1.0f);

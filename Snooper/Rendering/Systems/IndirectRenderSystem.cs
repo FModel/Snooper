@@ -9,8 +9,7 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>
-    : ActorSystem<TComponent>, ITexturedSystem, IMemorySizeProvider
+public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData> : ActorSystem<TComponent>, ITexturedSystem
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData 
@@ -144,5 +143,44 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         TextureManager.Dispose();
     }
 
-    public string GetFormattedSpace() => Resources.GetFormattedSpace();
+    public virtual long Allocated
+    {
+        get
+        {
+            long total = 0;
+            total += Resources.Allocated;
+            total += TextureManager.Allocated;
+            return total;
+        }
+    }
+
+    public virtual long Used
+    {
+        get
+        {
+            long total = 0;
+            total += Resources.Used;
+            total += TextureManager.Used;
+            return total;
+        }
+    }
+    
+    public virtual IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail(
+            "GPU Resources",
+            Resources.GetType().Name,
+            Resources.Allocated,
+            Resources.Used,
+            Resources as IMemoryDetailsProvider
+        );
+        
+        yield return new MemoryDetail(
+            "Texture Manager",
+            TextureManager.GetType().Name,
+            TextureManager.Allocated,
+            TextureManager.Used,
+            TextureManager
+        );
+    }
 }

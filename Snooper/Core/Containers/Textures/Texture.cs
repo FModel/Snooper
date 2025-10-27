@@ -14,7 +14,7 @@ public abstract class Texture(
     PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
-    string? name = null) : HandledObject, IBind, IResizable, IControllable
+    string? name = null) : HandledObject, IBind, IResizable, IMemorySizeProvider, IControllable
 {
     public abstract GetPName PName { get; }
 
@@ -112,6 +112,18 @@ public abstract class Texture(
                 new Vector2(Width, Height)
             );
         }
+        
+        ImGui.SameLine();
+        
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted(Name);
+        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
+        ImGui.SetWindowFontScale(0.85f);
+        ImGui.TextUnformatted($"{Guid.ToString(EGuidFormats.UniqueObjectGuid)}");
+        ImGui.TextUnformatted($"{Width}x{Height} pixels ({GetFormattedSpace()})");
+        ImGui.SetWindowFontScale(1.0f);
+        ImGui.PopStyleVar();
+        ImGui.EndGroup();
     }
 
     public override bool Equals(object? obj) => obj is Texture texture && Guid.Equals(texture.Guid);
@@ -121,4 +133,8 @@ public abstract class Texture(
     {
         GL.DeleteTexture(Handle);
     }
+
+    public override long Allocated => FormatInfo.GetMemorySize(Width, Height);
+    public override long Used => Allocated;
+    public string GetFormattedSpace() => Allocated.GetReadableSize();
 }

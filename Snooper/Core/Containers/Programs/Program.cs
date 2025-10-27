@@ -2,7 +2,7 @@
 
 namespace Snooper.Core.Containers.Programs;
 
-public class Program : HandledObject
+public abstract class Program : HandledObject
 {
     public override void Generate()
     {

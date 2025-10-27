@@ -2,6 +2,7 @@
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
@@ -102,6 +103,28 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         
         _scales.Bind(3);
         _mapping.Bind(4);
+    }
+    
+    public override long Allocated => base.Allocated + _scales.Allocated + _mapping.Allocated;
+    public override long Used => base.Used + _scales.Used + _mapping.Used;
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        foreach (var detail in base.GetMemoryDetails())
+            yield return detail;
+        
+        yield return new MemoryDetail(
+            "Scales Buffer",
+            _scales.GetType().Name,
+            _scales.Allocated,
+            _scales.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Weightmap Highlight Buffer",
+            _mapping.GetType().Name,
+            _mapping.Allocated,
+            _mapping.Used
+        );
     }
 
     public void DrawControls()

@@ -1,5 +1,4 @@
-﻿using System.Text;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Camera;
@@ -20,8 +19,7 @@ public struct AllocationCounts
     public uint ColoredVertices;
 }
 
-public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type)
-    : IMemorySizeProvider, IDisposable
+public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type) : IMemoryDetailsProvider, IDisposable
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData 
     where TPerMaterialData : unmanaged, IPerMaterialData
@@ -206,15 +204,62 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         _materialData.Dispose();
     }
 
-    public string GetFormattedSpace()
+    public long Allocated
     {
-        var builder = new StringBuilder();
-        builder.AppendLine($"IndirectResources<{typeof(TVertex).Name}, {typeof(TInstanceData).Name}, {typeof(TPerMaterialData).Name}>:");
-        builder.AppendLine(_geometry.GetFormattedSpace());
-        builder.AppendLine($"    x{_commands.Current.Count} Commands: {_commands.Current.GetFormattedSpace()}");
-        builder.AppendLine($"    x{_materialData.Count} MaterialData: {_materialData.GetFormattedSpace()}");
-        builder.AppendLine($"    x{_instanceData.Count} InstanceData: {_instanceData.GetFormattedSpace()}");
-        return builder.ToString();
+        get
+        {
+            long total = 0;
+            total += _geometry.Allocated;
+            total += _commands.Allocated;
+            total += _instanceData.Allocated;
+            total += _materialData.Allocated;
+            return total;
+        }
+    }
+
+    public long Used
+    {
+        get
+        {
+            long total = 0;
+            total += _geometry.Used;
+            total += _commands.Used;
+            total += _instanceData.Used;
+            total += _materialData.Used;
+            return total;
+        }
+    }
+    
+    public IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail(
+            "Geometry Pool",
+            _geometry.GetType().Name,
+            _geometry.Allocated,
+            _geometry.Used,
+            _geometry as IMemoryDetailsProvider
+        );
+        
+        yield return new MemoryDetail(
+            "Draw Commands",
+            _commands.GetType().Name,
+            _commands.Allocated,
+            _commands.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Instance Data",
+            _instanceData.GetType().Name,
+            _instanceData.Allocated,
+            _instanceData.Used
+        );
+        
+        yield return new MemoryDetail(
+            "Material Data",
+            _materialData.GetType().Name,
+            _materialData.Allocated,
+            _materialData.Used
+        );
     }
 
     public GetPName Name => throw new NotImplementedException();

@@ -27,4 +27,7 @@ public sealed class VertexArray : HandledObject, IBind
     {
         GL.DeleteVertexArray(Handle);
     }
+
+    public override long Allocated => 0;
+    public override long Used => 0;
 }
