@@ -138,7 +138,7 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
 
         foreach (var pair in Pairs)
         {
-            yield return new MemoryDetail(pair.Camera.Actor?.Name ?? $"Camera {pair.Camera.PairIndex}", pair.GetType().Name, pair.Allocated, pair.Allocated, pair);
+            yield return new MemoryDetail(pair.Camera.Actor?.Name ?? $"Camera {pair.Camera.PairIndex}", pair);
         }
     }
 

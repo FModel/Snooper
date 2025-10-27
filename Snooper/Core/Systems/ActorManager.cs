@@ -286,10 +286,10 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
             switch (system)
             {
                 case IMemoryDetailsProvider provider:
-                    yield return new MemoryDetail(system.GetType().Name, "ActorSystem", provider.Allocated, provider.Used, provider);
+                    yield return new MemoryDetail(system.GetType().Name, "ActorSystem", provider);
                     break;
                 case IMemorySizeProvider sizeProvider:
-                    yield return new MemoryDetail(system.GetType().Name, "ActorSystem", sizeProvider.Allocated, sizeProvider.Used);
+                    yield return new MemoryDetail(system.GetType().Name, "ActorSystem", sizeProvider);
                     break;
             }
         }

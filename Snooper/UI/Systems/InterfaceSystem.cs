@@ -271,7 +271,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         
         // foreach (var icon in Icons.Values)
         // {
-        //     yield return new MemoryDetail(icon.Name, "InterfaceIcon", icon.Allocated, icon.Used);
+        //     yield return new MemoryDetail(icon.Name, icon);
         // }
     }
 }

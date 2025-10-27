@@ -201,11 +201,11 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
 
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail("GBuffer", _geometry.GetType().Name, _geometry.Allocated, _geometry.Used, _geometry);
-        yield return new MemoryDetail("SSAO", _ssao.GetType().Name, _ssao.Allocated, _ssao.Used, _ssao);
-        yield return new MemoryDetail("Forward", _forward.GetType().Name, _forward.Allocated, _forward.Used, _forward);
-        yield return new MemoryDetail("Combined", _combined.GetType().Name, _combined.Allocated, _combined.Used, _combined);
-        yield return new MemoryDetail("FXAA", _fxaa.GetType().Name, _fxaa.Allocated, _fxaa.Used, _fxaa);
-        yield return new MemoryDetail("Picking", _picking.GetType().Name, _picking.Allocated, _picking.Used, _picking);
+        yield return new MemoryDetail("GBuffer", _geometry);
+        yield return new MemoryDetail("SSAO", _ssao);
+        yield return new MemoryDetail("Forward", _forward);
+        yield return new MemoryDetail("Combined", _combined);
+        yield return new MemoryDetail("FXAA", _fxaa);
+        yield return new MemoryDetail("Picking", _picking);
     }
 }

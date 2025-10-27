@@ -198,60 +198,13 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
         
-        yield return new MemoryDetail(
-            "Picking Texture",
-            _picking.GetType().Name,
-            _picking.Allocated,
-            _picking.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Mask Texture",
-            _mask.GetType().Name,
-            _mask.Allocated,
-            _mask.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Outline Texture",
-            _outline.GetType().Name,
-            _outline.Allocated,
-            _outline.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Depth Renderbuffer",
-            _depth.GetType().Name,
-            _depth.Allocated,
-            _depth.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Combine Shader",
-            _combineShader.GetType().Name,
-            _combineShader.Allocated,
-            _combineShader.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Mask Shader",
-            _maskShader.GetType().Name,
-            _maskShader.Allocated,
-            _maskShader.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Outline Shader",
-            _outlineShader.GetType().Name,
-            _outlineShader.Allocated,
-            _outlineShader.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Main Shader",
-            _shader.GetType().Name,
-            _shader.Allocated,
-            _shader.Used
-        );
+        yield return new MemoryDetail("Picking Texture", _picking);
+        yield return new MemoryDetail("Mask Texture", _mask);
+        yield return new MemoryDetail("Outline Texture", _outline);
+        yield return new MemoryDetail("Depth Renderbuffer", _depth);
+        yield return new MemoryDetail("Combine Shader", _combineShader);
+        yield return new MemoryDetail("Mask Shader", _maskShader);
+        yield return new MemoryDetail("Outline Shader", _outlineShader);
+        yield return new MemoryDetail("Main Shader", _shader);
     }
 }

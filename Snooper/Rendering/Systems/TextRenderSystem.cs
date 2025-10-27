@@ -47,12 +47,7 @@ public class TextRenderSystem() : PrimitiveSystem<Vector4, TextRenderComponent, 
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
         
-        yield return new MemoryDetail(
-            "Font Atlas Texture",
-            FontAtlasTexture.Instance.GetType().Name,
-            FontAtlasTexture.Instance.Allocated,
-            FontAtlasTexture.Instance.Used
-        );
+        yield return new MemoryDetail("Font Atlas Texture", FontAtlasTexture.Instance);
     }
     
     public void DrawControls()

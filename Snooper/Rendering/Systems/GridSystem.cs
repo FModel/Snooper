@@ -67,12 +67,7 @@ public class GridSystem() : PrimitiveSystem<GridComponent>(1)
         
         if (_texture is not null)
         {
-            yield return new MemoryDetail(
-                "Grid Texture",
-                _texture.GetType().Name,
-                _texture.Allocated,
-                _texture.Used
-            );
+            yield return new MemoryDetail("Grid Texture", _texture);
         }
     }
 }

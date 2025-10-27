@@ -132,25 +132,8 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
     
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail(
-            "Primitive Offsets",
-            _primitives.GetType().Name,
-            _primitives.Allocated,
-            _primitives.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Section Offsets",
-            _sections.GetType().Name,
-            _sections.Allocated,
-            _sections.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Culling Compute Shader",
-            _compute.GetType().Name,
-            _compute.Allocated,
-            _compute.Used
-        );
+        yield return new MemoryDetail("Primitive Offsets", _primitives);
+        yield return new MemoryDetail("Section Offsets", _sections);
+        yield return new MemoryDetail("Culling Compute Shader", _compute);
     }
 }

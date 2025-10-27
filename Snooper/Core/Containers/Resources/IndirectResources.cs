@@ -232,34 +232,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
     
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail(
-            "Geometry Pool",
-            _geometry.GetType().Name,
-            _geometry.Allocated,
-            _geometry.Used,
-            _geometry as IMemoryDetailsProvider
-        );
-        
-        yield return new MemoryDetail(
-            "Draw Commands",
-            _commands.GetType().Name,
-            _commands.Allocated,
-            _commands.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Instance Data",
-            _instanceData.GetType().Name,
-            _instanceData.Allocated,
-            _instanceData.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Material Data",
-            _materialData.GetType().Name,
-            _materialData.Allocated,
-            _materialData.Used
-        );
+        yield return new MemoryDetail("Geometry Pool", _geometry);
+        yield return new MemoryDetail("Draw Commands", _commands.Current);
+        yield return new MemoryDetail("Instance Data", _instanceData);
+        yield return new MemoryDetail("Material Data", _materialData);
     }
 
     public GetPName Name => throw new NotImplementedException();

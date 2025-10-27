@@ -31,7 +31,7 @@ public class DoubleBuffer<TBuffer>(Func<TBuffer> factory) : IMemoryDetailsProvid
         get
         {
             long total = 0;
-            // total += Previous.Allocated;
+            total += Previous.Allocated;
             total += Current.Allocated;
             return total;
         }
@@ -42,7 +42,7 @@ public class DoubleBuffer<TBuffer>(Func<TBuffer> factory) : IMemoryDetailsProvid
         get
         {
             long total = 0;
-            // total += Previous.Used;
+            total += Previous.Used;
             total += Current.Used;
             return total;
         }
@@ -50,18 +50,7 @@ public class DoubleBuffer<TBuffer>(Func<TBuffer> factory) : IMemoryDetailsProvid
 
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        // yield return new MemoryDetail(
-        //     "Previous Buffer",
-        //     Previous.GetType().Name,
-        //     Previous.Allocated,
-        //     Previous.Used
-        // );
-        
-        yield return new MemoryDetail(
-            "Current Buffer",
-            Current.GetType().Name,
-            Current.Allocated,
-            Current.Used
-        );
+        yield return new MemoryDetail("Previous Buffer", Previous);
+        yield return new MemoryDetail("Current Buffer", Current);
     }
 }

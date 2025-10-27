@@ -67,12 +67,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
         
-        yield return new MemoryDetail(
-            "Main Shader",
-            Shader.GetType().Name,
-            Shader.Allocated,
-            Shader.Used
-        );
+        yield return new MemoryDetail("Main Shader", Shader);
     }
 }
 

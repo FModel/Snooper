@@ -99,26 +99,8 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
         
-        yield return new MemoryDetail(
-            "Blur Full Quad Framebuffer",
-            _blur.GetType().Name,
-            _blur.Allocated,
-            _blur.Used,
-            _blur
-        );
-        
-        yield return new MemoryDetail(
-            "Main Shader",
-            _shader.GetType().Name,
-            _shader.Allocated,
-            _shader.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Blur Shader",
-            _blurShader.GetType().Name,
-            _blurShader.Allocated,
-            _blurShader.Used
-        );
+        yield return new MemoryDetail("Blur Full Quad Framebuffer", _blur);
+        yield return new MemoryDetail("Main Shader", _shader);
+        yield return new MemoryDetail("Blur Shader", _blurShader);
     }
 }

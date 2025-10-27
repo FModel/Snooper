@@ -160,61 +160,13 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
     
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail(
-            "Full Quad Framebuffer",
-            _fullQuad.GetType().Name,
-            _fullQuad.Allocated,
-            _fullQuad.Used,
-            _fullQuad
-        );
-
-        yield return new MemoryDetail(
-            "Position Texture",
-            _position.GetType().Name,
-            _position.Allocated,
-            _position.Used
-        );
-
-        yield return new MemoryDetail(
-            "Normal Texture",
-            _normal.GetType().Name,
-            _normal.Allocated,
-            _normal.Used
-        );
-
-        yield return new MemoryDetail(
-            "Color Texture",
-            _color.GetType().Name,
-            _color.Allocated,
-            _color.Used
-        );
-
-        yield return new MemoryDetail(
-            "Specular Texture",
-            _specular.GetType().Name,
-            _specular.Allocated,
-            _specular.Used
-        );
-
-        yield return new MemoryDetail(
-            "Picking Texture",
-            _picking.GetType().Name,
-            _picking.Allocated,
-            _picking.Used
-        );
-
-        yield return new MemoryDetail(
-            "Depth Renderbuffer",
-            _depth.GetType().Name,
-            _depth.Allocated,
-            _depth.Used
-        );
-
-        yield return new MemoryDetail(
-            "Main Shader",
-            _shader.GetType().Name,
-            _shader.Allocated,
-            _shader.Used
-        );
+        yield return new MemoryDetail("Full Quad Framebuffer", _fullQuad);
+        yield return new MemoryDetail("Position Texture", _position);
+        yield return new MemoryDetail("Normal Texture", _normal);
+        yield return new MemoryDetail("Color Texture", _color);
+        yield return new MemoryDetail("Specular Texture", _specular);
+        yield return new MemoryDetail("Picking Texture", _picking);
+        yield return new MemoryDetail("Depth Renderbuffer", _depth);
+        yield return new MemoryDetail("Main Shader", _shader);
     }
 }

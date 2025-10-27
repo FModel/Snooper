@@ -34,11 +34,6 @@ public class FxaaFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
         
-        yield return new MemoryDetail(
-            "Main Shader",
-            _shader.GetType().Name,
-            _shader.Allocated,
-            _shader.Used
-        );
+        yield return new MemoryDetail("Main Shader", _shader);
     }
 }

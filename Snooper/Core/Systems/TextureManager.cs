@@ -192,12 +192,7 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
     {
         foreach (var texture in _textures.Values)
         {
-            yield return new MemoryDetail(
-                texture.Name,
-                texture.GetType().Name,
-                texture.Allocated,
-                texture.Used
-            );
+            yield return new MemoryDetail(texture.Name, texture);
         }
     }
 }

@@ -112,19 +112,8 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
         
-        yield return new MemoryDetail(
-            "Scales Buffer",
-            _scales.GetType().Name,
-            _scales.Allocated,
-            _scales.Used
-        );
-        
-        yield return new MemoryDetail(
-            "Weightmap Highlight Buffer",
-            _mapping.GetType().Name,
-            _mapping.Allocated,
-            _mapping.Used
-        );
+        yield return new MemoryDetail("Scales Buffer", _scales);
+        yield return new MemoryDetail("Weightmap Highlight Buffer", _mapping);
     }
 
     public void DrawControls()

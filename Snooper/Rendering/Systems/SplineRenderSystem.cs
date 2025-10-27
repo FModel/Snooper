@@ -48,11 +48,6 @@ public class SplineRenderSystem : DeferredRenderSystem
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
         
-        yield return new MemoryDetail(
-            "Params Buffer",
-            _params.GetType().Name,
-            _params.Allocated,
-            _params.Used
-        );
+        yield return new MemoryDetail("Params Buffer", _params);
     }
 }

@@ -167,20 +167,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     
     public virtual IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail(
-            "GPU Resources",
-            Resources.GetType().Name,
-            Resources.Allocated,
-            Resources.Used,
-            Resources as IMemoryDetailsProvider
-        );
-        
-        yield return new MemoryDetail(
-            "Texture Manager",
-            TextureManager.GetType().Name,
-            TextureManager.Allocated,
-            TextureManager.Used,
-            TextureManager
-        );
+        yield return new MemoryDetail("GPU Resources", Resources);
+        yield return new MemoryDetail("Texture Manager", TextureManager);
     }
 }

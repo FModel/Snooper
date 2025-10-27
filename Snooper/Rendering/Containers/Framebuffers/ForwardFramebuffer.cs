@@ -42,18 +42,7 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : FullQua
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
         
-        yield return new MemoryDetail(
-            "Picking Texture",
-            _picking.GetType().Name,
-            _picking.Allocated,
-            _picking.Used
-        );
-
-        yield return new MemoryDetail(
-            "Depth Renderbuffer",
-            _depth.GetType().Name,
-            _depth.Allocated,
-            _depth.Used
-        );
+        yield return new MemoryDetail("Picking Texture", _picking);
+        yield return new MemoryDetail("Depth Renderbuffer", _depth);
     }
 }
