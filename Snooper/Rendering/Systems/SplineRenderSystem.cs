@@ -22,12 +22,11 @@ public class SplineRenderSystem : DeferredRenderSystem
         base.Load();
         
         _params.Generate();
-        _params.Bind();
+        _params.Allocate(ComponentsCount);
         foreach (var component in Components.Cast<SplineMeshComponent>())
         {
             _params.Add(component.SplineParams);
         }
-        _params.Unbind();
     }
     
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)

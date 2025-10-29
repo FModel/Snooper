@@ -5,13 +5,13 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red, PixelType.Float)
+public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, PixelType.Float)
 {
     private const int ScaleRatio = 2;
     private const int DirectionCount = 6;
     private const int StepsPerDirection = 6;
 
-    private readonly FullQuadFramebuffer _blur = new(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red, PixelType.Float);
+    private readonly FullQuadFramebuffer _blur = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, PixelType.Float);
 
     private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/ssao.frag");
     private readonly ShaderProgram _blurShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/ssao_blur.frag");
@@ -31,7 +31,7 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
         _blurShader.Link();
     }
 
-    public override void Bind(TextureUnit unit) => _blur.Bind(unit);
+    public override void Bind(uint unit) => _blur.Bind(unit);
 
     public void Render(Action<ShaderProgram>? callback = null)
     {
@@ -49,10 +49,10 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
         _blur.Bind();
         GL.ClearColor(1, 1, 1, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit);
-
+        
         _blur.Render(() =>
         {
-            base.Bind(TextureUnit.Texture0);
+            base.Bind(0);
 
             _blurShader.Use();
             _blurShader.SetUniform("uScaleRatio", ScaleRatio);

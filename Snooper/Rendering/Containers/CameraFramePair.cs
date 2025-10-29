@@ -43,7 +43,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
         GL.Disable(EnableCap.Blend);
-
+        
         render(Camera, ActorSystemType.Deferred);
 
         if (Camera.bAmbientOcclusion)
@@ -51,7 +51,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
             _ssao.Bind();
             GL.ClearColor(1, 1, 1, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit);
-
+            
             _ssao.Render(shader =>
             {
                 _geometry.BindTextures(true, true);
@@ -85,20 +85,16 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
             shader.SetUniform("useSsao", Camera.bAmbientOcclusion);
             if (!Camera.bAmbientOcclusion) return;
             
-            _ssao.Bind(TextureUnit.Texture4);
+            _ssao.Bind(4);
             shader.SetUniform("ssao", 4);
         });
     }
 
     public void ForwardRendering(Action<CameraComponent, ActorSystemType> render)
     {
-        if (_geometry != GL.GetInteger(GetPName.ReadFramebufferBinding))
-            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _geometry);
-
         // copy depth from gBuffer
-        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _forward);
-        GL.BlitFramebuffer(0, 0, _geometry.Width, _geometry.Height, 0, 0, _forward.Width, _forward.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
-
+        GL.BlitNamedFramebuffer(_geometry, _forward, 0, 0, _geometry.Width, _geometry.Height, 0, 0, _forward.Width, _forward.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+        
         _forward.Bind();
         GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit);
@@ -110,8 +106,8 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
     public void PickingRendering()
     {
         _picking.Bind();
-        _geometry.BindPicking(TextureUnit.Texture0);
-        _forward.BindPicking(TextureUnit.Texture1);
+        _geometry.BindPicking(0);
+        _forward.BindPicking(1);
         _picking.Render();
     }
 
@@ -123,9 +119,9 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         
         _combined.Render(_ =>
         {
-            _geometry.Bind(TextureUnit.Texture0);
-            _forward.Bind(TextureUnit.Texture1);
-            _picking.Bind(TextureUnit.Texture2);
+            _geometry.Bind(0);
+            _forward.Bind(1);
+            _picking.Bind(2);
         });
     }
     
@@ -136,16 +132,14 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _fxaa.Bind();
         GL.ClearColor(0, 0, 0, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit);
-
-        _fxaa.Render(_ => _combined.Bind(TextureUnit.Texture0));
+        
+        _fxaa.Render(_ => _combined.Bind(0));
     }
 
     public void RenderToScreen(int width, int height)
     {
         FullQuadFramebuffer framebuffer = Camera.bFXAA ? _fxaa : _combined;
-        GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, framebuffer);
-        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0);
-        GL.BlitFramebuffer(0, 0, framebuffer.Width, framebuffer.Height, 0, 0, width, height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+        GL.BlitNamedFramebuffer(framebuffer, 0, 0, 0, framebuffer.Width, framebuffer.Height, 0, 0, width, height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
     }
     
     public uint ReadPickingPixel(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => _picking.ReadPixel(mousePos, windowPos, windowSize);

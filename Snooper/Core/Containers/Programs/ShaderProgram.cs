@@ -13,7 +13,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
     public string? TessellationEvaluation { get; init; }
     public string? Compute { get; init; }
 
-    private readonly List<int> _shaderHandles = [];
+    private readonly List<uint> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
 
     public sealed override void Generate()
@@ -51,7 +51,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
         }
     }
 
-    protected virtual int CompileShader(ShaderType type, string content)
+    protected virtual uint CompileShader(ShaderType type, string content)
     {
         var handle = GL.CreateShader(type);
         GL.ShaderSource(handle, content);
@@ -64,13 +64,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
             throw new Exception($"{type} failed to compile with error {infoLog}");
         }
 
-        return handle;
-    }
-    
-    public void SetUniform(string name, string value)
-    {
-        var nameData = value.PackString();
-        GL.Uniform1(GetUniformLocation(name), nameData.Length, nameData);
+        return (uint)handle;
     }
 
     public void SetUniform(string name, int value)

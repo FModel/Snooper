@@ -22,10 +22,11 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         TessellationControl = "Landscape/landscape.tesc",
         TessellationEvaluation = "Landscape/landscape.tese"
     };
-    protected override Action<int> VertexLayout { get; } = stride =>
+    protected override Action<uint> VertexLayout { get; } = vao =>
     {
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
-        GL.EnableVertexAttribArray(0);
+        GL.VertexArrayAttribFormat(vao, 0, 2, VertexAttribType.Float, false, 0);
+        GL.EnableVertexArrayAttrib(vao, 0);
+        GL.VertexArrayAttribBinding(vao, 0, 0);
     };
     
     private readonly ShaderStorageBuffer<Vector2> _scales = new(100 * Settings.TessellationQuadCountTotal);
@@ -41,7 +42,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         base.Load();
 
         _scales.Generate();
-        _scales.Bind();
+        _scales.Allocate(ComponentsCount * Settings.TessellationQuadCountTotal);
         foreach (var component in Components)
         {
             _scales.AddRange(component.Scales);
@@ -51,12 +52,9 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
             }
             _sizeQuads = Math.Max(_sizeQuads, component.SizeQuads);
         }
-        _scales.Unbind();
         
         _mapping.Generate();
-        _mapping.Bind();
-        _mapping.Allocate(new WeightHighlightMapping[ComponentsCount]);
-        _mapping.Unbind();
+        _mapping.Allocate(ComponentsCount);
     }
 
     public override void Update(float delta)
@@ -68,7 +66,6 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         var layer = _layers[_selectedLayer];
         Log.Information("Updating weightmap highlight for layer {Layer}", layer);
         
-        _mapping.Bind();
         foreach (var component in Components)
         {
             if (component.Metadata is not { } metadata || metadata.DrawIds.Length == 0)
@@ -87,7 +84,6 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
             
             _mapping.Update(metadata.DrawIds[0], m);
         }
-        _mapping.Unbind();
         
         _updateMapping = false;
     }

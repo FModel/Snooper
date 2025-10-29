@@ -6,32 +6,17 @@ public sealed class DrawIndirectBuffer(int capacity, BufferUsageHint usageHint =
 {
     public override GetPName PName => GetPName.DrawIndirectBufferBinding;
     
-    public void Bind(int index)
+    public void Bind(uint index)
     {
         GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, Handle);
     }
 
     public DrawElementsIndirectCommand this[int index] => GetData(index, 1)[0];
 
-    public void UpdateIndexCount(int offset, uint value)
-    {
-        GL.BufferSubData(Target, offset * Stride, 4, ref value);
-    }
-
     public void UpdateInstance(int offset, uint instanceCount, uint baseInstance)
     {
-        GL.BufferSubData(Target, offset * Stride + 4, 4, ref instanceCount);
-        GL.BufferSubData(Target, offset * Stride + 16, 4, ref baseInstance);
-    }
-
-    public void UpdateFirstIndex(int offset, uint value)
-    {
-        GL.BufferSubData(Target, offset * Stride + 8, 4, ref value);
-    }
-
-    public void UpdateBaseVertex(int offset, uint value)
-    {
-        GL.BufferSubData(Target, offset * Stride + 12, 4, ref value);
+        GL.NamedBufferSubData(Handle, offset * Stride + 4, 4, ref instanceCount);
+        GL.NamedBufferSubData(Handle, offset * Stride + 16, 4, ref baseInstance);
     }
 
     public override void RemoveRange(int[] indices)

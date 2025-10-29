@@ -6,7 +6,7 @@ public abstract class Program : HandledObject
 {
     public override void Generate()
     {
-        Handle = GL.CreateProgram();
+        Handle = (uint)GL.CreateProgram();
     }
 
     public virtual void Link()
@@ -15,7 +15,7 @@ public abstract class Program : HandledObject
         GL.GetProgram(Handle, GetProgramParameterName.LinkStatus, out var status);
         if (status == 0)
         {
-            throw new Exception($"program failed to link with error: {GL.GetProgramInfoLog(Handle)}");
+            throw new Exception($"program failed to link with error: {GL.GetProgramInfoLog((int)Handle)}");
         }
     }
 

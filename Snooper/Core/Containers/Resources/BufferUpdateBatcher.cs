@@ -13,12 +13,10 @@ public class BufferUpdateBatcher<T> where T : unmanaged
     {
         if (Count == 0) return;
         
-        buffer.Bind();
         foreach (var (offset, data) in BatchConsecutiveUpdates())
         {
             buffer.Update(offset, data);
         }
-        buffer.Unbind();
         
         Clear();
     }

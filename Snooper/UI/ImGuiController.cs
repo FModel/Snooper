@@ -84,27 +84,23 @@ void main()
     public void Load()
     {
         _vao.Generate();
-        _vao.Bind();
-
         _ebo.Generate();
-        _ebo.Bind();
-        _ebo.Allocate();
-
         _vbo.Generate();
-        _vbo.Bind();
+        
+        _ebo.Allocate();
         _vbo.Allocate();
-
-        var stride = _vbo.Stride;
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
-        GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, stride, 8);
-        GL.VertexAttribPointer(2, 4, VertexAttribPointerType.UnsignedByte, true, stride, 16);
-        GL.EnableVertexAttribArray(0);
-        GL.EnableVertexAttribArray(1);
-        GL.EnableVertexAttribArray(2);
-
-        _vao.Unbind();
-        _ebo.Unbind();
-        _vbo.Unbind();
+        
+        GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
+        GL.VertexArrayElementBuffer(_vao, _ebo);
+        GL.VertexArrayAttribFormat(_vao, 0, 2, VertexAttribType.Float, false, 0);
+        GL.VertexArrayAttribFormat(_vao, 1, 2, VertexAttribType.Float, false, 8);
+        GL.VertexArrayAttribFormat(_vao, 2, 4, VertexAttribType.UnsignedByte, true, 16);
+        GL.EnableVertexArrayAttrib(_vao, 0);
+        GL.EnableVertexArrayAttrib(_vao, 1);
+        GL.EnableVertexArrayAttrib(_vao, 2);
+        GL.VertexArrayAttribBinding(_vao, 0, 0);
+        GL.VertexArrayAttribBinding(_vao, 1, 0);
+        GL.VertexArrayAttribBinding(_vao, 2, 0);
 
         _fontTexture.Generate();
 
@@ -214,10 +210,6 @@ void main()
             }
         }
 
-        _vao.Bind();
-        _ebo.Bind();
-        _vbo.Bind();
-
         // Setup orthographic projection matrix into our constant buffer
         var io = ImGui.GetIO();
         _shader.Use();
@@ -234,6 +226,10 @@ void main()
         GL.Disable(EnableCap.CullFace);
         GL.Disable(EnableCap.DepthTest);
 
+        _vao.Bind();
+        _ebo.Bind();
+        _vbo.Bind();
+        
         // Render command lists
         for (var i = 0; i < drawData.CmdListsCount; i++)
         {
@@ -250,11 +246,9 @@ void main()
                 var pcmd = cmd.CmdBuffer[j];
                 if (pcmd.UserCallback != IntPtr.Zero) throw new NotImplementedException();
                 
-                var texture = (int)pcmd.TextureId;
+                var texture = (uint)pcmd.TextureId;
                 if (!GL.IsTexture(texture)) continue;
-
-                GL.ActiveTexture(TextureUnit.Texture0);
-                GL.BindTexture(TextureTarget.Texture2D, texture);
+                GL.BindTextureUnit(0, texture);
                 CheckForErrors("Texture");
 
                 // We do _windowHeight - (int)clip.W instead of (int)clip.Y because gl has flipped Y when it comes to these coordinates
@@ -274,9 +268,9 @@ void main()
             }
         }
 
-        _vao.Unbind();
-        _ebo.Unbind();
         _vbo.Unbind();
+        _ebo.Unbind();
+        _vao.Unbind();
         CheckForErrors("VAO");
 
         GL.Disable(EnableCap.Blend);

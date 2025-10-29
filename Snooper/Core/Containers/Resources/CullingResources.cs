@@ -26,13 +26,8 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
     
     public void Allocate(AllocationCounts counts)
     {
-        _primitives.Bind();
-        _primitives.Allocate(new PrimitiveOffsets[counts.UniqueComponents]);
-        _primitives.Unbind();
-        
-        _sections.Bind();
-        _sections.Allocate(new SectionOffsets[counts.Draws]);
-        _sections.Unbind();
+        _primitives.Allocate(counts.UniqueComponents);
+        _sections.Allocate(counts.Sections);
     }
     
     public int Add(SectionDescriptor[] sections)
@@ -43,27 +38,14 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
             offsets[i] = new SectionOffsets(sections[i]);
         }
         
-        _sections.Bind();
-        var sectionOffset = _sections.AddRange(offsets);
-        _sections.Unbind();
-        
-        return sectionOffset;
+        return _sections.AddRange(offsets);
     }
 
-    public int Add(PrimitiveOffsets offsets)
-    {
-        _primitives.Bind();
-        var index = _primitives.Add(offsets);
-        _primitives.Unbind();
-        
-        return index;
-    }
+    public int Add(PrimitiveOffsets offsets) => _primitives.Add(offsets);
     
     public void UpdateOverrideLod(int index, int overrideLod)
     {
-        _primitives.Bind();
-        GL.BufferSubData(BufferTarget.ShaderStorageBuffer, index * _primitives.Stride + 32, 4, ref overrideLod);
-        _primitives.Unbind();
+        GL.NamedBufferSubData(_primitives, index * _primitives.Stride + 32, 4, ref overrideLod);
     }
     
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands) where TInstanceData : unmanaged, IPerInstanceData

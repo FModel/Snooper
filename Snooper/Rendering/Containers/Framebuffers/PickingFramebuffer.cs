@@ -21,8 +21,8 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
 {
     // single channel 32-bit unsigned integer texture for component IDs, then that id can give us the actor, no instance picking yet
     private readonly PickingTexture _picking = new(originalWidth, originalHeight);
-    private readonly Texture2D _mask = new(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red);
-    private readonly Texture2D _outline = new(originalWidth, originalHeight, PixelInternalFormat.R8, PixelFormat.Red);
+    private readonly ResizableTexture2D _mask = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red);
+    private readonly ResizableTexture2D _outline = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.DepthComponent, false);
     
     private readonly ShaderProgram _combineShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/combine.frag");
@@ -37,27 +37,26 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
         
         _mask.Generate();
         _mask.Resize(Width, Height);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(_mask, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
+        GL.TextureParameter(_mask, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        GL.TextureParameter(_mask, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(_mask, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
         
         _outline.Generate();
         _outline.Resize(Width, Height);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(_outline, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
+        GL.TextureParameter(_outline, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        GL.TextureParameter(_outline, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(_outline, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
         
         _depth.Generate();
         _depth.Resize(Width, Height);
         
         base.Generate();
-        base.Bind();
-        GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment1, TextureTarget.Texture2D, _picking, 0);
-        GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment2, TextureTarget.Texture2D, _mask, 0);
-        GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment3, TextureTarget.Texture2D, _outline, 0);
-        GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, _depth);
+        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment1, _picking, 0);
+        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment2, _mask, 0);
+        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment3, _outline, 0);
+        GL.NamedFramebufferRenderbuffer(Handle, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, _depth);
 
         CheckStatus();
         
@@ -96,7 +95,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             _maskShader.Use();
             _maskShader.SetUniform("picked", _id);
             _maskShader.SetUniform("pickingTexture", 0);
-            _picking.Bind(TextureUnit.Texture0);
+            _picking.Bind(0);
         });
         
         // use that mask to create an outline
@@ -109,7 +108,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             _outlineShader.SetUniform("outlineThickness", 2);
             _outlineShader.SetUniform("texelSize", new Vector2(1.0f / Width, 1.0f / Height));
             _outlineShader.SetUniform("selectionMask", 0);
-            _mask.Bind(TextureUnit.Texture0);
+            _mask.Bind(0);
         });
         
         // use that outline to highlight the selected object with a color
@@ -121,7 +120,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             _shader.Use();
             _shader.SetUniform("outlineColor", new Vector3(1.0f, 0.6f, 0.2f));
             _shader.SetUniform("outlineMask", 0);
-            _outline.Bind(TextureUnit.Texture0);
+            _outline.Bind(0);
         });
     }
     

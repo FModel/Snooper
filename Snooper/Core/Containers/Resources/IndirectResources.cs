@@ -9,14 +9,15 @@ namespace Snooper.Core.Containers.Resources;
 
 public struct AllocationCounts
 {
-    public uint Components;
-    public uint UniqueComponents;
-    public uint Instances;
-    public uint Draws;
-    public uint Materials;
-    public uint Indices;
-    public uint Vertices;
-    public uint ColoredVertices;
+    public uint Components; // total number of components in the system
+    public uint UniqueComponents; // number of unique components (based on descriptor guid)
+    public uint Sections; // total number of sections across all LODs of all components
+    public uint Instances; // total number of instances across all components
+    public uint Draws; // we have one draw call per section in LOD0 per component
+    public uint Materials; // total number of materials across all components
+    public uint Indices; // total number of indices across all LODs of all unique components
+    public uint Vertices; // total number of vertices across all LODs of all unique components
+    public uint ColoredVertices; // total number of vertices with color data across all LODs of all unique components
 }
 
 public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type) : IMemoryDetailsProvider, IDisposable
@@ -39,23 +40,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         _materialData.Generate();
     }
     
-    public void SetVertexLayout(Action<int> setter) => _geometry.SetVertexLayout(setter);
+    public void SetVertexLayout(Action<uint> setter) => _geometry.SetVertexLayout(setter);
     
     public void Allocate(AllocationCounts counts)
     {
         _geometry.Allocate(counts);
-
-        _commands.Current.Bind();
-        _commands.Current.Allocate(new DrawElementsIndirectCommand[counts.Draws]);
-        _commands.Current.Unbind();
-
-        _instanceData.Bind();
-        _instanceData.Allocate(new TInstanceData[counts.Instances]);
-        _instanceData.Unbind();
-
-        _materialData.Bind();
-        _materialData.Allocate(new TPerMaterialData[counts.Materials]);
-        _materialData.Unbind();
+        _commands.Current.Allocate(counts.Draws);
+        _instanceData.Allocate(counts.Instances);
+        _materialData.Allocate(counts.Materials);
         
         Log.Debug("Allocated IndirectResources<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
             typeof(TVertex).Name,
@@ -74,22 +66,15 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
     public ResourcesMetadata Add(uint pickingId, PrimitiveDescriptor<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
     {
         var handle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
-        
-        _instanceData.Bind();
         var baseInstance = (uint)_instanceData.AddRange(instanceData);
-        _instanceData.Unbind();
-        
-        _materialData.Bind();
         var baseMaterial = (uint)_materialData.AddRange(new TPerMaterialData[materials.Length]);
         for (var i = 0u; i < materials.Length; i++)
         {
             materials[i].MaterialOffset = baseMaterial + i;
         }
-        _materialData.Unbind();
 
-        _commands.Current.Bind();
-        var instanceCount = (uint)instanceData.Length;
         const uint currentLod = 0u;
+        var instanceCount = (uint)instanceData.Length;
         var drawIds = new int[primitive.Lods[currentLod].Sections.Length];
         for (var i = 0u; i < drawIds.Length; i++)
         {
@@ -110,7 +95,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
                 SectionId = i,
             });
         }
-        _commands.Current.Unbind();
         
         return new ResourcesMetadata(handle, (int)baseInstance, (int)baseMaterial, drawIds);
     }
@@ -162,23 +146,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         
         // TODO: properly do this
         
-        // Remove all draw commands for each section
-        _commands.Current.Bind();
         foreach (var drawId in metadata.DrawIds)
         {
             _commands.Current.Remove(drawId);
         }
-        _commands.Current.Unbind();
         
-        // Remove instance data
-        _instanceData.Bind();
         _instanceData.Remove(metadata.BaseInstance);
-        _instanceData.Unbind();
-
-        // Remove material data for all materials
-        _materialData.Bind();
         _materialData.Remove(metadata.BaseMaterial);
-        _materialData.Unbind();
     }
 
     public void Cull(CameraComponent camera) => _geometry.Cull(camera, _instanceData, _commands.Current);
@@ -237,7 +211,4 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         yield return new MemoryDetail("Instance Data", _instanceData);
         yield return new MemoryDetail("Material Data", _materialData);
     }
-
-    public GetPName Name => throw new NotImplementedException();
-    public int PreviousHandle => throw new NotImplementedException();
 }

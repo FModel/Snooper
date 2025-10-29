@@ -1,4 +1,5 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Misc;
+using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
@@ -49,34 +50,22 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
         _culling.Generate();
     }
 
-    public void SetVertexLayout(Action<int> setter)
+    public void SetVertexLayout(Action<uint> setter)
     {
-        _vao.Bind();
+        GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
+        GL.VertexArrayElementBuffer(_vao, _ebo);
         
-        _vbo.Bind();
-        setter.Invoke(_vbo.Stride);
-        _vbo.Unbind();
-
-        _vao.Unbind();
+        setter.Invoke(_vao);
     }
     
     public void Allocate(AllocationCounts counts)
     {
-        _ebo.Bind();
-        _ebo.Allocate(new uint[counts.Indices]);
-        _ebo.Unbind();
-        
-        _vbo.Bind();
-        _vbo.Allocate(new TVertex[counts.Vertices]);
-        _vbo.Unbind();
-
+        _ebo.Allocate(counts.Indices);
+        _vbo.Allocate(counts.Vertices);
         if (counts.ColoredVertices > 0)
         {
-            _colors.Bind();
-            _colors.Allocate(new int[counts.ColoredVertices]);
-            _colors.Unbind();
+            _colors.Allocate(counts.ColoredVertices);
         }
-
         _culling.Allocate(counts);
     }
     
@@ -93,9 +82,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
 
         unsafe (uint, uint, uint, PrimitiveOffsets) CreateOffsets()
         {
-            _ebo.Bind();
-            _vbo.Bind();
-            
             var maxLod = 0u;
             var o = new PrimitiveOffsets(bounds);
             for (var i = 0; i < lods.Length && i < Settings.MaxNumberOfLods; i++)
@@ -115,18 +101,13 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
                 
                 if (primitive.Colors != null)
                 {
-                    _colors.Bind();
                     o.LOD_BaseColor[i] = (uint)_colors.AddRange(primitive.Colors);
-                    _colors.Unbind();
                 }
 
                 maxLod++;
             }
             o.MaxLOD = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
 
-            _vbo.Unbind();
-            _ebo.Unbind();
-            
             return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], o);
         }
     }
@@ -142,9 +123,11 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
         
         _vao.Bind();
         _ebo.Bind();
+        _vbo.Bind();
         
         mdi.Invoke();
         
+        _vbo.Unbind();
         _ebo.Unbind();
         _vao.Unbind();
     }

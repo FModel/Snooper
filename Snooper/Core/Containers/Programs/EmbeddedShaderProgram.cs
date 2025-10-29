@@ -14,7 +14,7 @@ public class EmbeddedShaderProgram(string vertex, string fragment) : ShaderProgr
         
     }
 
-    protected override int CompileShader(ShaderType type, string file)
+    protected override uint CompileShader(ShaderType type, string file)
     {
         var content = GetFileContent(file);
         ResolveIncludes(ref content);

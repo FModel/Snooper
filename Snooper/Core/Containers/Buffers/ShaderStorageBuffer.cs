@@ -9,7 +9,7 @@ public sealed class ShaderStorageBuffer<T>(int capacity, BufferUsageHint usageHi
     
     private readonly BufferUpdateBatcher<T> _batcher = new();
 
-    public void Bind(int index)
+    public void Bind(uint index)
     {
         GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, Handle);
     }

@@ -77,10 +77,11 @@ public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(int in
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
-    protected override Action<int> VertexLayout { get; } = stride =>
+    protected override Action<uint> VertexLayout { get; } = vao =>
     {
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, 0);
-        GL.EnableVertexAttribArray(0);
+        GL.VertexArrayAttribFormat(vao, 0, 3, VertexAttribType.Float, false, 0);
+        GL.EnableVertexArrayAttrib(vao, 0);
+        GL.VertexArrayAttribBinding(vao, 0, 0);
     };
 }
 

@@ -1,17 +1,17 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Texture;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
+using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Textures;
 
 public class Texture2D(int width, int height,
-    PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
+    SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
     string? name = null)
     : Texture(width, height, TextureTarget.Texture2D, internalFormat, format, type, name)
 {
-    public override GetPName PName => GetPName.TextureBinding2D;
-
     private UTexture? _owner;
 
     public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, name: texture.Name)
@@ -33,25 +33,27 @@ public class Texture2D(int width, int height,
         if (mip?.BulkData == null)
             throw new InvalidOperationException("Mip data is null.");
 
-        Resize(_owner.Format, mip, _owner.SRGB);
-        Swizzle();
+        FormatInfo = _owner.Format.GetTextureFormat(_owner.SRGB);
+
+        var terrain = _owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap;
+        Resize(mip.SizeX, mip.SizeY, mip.BulkData.Data, !terrain);
+        Log.Debug("Texture {Guid} of format {Format} uploaded to GPU with size {Width}x{Height}.", Guid, _owner.Format, Width, Height);
         
-        if (_owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap)
+        if (terrain)
         {
-            GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-            GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-            GL.TexParameter(Target, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-            GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+            GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+            GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+            GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+            GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
         }
         else
         {
-            GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
-            GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-            GL.TexParameter(Target, TextureParameterName.TextureBaseLevel, 0);
-            GL.TexParameter(Target, TextureParameterName.TextureMaxLevel, 8);
-            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+            Swizzle();
+            GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
+            GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+            GL.GenerateTextureMipmap(Handle);
         }
-
+        
         OnTextureReadyForBindless();
         _owner = null;
     }

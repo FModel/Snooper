@@ -24,7 +24,8 @@ public class GridSystem() : PrimitiveSystem<GridComponent>(1)
         shader.SetUniform("uNear", camera.NearPlaneDistance);
         shader.SetUniform("uFar", camera.FarPlaneDistance);
         shader.SetUniform("uIsOpaque", IsOpaque);
-        _texture?.Bind(TextureUnit.Texture0);
+
+        _texture?.Bind(0);
         shader.SetUniform("uTexture", 0);
         
         if (!IsOpaque) GL.DepthMask(false);
@@ -34,7 +35,6 @@ public class GridSystem() : PrimitiveSystem<GridComponent>(1)
     {
         base.PostRender(camera, shader);
         
-        _texture?.Unbind();
         if (!IsOpaque) GL.DepthMask(true);
     }
 
@@ -44,17 +44,14 @@ public class GridSystem() : PrimitiveSystem<GridComponent>(1)
 
         if (component is OpaqueGridComponent && _texture is null)
         {
-            _texture = new EmbeddedTexture2D("Rendering.Resources.grid.png");
+            _texture = new EmbeddedTexture2D("Rendering.Resources.grid.png", mipmapped: true);
             _texture.Generate();
-            GL.TexParameter(_texture.Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
-            GL.TexParameter(_texture.Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-            GL.TexParameter(_texture.Target, TextureParameterName.TextureBaseLevel, 0);
-            GL.TexParameter(_texture.Target, TextureParameterName.TextureMaxLevel, 8);
-            GL.TexParameter(_texture.Target, TextureParameterName.TextureWrapR, (int) TextureWrapMode.Repeat);
-            GL.TexParameter(_texture.Target, TextureParameterName.TextureWrapS, (int) TextureWrapMode.Repeat);
-            GL.TexParameter(_texture.Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.Repeat);
-            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
-            _texture.Unbind();
+            GL.TextureParameter(_texture, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
+            GL.TextureParameter(_texture, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+            GL.TextureParameter(_texture, TextureParameterName.TextureWrapR, (int) TextureWrapMode.Repeat);
+            GL.TextureParameter(_texture, TextureParameterName.TextureWrapS, (int) TextureWrapMode.Repeat);
+            GL.TextureParameter(_texture, TextureParameterName.TextureWrapT, (int) TextureWrapMode.Repeat);
+            GL.GenerateTextureMipmap(_texture);
         }
     }
     

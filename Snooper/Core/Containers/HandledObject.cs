@@ -2,7 +2,7 @@
 
 public abstract class HandledObject : IMemorySizeProvider, IDisposable
 {
-    protected int Handle { get; set; }
+    protected uint Handle { get; set; }
 
     public abstract void Generate();
     public abstract void Dispose();
@@ -10,5 +10,5 @@ public abstract class HandledObject : IMemorySizeProvider, IDisposable
     public abstract long Allocated { get; }
     public abstract long Used { get; }
 
-    public static implicit operator int(HandledObject @object) => @object.Handle;
+    public static implicit operator uint(HandledObject @object) => @object.Handle;
 }

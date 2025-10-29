@@ -10,9 +10,10 @@ public class BillboardSystem() : PrimitiveSystem<Vector2, BillboardComponent, Pe
 {
     public override uint Order => 29;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("billboard");
-    protected override Action<int> VertexLayout { get; } = stride =>
+    protected override Action<uint> VertexLayout { get; } = vao =>
     {
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
-        GL.EnableVertexAttribArray(0);
+        GL.VertexArrayAttribFormat(vao, 0, 2, VertexAttribType.Float, false, 0);
+        GL.EnableVertexArrayAttrib(vao, 0);
+        GL.VertexArrayAttribBinding(vao, 0, 0);
     };
 }

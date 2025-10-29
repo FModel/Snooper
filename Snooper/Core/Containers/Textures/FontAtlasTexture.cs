@@ -33,7 +33,7 @@ public class FontAtlasTexture : Texture2D
         public override string ToString() => $"UV: ({U0},{V0})-({U1},{V1}), Size: ({Width}x{Height}), CellSize: ({CellWidth}x{CellHeight}), Offset: ({OffsetX},{OffsetY}), Advance: {AdvanceX}";
     }
 
-    private FontAtlasTexture(string fontFamily = "Segoe UI", float fontSize = 48, bool bold = true) : base(1, 1, PixelInternalFormat.Rgba8, PixelFormat.Rgba, PixelType.UnsignedByte, $"FontAtlas_{fontFamily}_{fontSize}")
+    private FontAtlasTexture(string fontFamily = "Segoe UI", float fontSize = 48, bool bold = true) : base(1, 1, name: $"FontAtlas_{fontFamily}_{fontSize}")
     {
         const string chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
         
@@ -133,12 +133,10 @@ public class FontAtlasTexture : Texture2D
         base.Generate();
         Resize(_atlasWidth, _atlasHeight, bitmap.GetPixelSpan().ToArray());
         
-        GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.LinearMipmapLinear);
-        GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
-        GL.TexParameter(Target, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
-        GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
-        GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
-        
-        Unbind();
+        GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.LinearMipmapLinear);
+        GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+        GL.GenerateTextureMipmap(Handle);
     }
 }

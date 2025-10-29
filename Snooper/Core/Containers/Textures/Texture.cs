@@ -11,21 +11,18 @@ namespace Snooper.Core.Containers.Textures;
 
 public abstract class Texture(
     int width, int height, TextureTarget target,
-    PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
+    SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
-    string? name = null) : HandledObject, IBind, IResizable, IMemorySizeProvider, IControllable
+    string? name = null) : HandledObject, IMemorySizeProvider, IControllable
 {
-    public abstract GetPName PName { get; }
-
     public string Name { get; } = name ?? "Unnamed";
     public FGuid Guid { get; protected init; }
     public TextureTarget Target { get; } = target;
     
-    public int PreviousHandle { get; private set; }
-    public int Width { get; private set; } = width;
-    public int Height { get; private set; } = height;
-    public ITextureFormatInfo FormatInfo { get; private set; } = new TextureFormatInfo(internalFormat, format, type);
+    public int Width { get; protected set; } = width;
+    public int Height { get; protected set; } = height;
+    public ITextureFormatInfo FormatInfo { get; protected set; } = new TextureFormatInfo(internalFormat, format, type);
 
     public int[] SwizzleMask { get; internal set; } =
     [
@@ -37,57 +34,49 @@ public abstract class Texture(
 
     public override void Generate()
     {
-        Handle = GL.GenTexture();
+        GL.CreateTextures(Target, 1, out uint handle);
+        Handle = handle;
     }
 
-    public void Bind(TextureUnit unit)
+    public void Bind(uint unit)
     {
-        GL.ActiveTexture(unit);
-        Bind();
+        GL.BindTextureUnit(unit, Handle);
     }
 
-
-    public void Bind()
+    protected void Resize<T8>(int newWidth, int newHeight, T8[] pixels, bool mipmapped = false) where T8 : unmanaged
     {
-        PreviousHandle = GL.GetInteger(PName);
-        GL.BindTexture(Target, Handle);
-    }
-
-    public void Unbind()
-    {
-        GL.BindTexture(Target, PreviousHandle);
-    }
-
-    protected void Resize(EPixelFormat pixel, FTexture2DMipMap mip, bool srgb)
-    {
-        FormatInfo = pixel.GetTextureFormat(srgb);
-        Resize(mip.SizeX, mip.SizeY, mip.BulkData.Data);
-        Log.Debug("Texture {Guid} of format {Format} uploaded to GPU with size {Width}x{Height}.", Guid, pixel, Width, Height);
-    }
-    public void Resize(int newWidth, int newHeight) => Resize<nint>(newWidth, newHeight, []);
-    public void Resize<T8>(int newWidth, int newHeight, T8[] pixels) where T8 : unmanaged
-    {
+        if (Target != TextureTarget.Texture2D)
+            throw new NotSupportedException("Resizing the texture storage is only supported for Texture2D targets.");
+        
         Width = newWidth;
         Height = newHeight;
 
-        Bind();
-        switch (Target)
+        var mipCount = mipmapped ? (int)Math.Floor(Math.Log2(Math.Max(Width, Height))) + 1 : 1;
+        GL.TextureStorage2D(Handle, mipCount, FormatInfo.InternalFormat, Width, Height);
+
+        if (mipCount > 1)
         {
-            case TextureTarget.Texture2D when FormatInfo is TextureFormatInfo info:
-                GL.TexImage2D(Target, 0, info.InternalFormat, newWidth, newHeight, 0, info.Format, info.Type, pixels);
+            GL.TextureParameter(Handle, TextureParameterName.TextureBaseLevel, 0);
+            GL.TextureParameter(Handle, TextureParameterName.TextureMaxLevel, mipCount - 1);
+        }
+                
+        if (pixels.Length == 0) return;
+        switch (FormatInfo)
+        {
+            case TextureFormatInfo info:
+                GL.TextureSubImage2D(Handle, 0, 0, 0, Width, Height, info.Format, info.Type, pixels);
                 break;
-            case TextureTarget.Texture2D when FormatInfo is CompressedTextureFormatInfo compressed:
-                GL.CompressedTexImage2D(Target, 0, compressed.InternalFormat, Width, Height, 0, pixels.Length, pixels);
+            case CompressedTextureFormatInfo compressed:
+                GL.CompressedTextureSubImage2D(Handle, 0, 0, 0, Width, Height, (PixelFormat)compressed.InternalFormat, pixels.Length, pixels);
                 break;
-            case TextureTarget.Texture2DMultisample when FormatInfo is TextureFormatInfo info:
-                GL.TexImage2DMultisample(TextureTargetMultisample.Texture2DMultisample, Settings.NumberOfSamples, info.InternalFormat, newWidth, newHeight, true);
-                break;
+            default:
+                throw new NotSupportedException("Unknown texture format info.");
         }
     }
     
     public void Swizzle()
     {
-        GL.TexParameter(Target, TextureParameterName.TextureSwizzleRgba, SwizzleMask);
+        GL.TextureParameter(Handle, TextureParameterName.TextureSwizzleRgba, SwizzleMask);
     }
     
     public event Action? TextureReadyForBindless;
@@ -96,7 +85,7 @@ public abstract class Texture(
         TextureReadyForBindless?.Invoke();
     }
 
-    public IntPtr GetPointer() => Handle;
+    public IntPtr GetPointer() => (IntPtr)Handle;
     
     public void DrawControls()
     {

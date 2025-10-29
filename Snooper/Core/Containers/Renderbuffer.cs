@@ -2,7 +2,7 @@
 
 namespace Snooper.Core.Containers;
 
-public class Renderbuffer(int width, int height, RenderbufferStorage storage, bool multisampled) : HandledObject, IBind, IResizable
+public class Renderbuffer(int width, int height, RenderbufferStorage storage, bool multisampled) : HandledObject, IResizable
 {
     private int _width = width;
     private int _height = height;
@@ -26,23 +26,10 @@ public class Renderbuffer(int width, int height, RenderbufferStorage storage, bo
         _ => 4
     };
 
-    public GetPName PName => GetPName.RenderbufferBinding;
-    public int PreviousHandle { get; private set; }
-
     public override void Generate()
     {
-        Handle = GL.GenRenderbuffer();
-    }
-
-    public void Bind()
-    {
-        PreviousHandle = GL.GetInteger(PName);
-        GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, Handle);
-    }
-
-    public void Unbind()
-    {
-        GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, PreviousHandle);
+        GL.CreateRenderbuffers(1, out uint handle);
+        Handle = handle;
     }
 
     public void Resize(int newWidth, int newHeight)
@@ -50,15 +37,13 @@ public class Renderbuffer(int width, int height, RenderbufferStorage storage, bo
         _width = newWidth;
         _height = newHeight;
 
-        Bind();
-
         if (multisampled)
         {
-            GL.RenderbufferStorageMultisample(RenderbufferTarget.Renderbuffer, Settings.NumberOfSamples, storage, _width, _height);
+            GL.NamedRenderbufferStorageMultisample(Handle, Settings.NumberOfSamples, storage, _width, _height);
         }
         else
         {
-            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, storage, _width, _height);
+            GL.NamedRenderbufferStorage(Handle, storage, _width, _height);
         }
     }
 

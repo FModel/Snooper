@@ -6,8 +6,8 @@ using SixLabors.ImageSharp.PixelFormats;
 namespace Snooper.Core.Containers.Textures;
 
 public class EmbeddedTexture2D(string file,
-    int width = 24, int height = 24,
-    PixelInternalFormat internalFormat = PixelInternalFormat.Rgba8,
+    int width = 24, int height = 24, bool mipmapped = false,
+    SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte) : Texture2D(width, height, internalFormat, format, type, Path.GetFileName(file))
 {
@@ -20,11 +20,11 @@ public class EmbeddedTexture2D(string file,
 
         ProcessPixels(info);
 
-        GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-        GL.TexParameter(Target, TextureParameterName.TextureWrapR, (int) TextureWrapMode.ClampToEdge);
-        GL.TexParameter(Target, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-        GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+        GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapR, (int) TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
     }
 
     private void ProcessPixels(TextureFormatInfo info)
@@ -35,13 +35,13 @@ public class EmbeddedTexture2D(string file,
             throw new FileNotFoundException($"Embedded texture file '{file}' not found in assembly '{assemblyName}'.");
 
         using var img = Image.Load<Rgba32>(stream);
-        Resize(img.Width, img.Height);
+        Resize<nint>(img.Width, img.Height, [], mipmapped);
 
         img.ProcessPixelRows(accessor =>
         {
             for (var y = 0; y < accessor.Height; y++)
             {
-                GL.TexSubImage2D(Target, 0, 0, y, accessor.Width, 1, info.Format, info.Type, accessor.GetRowSpan(y).ToArray());
+                GL.TextureSubImage2D(Handle, 0, 0, y, accessor.Width, 1, info.Format, info.Type, accessor.GetRowSpan(y).ToArray());
             }
         });
     }

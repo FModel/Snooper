@@ -18,7 +18,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
     
-    protected abstract Action<int> VertexLayout { get; }
+    protected abstract Action<uint> VertexLayout { get; }
 
     protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; }
     public TextureManager TextureManager { get; }
@@ -86,6 +86,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         _counts.Components++;
         _counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
         _counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
+        _counts.Sections += (uint)component.Descriptor.Lods.Sum(x => x.Sections.Length);
         _counts.Materials += (uint)component.Materials.Length;
         if (_guids.Add(component.Descriptor.Guid))
         {

@@ -8,14 +8,14 @@ namespace Snooper.Rendering.Containers.Framebuffers;
 
 public class FullQuadFramebuffer(
     int originalWidth, int originalHeight,
-    PixelInternalFormat internalFormat = PixelInternalFormat.Rgba,
+    SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte) : Framebuffer
 {
     public override int Width => _color.Width;
     public override int Height => _color.Height;
 
-    private readonly Texture2D _color = new(originalWidth, originalHeight, internalFormat, format, type);
+    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, internalFormat, format, type);
     private readonly VertexArray _vao = new();
     private readonly ArrayBuffer<Vector4> _vbo = new(4);
     private readonly ElementArrayBuffer<uint> _ebo = new(6);
@@ -24,53 +24,51 @@ public class FullQuadFramebuffer(
     {
         _color.Generate();
         _color.Resize(originalWidth, originalHeight);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+        GL.TextureParameter(_color, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+        GL.TextureParameter(_color, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
 
         base.Generate();
-        base.Bind();
-        GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, _color, 0);
+        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment0, _color, 0);
 
         CheckStatus();
 
         _vao.Generate();
-        _vao.Bind();
-
         _vbo.Generate();
-        _vbo.Bind();
-        _vbo.AddRange([
+        _ebo.Generate();
+
+        _vbo.AddRange(
+        [
             new Vector4(1.0f, -1.0f, 1.0f, 0.0f),
             new Vector4(-1.0f, -1.0f, 0.0f, 0.0f),
             new Vector4(-1.0f, 1.0f, 0.0f, 1.0f),
             new Vector4(1.0f, 1.0f, 1.0f, 1.0f)
         ]);
-
-        _ebo.Generate();
-        _ebo.Bind();
         _ebo.AddRange([0, 1, 2, 3, 0, 2]);
 
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, _vbo.Stride, 0);
-        GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, _vbo.Stride, 8);
-        GL.EnableVertexAttribArray(0);
-        GL.EnableVertexAttribArray(1);
-
-        _vao.Unbind();
-        _vbo.Unbind();
-        _ebo.Unbind();
+        GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
+        GL.VertexArrayElementBuffer(_vao, _ebo);
+        GL.VertexArrayAttribFormat(_vao, 0, 2, VertexAttribType.Float, false, 0);
+        GL.VertexArrayAttribFormat(_vao, 1, 2, VertexAttribType.Float, false, 8);
+        GL.EnableVertexArrayAttrib(_vao, 0);
+        GL.EnableVertexArrayAttrib(_vao, 1);
+        GL.VertexArrayAttribBinding(_vao, 0, 0);
+        GL.VertexArrayAttribBinding(_vao, 1, 0);
     }
 
-    public override void Bind(TextureUnit unit) => _color.Bind(unit);
+    public override void Bind(uint unit) => _color.Bind(unit);
 
     public void Render(Action? beginDraw = null)
     {
         _vao.Bind();
         _ebo.Bind();
+        _vbo.Bind();
 
         beginDraw?.Invoke();
         GL.DrawElements(PrimitiveType.Triangles, _ebo.Count, DrawElementsType.UnsignedInt, 0);
 
-        // _vao.Unbind();
-        // _ebo.Unbind();
+        _vbo.Unbind();
+        _ebo.Unbind();
+        _vao.Unbind();
     }
 
     public override void Resize(int newWidth, int newHeight)

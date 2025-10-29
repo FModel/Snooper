@@ -16,12 +16,14 @@ public class TextRenderSystem() : PrimitiveSystem<Vector4, TextRenderComponent, 
 {
     public override uint Order => 51;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("text");
-    protected override Action<int> VertexLayout { get; } = stride =>
+    protected override Action<uint> VertexLayout { get; } = vao =>
     {
-        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, stride, 0);
-        GL.EnableVertexAttribArray(0);
-        GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, stride, 8);
-        GL.EnableVertexAttribArray(1);
+        GL.VertexArrayAttribFormat(vao, 0, 2, VertexAttribType.Float, false, 0);
+        GL.VertexArrayAttribFormat(vao, 1, 2, VertexAttribType.Float, false, 8);
+        GL.EnableVertexArrayAttrib(vao, 0);
+        GL.EnableVertexArrayAttrib(vao, 1);
+        GL.VertexArrayAttribBinding(vao, 0, 0);
+        GL.VertexArrayAttribBinding(vao, 1, 0);
     };
 
     public override void Load()
@@ -36,7 +38,7 @@ public class TextRenderSystem() : PrimitiveSystem<Vector4, TextRenderComponent, 
         base.PreRender(camera, shader);
         
         var fontAtlas = FontAtlasTexture.Instance;
-        fontAtlas.Bind(TextureUnit.Texture0);
+        fontAtlas.Bind(0);
         shader.SetUniform("uTextTexture", 0);
     }
     

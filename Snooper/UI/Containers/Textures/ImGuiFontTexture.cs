@@ -4,39 +4,32 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.UI.Containers.Textures;
 
-public class ImGuiFontTexture() : Texture2D(0, 0, PixelInternalFormat.Rgb, PixelFormat.Rgb)
+public class ImGuiFontTexture() : Texture2D(0, 0, SizedInternalFormat.Rgba32f, PixelFormat.Rgba, PixelType.UnsignedByte)
 {
     public override void Generate()
     {
-        // save previous state
-        var pActiveTexture = GL.GetInteger(GetPName.ActiveTexture);
-        var pTexture2D = GL.GetInteger(GetPName.TextureBinding2D);
+        var io = ImGui.GetIO();
+        io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out var width, out var height);
 
-        {
-            var io = ImGui.GetIO();
-            io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out _);
-            var mips = (int) Math.Floor(Math.Log(Math.Max(width, height), 2));
+        base.Generate();
+        if (FormatInfo is not TextureFormatInfo info) return;
 
-            base.Generate();
-            Bind(TextureUnit.Texture0);
+        Width = width;
+        Height = height;
+        
+        var mipCount = (int)Math.Floor(Math.Log2(Math.Max(Width, Height))) + 1;
+        GL.TextureStorage2D(Handle, mipCount, info.InternalFormat, Width, Height);
+        GL.TextureSubImage2D(Handle, 0, 0, 0, Width, Height, info.Format, info.Type, pixels);
+        GL.GenerateTextureMipmap(Handle);
 
-            GL.TexStorage2D(TextureTarget2d.Texture2D, mips, SizedInternalFormat.Rgba8, width, height);
-            GL.TexSubImage2D(Target, 0, 0, 0, width, height, PixelFormat.Bgra, PixelType.UnsignedByte, pixels);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) TextureWrapMode.Repeat);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) TextureWrapMode.Repeat);
+        GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+        GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+        GL.TextureParameter(Handle, TextureParameterName.TextureBaseLevel, 0);
+        GL.TextureParameter(Handle, TextureParameterName.TextureMaxLevel, mipCount - 1);
 
-            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
-
-            GL.TexParameter(Target, TextureParameterName.TextureWrapS, (int) TextureWrapMode.Repeat);
-            GL.TexParameter(Target, TextureParameterName.TextureWrapT, (int) TextureWrapMode.Repeat);
-            GL.TexParameter(Target, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-            GL.TexParameter(Target, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-            GL.TexParameter(Target, TextureParameterName.TextureMaxLevel, mips - 1);
-
-            io.Fonts.SetTexID(Handle);
-            io.Fonts.ClearTexData();
-        }
-
-        // restore previous state
-        GL.BindTexture(TextureTarget.Texture2D, pTexture2D);
-        GL.ActiveTexture((TextureUnit) pActiveTexture);
+        io.Fonts.SetTexID(GetPointer());
+        io.Fonts.ClearTexData();
     }
 }

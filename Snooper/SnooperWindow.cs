@@ -114,6 +114,7 @@ public partial class SnooperWindow : GameWindow
 #if DEBUG
         GL.DebugMessageCallback(_debugMessageDelegate, IntPtr.Zero);
         GL.Enable(EnableCap.DebugOutput);
+        GL.Enable(EnableCap.DebugOutputSynchronous);
 #endif
 
         _interface.Load();

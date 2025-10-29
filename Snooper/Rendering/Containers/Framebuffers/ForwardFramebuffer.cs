@@ -18,15 +18,14 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : FullQua
         _depth.Resize(Width, Height);
         
         base.Generate();
-        base.Bind();
-        GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment1, TextureTarget.Texture2D, _picking, 0);
-        GL.DrawBuffers(2, [DrawBuffersEnum.ColorAttachment0, DrawBuffersEnum.ColorAttachment1]);
-        GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, _depth);
+        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment1, _picking, 0);
+        GL.NamedFramebufferDrawBuffers(Handle, 2, [DrawBuffersEnum.ColorAttachment0, DrawBuffersEnum.ColorAttachment1]);
+        GL.NamedFramebufferRenderbuffer(Handle, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, _depth);
 
         CheckStatus();
     }
 
-    public void BindPicking(TextureUnit unit) => _picking.Bind(unit);
+    public void BindPicking(uint unit) => _picking.Bind(unit);
 
     public override void Resize(int newWidth, int newHeight)
     {
