@@ -46,8 +46,8 @@ public class ImGuiController : IResizable
         Resize(width, height);
         _fontTexture = new ImGuiFontTexture();
         _vao = new VertexArray();
-        _ebo = new ElementArrayBuffer<ushort>(2250);
-        _vbo = new ArrayBuffer<ImDrawVert>(1500);
+        _ebo = new ElementArrayBuffer<ushort>();
+        _vbo = new ArrayBuffer<ImDrawVert>();
         _shader = new ShaderProgram(
 @"#version 460 core
 
@@ -87,8 +87,9 @@ void main()
         _ebo.Generate();
         _vbo.Generate();
         
-        _ebo.Allocate();
-        _vbo.Allocate();
+        // Initial size, will grow as needed
+        _ebo.Allocate(4500);
+        _vbo.Allocate(3000);
         
         GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
         GL.VertexArrayElementBuffer(_vao, _ebo);

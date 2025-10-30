@@ -6,7 +6,7 @@ using Snooper.Rendering.Components.Skybox;
 
 namespace Snooper.Rendering.Systems;
 
-public class SkyboxSystem() : PrimitiveSystem<CubeComponent>(1)
+public class SkyboxSystem : PrimitiveSystem<CubeComponent>
 {
     public override uint Order => 1;
     protected override bool AllowDerivation => true;

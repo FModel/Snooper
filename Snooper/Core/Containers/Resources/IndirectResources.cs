@@ -11,24 +11,24 @@ public struct AllocationCounts
 {
     public uint Components; // total number of components in the system
     public uint UniqueComponents; // number of unique components (based on descriptor guid)
-    public uint Sections; // total number of sections across all LODs of all components
     public uint Instances; // total number of instances across all components
     public uint Draws; // we have one draw call per section in LOD0 per component
     public uint Materials; // total number of materials across all components
+    public uint Sections; // total number of sections across all LODs of all unique components
     public uint Indices; // total number of indices across all LODs of all unique components
     public uint Vertices; // total number of vertices across all LODs of all unique components
     public uint ColoredVertices; // total number of vertices with color data across all LODs of all unique components
 }
 
-public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type) : IMemoryDetailsProvider, IDisposable
+public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(PrimitiveType type) : IMemoryDetailsProvider, IDisposable
     where TVertex : unmanaged
-    where TInstanceData : unmanaged, IPerInstanceData 
+    where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
-    private readonly GeometryPool<TVertex> _geometry = new(initialDrawCapacity);
-    private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer(initialDrawCapacity));
-    private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new(initialDrawCapacity);
-    private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new(initialDrawCapacity);
+    private readonly GeometryPool<TVertex> _geometry = new();
+    private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer());
+    private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new();
+    private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new();
     
     private readonly List<Action> _geometryUpdates = []; // TODO: remove this hack
     
@@ -63,40 +63,53 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
             counts.ColoredVertices);
     }
     
-    public ResourcesMetadata Add(uint pickingId, PrimitiveDescriptor<TVertex> primitive, MaterialSection[] materials, TInstanceData[] instanceData)
+    public ResourcesMetadata Add(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
-        var handle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
-        var baseInstance = (uint)_instanceData.AddRange(instanceData);
-        var baseMaterial = (uint)_materialData.AddRange(new TPerMaterialData[materials.Length]);
-        for (var i = 0u; i < materials.Length; i++)
+        if (component.Materials.Length == 0)
+            throw new InvalidOperationException("Primitive component must have at least one material assigned before being added to IndirectResources.");
+        
+        var primitive = component.Descriptor;
+        var instances = component.GetPerInstanceData();
+        
+        var geometryHandle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
+        var instanceAllocation = _instanceData.AddRange(instances);
+        foreach (var material in component.Materials)
         {
-            materials[i].MaterialOffset = baseMaterial + i;
+            material.Allocation = _materialData.Add(new TPerMaterialData());
+        }
+
+        var instanceCount = (uint)instances.Length;
+        var baseMaterial = 0u;
+        if (component.Materials[0].Allocation is { } allocation)
+        {
+            baseMaterial = (uint)allocation.StartIndex;
         }
 
         const uint currentLod = 0u;
-        var instanceCount = (uint)instanceData.Length;
-        var drawIds = new int[primitive.Lods[currentLod].Sections.Length];
-        for (var i = 0u; i < drawIds.Length; i++)
+        var drawAllocations = new BufferAllocation[primitive.Lods[currentLod].Sections.Length];
+        for (var i = 0u; i < drawAllocations.Length; i++)
         {
-            drawIds[i] = _commands.Current.Add(new DrawElementsIndirectCommand
+            var section = primitive.Lods[currentLod].Sections[i];
+            drawAllocations[i] = _commands.Current.Add(new DrawElementsIndirectCommand
             {
-                IndexCount = primitive.Lods[currentLod].Sections[i].IndexCount,
+                IndexCount = section.IndexCount,
                 InstanceCount = instanceCount,
-                FirstIndex = handle.FirstIndex + primitive.Lods[currentLod].Sections[i].FirstIndex,
-                BaseVertex = handle.BaseVertex,
-                BaseInstance = baseInstance,
-                BaseGeometry = handle.BaseGeometry,
-                BaseColor = handle.BaseColor,
+                FirstIndex = geometryHandle.FirstIndex + section.FirstIndex,
+                BaseVertex = geometryHandle.BaseVertex,
+                BaseInstance = (uint)instanceAllocation.StartIndex,
+                BaseGeometry = (uint)geometryHandle.CullingAllocation.StartIndex,
+                BaseColor = geometryHandle.BaseColor,
                 BaseMaterial = baseMaterial,
-                MaterialIndex = primitive.Lods[currentLod].Sections[i].MaterialIndex,
-                PickingId = pickingId,
+                MaterialIndex = section.MaterialIndex,
+                PickingId = component.Id,
                 OriginalInstanceCount = instanceCount,
-                OriginalBaseInstance = baseInstance,
+                OriginalBaseInstance = (uint)instanceAllocation.StartIndex,
                 SectionId = i,
             });
         }
         
-        return new ResourcesMetadata(handle, (int)baseInstance, (int)baseMaterial, drawIds);
+        component.MarkClean();
+        return new ResourcesMetadata(geometryHandle, instanceAllocation, component.Materials[0].Allocation!.Value, drawAllocations);
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
@@ -107,24 +120,24 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         {
             _geometryUpdates.Add(() =>
             {
-                _geometry.UpdateOverrideLod((int)metadata.GeometryHandle.BaseGeometry, metadata.GeometryHandle.OverrideLod);
+                _geometry.UpdateOverrideLod(metadata.GeometryHandle);
                 metadata.GeometryHandle.MarkClean();
             });
         }
         
         if (component.IsDirty)
         {
-            _instanceData.QueueUpdate(metadata.BaseInstance, component.GetPerInstanceData());
+            _instanceData.QueueUpdate(metadata.InstanceAllocation, component.GetPerInstanceData());
             component.MarkClean();
         }
     }
     
-    public void Update(int offset, TPerMaterialData materialData)
+    public void Update(BufferAllocation allocation, TPerMaterialData materialData)
     {
         if (!materialData.IsReady) 
             throw new InvalidOperationException("Material data is not ready.");
 
-        _materialData.QueueUpdate(offset, materialData);
+        _materialData.QueueUpdate(allocation, materialData);
     }
     
     public void FlushUpdates()
@@ -140,19 +153,20 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(int ini
         _materialData.FlushUpdates();
     }
     
-    public void Remove(ResourcesMetadata metadata)
+    public void Remove(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
-        Log.Debug("Removing primitive with Geometry {GeometryId} and {SectionCount} sections.", metadata.GeometryHandle.BaseGeometry, metadata.DrawIds.Length);
+        if (component.Metadata is not { } metadata) return;
         
-        // TODO: properly do this
+        Log.Debug("Removing component {ComponentId}, freeing {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials.",
+            component.Id,
+            metadata.DrawAllocations.Length,
+            metadata.InstanceAllocation.Length,
+            metadata.MaterialAllocation.Length);
         
-        foreach (var drawId in metadata.DrawIds)
-        {
-            _commands.Current.Remove(drawId);
-        }
-        
-        _instanceData.Remove(metadata.BaseInstance);
-        _materialData.Remove(metadata.BaseMaterial);
+        _geometry.Remove(metadata.GeometryHandle);
+        _commands.Current.RemoveRange(metadata.DrawAllocations);
+        _instanceData.Remove(metadata.InstanceAllocation);
+        _materialData.Remove(metadata.MaterialAllocation);
     }
 
     public void Cull(CameraComponent camera) => _geometry.Cull(camera, _instanceData, _commands.Current);

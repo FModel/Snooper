@@ -3,7 +3,7 @@ using Snooper.Core.Containers.Resources;
 
 namespace Snooper.Core.Containers.Buffers;
 
-public sealed class ShaderStorageBuffer<T>(int capacity, BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<T>(capacity, BufferTarget.ShaderStorageBuffer, usageHint) where T : unmanaged
+public sealed class ShaderStorageBuffer<T>(BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<T>(BufferTarget.ShaderStorageBuffer, usageHint) where T : unmanaged
 {
     public override GetPName PName => GetPName.ShaderStorageBufferBinding;
     
@@ -14,8 +14,8 @@ public sealed class ShaderStorageBuffer<T>(int capacity, BufferUsageHint usageHi
         GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, Handle);
     }
     
-    public void QueueUpdate(int offset, T data) => _batcher.Add(offset, data);
-    public void QueueUpdate(int offset, T[] data) => _batcher.Add(offset, data);
+    public void QueueUpdate(BufferAllocation allocation, T data) => _batcher.Add(allocation, data);
+    public void QueueUpdate(BufferAllocation allocation, T[] data) => _batcher.Add(allocation, data);
     
     public void FlushUpdates() => _batcher.Flush(this);
     

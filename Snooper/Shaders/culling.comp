@@ -46,22 +46,20 @@ uniform vec3 uCameraPosition;
 
 bool isVisible(vec3 center, vec3 extents)
 {
-    bool isInside = true;
     for (int i = 0; i < 6; ++i)
     {
         vec4 plane = uFrustumPlanes[i];
         vec3 normal = plane.xyz;
         float d = plane.w;
-        
+
         float r = dot(abs(normal), extents);
         float s = dot(normal, center) + d;
         if (s < -r)
         {
-            isInside = false;
-            break;
+            return false;
         }
     }
-    return isInside;
+    return true;
 }
 
 bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)

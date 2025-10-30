@@ -8,8 +8,8 @@ namespace Snooper.Core.Containers.Resources;
 
 public class CullingResources : IMemoryDetailsProvider, IDisposable
 {
-    private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new(50);
-    private readonly ShaderStorageBuffer<SectionOffsets> _sections = new(100);
+    private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new();
+    private readonly ShaderStorageBuffer<SectionOffsets> _sections = new();
     private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
     {
         Compute = "culling.comp"
@@ -30,7 +30,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _sections.Allocate(counts.Sections);
     }
     
-    public int Add(SectionDescriptor[] sections)
+    public BufferAllocation Add(SectionDescriptor[] sections)
     {
         var offsets = new SectionOffsets[sections.Length];
         for (var i = 0; i < sections.Length; i++)
@@ -41,11 +41,11 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         return _sections.AddRange(offsets);
     }
 
-    public int Add(PrimitiveOffsets offsets) => _primitives.Add(offsets);
+    public BufferAllocation Add(PrimitiveOffsets offsets) => _primitives.Add(offsets);
     
-    public void UpdateOverrideLod(int index, int overrideLod)
+    public void UpdateOverrideLod(BufferAllocation allocation, int overrideLod)
     {
-        GL.NamedBufferSubData(_primitives, index * _primitives.Stride + 32, 4, ref overrideLod);
+        GL.NamedBufferSubData(_primitives, allocation.StartIndex * _primitives.Stride + 32, 4, ref overrideLod);
     }
     
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands) where TInstanceData : unmanaged, IPerInstanceData

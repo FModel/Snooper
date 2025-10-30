@@ -4,7 +4,32 @@ using Serilog;
 
 namespace Snooper.Core.Containers.Buffers;
 
-public abstract class Buffer<T>(int initialCapacity, BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBind where T : unmanaged
+public readonly struct FreeBlock(int startIndex, int length)
+{
+    public readonly int StartIndex = startIndex;
+    public readonly int Length = length;
+}
+
+public readonly struct BufferAllocation(int allocationId, int startIndex, int length)
+{
+    public readonly int AllocationId = allocationId;
+    public readonly int StartIndex = startIndex;
+    public readonly int Length = length;
+    public int EndIndex => StartIndex + Length - 1;
+}
+
+public record BufferAllocationMetadata(
+    int AllocationId,
+    int StartIndex,
+    int Length,
+    DateTime CreatedAt,
+    DateTime? LastModified = null
+)
+{
+    public int EndIndex => StartIndex + Length - 1;
+}
+
+public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBufferStatisticsProvider, IBind where T : unmanaged
 {
     public abstract GetPName PName { get; }
     public int PreviousHandle { get; private set; }
@@ -12,9 +37,16 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
     public int Count { get; private set; }
     public int Stride { get; } = Marshal.SizeOf<T>();
 
-    private int _capacity = initialCapacity;
+    private int _capacity;
     private bool _bInitialized;
-    private readonly Stack<Range> _freeRanges = new();
+    private readonly Dictionary<int, BufferAllocationMetadata> _allocations = new();
+    private readonly SortedSet<FreeBlock> _freeBlocks = new(Comparer<FreeBlock>.Create((a, b) => 
+    {
+        var sizeCompare = a.Length.CompareTo(b.Length);
+        return sizeCompare != 0 ? sizeCompare : a.StartIndex.CompareTo(b.StartIndex);
+    }));
+    private int _nextOffset;
+    private int _allocationIdCounter;
 
     public override void Generate()
     {
@@ -56,7 +88,7 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
                 var oldSize = Count * Stride;
 
                 Generate();
-                Allocate();
+                Allocate(_capacity);
 
                 GL.CopyNamedBufferSubData(oldBuffer, Handle, IntPtr.Zero, IntPtr.Zero, oldSize);
                 GL.DeleteBuffer(oldBuffer);
@@ -66,12 +98,11 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
             else
             {
                 _bInitialized = false;
-                Allocate();
+                Allocate(_capacity);
             }
         }
     }
 
-    public void Allocate() => Allocate(_capacity);
     public void Allocate(uint size) => Allocate((int)size);
     public void Allocate(int size)
     {
@@ -87,86 +118,60 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         GL.NamedBufferData(Handle, _capacity * Stride, new T[_capacity], usageHint);
 
         Count = 0;
+        _nextOffset = 0;
+        _allocationIdCounter = 0;
+        _allocations.Clear();
+        _freeBlocks.Clear();
         _bInitialized = true;
     }
 
-    public int Add(T data) => AddInternal([data]);
-    public int AddRange(T[] data) => AddInternal(data);
-    private int AddInternal(T[] data)
+    public BufferAllocation Add(T data) => AddInternal([data]);
+    public BufferAllocation AddRange(T[] data) => AddInternal(data);
+    private BufferAllocation AddInternal(T[] data)
     {
         var length = data.Length;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
         
-        var index = GetValidIndex(length);
+        var (allocationId, startIndex) = AllocateSpace(length);
+        
         if (!_bInitialized)
         {
             Allocate(length);
+            (allocationId, startIndex) = AllocateSpace(length);
         }
-        else if (index + length > _capacity)
+        else if (startIndex + length > _capacity)
         {
-            ResizeIfNeeded(index + length, copy: true);
+            ResizeIfNeeded(startIndex + length, copy: true);
         }
 
-        GL.NamedBufferSubData(Handle, index * Stride, length * Stride, data);
+        GL.NamedBufferSubData(Handle, startIndex * Stride, length * Stride, data);
+        
+        var metadata = new BufferAllocationMetadata(allocationId, startIndex, length, DateTime.UtcNow);
+        _allocations[allocationId] = metadata;
         Count += length;
 
-        return index;
+        return new BufferAllocation(allocationId, startIndex, length);
     }
 
-    public void Insert(int index, T data)
+    public void Update(BufferAllocation allocation, T data) => UpdateInternal(allocation.AllocationId, [data]);
+    public void Update(BufferAllocation allocation, T[] data) => UpdateInternal(allocation.AllocationId, data);
+    public void Update(int allocationId, T data) => UpdateInternal(allocationId, [data]);
+    public void Update(int allocationId, T[] data) => UpdateInternal(allocationId, data);
+    private void UpdateInternal(int allocationId, T[] data)
     {
-        if (!_bInitialized)
-        {
-            if (index != 0)
-                throw new ArgumentOutOfRangeException(nameof(index), $"Buffer is not initialized. Cannot insert at index {index}.");
-
-            Add(data);
-            return;
-        }
-
-        ArgumentOutOfRangeException.ThrowIfNegative(index);
-        if (index >= _capacity)
-        {
-            Log.Verbose("attempt to insert at index {Index} in buffer {I} ({GetPName}) with capacity {Capacity}. Resizing...", index, Handle, PName, _capacity);
-            ResizeIfNeeded(index + 1, copy: true);
-        }
-
-        GL.NamedBufferSubData(Handle, index * Stride, Stride, ref data);
-        Count++;
-    }
-
-    public void Remove(int index)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(index);
-        if (index >= _capacity) throw new ArgumentOutOfRangeException(nameof(index), $"Cannot remove at index {index} in buffer {Handle} ({PName}) with capacity {_capacity}.");
-
-        _freeRanges.Push(new Range(index, 1));
-    }
-
-    public virtual void RemoveRange(int[] indices)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(indices.Length);
-        if (indices.Length > _capacity) throw new ArgumentOutOfRangeException(nameof(indices), $"Cannot remove range of {indices.Length} indices in buffer {Handle} ({PName}) with capacity {_capacity}.");
+        if (!_bInitialized) 
+            throw new InvalidOperationException("Buffer is not initialized. Use Add method to initialize it.");
         
-        _freeRanges.Push(new Range(indices[0], indices.Length - 1));
-    }
+        if (!_allocations.TryGetValue(allocationId, out var metadata))
+            throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
-    public void Update(int index, T data) => Update(index, [data]);
-    public void Update(int index, T[] data)
-    {
         var length = data.Length;
-        if (length == 0) return;
-        if (!_bInitialized) throw new InvalidOperationException("Buffer is not initialized. Use SetData method to initialize it.");
-        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        if (length != metadata.Length) // TODO: allow updates with different sizes (reconstructed by batching)
+            throw new ArgumentException($"Data length ({length}) does not match allocation length ({metadata.Length}). Cannot update with different size.", nameof(data));
 
-        var count = index + length;
-        if (count > _capacity)
-        {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Cannot update at index {index} with size {length} in buffer {Handle} ({PName}) with capacity {_capacity}. Consider resizing the buffer.");
-        }
-
-        GL.NamedBufferSubData(Handle, index * Stride, length * Stride, data);
-        if (count > Count) Count = count;
+        GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, length * Stride, data);
+        
+        _allocations[allocationId] = metadata with { LastModified = DateTime.UtcNow };
     }
 
     public void Update(int count, nint data)
@@ -176,15 +181,37 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
         GL.NamedBufferSubData(Handle, 0, Count * Stride, data);
     }
 
-    public T[] GetData(int index = 0, int size = -1)
+    public void Remove(BufferAllocation allocation) => RemoveInternal(allocation.AllocationId);
+    public void Remove(int allocationId) => RemoveInternal(allocationId);
+    private void RemoveInternal(int allocationId)
     {
-        if (!_bInitialized) throw new InvalidOperationException("Buffer is not initialized. Use SetData method to initialize it.");
-        if (size < 0) size = Count;
-        if (index < 0 || index + size > Count) throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
+        if (!_allocations.TryGetValue(allocationId, out var metadata))
+            throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
-        var data = new T[size];
-        GL.GetNamedBufferSubData(Handle, index * Stride, size * Stride, data);
-        return data;
+        GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, metadata.Length * Stride, new T[metadata.Length]);
+        
+        _freeBlocks.Add(new FreeBlock(metadata.StartIndex, metadata.Length));
+        MergeAdjacentFreeBlocks();
+        
+        _allocations.Remove(allocationId);
+        Count -= metadata.Length;
+    }
+
+    public void RemoveRange(BufferAllocation[] allocations)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(allocations.Length);
+        foreach (var allocation in allocations)
+        {
+            RemoveInternal(allocation.AllocationId);
+        }
+    }
+    public void RemoveRange(int[] allocationIds)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(allocationIds.Length);
+        foreach (var allocationId in allocationIds)
+        {
+            RemoveInternal(allocationId);
+        }
     }
 
     public override void Dispose()
@@ -194,34 +221,91 @@ public abstract class Buffer<T>(int initialCapacity, BufferTarget target, Buffer
     
     public override long Allocated => _capacity * Stride;
     public override long Used => Count * Stride;
-
-    private struct Range(int index, int length)
+    public BufferStatistics GetBufferStatistics()
     {
-        public readonly int Index = index;
-        public readonly int Length = length;
+        var allocations = _allocations.Values.OrderBy(a => a.StartIndex).ToList();
+        var freeBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
+        
+        return new BufferStatistics(
+            Capacity: _capacity,
+            UsedItems: Count,
+            FreeItems: _capacity - Count,
+            Allocations: allocations,
+            FreeBlocks: freeBlocks,
+            FragmentationPercentage: CalculateFragmentation()
+        );
     }
 
-    private int GetValidIndex(int length)
+    private (int allocationId, int startIndex) AllocateSpace(int length)
     {
-        var index = Count;
-        if (_freeRanges.Count > 0)
+        var allocationId = _allocationIdCounter++;
+        
+        FreeBlock? suitableBlock = null;
+        foreach (var block in _freeBlocks)
         {
-            var range = _freeRanges.Pop();
-            if (range.Length == length)
+            if (block.Length >= length)
             {
-                index = range.Index;
-            }
-            else if (range.Length > length)
-            {
-                index = range.Index;
-                _freeRanges.Push(new Range(index + length, range.Length - length));
-            }
-            else if (range.Length < length)
-            {
-                _freeRanges.Push(range);
+                suitableBlock = block;
+                break;
             }
         }
 
-        return index;
+        int startIndex;
+        if (suitableBlock.HasValue)
+        {
+            startIndex = suitableBlock.Value.StartIndex;
+            _freeBlocks.Remove(suitableBlock.Value);
+            
+            // If the block is larger than needed, split it
+            if (suitableBlock.Value.Length > length)
+            {
+                var remainingBlock = new FreeBlock(
+                    startIndex + length,
+                    suitableBlock.Value.Length - length
+                );
+                _freeBlocks.Add(remainingBlock);
+            }
+        }
+        else
+        {
+            startIndex = _nextOffset;
+            _nextOffset += length;
+        }
+
+        return (allocationId, startIndex);
+    }
+
+    private void MergeAdjacentFreeBlocks()
+    {
+        var sortedBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
+        _freeBlocks.Clear();
+
+        for (var i = 0; i < sortedBlocks.Count; i++)
+        {
+            var current = sortedBlocks[i];
+            
+            // try to merge with subsequent blocks
+            while (i + 1 < sortedBlocks.Count && current.StartIndex + current.Length == sortedBlocks[i + 1].StartIndex)
+            {
+                current = new FreeBlock(current.StartIndex, current.Length + sortedBlocks[i + 1].Length);
+                i++;
+            }
+            
+            _freeBlocks.Add(current);
+        }
+    }
+
+    private double CalculateFragmentation()
+    {
+        if (_capacity == 0 || _freeBlocks.Count == 0) return 0.0;
+        
+        var totalFreeSpace = _freeBlocks.Sum(fb => fb.Length);
+        if (totalFreeSpace == 0) return 0.0;
+        
+        // Fragmentation is high when we have many small free blocks
+        // Perfect score (0%) = one contiguous free block
+        // Worst score (100%) = many tiny free blocks
+        var largestFreeBlock = _freeBlocks.Max(fb => fb.Length);
+        return (1.0 - (double)largestFreeBlock / totalFreeSpace) * 100.0;
     }
 }

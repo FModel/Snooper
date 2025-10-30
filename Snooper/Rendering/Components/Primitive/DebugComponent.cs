@@ -32,6 +32,14 @@ public class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
             Materials[0].MaterialDataContainer = new MaterialDataContainer(color.Value, lineThickness);
         }
     }
+    
+    public DebugComponent(CullingBounds bounds, float radius, Vector3? color = null, float lineThickness = 1.0f, string? name = null) : this(new Geometry(bounds.Center, radius), bounds, name)
+    {
+        if (color != null)
+        {
+            Materials[0].MaterialDataContainer = new MaterialDataContainer(color.Value, lineThickness);
+        }
+    }
 
     protected DebugComponent(UShapeComponent component) : base(component)
     {
@@ -80,9 +88,14 @@ public class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
             BuildBox(center, extents);
         }
         
-        public Geometry(float sphereRadius)
+        public Geometry(Vector3 center, float sphereRadius)
         {
-            BuildSphere(Vector3.Zero, new Vector3(sphereRadius));
+            BuildSphere(center, new Vector3(sphereRadius));
+        }
+        
+        public Geometry(float sphereRadius) : this(Vector3.Zero, sphereRadius)
+        {
+            
         }
         
         public Geometry(float radius, float halfHeight)

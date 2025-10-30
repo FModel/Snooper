@@ -46,7 +46,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
-        Metadata = resources.Add(Id, Descriptor, Materials, GetPerInstanceData());
+        Metadata = resources.Add(this);
         textureManager.AddRange(Materials);
     }
 
@@ -198,7 +198,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                         ImGui.SetWindowFontScale(0.85f);
                         
                         material = Materials[_materialIndex];
-                        ImGui.TextUnformatted($"{material.Name} (offset {material.MaterialOffset})");
+                        ImGui.TextUnformatted($"{material.Name} (offset {material.Allocation?.StartIndex ?? -1})");
                         
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();
@@ -224,46 +224,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 ImGui.Indent();
                 if (Metadata is { } metadata)
                 {
-                    if (ImGui.BeginTable("Metadata", 4))
-                    {
-                        ImGui.TableSetupColumn("Property1", ImGuiTableColumnFlags.WidthStretch);
-                        ImGui.TableSetupColumn("Value1", ImGuiTableColumnFlags.WidthStretch, 1.0f);
-                        ImGui.TableSetupColumn("Property2", ImGuiTableColumnFlags.WidthStretch);
-                        ImGui.TableSetupColumn("Value2", ImGuiTableColumnFlags.WidthStretch, 1.0f);
-                        
-                        ImGui.TableNextRow();
-                        ImGui.TableSetColumnIndex(0);
-                        ImGui.AlignTextToFramePadding();
-                        ImGui.TextUnformatted("ID");
-                        ImGui.TableSetColumnIndex(1);
-                        ImGui.TextUnformatted(Id.ToString());
-                        
-                        ImGui.TableNextRow();
-                        ImGui.TableSetColumnIndex(0);
-                        ImGui.AlignTextToFramePadding();
-                        ImGui.TextUnformatted("Geometry");
-                        ImGui.TableSetColumnIndex(1);
-                        ImGui.TextUnformatted(metadata.GeometryHandle.BaseGeometry.ToString());
-                        ImGui.TableSetColumnIndex(2);
-                        ImGui.AlignTextToFramePadding();
-                        ImGui.TextUnformatted("Instances");
-                        ImGui.TableSetColumnIndex(3);
-                        ImGui.TextUnformatted(metadata.BaseInstance.ToString());
-                        
-                        ImGui.TableNextRow();
-                        ImGui.TableSetColumnIndex(0);
-                        ImGui.AlignTextToFramePadding();
-                        ImGui.TextUnformatted("Materials");
-                        ImGui.TableSetColumnIndex(1);
-                        ImGui.TextUnformatted(metadata.BaseMaterial.ToString());
-                        ImGui.TableSetColumnIndex(2);
-                        ImGui.AlignTextToFramePadding();
-                        ImGui.TextUnformatted($"Draw IDs ({metadata.DrawIds.Length})");
-                        ImGui.TableSetColumnIndex(3);
-                        ImGui.TextUnformatted(string.Join(", ", metadata.DrawIds));
-                        
-                        ImGui.EndTable();
-                    }
+                    metadata.DrawControls();
                 }
                 else
                 {

@@ -51,7 +51,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
     public TextRenderComponent(UTextRenderComponent component) : base(component)
     {
         _text = component.GetOrDefault<FText?>("Text")?.Text ?? "DefaultText";
-        _horizontalAlignment = component.GetOrDefault("HorizontalAlignment", EHorizTextAligment.EHTA_Center);
+        _horizontalAlignment = component.GetOrDefault("HorizontalAlignment", EHorizTextAligment.EHTA_Left);
         _verticalAlignment = component.GetOrDefault("VerticalAlignment", EVerticalTextAligment.EVRTA_TextCenter);
         
         var color = component.GetOrDefault<FColor?>("TextRenderColor");
@@ -73,16 +73,16 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         if (geometry.Vertices is { Length: > 0 } vertices)
         {
             float minX = float.MaxValue, maxX = float.MinValue;
-            float minY = float.MaxValue, maxY = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
             foreach (var v in vertices)
             {
                 minX = Math.Min(minX, v.X);
                 maxX = Math.Max(maxX, v.X);
-                minY = Math.Min(minY, v.Y);
-                maxY = Math.Max(maxY, v.Y);
+                minZ = Math.Min(minZ, v.Y);
+                maxZ = Math.Max(maxZ, v.Y);
             }
-            var center = new Vector3((minX + maxX) / 2, (minY + maxY) / 2, 0);
-            var extents = new Vector3((maxX - minX) / 2, (maxY - minY) / 2, 0);
+            var center = new Vector3((minX + maxX) / 2, 0, (minZ + maxZ) / 2);
+            var extents = new Vector3((maxX - minX) / 2, 0, (maxZ - minZ) / 2);
             return new CullingBounds(center, extents);
         }
         
@@ -142,18 +142,17 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
                 Indices = [];
                 return;
             }
-            
+
             var vertices = new List<Vector4>();
             var indices = new List<uint>();
-            
+
             var pixelToWorld = Settings.GlobalScale / fontAtlas.FontSize;
             var finalScale = scale * pixelToWorld;
-            
-            // First pass: measure total text dimensions
+
             float totalWidth = 0;
             var lines = text.Split('\n');
             var lineWidths = new List<float>();
-            
+
             foreach (var line in lines)
             {
                 float lineWidth = 0;
@@ -167,19 +166,17 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
                 lineWidths.Add(lineWidth);
                 totalWidth = Math.Max(totalWidth, lineWidth);
             }
-            
-            // Calculate total height based on actual line height used for rendering
+
             var lineHeight = fontAtlas.LineHeight;
             var totalHeight = lineHeight * lines.Length;
-            
-            // Calculate alignment offsets
+
             var baseOffsetX = hAlign switch
             {
                 EHorizTextAligment.EHTA_Center => -totalWidth * 0.5f,
                 EHorizTextAligment.EHTA_Right => -totalWidth,
                 _ => 0
             } * finalScale;
-            
+
             // TODO: it's broken but it's fine for now
             var baseOffsetY = vAlign switch
             {
@@ -187,68 +184,63 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
                 EVerticalTextAligment.EVRTA_TextCenter => totalHeight * 0.5f,
                 _ => totalHeight
             } * finalScale;
-            
-            // Second pass: generate geometry with alignment applied
+
             var cursorY = baseOffsetY;
             var lineIndex = 0;
-            
+
             foreach (var line in lines)
             {
-                // Apply per-line horizontal alignment
                 var lineOffsetX = hAlign switch
                 {
                     EHorizTextAligment.EHTA_Center => (totalWidth - lineWidths[lineIndex]) * 0.5f,
                     EHorizTextAligment.EHTA_Right => totalWidth - lineWidths[lineIndex],
                     _ => 0
                 } * finalScale;
-                
+
                 var cursorX = baseOffsetX + lineOffsetX;
-                
+
                 foreach (var c in line)
                 {
                     if (!fontAtlas.Characters.TryGetValue(c, out var charInfo))
                     {
-                        // Use space for unknown characters
                         if (fontAtlas.Characters.TryGetValue(' ', out var spaceInfo))
                         {
                             cursorX += spaceInfo.AdvanceX * finalScale;
                         }
                         continue;
                     }
-                    
+
                     // Position from cursor baseline
                     var x0 = cursorX + charInfo.OffsetX * finalScale;
-                    var y0 = cursorY - charInfo.OffsetY * finalScale;
+                    var y0 = cursorY + charInfo.OffsetY * finalScale;
                     // Use glyph dimensions for quad size to match UV coverage
                     var x1 = x0 + charInfo.Width * finalScale;
-                    var y1 = y0 - charInfo.Height * finalScale;
-                    
+                    var y1 = y0 + charInfo.Height * finalScale;
+
                     var baseIndex = (uint)vertices.Count;
-                    
+
                     // Create quad for this character (y1 is bottom, y0 is top)
                     vertices.Add(new Vector4(x0, y1, charInfo.U0, charInfo.V1)); // Bottom-left
                     vertices.Add(new Vector4(x1, y1, charInfo.U1, charInfo.V1)); // Bottom-right
                     vertices.Add(new Vector4(x1, y0, charInfo.U1, charInfo.V0)); // Top-right
                     vertices.Add(new Vector4(x0, y0, charInfo.U0, charInfo.V0)); // Top-left
-                    
+
                     // Two triangles
                     indices.Add(baseIndex + 0);
                     indices.Add(baseIndex + 1);
                     indices.Add(baseIndex + 2);
-                    
+
                     indices.Add(baseIndex + 0);
                     indices.Add(baseIndex + 2);
                     indices.Add(baseIndex + 3);
-                    
-                    // Advance cursor by the character's advance width
+
                     cursorX += charInfo.AdvanceX * finalScale;
                 }
-                
-                // Move to next line - use consistent line height
+
                 cursorY -= lineHeight * finalScale;
                 lineIndex++;
             }
-            
+
             Vertices = vertices.ToArray();
             Indices = indices.ToArray();
         }

@@ -6,11 +6,11 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class GeometryHandle(uint firstIndex, uint baseVertex, uint baseGeometry, uint baseColor)
+public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation cullingAllocation, uint baseColor)
 {
     public readonly uint FirstIndex = firstIndex; // first index of lod 0
     public readonly uint BaseVertex = baseVertex; // base vertex of lod 0
-    public readonly uint BaseGeometry = baseGeometry;
+    public readonly BufferAllocation CullingAllocation = cullingAllocation;
     public readonly uint BaseColor = baseColor;
     
     private int _overrideLod = -1;
@@ -31,12 +31,12 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, uint baseGeometry,
     public void MarkClean() => IsDirty = false;
 }
 
-public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProvider, IDisposable where TVertex : unmanaged
+public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where TVertex : unmanaged
 {
     private readonly VertexArray _vao = new();
-    private readonly ElementArrayBuffer<uint> _ebo = new(initialDrawCapacity);
-    private readonly ArrayBuffer<TVertex> _vbo = new(initialDrawCapacity);
-    private readonly ShaderStorageBuffer<int> _colors = new(initialDrawCapacity);
+    private readonly ElementArrayBuffer<uint> _ebo = new();
+    private readonly ArrayBuffer<TVertex> _vbo = new();
+    private readonly ShaderStorageBuffer<int> _colors = new();
     private readonly CullingResources _culling = new();
     
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
@@ -74,7 +74,7 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
         if (!_cache.TryGetValue(guid, out var handle))
         {
             var (firstIndex, baseVertex, baseColor, offsets) = CreateOffsets();
-            handle = new GeometryHandle(firstIndex, baseVertex, (uint)_culling.Add(offsets), baseColor);
+            handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(offsets), baseColor);
             _cache.Add(guid, handle);
         }
         
@@ -93,15 +93,15 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
                     // throw new InvalidOperationException("Primitive data is not valid.");
                 }
                 
-                o.LOD_FirstIndex[i] = (uint)_ebo.AddRange(primitive.Indices);
-                o.LOD_BaseVertex[i] = (uint)_vbo.AddRange(primitive.Vertices);
+                o.LOD_FirstIndex[i] = (uint)_ebo.AddRange(primitive.Indices).StartIndex;
+                o.LOD_BaseVertex[i] = (uint)_vbo.AddRange(primitive.Vertices).StartIndex;
                 o.LOD_ScreenSize[i] = lods[i].ScreenSize;
                 o.LOD_SectionCount[i] = (uint)lods[i].Sections.Length;
-                o.LOD_SectionOffset[i] = (uint)_culling.Add(lods[i].Sections);
+                o.LOD_SectionOffset[i] = (uint)_culling.Add(lods[i].Sections).StartIndex;
                 
                 if (primitive.Colors != null)
                 {
-                    o.LOD_BaseColor[i] = (uint)_colors.AddRange(primitive.Colors);
+                    o.LOD_BaseColor[i] = (uint)_colors.AddRange(primitive.Colors).StartIndex;
                 }
 
                 maxLod++;
@@ -114,8 +114,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
     
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands)
         where TInstanceData : unmanaged, IPerInstanceData => _culling.Cull(camera, instances, commands);
-    
-    public void UpdateOverrideLod(int index, int overrideLod) => _culling.UpdateOverrideLod(index, overrideLod);
     
     public void Render(Action mdi)
     {
@@ -132,6 +130,15 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
         _vao.Unbind();
     }
 
+    public void UpdateOverrideLod(GeometryHandle handle) => _culling.UpdateOverrideLod(handle.CullingAllocation, handle.OverrideLod);
+
+    public void Remove(GeometryHandle handle)
+    {
+        // TODO: do this properly
+        // we need to keep track of all allocations made for this handle
+        // + this whole thing is cached, so we need to remove the handle only if it's the last reference
+    }
+
     public void Dispose()
     {
         _vao.Dispose();
@@ -146,7 +153,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
         get
         {
             long total = 0;
-            total += _vao.Allocated;
             total += _ebo.Allocated;
             total += _vbo.Allocated;
             total += _colors.Allocated;
@@ -160,7 +166,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
         get
         {
             long total = 0;
-            total += _vao.Used;
             total += _ebo.Used;
             total += _vbo.Used;
             total += _colors.Used;
@@ -171,7 +176,6 @@ public class GeometryPool<TVertex>(int initialDrawCapacity) : IMemoryDetailsProv
     
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail("Vertex Array", _vao);
         yield return new MemoryDetail("Index Buffer", _ebo);
         yield return new MemoryDetail("Vertex Buffer", _vbo);
         yield return new MemoryDetail("Vertex Color Buffer", _colors);

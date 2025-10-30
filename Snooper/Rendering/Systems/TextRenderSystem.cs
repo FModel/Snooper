@@ -12,7 +12,7 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Systems;
 
-public class TextRenderSystem() : PrimitiveSystem<Vector4, TextRenderComponent, PerInstanceData, PerMaterialTextData>(5), IControllable
+public class TextRenderSystem : PrimitiveSystem<Vector4, TextRenderComponent, PerInstanceData, PerMaterialTextData>, IControllable
 {
     public override uint Order => 51;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("text");

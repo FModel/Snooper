@@ -7,7 +7,7 @@ using System.Numerics;
 
 namespace Snooper.Rendering.Systems;
 
-public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, PerMaterialDebugData>(50, PrimitiveType.Lines)
+public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, PerMaterialDebugData>(PrimitiveType.Lines)
 {
     public override uint Order => 50;
     protected override bool AllowDerivation => true;

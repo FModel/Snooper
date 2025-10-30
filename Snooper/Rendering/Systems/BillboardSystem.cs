@@ -6,7 +6,7 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public class BillboardSystem() : PrimitiveSystem<Vector2, BillboardComponent, PerInstanceData, PerMaterialBillboardData>(100)
+public class BillboardSystem : PrimitiveSystem<Vector2, BillboardComponent, PerInstanceData, PerMaterialBillboardData>
 {
     public override uint Order => 29;
     protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("billboard");

@@ -23,9 +23,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; }
     public TextureManager TextureManager { get; }
 
-    protected IndirectRenderSystem(int initialDrawCapacity, PrimitiveType type)
+    protected IndirectRenderSystem(PrimitiveType type)
     {
-        Resources = new IndirectResources<TVertex, TInstanceData, TPerMaterialData>(initialDrawCapacity, type);
+        Resources = new IndirectResources<TVertex, TInstanceData, TPerMaterialData>(type);
         
         TextureManager = new TextureManager();
         TextureManager.OnMaterialReady += material =>
@@ -36,7 +36,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
                 throw new InvalidOperationException($"Material data container raw type {material.MaterialDataContainer?.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
             }
             
-            Resources.Update((int)material.MaterialOffset, raw);
+            Resources.Update(material.Allocation!.Value, raw);
         };
     }
 
@@ -86,13 +86,13 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         _counts.Components++;
         _counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
         _counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
-        _counts.Sections += (uint)component.Descriptor.Lods.Sum(x => x.Sections.Length);
         _counts.Materials += (uint)component.Materials.Length;
         if (_guids.Add(component.Descriptor.Guid))
         {
             _counts.UniqueComponents++;
             foreach (var lod in component.Descriptor.Lods)
             {
+                _counts.Sections += (uint)lod.Sections.Length;
                 _counts.Indices += lod.IndexCount;
                 _counts.Vertices += lod.VertexCount;
                 
@@ -128,9 +128,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             }
         }
         
-        if (component.Metadata is { } m)
-            Resources.Remove(m);
-        
+        Resources.Remove(component);
         foreach (var material in component.Materials)
         {
             material.Dispose();

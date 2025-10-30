@@ -8,8 +8,8 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
-    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(initialDrawCapacity, type)
+public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type = PrimitiveType.Triangles)
+    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(type)
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData
@@ -71,8 +71,8 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     }
 }
 
-public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(int initialDrawCapacity, PrimitiveType type = PrimitiveType.Triangles)
-    : PrimitiveSystem<Vector3, TComponent, TInstanceData, TPerMaterialData>(initialDrawCapacity, type)
+public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type = PrimitiveType.Triangles)
+    : PrimitiveSystem<Vector3, TComponent, TInstanceData, TPerMaterialData>(type)
     where TComponent : PrimitiveComponent<Vector3, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
@@ -85,10 +85,10 @@ public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(int in
     };
 }
 
-public class PrimitiveSystem<TComponent>(int initialDrawCapacity)
-    : PrimitiveSystem<TComponent, PerInstanceData, PerMaterialData>(initialDrawCapacity)
+public class PrimitiveSystem<TComponent>
+    : PrimitiveSystem<TComponent, PerInstanceData, PerMaterialData>
     where TComponent : PrimitiveComponent<Vector3, PerInstanceData, PerMaterialData>
 {
     protected override bool IsCulled => false; // disable culling for grid, skybox, and default primitives
 }
-public class PrimitiveSystem() : PrimitiveSystem<PrimitiveComponent>(10);
+public class PrimitiveSystem() : PrimitiveSystem<PrimitiveComponent>;

@@ -1,4 +1,5 @@
-﻿using Snooper.Core.Containers.Resources;
+﻿using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Resources;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
@@ -10,7 +11,7 @@ public class MaterialSection(uint materialIndex) : IDisposable
     public readonly uint MaterialIndex = materialIndex;
 
     public string Name { get; internal set; } = "Unnamed";
-    public uint MaterialOffset { get; internal set; } = 0; // set when added to the material data buffer
+    public BufferAllocation? Allocation { get; internal set; } = null; // set when added to the material data buffer
     public IMaterialDataContainer? MaterialDataContainer { get; internal set; } = null; // set when the material is loaded
 
     public bool IsTranslucent => MaterialDataContainer?.IsTranslucent ?? false;

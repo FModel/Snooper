@@ -13,7 +13,7 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Systems;
 
-public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerMaterialLandscapeData>(100, PrimitiveType.Patches), IControllable
+public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerMaterialLandscapeData>(PrimitiveType.Patches), IControllable
 {
     public override uint Order => 21;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
@@ -29,8 +29,8 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         GL.VertexArrayAttribBinding(vao, 0, 0);
     };
     
-    private readonly ShaderStorageBuffer<Vector2> _scales = new(100 * Settings.TessellationQuadCountTotal);
-    private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new(100);
+    private readonly ShaderStorageBuffer<Vector2> _scales = new();
+    private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new();
     private readonly List<string> _layers = ["None"];
     private float _sizeQuads = 0.0f;
     private ColorMode _colorMode = ColorMode.Heightmap;
@@ -53,8 +53,9 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
             _sizeQuads = Math.Max(_sizeQuads, component.SizeQuads);
         }
         
+        // TODO: rework this, we can't index by DrawID forever
         _mapping.Generate();
-        _mapping.Allocate(ComponentsCount);
+        _mapping.Add(new WeightHighlightMapping());
     }
 
     public override void Update(float delta)
@@ -68,7 +69,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         
         foreach (var component in Components)
         {
-            if (component.Metadata is not { } metadata || metadata.DrawIds.Length == 0)
+            if (component.Metadata is not { } metadata || metadata.DrawAllocations.Length == 0)
                 continue;
             
             var m = new WeightHighlightMapping();
@@ -82,7 +83,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
                 };
             }
             
-            _mapping.Update(metadata.DrawIds[0], m);
+            _mapping.Update(metadata.DrawAllocations[0], m);
         }
         
         _updateMapping = false;

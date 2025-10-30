@@ -7,7 +7,7 @@ using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Rendering.Systems;
 
-public class GridSystem() : PrimitiveSystem<GridComponent>(1)
+public class GridSystem : PrimitiveSystem<GridComponent>
 {
     public override uint Order => 2;
     protected override bool AllowDerivation => true;
