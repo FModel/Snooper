@@ -6,14 +6,14 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation cullingAllocation, uint baseColor)
+public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation cullingAllocation, uint baseColor, int overrideLod = -1)
 {
     public readonly uint FirstIndex = firstIndex; // first index of lod 0
     public readonly uint BaseVertex = baseVertex; // base vertex of lod 0
     public readonly BufferAllocation CullingAllocation = cullingAllocation;
     public readonly uint BaseColor = baseColor;
     
-    private int _overrideLod = -1;
+    private int _overrideLod = overrideLod;
     public int OverrideLod
     {
         get => _overrideLod;
@@ -74,7 +74,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         if (!_cache.TryGetValue(guid, out var handle))
         {
             var (firstIndex, baseVertex, baseColor, offsets) = CreateOffsets();
-            handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(offsets), baseColor);
+            handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(offsets), baseColor, lods.Length > 1 ? -1 : 0);
             _cache.Add(guid, handle);
         }
         

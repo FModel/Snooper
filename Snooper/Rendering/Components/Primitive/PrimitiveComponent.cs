@@ -114,12 +114,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     EditorUI.Property($"LODs ({Descriptor.Lods.Length})");
                     ImGui.BeginGroup();
 
-                    const int minLod = -1;
                     var maxLod = Descriptor.Lods.Length - 1;
+                    var minLod = maxLod == 0 ? 0 : -1;
                     var value = Metadata == null ? minLod : Metadata.Value.GeometryHandle.OverrideLod;
 
+                    ImGui.BeginDisabled(minLod == maxLod);
                     var slided1 = ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod);
-                    var lod = Descriptor.Lods[Math.Max(0, value)];
+                    ImGui.EndDisabled();
                     if (slided1)
                     {
                         _sectionIndex = 0;
@@ -132,6 +133,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                     ImGui.SetWindowFontScale(0.85f);
                     
+                    var lod = Descriptor.Lods[Math.Max(0, value)];
                     switch (value)
                     {
                         case -1:

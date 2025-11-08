@@ -79,6 +79,11 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 
             _materials[i] = overrideMaterials[i].ResolvedObject;
         }
+
+        if (_materials.Length == 0) // TODO: remove MaterialSection dependency when resources are being sent to the GPU
+        {
+            _materials = [new FPackageIndex().ResolvedObject];
+        }
         
         Materials = new MaterialSection[_materials.Length];
     }

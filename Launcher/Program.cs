@@ -35,9 +35,9 @@ ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-37.30-CL-45814998-Windows_oo.usmap";
-const string key = "0x7408A7C7EC17B4BA5963642421C55E652333CBA0786E779D24AC31D3C3D8124D";
-var version = new VersionContainer(EGame.GAME_UE5_6);
+const string mapping = "D:\\FModel\\.data\\Game-5.7.0-47291259+++Fortnite+Release-38.00-FortniteGame.usmap";
+const string key = "0x1BC2DDCEC20348852EA75830E606B17EF4D5F7ADAE0AB2B97924B4D7CF124A2E";
+var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
 const string mapping = "D:\\FModel\\.data\\Valorant_11_04.usmap";
@@ -183,29 +183,29 @@ switch (provider.ProjectName)
     }
     case "FortniteGame":
     {
-        camera.CameraComponent.FarPlaneDistance = 1000f;
-        grid.Components.Clear();
-        grid.Components.Add(new OpaqueGridComponent());
-        scene.Children.Add(new SkyboxActor());
-        
-        var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/F_MED_RoseForm.F_MED_RoseForm"));
-        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Heads/F_MED_RoseForm_Head/Meshes/F_MED_RoseForm_Head.F_MED_RoseForm_Head")));
-        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/Parts/F_MED_RoseForm_FaceAcc.F_MED_RoseForm_FaceAcc")));
-        character.Components.Add(new TextRenderComponent("Character (Clip)", 16, transform: new Transform(new Vector3(0, 1.8f, 0), new Quaternion(1, 0, 0, 1))));
-        scene.Children.Add(character);
-        
-        var glider = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Gadgets/Assets/VinderTech_GliderChute/Glider_Rumble_Female/Meshes/Rumble_Female_Glider.Rumble_Female_Glider"), new FTransform(new FVector(200, 0, 100)));
-        glider.Components.Add(new TextRenderComponent("Glider (Kayari Buta)", 16, transform: new Transform(new Vector3(0, 2.2f, 0), new Quaternion(1, 0, 0, 1))));
-        scene.Children.Add(glider);
-        
-        var actor = new Actor("Origin Indicator");
-        actor.Components.Add(new TextRenderComponent("Origin", 54, new Vector3(1.0f, 0, 0), transform: new Transform(new Vector3(0, 0.001f, 0))));
-        scene.Children.Add(actor);
-        
-        var overhang = new MeshActor(provider.LoadPackageObject<UStaticMesh>("FortniteGame/Content/Environments/Asteria/Sets/Dojo/Meshes/SM_Asteria_Dojo_Overhang_Outer_Crn_A_A.SM_Asteria_Dojo_Overhang_Outer_Crn_A_A"), new Transform(new Vector3(0, 4, -3)));
-        overhang.Components.Add(new TextRenderComponent("Asteria Dojo Overhang", 32, transform: new Transform(new Vector3(0, -1.5f, 0), new Quaternion(1, 0, 0, 1))));
-        scene.Children.Add(overhang);
-        break;
+        // camera.CameraComponent.FarPlaneDistance = 1000f;
+        // grid.Components.Clear();
+        // grid.Components.Add(new OpaqueGridComponent());
+        // scene.Children.Add(new SkyboxActor());
+        //
+        // var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/F_MED_RoseForm.F_MED_RoseForm"));
+        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Heads/F_MED_RoseForm_Head/Meshes/F_MED_RoseForm_Head.F_MED_RoseForm_Head")));
+        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/Parts/F_MED_RoseForm_FaceAcc.F_MED_RoseForm_FaceAcc")));
+        // character.Components.Add(new TextRenderComponent("Character (Clip)", 16, transform: new Transform(new Vector3(0, 1.8f, 0), new Quaternion(1, 0, 0, 1))));
+        // scene.Children.Add(character);
+        //
+        // var glider = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Gadgets/Assets/VinderTech_GliderChute/Glider_Rumble_Female/Meshes/Rumble_Female_Glider.Rumble_Female_Glider"), new FTransform(new FVector(200, 0, 100)));
+        // glider.Components.Add(new TextRenderComponent("Glider (Kayari Buta)", 16, transform: new Transform(new Vector3(0, 2.2f, 0), new Quaternion(1, 0, 0, 1))));
+        // scene.Children.Add(glider);
+        //
+        // var actor = new Actor("Origin Indicator");
+        // actor.Components.Add(new TextRenderComponent("Origin", 54, new Vector3(1.0f, 0, 0), transform: new Transform(new Vector3(0, 0.001f, 0))));
+        // scene.Children.Add(actor);
+        //
+        // var overhang = new MeshActor(provider.LoadPackageObject<UStaticMesh>("FortniteGame/Content/Environments/Asteria/Sets/Dojo/Meshes/SM_Asteria_Dojo_Overhang_Outer_Crn_A_A.SM_Asteria_Dojo_Overhang_Outer_Crn_A_A"), new Transform(new Vector3(0, 4, -3)));
+        // overhang.Components.Add(new TextRenderComponent("Asteria Dojo Overhang", 32, transform: new Transform(new Vector3(0, -1.5f, 0), new Quaternion(1, 0, 0, 1))));
+        // scene.Children.Add(overhang);
+        // break;
         
         // provider.SubmitKey(new FGuid("9cff3d95852a462491c84d7f236b8127"), new FAesKey("0xE341093B9ED794D8B48F573237035B0CAACC40C42D7B08F819CABE2748F35119"));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/45c2096d-4b62-f690-7a5b-cb9b53b826c3/Content/FNRL.FNRL")));
@@ -215,17 +215,13 @@ switch (provider.ProjectName)
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/99be4597-4530-1344-d0b9-4d8ab554db97/Content/Mandu_Shell.Mandu_Shell")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/45593d43-4a37-2dd7-f6bd-96a48fcd965a/Content/Cinderwatch_Shell.Cinderwatch_Shell")));
         
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain"), WorldActorType.Landscape));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/913GK60G7TI7QBDT2VE9MPL9L.Hermes_Terrain")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/4PA8JPWMPCH2G4AVRFN4YRF7A.Hermes_Terrain")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/CZ0KUZBOSE1I84Z1R5CDHK7Y0.Hermes_Terrain")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/7UUDUASYKKO0J75BZ8YVKXUTD.Hermes_Terrain")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/0OQWBLU34Z8QW3PKAD337X3WZ.Hermes_Terrain")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain/_Generated_/E805Z66QYYDSR03ITPQKWIC9S.Hermes_Terrain")));
-
+        grid.Components.Clear();
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain"), WorldActorType.BaseResolution | WorldActorType.WorldPartition));
+        
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/Chrisk/ReactiveQuests.ReactiveQuests")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/QA/TestMap_AccessEnemies.TestMap_AccessEnemies"))); // TODO: GPU crash
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Maps/Frontend.Frontend")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BlastBerryMap/Content/Maps/BlastBerry_Terrain.BlastBerry_Terrain")/*, WorldActorType.HighResolution*/));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/DelMarGame/Content/Environments/Desert/Levels/Level_DM_NeonCity_SmallBuilding_A.Level_DM_NeonCity_SmallBuilding_A")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Figment/Figment_S05_Map/Content/Athena_Terrain_S05.Athena_Terrain_S05"), WorldActorType.Landscape));
         break;

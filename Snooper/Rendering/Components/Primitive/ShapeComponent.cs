@@ -17,7 +17,7 @@ public abstract class ShapeComponent : DebugComponent
             Color = new Vector3(color.R, color.G, color.B) / 255f;
         }
 
-        LineThickness = component.GetOrDefault("LineThickness", LineThickness);
+        // LineThickness = component.GetOrDefault("LineThickness", LineThickness);
     }
     
     internal override string Icon => "circle-dashed";

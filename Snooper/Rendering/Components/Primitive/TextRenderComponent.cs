@@ -66,6 +66,11 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         {
             Materials[0].MaterialDataContainer = new MaterialDataContainer(new Vector3(c.R, c.G, c.B) / 255f);
         }
+
+        var zFlip = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, MathF.PI);
+        var zRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, MathF.PI / 2f);
+        var yRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2f);
+        LocalTransform.Rotation *= zFlip * zRotation * yRotation;
     }
     
     private CullingBounds ComputeBounds(Geometry geometry)
