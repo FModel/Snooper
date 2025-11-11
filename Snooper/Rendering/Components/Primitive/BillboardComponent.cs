@@ -51,6 +51,9 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
 
         public void FinalizeGpuData()
         {
+            if (Raw is not null)
+                throw new InvalidOperationException("GPU data has already been finalized and sent.");
+            
             if (_sprite is null)
             {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");

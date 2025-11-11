@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
 using Snooper.Core;
+using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
@@ -43,7 +44,7 @@ public class SpatialComponent : ActorComponent, IControllable
                 return;
             
             _localTransform = value;
-            MarkDirty();
+            MarkDirty(DirtyFlags.InstanceData);
         }
     }
     
@@ -57,7 +58,7 @@ public class SpatialComponent : ActorComponent, IControllable
                 return;
             
             _worldMatrix = value;
-            MarkDirty();
+            MarkDirty(DirtyFlags.InstanceData);
         }
     }
     
@@ -75,13 +76,26 @@ public class SpatialComponent : ActorComponent, IControllable
             if (_relation != null && !_relation.Children.Contains(this))
                 _relation.Children.Add(this);
 
-            MarkDirty();
+            MarkDirty(DirtyFlags.InstanceData);
         }
     }
     
     public readonly List<SpatialComponent> Children = [];
 
     public virtual Matrix4x4[] GetInstanceMatrices() => [WorldMatrix];
+    
+    public virtual (Vector3, float) GetTeleportPosition(CameraComponent camera)
+    {
+        var matrices = GetInstanceMatrices();
+        if (matrices.Length == 0) return (Vector3.Zero, 1.0f);
+
+        var center = Vector3.Zero;
+        foreach (var matrix in matrices)
+        {
+            center += matrix.Translation;
+        }
+        return (center / matrices.Length, 2.50f);
+    }
     
     public void UpdateWorldMatrix(bool recursive = true)
     {
@@ -109,13 +123,13 @@ public class SpatialComponent : ActorComponent, IControllable
         }
     }
 
-    internal override void MarkDirty()
+    internal override void MarkDirty(DirtyFlags flags)
     {
-        base.MarkDirty();
+        base.MarkDirty(flags);
         
         foreach (var child in Children)
         {
-            child.MarkDirty();
+            child.MarkDirty(flags);
         }
     }
     

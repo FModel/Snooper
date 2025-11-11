@@ -67,9 +67,16 @@ public abstract partial class ActorComponent
         }
     }
     
-    public bool IsDirty { get; private set; }
-    internal virtual void MarkDirty() => IsDirty = true; // spatial components will override this to propagate to children
-    internal virtual void MarkClean() => IsDirty = false;
+    private DirtyFlags _dirtyFlags = DirtyFlags.None;
+    public bool IsDirty(DirtyFlags flags) => (_dirtyFlags & flags) != 0;
+    internal virtual void MarkDirty(DirtyFlags flags) => _dirtyFlags |= flags;
+    internal virtual void MarkClean(DirtyFlags flags)
+    {
+        if (flags == DirtyFlags.All)
+            _dirtyFlags = DirtyFlags.None;
+        else
+            _dirtyFlags &= ~flags;
+    }
 
     protected virtual void OnReworkThis()
     {

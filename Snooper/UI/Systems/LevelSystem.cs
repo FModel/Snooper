@@ -133,9 +133,9 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
         if (ImGui.Begin("Scene Hierarchy"))
         {
-            if (RootActor is { } root)
+            if (RootActor is { } root && root.Children.ToList() is { Count: > 0 } children)
             {
-                foreach (var child in root.Children)
+                foreach (var child in children)
                     DrawActorTree(child);
             }
         }
@@ -264,7 +264,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
     }
 
-    private readonly Vector2 _iconSize = new(20);
+    private readonly Vector2 _iconSize = new(18);
+    private readonly Vector2 _actionIconSize = new(16);
     
     private bool HasSelectedDescendant(Actor actor)
     {
@@ -279,45 +280,128 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.PushID(actor.Id);
         
         var count = actor.Children.Count;
-        var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.OpenOnDoubleClick;
+        var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.AllowOverlap | ImGuiTreeNodeFlags.FramePadding;
         if (actor.IsSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
         
         if (_scrollToSelected && HasSelectedDescendant(actor) && count > 0) ImGui.SetNextItemOpen(true);
-        
-        ImGui.AlignTextToFramePadding();
+
         var open = ImGui.TreeNodeEx("##tree", flags);
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !ImGui.IsItemToggledOpen())
         {
             SelectedComponentId = actor.RootComponent?.Id ?? 0;
+        }
+        if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && ActiveCamera != null && actor.Components.OfType<SpatialComponent>().FirstOrDefault(x => x.Id == SelectedComponentId) is { } spatial)
+        {
+            var (center, distance) = spatial.GetTeleportPosition(ActiveCamera);
+            ActiveCamera.TeleportTo(center - ActiveCamera.Forward * distance);
         }
         
         ImGui.SameLine();
         if (Icons.TryGetValue(actor.Icon, out var icon))
-            ImGui.Image(icon.GetPointer(), _iconSize);
-        else
-            ImGui.Image(0, _iconSize, Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
-        ImGui.SameLine();
-
-        ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);
-        ImGui.TextUnformatted(actor.Name);
-        ImGui.PopFont();
-        
-        if (open && count > 0)
         {
-            foreach (var child in actor.Children)
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 2);
+            ImGui.Image(icon.GetPointer(), _iconSize);
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() - 2);
+        }
+        else
+        {
+            ImGui.Dummy(_iconSize);
+        }
+        
+        ImGui.SameLine();
+        ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);
+        ImGui.PushStyleColor(ImGuiCol.Text, actor.IsVisible ? ImGui.GetColorU32(ImGuiCol.Text) : ImGui.GetColorU32(ImGuiCol.TextDisabled));
+        ImGui.TextUnformatted(actor.Name);
+        ImGui.PopStyleColor();
+        ImGui.PopFont();
+
+        DrawActorActionButtons(actor);
+        
+        if (open && count > 0 && actor.Children.ToList() is { Count: > 0 } children)
+        {
+            foreach (var child in children)
                 DrawActorTree(child);
             
             ImGui.TreePop();
         }
-        
+
         if (actor.IsSelected && _scrollToSelected)
         {
             ImGui.SetScrollHereY();
             _scrollToSelected = false;
         }
-        
+
         ImGui.PopID();
+    }
+
+    private void DrawActorActionButtons(Actor actor)
+    {
+        var actionButtons = new List<(string id, string icon, string tooltip, Action action)>
+        {
+            ("visibility", actor.IsVisible ? "eye" : "eye_closed", actor.IsVisible ? "Hide" : "Show", () => actor.IsVisible = !actor.IsVisible),
+            ("delete", "trash", "Delete", () =>
+            {
+                actor.Parent?.Children.Remove(actor);
+                if (actor.IsSelected) SelectedComponentId = 0;
+            }),
+        };
+
+        switch (actor.RootComponent)
+        {
+            case CameraComponent { IsActive: true }:
+                actionButtons.RemoveRange(0, 2);
+                break;
+        }
+        
+        if (actionButtons.Count == 0) return;
+        
+        var style = ImGui.GetStyle();
+        var buttonX = ImGui.GetWindowWidth() - style.FramePadding.X - style.WindowPadding.X;
+        buttonX -= ImGui.GetScrollMaxY() > 0 ? style.ScrollbarSize : 0;
+        buttonX -= actionButtons.Count * (_actionIconSize.X + style.ItemSpacing.X) - style.ItemSpacing.X / 2;
+
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(buttonX);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.3f, 0.3f, 0.4f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.4f, 0.4f, 0.4f, 0.5f));
+
+        var buttonY = ImGui.GetCursorPosY();
+        for (var i = 0; i < actionButtons.Count; i++)
+        {
+            ImGui.SetCursorPosY(buttonY);
+
+            var (id, iconName, tooltip, action) = actionButtons[i];
+            if (Icons.TryGetValue(iconName, out var buttonIcon))
+            {
+                if (ImGui.ImageButton(id, buttonIcon.GetPointer(), _actionIconSize))
+                {
+                    action();
+                }
+            }
+            else
+            {
+                if (ImGui.SmallButton(id[0].ToString().ToUpper()))
+                {
+                    action();
+                }
+            }
+            
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(tooltip);
+            }
+            
+            if (i < actionButtons.Count - 1)
+            {
+                ImGui.SameLine();
+            }
+        }
+        
+        ImGui.PopStyleColor(3);
+        ImGui.PopStyleVar();
     }
 
     private void DrawActorInspector()
@@ -327,7 +411,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             ImGui.TextUnformatted("No component selected.");
             return;
         }
-        
+
         if (component.Actor is not { } actor)
         {
             ImGui.TextUnformatted("No actor selected.");
@@ -354,7 +438,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
 
         ImGui.SeparatorText($"{components.Count} Component{(components.Count > 1 ? "s" : "")}");
-        
+
         if (Icons.TryGetValue(component.Icon, out var icon))
             ImGui.Image(icon.GetPointer(), _iconSize);
         else
@@ -369,7 +453,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 else
                     ImGui.Image(0, _iconSize, Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
                 ImGui.SameLine();
-                
+
                 var selected = c.Id == SelectedComponentId;
                 if (ImGui.Selectable(c.Name, selected))
                 {
@@ -380,7 +464,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             }
             ImGui.EndCombo();
         }
-        
+
         component.DrawInterface();
     }
 }

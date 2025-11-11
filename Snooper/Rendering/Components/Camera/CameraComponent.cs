@@ -18,6 +18,10 @@ public sealed class CameraComponent : SpatialComponent
     public Matrix4x4 ViewMatrix = Matrix4x4.Identity;
     public Matrix4x4 ProjectionMatrix = Matrix4x4.Identity;
     public Matrix4x4 ViewProjectionMatrix = Matrix4x4.Identity;
+    
+    public Vector3 Forward => Vector3.Transform(Vector3.UnitZ, LocalTransform.Rotation);
+    public Vector3 Up => Vector3.Transform(Vector3.UnitY, LocalTransform.Rotation);
+    public Vector3 Right => Vector3.Transform(-Vector3.UnitX, LocalTransform.Rotation);
 
     public CameraType Mode;
     public bool bFXAA = true;
@@ -33,6 +37,10 @@ public sealed class CameraComponent : SpatialComponent
     public float AspectRatio => ViewportSize.X / ViewportSize.Y;
     
     private Vector3 _velocity = Vector3.Zero;
+    private Vector3? _teleportTarget = null;
+    private Vector3 _teleportStart = Vector3.Zero;
+    private float _teleportProgress = 0f;
+    private const float TeleportDuration = 1f; // 1 second
     
     public CameraComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -64,6 +72,27 @@ public sealed class CameraComponent : SpatialComponent
 
     public void Update(KeyboardState keyboard, float time)
     {
+        // Handle smooth teleportation
+        if (_teleportTarget.HasValue)
+        {
+            _teleportProgress += time / TeleportDuration;
+            
+            if (_teleportProgress >= 1f)
+            {
+                LocalTransform.Position = _teleportTarget.Value;
+                _teleportTarget = null;
+                _velocity = Vector3.Zero;
+                _teleportProgress = 0f;
+            }
+            else
+            {
+                // SmoothStep interpolation for smooth easing
+                var t = _teleportProgress * _teleportProgress * (3f - 2f * _teleportProgress);
+                LocalTransform.Position = Vector3.Lerp(_teleportStart, _teleportTarget.Value, t);
+                return; // Skip manual input during teleportation
+            }
+        }
+
         var input = Vector3.Zero;
         if (keyboard.IsKeyDown(Keys.W)) input.Z += 1;
         if (keyboard.IsKeyDown(Keys.S)) input.Z -= 1;
@@ -73,12 +102,8 @@ public sealed class CameraComponent : SpatialComponent
         if (keyboard.IsKeyDown(Keys.Q)) input.Y -= 1;
         if (input != Vector3.Zero) input = Vector3.Normalize(input);
 
-        var forward = Vector3.Transform(Vector3.UnitZ, LocalTransform.Rotation);
-        var right   = Vector3.Transform(-Vector3.UnitX, LocalTransform.Rotation);
-        var up      = Vector3.Transform(Vector3.UnitY, LocalTransform.Rotation);
-
         var speed = MovementSpeed * (keyboard.IsKeyDown(Keys.LeftShift) ? 2f : 1f);
-        var direction = (input.X * right + input.Y * up + input.Z * forward) * speed;
+        var direction = (input.X * Right + input.Y * Up + input.Z * Forward) * speed;
 
         const float smoothing = 12f; // higher = snappier
         _velocity = Vector3.Lerp(_velocity, direction, 1f - MathF.Exp(-smoothing * time));
@@ -135,5 +160,12 @@ public sealed class CameraComponent : SpatialComponent
         planes[5] = new Plane(matrix.M14 - matrix.M13, matrix.M24 - matrix.M23, matrix.M34 - matrix.M33, matrix.M44 - matrix.M43); // Top
 
         return planes;
+    }
+
+    public void TeleportTo(Vector3 targetPosition)
+    {
+        _teleportTarget = targetPosition;
+        _teleportStart = LocalTransform.Position;
+        _teleportProgress = 0f;
     }
 }

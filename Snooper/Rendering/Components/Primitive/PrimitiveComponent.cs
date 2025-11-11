@@ -6,6 +6,7 @@ using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
+using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
@@ -14,7 +15,7 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Primitive;
 
-public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> : SpatialComponent
+public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> : SpatialComponent, IPrimitiveComponent
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
@@ -32,7 +33,18 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public bool IsOpaque => !Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
 
-    public bool IsVisible { get; protected init; } = true;
+    private bool _isVisible = true;
+    public bool IsVisible
+    {
+        get => _isVisible;
+        set
+        {
+            if (_isVisible == value) return;
+            
+            _isVisible = value;
+            MarkDirty(DirtyFlags.Visibility);
+        }
+    }
     
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -41,7 +53,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        IsVisible = component.GetOrDefault("bVisible", IsVisible);
+        _isVisible = component.GetOrDefault("bVisible", _isVisible);
     }
 
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
@@ -92,7 +104,27 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     {
         
     }
-    
+
+    public override (Vector3, float) GetTeleportPosition(CameraComponent camera)
+    {
+        var matrices = GetInstanceMatrices();
+        if (matrices.Length == 0) return (Vector3.Zero, 1.0f);
+
+        var overallCenter = Vector3.Zero;
+        foreach (var matrix in matrices)
+        {
+            var worldCenter = Vector3.Transform(Descriptor.Bounds.Center, matrix);
+            overallCenter += worldCenter;
+        }
+        overallCenter /= matrices.Length;
+        
+        var extents = Descriptor.Bounds.Extents;
+        var maxExtent = MathF.Max(extents.X, MathF.Max(extents.Y, extents.Z));
+        var distance = maxExtent * 1.25f / MathF.Tan(camera.FieldOfViewRadians / 2f);
+
+        return (overallCenter, MathF.Max(distance, 0.1f));
+    }
+
     internal override string Icon => "primitive";
 
     private int _sectionIndex;

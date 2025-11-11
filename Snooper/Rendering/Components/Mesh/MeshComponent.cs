@@ -249,6 +249,9 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
         public void FinalizeGpuData()
         {
+            if (Raw is not null)
+                throw new InvalidOperationException("GPU data has already been finalized and sent.");
+            
             if (_diffuses is null || _normals is null || _speculars is null)
             {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");

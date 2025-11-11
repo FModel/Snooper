@@ -23,7 +23,7 @@ public class SplineRenderSystem : DeferredRenderSystem
         
         _params.Generate();
         _params.Allocate(ComponentsCount);
-        foreach (var component in Components.Cast<SplineMeshComponent>())
+        foreach (var component in Components.OfType<SplineMeshComponent>())
         {
             _params.Add(component.SplineParams);
         }

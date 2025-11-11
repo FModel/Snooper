@@ -19,6 +19,27 @@ public class Actor
     public string? ExportType { get; }
     public string? InternalType { get; }
     public bool IsSelected { get; private set; }
+    
+    private bool _isVisible = true;
+    public bool IsVisible
+    {
+        get => _isVisible;
+        set
+        {
+            if (_isVisible == value) return;
+            
+            _isVisible = value;
+            foreach (var component in Components.OfType<IPrimitiveComponent>())
+            {
+                component.IsVisible = value;
+            }
+            
+            foreach (var child in Children)
+            {
+                child.IsVisible = value;
+            }
+        }
+    }
 
     public Actor(string name)
     {

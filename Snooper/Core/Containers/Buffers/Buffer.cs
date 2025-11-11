@@ -34,7 +34,19 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     public abstract GetPName PName { get; }
     public int PreviousHandle { get; private set; }
     
-    public int Count { get; private set; }
+    private int _count;
+    public int Count
+    {
+        get => _count;
+        private set
+        {
+            if (_count == value) return;
+            
+            _count = value;
+            OnCountChanged(value);
+        }
+    }
+    
     public int Stride { get; } = Marshal.SizeOf<T>();
 
     private int _capacity;
@@ -159,9 +171,9 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     public void Update(int allocationId, T[] data) => UpdateInternal(allocationId, data);
     private void UpdateInternal(int allocationId, T[] data)
     {
-        if (!_bInitialized) 
+        if (!_bInitialized)
             throw new InvalidOperationException("Buffer is not initialized. Use Add method to initialize it.");
-        
+
         if (!_allocations.TryGetValue(allocationId, out var metadata))
             throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
@@ -170,7 +182,21 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
             throw new ArgumentException($"Data length ({length}) does not match allocation length ({metadata.Length}). Cannot update with different size.", nameof(data));
 
         GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, length * Stride, data);
+
+        _allocations[allocationId] = metadata with { LastModified = DateTime.UtcNow };
+    }
+    
+    public void UpdateCustom<TCustom>(BufferAllocation allocation, TCustom data, int offset) where TCustom : unmanaged => UpdateCustomInternal(allocation.AllocationId, data, offset);
+    private void UpdateCustomInternal<TCustom>(int allocationId, TCustom data, int offset) where TCustom : unmanaged
+    {
+        if (!_bInitialized) 
+            throw new InvalidOperationException("Buffer is not initialized. Use Add method to initialize it.");
         
+        if (!_allocations.TryGetValue(allocationId, out var metadata))
+            throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
+
+        GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride + offset, Marshal.SizeOf<TCustom>(), ref data);
+
         _allocations[allocationId] = metadata with { LastModified = DateTime.UtcNow };
     }
 
@@ -308,4 +334,6 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         var largestFreeBlock = _freeBlocks.Max(fb => fb.Length);
         return (1.0 - (double)largestFreeBlock / totalFreeSpace) * 100.0;
     }
+
+    protected virtual void OnCountChanged(int newCount) { }
 }

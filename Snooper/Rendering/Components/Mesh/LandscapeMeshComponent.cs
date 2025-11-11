@@ -132,6 +132,9 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
         public void FinalizeGpuData()
         {
+            if (Raw is not null)
+                throw new InvalidOperationException("GPU data has already been finalized and sent.");
+            
             if (_heightmap is null || _weightmaps?.Length != weightmaps.Length)
             {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");

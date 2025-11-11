@@ -4,6 +4,7 @@ using OpenTK.Audio.OpenAL;
 using Serilog;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Cache;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Camera;
 using Snooper.UI;
@@ -65,7 +66,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
             if (!_sources.TryGetValue(component, out var source) || source == null)
                 continue;
             
-            if (component.IsDirty)
+            if (component.IsDirty(DirtyFlags.InstanceData))
             {
                 source.SetPosition(component.WorldMatrix.Translation);
                 source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));

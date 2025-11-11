@@ -206,18 +206,9 @@ switch (provider.ProjectName)
         // overhang.Components.Add(new TextRenderComponent("Asteria Dojo Overhang", 32, transform: new Transform(new Vector3(0, -1.5f, 0), new Quaternion(1, 0, 0, 1))));
         // scene.Children.Add(overhang);
         // break;
-        
-        // provider.SubmitKey(new FGuid("9cff3d95852a462491c84d7f236b8127"), new FAesKey("0xE341093B9ED794D8B48F573237035B0CAACC40C42D7B08F819CABE2748F35119"));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/45c2096d-4b62-f690-7a5b-cb9b53b826c3/Content/FNRL.FNRL")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/45a59717-4e0e-0359-cd14-b08bf44c08d9/Content/HammerFall_Level.HammerFall_Level")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/5e133425-4c5e-7cfb-1d0a-8db2bed53723/Content/StormChaser_Level.StormChaser_Level")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/a8a3061c-49c1-4f71-2604-ae9d3414b8d6/Content/Skyline_Level.Skyline_Level")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/99be4597-4530-1344-d0b9-4d8ab554db97/Content/Mandu_Shell.Mandu_Shell")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/45593d43-4a37-2dd7-f6bd-96a48fcd965a/Content/Cinderwatch_Shell.Cinderwatch_Shell")));
-        
-        grid.Components.Clear();
+
+        grid.Parent?.Children.Remove(grid);
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain"), WorldActorType.BaseResolution | WorldActorType.WorldPartition));
-        
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/Chrisk/ReactiveQuests.ReactiveQuests")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/QA/TestMap_AccessEnemies.TestMap_AccessEnemies"))); // TODO: GPU crash
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Maps/Frontend.Frontend")));

@@ -1,8 +1,8 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers.Buffers;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Containers.Resources;
@@ -108,7 +108,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             });
         }
         
-        component.MarkClean();
+        component.MarkClean(DirtyFlags.All);
         return new ResourcesMetadata(geometryHandle, instanceAllocation, component.Materials[0].Allocation!.Value, drawAllocations);
     }
 
@@ -125,10 +125,29 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             });
         }
         
-        if (component.IsDirty)
+        if (component.IsDirty(DirtyFlags.InstanceData))
         {
             _instanceData.QueueUpdate(metadata.InstanceAllocation, component.GetPerInstanceData());
-            component.MarkClean();
+            component.MarkClean(DirtyFlags.InstanceData);
+        }
+
+        if (component.IsDirty(DirtyFlags.Visibility))
+        {
+            // TODO: this only works for culled systems, we need to manually set InstanceCount to 0 for non-culled systems
+            const int offset = 40; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
+            if (component.IsVisible)
+            {
+                var originalInstanceCount = (uint)metadata.InstanceAllocation.Length;
+                foreach (var drawAllocation in metadata.DrawAllocations)
+                {
+                    _commands.Current.UpdateCustom(drawAllocation, originalInstanceCount, offset);
+                }
+            }
+            else foreach (var drawAllocation in metadata.DrawAllocations)
+            {
+                _commands.Current.UpdateCustom(drawAllocation, 0u, offset);
+            }
+            component.MarkClean(DirtyFlags.Visibility);
         }
     }
     
@@ -178,7 +197,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _instanceData.Bind(1);
         _materialData.Bind(2);
         
-        _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.Count, _commands.Current.Stride));
+        _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.MaxCountHeld, _commands.Current.Stride));
 
         _commands.Current.Unbind();
         // _commands.Swap();

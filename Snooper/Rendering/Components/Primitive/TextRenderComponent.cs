@@ -117,6 +117,9 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
 
         public void FinalizeGpuData()
         {
+            if (Raw is not null)
+                throw new InvalidOperationException("GPU data has already been finalized and sent.");
+            
             Raw = new PerMaterialTextData
             {
                 IsReady = true,

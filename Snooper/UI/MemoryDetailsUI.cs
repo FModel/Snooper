@@ -296,10 +296,44 @@ public static class MemoryDetailsUI
         {
             var startX = cursorPos.X + block.StartIndex * pixelsPerItem;
             var endX = cursorPos.X + (block.StartIndex + block.Length) * pixelsPerItem;
+            var blockWidth = endX - startX;
 
-            for (var x = startX; x < endX; x += 4)
+            // Draw diagonal stripes that properly cover the entire block
+            const float stripeSpacing = 4f;
+            var numStripes = (int)Math.Ceiling((blockWidth + height) / stripeSpacing);
+            
+            for (var i = 0; i < numStripes; i++)
             {
-                drawList.AddLine(cursorPos with { X = x }, new Vector2(x + height, cursorPos.Y + height), ImGui.GetColorU32(new Vector4(0.5f, 0.5f, 0.5f, 0.5f)), 1f);
+                var offset = i * stripeSpacing;
+                
+                var lineStartX = startX + offset;
+                var lineStartY = cursorPos.Y;
+                var lineEndX = startX + offset - height;
+                var lineEndY = cursorPos.Y + height;
+                
+                if (lineStartX > endX)
+                {
+                    var excess = lineStartX - endX;
+                    lineStartX = endX;
+                    lineStartY = cursorPos.Y + excess;
+                }
+                
+                if (lineEndX < startX)
+                {
+                    var excess = startX - lineEndX;
+                    lineEndX = startX;
+                    lineEndY = cursorPos.Y + height - excess;
+                }
+                
+                if (lineStartY <= cursorPos.Y + height && lineEndY >= cursorPos.Y)
+                {
+                    drawList.AddLine(
+                        new Vector2(lineStartX, lineStartY),
+                        new Vector2(lineEndX, lineEndY),
+                        ImGui.GetColorU32(new Vector4(0.5f, 0.5f, 0.5f, 0.5f)),
+                        1f
+                    );
+                }
             }
         }
         

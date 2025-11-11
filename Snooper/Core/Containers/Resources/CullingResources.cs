@@ -45,7 +45,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
     
     public void UpdateOverrideLod(BufferAllocation allocation, int overrideLod)
     {
-        GL.NamedBufferSubData(_primitives, allocation.StartIndex * _primitives.Stride + 32, 4, ref overrideLod);
+        _primitives.UpdateCustom(allocation, overrideLod, 32);
     }
     
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
