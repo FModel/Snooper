@@ -52,13 +52,9 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
     public void Render(CameraComponent camera) => Render(camera, ActorSystemType.Forward);
     protected void Render(CameraComponent camera, ActorSystemType systemType)
     { 
-        var queries = new[] {QueryTarget.TimeElapsed, QueryTarget.PrimitivesGenerated};
-        
         foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
         {
-            system.Profiler.BeginQuery(queries);
             system.Render(camera);
-            system.Profiler.EndQuery();
         }
     }
 

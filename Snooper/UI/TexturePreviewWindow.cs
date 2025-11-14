@@ -164,7 +164,7 @@ public class TexturePreviewWindow
         
         // Create a child region for clipping
         ImGui.SetCursorScreenPos(drawPos);
-        ImGui.InvisibleButton("##canvas", availableSize);
+        ImGui.InvisibleButton("##Canvas", availableSize);
         
         // Calculate texture display size
         var displaySize = _textureSize * _zoom;

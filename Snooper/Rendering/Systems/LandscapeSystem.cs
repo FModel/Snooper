@@ -37,9 +37,9 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     private int _selectedLayer;
     private bool _updateMapping;
 
-    public override void Load()
+    protected override void OnLoad()
     {
-        base.Load();
+        base.OnLoad();
 
         _scales.Generate();
         _scales.Allocate(ComponentsCount * Settings.TessellationQuadCountTotal);
@@ -58,9 +58,9 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         _mapping.Add(new WeightHighlightMapping());
     }
 
-    public override void Update(float delta)
+    protected override void OnUpdate(float delta)
     {
-        base.Update(delta);
+        base.OnUpdate(delta);
         if (!_updateMapping || _colorMode != ColorMode.Weightmap)
             return;
 

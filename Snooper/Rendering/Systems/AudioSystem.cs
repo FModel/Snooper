@@ -26,9 +26,9 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     private const float MinDb = -35f;
     private const float MaxDb = 0f;
 
-    public override void Load()
+    protected override void OnLoad()
     {
-        base.Load();
+        base.OnLoad();
         
         _device = ALC.OpenDevice(null);
         if (_device == ALDevice.Null)
@@ -50,9 +50,9 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         Log.Information("OpenAL initialized successfully (Version: {Version})", AL.Get(ALGetString.Version));
     }
 
-    public override void Update(float delta)
+    protected override void OnUpdate(float delta)
     {
-        base.Update(delta);
+        base.OnUpdate(delta);
 
         if (_context == ALContext.Null) return;
 
@@ -90,7 +90,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         _volumeChanged = false;
     }
 
-    public override void Render(CameraComponent camera)
+    protected override void OnRender(CameraComponent camera)
     {
         if (_context == ALContext.Null) return;
         

@@ -8,21 +8,21 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
 {
     public override uint Order => 9;
 
-    public override void Load()
+    protected override void OnLoad()
     {
-        base.Load();
+        base.OnLoad();
         
         Parallel.ForEach(Components, UpdateTransformComponentsRecursive);
     }
 
-    public override void Update(float delta)
+    protected override void OnUpdate(float delta)
     {
-        base.Update(delta);
+        base.OnUpdate(delta);
 
         Parallel.ForEach(Components, UpdateTransformComponentsRecursive);
     }
 
-    public override void Render(CameraComponent camera)
+    protected override void OnRender(CameraComponent camera)
     {
 
     }

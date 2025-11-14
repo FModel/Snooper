@@ -8,11 +8,11 @@ public class DeferredRenderSystem : RenderSystem
     public override uint Order => 23;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
     
-    public override void Load()
+    protected override void OnLoad()
     {
         Shader.Fragment = "geometry.frag";
         
-        base.Load();
+        base.OnLoad();
     }
 
     protected override bool CanEnqueueActorComponent(MeshComponent component)

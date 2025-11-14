@@ -143,78 +143,84 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
         if (ImGui.Begin("Profiler"))
         {
-            ImGui.Text($"API: {Context.Name}");
-            ImGui.Text($"OpenGL: {Context.Version}");
-            ImGui.Text($"GPU: {Context.DeviceInfo.Name}");
-            ImGui.Text($"Vendor: {Context.DeviceInfo.Vendor}");
-            ImGui.Text($"Extensions: x{Context.DeviceInfo.ExtensionSupport.Extensions.Length}");
-            
-            ImGui.SeparatorText("Options");
-            ImGui.Checkbox("Show Framebuffers", ref ShowFramebuffers);
-            var c = (int) DebugColorMode;
-            ImGui.Combo("DebugColorMode", ref c, "None\0Per Component\0Per Instance\0Per Material\0Per Primitive\0Vertex Colors\0");
-            DebugColorMode = (ActorDebugColorMode) c;
-
-            ImGui.SeparatorText($"GPU Memory Summary ({Allocated.GetReadableSize()})");
-            MemoryDetailsUI.DrawMemoryTable(this);
-
-            ImGui.SeparatorText("Systems");
-            foreach (var system in Systems.Values)
+            if (ImGui.BeginTabBar("ProfilerTabs"))
             {
-                if (ImGui.CollapsingHeader($"{system.Order} - {system.DisplayName} ({system.SystemType})"))
+                if (ImGui.BeginTabItem("Overview"))
                 {
-                    ImGui.TextUnformatted($"Time: {system.Time:F3} s");
+                    ImGui.Columns(2, "sysinfo", false);
+                    ImGui.Text($"API: {Context.Name}");
+                    ImGui.Text($"GPU: {Context.DeviceInfo.Name}");
+                    ImGui.NextColumn();
+                    ImGui.Text($"OpenGL: {Context.Version}");
+                    ImGui.Text($"Vendor: {Context.DeviceInfo.Vendor}");
+                    ImGui.Columns(1);
                     
-                    ImGui.SetNextItemOpen(true, ImGuiCond.Appearing);
-                    if (ImGui.TreeNode($"x{system.ComponentsCount} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}"))
-                    {
-                        if (system is IMemorySizeProvider provider)
-                        {
-                            ImGui.Spacing();
-                            ImGui.SeparatorText("GPU Memory");
-                            MemoryDetailsUI.DrawMemorySummary(provider);
-                            
-                            ImGui.Spacing();
-                            ImGui.Separator();
-                            ImGui.Spacing();
-                            
-                            if (provider is IMemoryDetailsProvider detailsProvider)
-                            {
-                                ImGui.Text("Resource Breakdown:");
-                                ImGui.Spacing();
-                                MemoryDetailsUI.DrawMemoryDetails(detailsProvider);
-                            }
-                            else
-                            {
-                                ImGui.TextDisabled("No detailed breakdown available");
-                            }
-                        }
-                        ImGui.TreePop();
-                    }
+                    ImGui.Spacing();
+                    ImGui.Separator();
+                    ImGui.Spacing();
                     
-                    if (ImGui.TreeNode($"{system.DisplayName}_profiler", "Profiler"))
-                    {
-                        system.Profiler.PollResults();
-
-                        ImGui.Text($"Primitives Generated: {system.Profiler.PrimitivesGenerated:N0}");
-                        ImGui.PlotLines(
-                            "Time Elapsed (ms)", ref system.Profiler.TimeElapsedMs[0],
-                            SystemProfiler.MaxFrameHistory, 0, $"avg {system.Profiler.AverageTimeElapsedMs:F} ms",
-                            0, system.Profiler.MaxTimeElapsedMs,
-                            new Vector2(0, 25));
-                        
-                        ImGui.TreePop();
-                    }
-
-                    if (system is IControllable controllable)
-                    {
-                        if (ImGui.TreeNode($"{system.DisplayName}_controls", "Controls"))
-                        {
-                            controllable.DrawControls();
-                            ImGui.TreePop();
-                        }
-                    }
+                    ImGui.Checkbox("Show Framebuffers", ref ShowFramebuffers);
+                    ImGui.SameLine();
+                    var c = (int) DebugColorMode;
+                    ImGui.SetNextItemWidth(200);
+                    ImGui.Combo("Debug Mode", ref c, "None\0Per Component\0Per Instance\0Per Material\0Per Primitive\0Vertex Colors\0");
+                    DebugColorMode = (ActorDebugColorMode) c;
+                    
+                    ImGui.Spacing();
+                    ImGui.Separator();
+                    ImGui.Spacing();
+                    
+                    ImGui.TextUnformatted("GPU Memory");
+                    ImGui.Spacing();
+                    MemoryDetailsUI.DrawMemorySummary(this);
+                    
+                    ImGui.EndTabItem();
                 }
+                
+                if (ImGui.BeginTabItem("Memory"))
+                {
+                    MemoryDetailsUI.DrawMemoryTable(this, Icons);
+                    ImGui.EndTabItem();
+                }
+                
+                if (ImGui.BeginTabItem("Systems"))
+                {
+                    foreach (var system in Systems.Values)
+                    {
+                        if (ImGui.CollapsingHeader($"{system.Order}. {system.DisplayName}"))
+                        {
+                            ImGui.Columns(2, $"sys{system.Order}", false);
+                            ImGui.TextDisabled("Time");
+                            ImGui.TextUnformatted($"{system.Time:F3} s");
+                            ImGui.NextColumn();
+                            ImGui.TextDisabled("Components");
+                            ImGui.TextUnformatted($"{system.ComponentsCount} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}");
+                            ImGui.Columns(1);
+                            
+                            ImGui.Spacing();
+                            
+                            if (system is IMemorySizeProvider provider)
+                            {
+                                MemoryDetailsUI.DrawMemorySummary(provider);
+                                ImGui.Spacing();
+                            }
+                            
+                            MemoryDetailsUI.DrawPerformanceMetrics(system.Profiler, system.Order.ToString());
+                            
+                            if (system is IControllable controllable)
+                            {
+                                ImGui.Spacing();
+                                ImGui.Separator();
+                                ImGui.Spacing();
+                                ImGui.TextDisabled("Controls");
+                                controllable.DrawControls();
+                            }
+                        }
+                    }
+                    ImGui.EndTabItem();
+                }
+                
+                ImGui.EndTabBar();
             }
         }
         ImGui.End();
@@ -286,8 +292,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         
         if (_scrollToSelected && HasSelectedDescendant(actor) && count > 0) ImGui.SetNextItemOpen(true);
 
-        var open = ImGui.TreeNodeEx("##tree", flags);
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !ImGui.IsItemToggledOpen())
+        var open = ImGui.TreeNodeEx("##Tree", flags);
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
         {
             SelectedComponentId = actor.RootComponent?.Id ?? 0;
         }

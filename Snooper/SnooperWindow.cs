@@ -53,6 +53,7 @@ public partial class SnooperWindow : GameWindow
         
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
         
+        // TODO: move this into its own Editor project
         _interface = new LevelSystem(this);
         
         Closing += _ =>

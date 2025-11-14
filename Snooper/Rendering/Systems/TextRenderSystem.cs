@@ -26,9 +26,9 @@ public class TextRenderSystem : PrimitiveSystem<Vector4, TextRenderComponent, Pe
         GL.VertexArrayAttribBinding(vao, 1, 0);
     };
 
-    public override void Load()
+    protected override void OnLoad()
     {
-        base.Load();
+        base.OnLoad();
         
         FontAtlasTexture.Instance.Generate();
     }

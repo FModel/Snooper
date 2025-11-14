@@ -15,11 +15,11 @@ public class SplineRenderSystem : DeferredRenderSystem
 
     private readonly ShaderStorageBuffer<SplineMeshParams> _params = new();
     
-    public override void Load()
+    protected override void OnLoad()
     {
         Shader.Vertex = "spline.vert";
         
-        base.Load();
+        base.OnLoad();
         
         _params.Generate();
         _params.Allocate(ComponentsCount);

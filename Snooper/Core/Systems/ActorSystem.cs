@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using OpenTK.Graphics.OpenGL4;
+using Serilog;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -37,9 +38,33 @@ public abstract class ActorSystem : IGameSystem
         Profiler = new SystemProfiler();
     }
 
-    public abstract void Load();
-    public virtual void Update(float delta) => Time += delta;
-    public abstract void Render(CameraComponent camera);
+    public void Load()
+    {
+        Profiler.Time(ProfilerMetric.Load, OnLoad);
+    }
+    
+    public void Update(float delta)
+    {
+        Profiler.Time(ProfilerMetric.Update, () =>
+        {
+            Time += delta;
+            OnUpdate(delta);
+        });
+    }
+    
+    public void Render(CameraComponent camera)
+    {
+        Profiler.Time(ProfilerMetric.Render, () =>
+        {
+            Profiler.BeginQuery(QueryTarget.PrimitivesGenerated);
+            OnRender(camera);
+            Profiler.EndQuery();
+        });
+    }
+    
+    protected abstract void OnLoad();
+    protected abstract void OnUpdate(float delta);
+    protected abstract void OnRender(CameraComponent camera);
     
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
     
@@ -67,12 +92,8 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     
     protected HashSet<TComponent> Components { get; } = [];
 
-    public override void Load() => DequeueComponents();
-    public override void Update(float delta)
-    {
-        base.Update(delta);
-        DequeueComponents(5);
-    }
+    protected override void OnLoad() => DequeueComponents();
+    protected override void OnUpdate(float delta) => DequeueComponents(5);
 
     public sealed override void ProcessActorComponent(ActorComponent component, Actor actor)
     {

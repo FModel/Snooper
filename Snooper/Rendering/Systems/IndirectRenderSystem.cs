@@ -40,9 +40,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         };
     }
 
-    public override void Load()
+    protected override void OnLoad()
     {
-        base.Load();
+        base.OnLoad();
 
         Resources.Generate();
         Resources.Allocate(_counts);
@@ -56,9 +56,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.SetVertexLayout(VertexLayout);
     }
 
-    public override void Update(float delta)
+    protected override void OnUpdate(float delta)
     {
-        base.Update(delta);
+        base.OnUpdate(delta);
         
         // dequeue textures
         TextureManager.Update(delta);
@@ -71,7 +71,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.FlushUpdates();
     }
 
-    public override void Render(CameraComponent camera)
+    protected override void OnRender(CameraComponent camera)
     {
         Resources.Render();
     }
