@@ -42,20 +42,22 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         base.OnLoad();
 
         _scales.Generate();
+        _mapping.Generate();
+        
         _scales.Allocate(ComponentsCount * Settings.TessellationQuadCountTotal);
+        _mapping.Allocate(ComponentsCount);
+        
         foreach (var component in Components)
         {
             _scales.AddRange(component.Scales);
+            _mapping.Add(new WeightHighlightMapping());
+            
             foreach (var layer in component.Layers.Keys)
             {
                 if (!_layers.Contains(layer)) _layers.Add(layer);
             }
             _sizeQuads = Math.Max(_sizeQuads, component.SizeQuads);
         }
-        
-        // TODO: rework this, we can't index by DrawID forever
-        _mapping.Generate();
-        _mapping.Add(new WeightHighlightMapping());
     }
 
     protected override void OnUpdate(float delta)
@@ -83,6 +85,8 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
                 };
             }
             
+            // this only works because there's a match between the draw allocation id and the mapping allocation id
+            // would be better to have a direct reference
             _mapping.Update(metadata.DrawAllocations[0], m);
         }
         

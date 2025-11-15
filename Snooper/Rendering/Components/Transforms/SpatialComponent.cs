@@ -48,20 +48,6 @@ public class SpatialComponent : ActorComponent, IControllable
         }
     }
     
-    private Matrix4x4 _worldMatrix = Matrix4x4.Identity;
-    public Matrix4x4 WorldMatrix
-    {
-        get => _worldMatrix;
-        private set
-        {
-            if (_worldMatrix == value)
-                return;
-            
-            _worldMatrix = value;
-            MarkDirty(DirtyFlags.InstanceData);
-        }
-    }
-    
     private SpatialComponent? _relation;
     public SpatialComponent? Relation
     {
@@ -79,8 +65,10 @@ public class SpatialComponent : ActorComponent, IControllable
             MarkDirty(DirtyFlags.InstanceData);
         }
     }
-    
+
     public readonly List<SpatialComponent> Children = [];
+    
+    public Matrix4x4 WorldMatrix { get; private set; } = Matrix4x4.Identity;
 
     public virtual Matrix4x4[] GetInstanceMatrices() => [WorldMatrix];
     
@@ -139,9 +127,13 @@ public class SpatialComponent : ActorComponent, IControllable
     {
         EditorUI.CollapsingTable("Transform", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
-            EditorUI.DragFloat3("Position", ref LocalTransform.Position);
-            EditorUI.DragFloat4("Rotation", ref LocalTransform.Rotation);
-            EditorUI.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f);
+            var edited = EditorUI.DragFloat3("Position", ref LocalTransform.Position);
+            edited |= EditorUI.DragFloat4("Rotation", ref LocalTransform.Rotation);
+            edited |= EditorUI.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f);
+            if (edited)
+            {
+                MarkDirty(DirtyFlags.InstanceData);
+            }
 
             if (Relation is ActorComponent relation)
             {

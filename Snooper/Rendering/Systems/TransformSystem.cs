@@ -1,4 +1,5 @@
 ﻿using Snooper.Core.Systems;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Transforms;
 
@@ -11,15 +12,21 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
     protected override void OnLoad()
     {
         base.OnLoad();
-        
-        Parallel.ForEach(Components, UpdateTransformComponentsRecursive);
+
+        foreach (var component in Components)
+        {
+            UpdateTransformComponentsRecursive(component);
+        }
     }
 
     protected override void OnUpdate(float delta)
     {
         base.OnUpdate(delta);
 
-        Parallel.ForEach(Components, UpdateTransformComponentsRecursive);
+        foreach (var component in Components)
+        {
+            UpdateTransformComponentsRecursive(component);
+        }
     }
 
     protected override void OnRender(CameraComponent camera)
@@ -34,8 +41,10 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
 
     private void UpdateTransformComponentsRecursive(SpatialComponent component)
     {
+        if (!component.IsDirty(DirtyFlags.InstanceData)) return;
+
         component.UpdateWorldMatrix(false);
-        
+
         foreach (var child in component.Children)
         {
             UpdateTransformComponentsRecursive(child);

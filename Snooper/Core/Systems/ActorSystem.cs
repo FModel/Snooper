@@ -23,6 +23,8 @@ public abstract class ActorSystem : IGameSystem
     public readonly string DisplayName;
     public readonly Type ComponentType;
     public readonly SystemProfiler Profiler;
+
+    public bool IsEnabled = true;
     public ActorManager? ActorManager { get; internal set; }
     public float Time { get; private set; }
     
@@ -40,11 +42,13 @@ public abstract class ActorSystem : IGameSystem
 
     public void Load()
     {
+        if (!IsEnabled) return;
         Profiler.Time(ProfilerMetric.Load, OnLoad);
     }
     
     public void Update(float delta)
     {
+        if (!IsEnabled) return;
         Profiler.Time(ProfilerMetric.Update, () =>
         {
             Time += delta;
@@ -54,6 +58,7 @@ public abstract class ActorSystem : IGameSystem
     
     public void Render(CameraComponent camera)
     {
+        if (!IsEnabled) return;
         Profiler.Time(ProfilerMetric.Render, () =>
         {
             Profiler.BeginQuery(QueryTarget.PrimitivesGenerated);

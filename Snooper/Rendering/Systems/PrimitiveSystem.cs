@@ -17,7 +17,6 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
 {
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
-    protected virtual bool IsRenderable => true;
     protected virtual bool IsCulled => true;
     protected virtual ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default");
     
@@ -29,12 +28,6 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         Shader.Link();
     }
 
-    protected override void OnUpdate(float delta)
-    {
-        if (!IsRenderable) return;
-        base.OnUpdate(delta);
-    }
-
     protected virtual void PreRender(CameraComponent camera, ShaderProgram shader)
     {
         shader.Use();
@@ -44,8 +37,6 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
 
     protected sealed override void OnRender(CameraComponent camera)
     {
-        if (!IsRenderable) return;
-
         // this trigger a shader use, do it before pre-rendering to avoid conflicts
         if (IsCulled)
             Resources.Cull(camera);

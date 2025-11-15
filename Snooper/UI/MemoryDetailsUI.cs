@@ -383,12 +383,6 @@ public static class MemoryDetailsUI
 
     public static void DrawPerformanceMetrics(SystemProfiler profiler, string? idSuffix = null)
     {
-        profiler.PollResults();
-        ImGui.Text($"Primitives: {profiler.PrimitivesGenerated:N0}");
-        
-        ImGui.Spacing();
-        ImGui.TextDisabled("Performance Metrics");
-        
         var colors = new Dictionary<ProfilerMetric, Vector4>
         {
             { ProfilerMetric.Render, new Vector4(0.2f, 0.8f, 0.2f, 1.0f) },

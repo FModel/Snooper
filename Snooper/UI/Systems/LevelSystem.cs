@@ -136,7 +136,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             if (RootActor is { } root && root.Children.ToList() is { Count: > 0 } children)
             {
                 foreach (var child in children)
-                    DrawActorTree(child);
+                    DrawActorTree(child, true);
             }
         }
         ImGui.End();
@@ -189,31 +189,43 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     {
                         if (ImGui.CollapsingHeader($"{system.Order}. {system.DisplayName}"))
                         {
-                            ImGui.Columns(2, $"sys{system.Order}", false);
-                            ImGui.TextDisabled("Time");
-                            ImGui.TextUnformatted($"{system.Time:F3} s");
-                            ImGui.NextColumn();
-                            ImGui.TextDisabled("Components");
-                            ImGui.TextUnformatted($"{system.ComponentsCount} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}");
-                            ImGui.Columns(1);
+                            ImGui.Columns(2, $"SysTable{system.Order}", false);
+                            {
+                                ImGui.TextDisabled("Time");
+                                ImGui.TextUnformatted($"{system.Time:F2} s");
+                                ImGui.Spacing();
+                                ImGui.TextDisabled("Is Enabled");
+                                ImGui.Checkbox($"##Enabled{system.Order}", ref system.IsEnabled);
                             
-                            ImGui.Spacing();
+                                ImGui.NextColumn();
+                                ImGui.TextDisabled("Components");
+                                ImGui.TextUnformatted($"{system.ComponentsCount:N0} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}");
+                                ImGui.Spacing();
+                                system.Profiler.PollResults();
+                                ImGui.TextDisabled("Primitives");
+                                ImGui.TextUnformatted($"{system.Profiler.PrimitivesGenerated:N0}");
+                            }
+                            ImGui.Columns(1);
                             
                             if (system is IMemorySizeProvider provider)
                             {
-                                MemoryDetailsUI.DrawMemorySummary(provider);
                                 ImGui.Spacing();
+                                MemoryDetailsUI.DrawMemorySummary(provider);
                             }
                             
-                            MemoryDetailsUI.DrawPerformanceMetrics(system.Profiler, system.Order.ToString());
+                            if (ImGui.TreeNode($"Performance Metrics##SysMetrics{system.Order}"))
+                            {
+                                MemoryDetailsUI.DrawPerformanceMetrics(system.Profiler, system.Order.ToString());
+                                ImGui.TreePop();
+                            }
                             
                             if (system is IControllable controllable)
                             {
-                                ImGui.Spacing();
-                                ImGui.Separator();
-                                ImGui.Spacing();
-                                ImGui.TextDisabled("Controls");
-                                controllable.DrawControls();
+                                if (ImGui.TreeNode($"Controls##SysControls{system.Order}"))
+                                {
+                                    controllable.DrawControls();
+                                    ImGui.TreePop();
+                                }
                             }
                         }
                     }
@@ -280,8 +292,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             if (HasSelectedDescendant(child)) return true;
         return false;
     }
-    
-    private void DrawActorTree(Actor actor)
+
+    private void DrawActorTree(Actor actor, bool clip = false)
     {
         ImGui.PushID(actor.Id);
         
@@ -290,7 +302,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         if (actor.IsSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
         
-        if (_scrollToSelected && HasSelectedDescendant(actor) && count > 0) ImGui.SetNextItemOpen(true);
+        var anyChildSelected = _scrollToSelected && HasSelectedDescendant(actor);
+        if (anyChildSelected && count > 0) ImGui.SetNextItemOpen(true);
 
         var open = ImGui.TreeNodeEx("##Tree", flags);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
@@ -326,8 +339,44 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         
         if (open && count > 0 && actor.Children.ToList() is { Count: > 0 } children)
         {
-            foreach (var child in children)
+            var anyChildExpanded = false;
+            if (clip && !anyChildSelected)
+            {
+                foreach (var child in children)
+                {
+                    ImGui.PushID(child.Id);
+                    var isOpen = ImGui.GetStateStorage().GetInt(ImGui.GetID("##Tree")) != 0;
+                    ImGui.PopID();
+                    if (isOpen && child.Children.Count > 0)
+                    {
+                        anyChildExpanded = true;
+                        break;
+                    }
+                }
+            }
+            
+            // only use clipper if no child is expanded and not scrolling to selected
+            if (clip && !anyChildSelected && !anyChildExpanded)
+            {
+                unsafe
+                {
+                    var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
+                    clipper.Begin(children.Count);
+                    while (clipper.Step())
+                    {
+                        for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                        {
+                            DrawActorTree(children[i]);
+                        }
+                    }
+                    clipper.End();
+                    clipper.Destroy();
+                }
+            }
+            else foreach (var child in children)
+            {
                 DrawActorTree(child);
+            }
             
             ImGui.TreePop();
         }
