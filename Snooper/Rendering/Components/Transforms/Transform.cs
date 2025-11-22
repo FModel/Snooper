@@ -40,6 +40,13 @@ public class Transform()
                Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(Rotation)) *
                Matrix4x4.CreateTranslation(Position);
     }
+
+    public Transform Inverse()
+    {
+        var invRotation = Quaternion.Inverse(Rotation);
+        var invPosition = Vector3.Transform(-Position, invRotation);
+        return new Transform(invPosition, invRotation);
+    }
     
     public static implicit operator Transform(FTransform transform) => new(transform);
 }

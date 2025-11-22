@@ -44,7 +44,7 @@ public class SpatialComponent : ActorComponent, IControllable
                 return;
             
             _localTransform = value;
-            MarkDirty(DirtyFlags.InstanceData);
+            MarkDirtyUpward(DirtyFlags.Transform);
         }
     }
     
@@ -62,7 +62,7 @@ public class SpatialComponent : ActorComponent, IControllable
             if (_relation != null && !_relation.Children.Contains(this))
                 _relation.Children.Add(this);
 
-            MarkDirty(DirtyFlags.InstanceData);
+            MarkDirtyUpward(DirtyFlags.Transform);
         }
     }
 
@@ -97,30 +97,37 @@ public class SpatialComponent : ActorComponent, IControllable
             if (!_absPosition && !_absRotation && !_absScale)
             {
                 WorldMatrix = LocalTransform.ToMatrix() * Relation.WorldMatrix;
-                return;
             }
-            
-            Matrix4x4.Decompose(Relation.WorldMatrix, out var scale, out var rotation, out _);
-            
-            WorldMatrix = new Transform
+            else
             {
-                Position = _absPosition ? LocalTransform.Position : Vector3.Transform(LocalTransform.Position, Relation.WorldMatrix),
-                Rotation = _absRotation ? LocalTransform.Rotation : rotation * LocalTransform.Rotation,
-                Scale = _absScale ? LocalTransform.Scale : LocalTransform.Scale * scale
-            }.ToMatrix();
+                Matrix4x4.Decompose(Relation.WorldMatrix, out var scale, out var rotation, out _);
+                
+                WorldMatrix = new Transform
+                {
+                    Position = _absPosition ? LocalTransform.Position : Vector3.Transform(LocalTransform.Position, Relation.WorldMatrix),
+                    Rotation = _absRotation ? LocalTransform.Rotation : rotation * LocalTransform.Rotation,
+                    Scale = _absScale ? LocalTransform.Scale : LocalTransform.Scale * scale
+                }.ToMatrix();
+            }
         }
-    }
-
-    internal override void MarkDirty(DirtyFlags flags)
-    {
-        base.MarkDirty(flags);
         
+        // this component's WorldMatrix is now clean and needs to be updated on GPU
+        MarkClean(DirtyFlags.Transform);
+        MarkDirty(DirtyFlags.InstanceData);
+        
+        // since this component's WorldMatrix changed, all children need to update theirs too
         foreach (var child in Children)
         {
-            child.MarkDirty(flags);
+            child.MarkDirty(DirtyFlags.Transform);
         }
     }
     
+    private void MarkDirtyUpward(DirtyFlags flags)
+    {
+        MarkDirty(flags);
+        Relation?.MarkDirtyUpward(flags);
+    }
+
     internal override string Icon => "perspective";
 
     public virtual void DrawControls()
@@ -132,7 +139,7 @@ public class SpatialComponent : ActorComponent, IControllable
             edited |= EditorUI.DragFloat3("Scale", ref LocalTransform.Scale, 0.1f, 0.01f);
             if (edited)
             {
-                MarkDirty(DirtyFlags.InstanceData);
+                MarkDirtyUpward(DirtyFlags.Transform);
             }
 
             if (Relation is ActorComponent relation)

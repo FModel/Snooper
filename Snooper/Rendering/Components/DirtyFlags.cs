@@ -4,10 +4,10 @@
 public enum DirtyFlags
 {
     None = 0,
-    InstanceData = 1 << 0,
-    Visibility = 1 << 1,
-    // X = 1 << 2,
-    // X = 1 << 3,
+    Transform = 1 << 0,
+    InstanceData = 1 << 1,
+    Visibility = 1 << 2,
+    // X = 1 << Y,
     
     All = ~0
 }

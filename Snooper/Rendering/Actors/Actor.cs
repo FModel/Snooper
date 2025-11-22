@@ -1,15 +1,14 @@
-﻿using System.Collections.ObjectModel;
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
+using ImGuiNET;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
-using Snooper.Rendering.Components.Skybox;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Actors;
 
@@ -64,7 +63,7 @@ public class Actor
     }
 
     public ActorComponentCollection Components { get; }
-    public ObservableCollection<Actor> Children { get; }
+    public ActorChildrenCollection Children { get; }
 
     private Actor? _parent;
     public Actor? Parent
@@ -111,6 +110,11 @@ public class Actor
         {
             actor.RootComponent.Relation = RootComponent;
         }
+        
+        if (!IsVisible)
+        {
+            actor.IsVisible = false;
+        }
     }
 
     private void RemoveInternal(Actor actor)
@@ -141,6 +145,11 @@ public class Actor
         }
 
         component.Actor = this;
+        
+        if (!IsVisible && component is IPrimitiveComponent primitive)
+        {
+            primitive.IsVisible = false;
+        }
 
 #if DEBUG
         if (component is MeshComponent { IsVisible: false } mesh)
@@ -213,5 +222,20 @@ public class Actor
         if (IsSelected == any) return;
         
         IsSelected = any;
+    }
+
+    internal virtual void DrawInterface()
+    {
+        ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
+        ImGui.TextUnformatted(Name);
+        ImGui.PopFont();
+        if (ExportType != null)
+        {
+            ImGui.Text($"Export Type: {ExportType}");
+        }
+        if (InternalType != null)
+        {
+            ImGui.Text($"Internal Type: {InternalType}");
+        }
     }
 }

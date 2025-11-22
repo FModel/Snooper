@@ -34,6 +34,8 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     public abstract GetPName PName { get; }
     public int PreviousHandle { get; private set; }
     
+    public event Action<uint, uint>? OnHandleChanged;
+    
     private int _count;
     public int Count
     {
@@ -94,22 +96,23 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         {
             Log.Verbose("Resizing buffer {0} ({1}) from {2} to {3} (initialized!!!!!!)", Handle, PName, oldCapacity, _capacity);
 
+            _bInitialized = false;
             if (copy)
             {
                 var oldBuffer = Handle;
-                var oldSize = Count * Stride;
 
                 Generate();
                 Allocate(_capacity);
 
-                GL.CopyNamedBufferSubData(oldBuffer, Handle, IntPtr.Zero, IntPtr.Zero, oldSize);
+                GL.CopyNamedBufferSubData(oldBuffer, Handle, 0, 0, oldCapacity * Stride);
                 GL.DeleteBuffer(oldBuffer);
 
                 Log.Verbose("Buffer {OldBuffer} ({GetPName}) has a new handle {I}.", oldBuffer, PName, Handle);
+                
+                OnHandleChanged?.Invoke(oldBuffer, Handle);
             }
             else
             {
-                _bInitialized = false;
                 Allocate(_capacity);
             }
         }
@@ -129,11 +132,11 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
         GL.NamedBufferData(Handle, _capacity * Stride, new T[_capacity], usageHint);
 
-        Count = 0;
-        _nextOffset = 0;
-        _allocationIdCounter = 0;
-        _allocations.Clear();
-        _freeBlocks.Clear();
+        // Count = 0;
+        // _nextOffset = 0;
+        // _allocationIdCounter = 0;
+        // _allocations.Clear();
+        // _freeBlocks.Clear();
         _bInitialized = true;
     }
 
@@ -144,14 +147,13 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         var length = data.Length;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
         
-        var (allocationId, startIndex) = AllocateSpace(length);
-        
         if (!_bInitialized)
         {
             Allocate(length);
-            (allocationId, startIndex) = AllocateSpace(length);
         }
-        else if (startIndex + length > _capacity)
+        
+        var (allocationId, startIndex) = AllocateSpace(length);
+        if (startIndex + length > _capacity)
         {
             ResizeIfNeeded(startIndex + length, copy: true);
         }

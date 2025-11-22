@@ -33,7 +33,7 @@ public class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
         }
     }
     
-    public DebugComponent(CullingBounds bounds, float radius, Vector3? color = null, float lineThickness = 1.0f, string? name = null) : this(new Geometry(bounds.Center, radius), bounds, name)
+    public DebugComponent(Vector3 center, Vector3 extents, Vector3? color = null, float lineThickness = 1.0f, string? name = null) : this(new Geometry(center, extents), new CullingBounds(center, extents), name)
     {
         if (color != null)
         {

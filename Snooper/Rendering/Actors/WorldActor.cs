@@ -1,4 +1,5 @@
 ﻿using CUE4Parse.UE4.Assets.Exports;
+using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
@@ -12,12 +13,11 @@ public enum WorldActorType
 {
     Components        = 1 << 1,
     Landscape         = 1 << 2,
-    WorldPartition    = 1 << 3,
-    LevelStreaming    = 1 << 4,
-    AdditionalWorlds  = 1 << 5,
+    LevelStreaming    = 1 << 3,
+    AdditionalWorlds  = 1 << 4,
 
     BaseResolution    = Components | Landscape | AdditionalWorlds, // loads whatever components this world has, including landscape but excluding world partition and level streaming
-    HighResolution    = Landscape | WorldPartition | LevelStreaming, // loads only landscape from this world and parse partition and level streaming at BaseResolution
+    HighResolution    = Landscape | LevelStreaming, // loads only landscape from this world and parse partition and level streaming at BaseResolution
 }
 
 public class WorldActor : Actor
@@ -26,29 +26,23 @@ public class WorldActor : Actor
     {
         Components.Add(new SpatialComponent(null, "WorldRoot"));
         
-        var partition = type.Includes(WorldActorType.WorldPartition);
-        var streaming = type.Includes(WorldActorType.LevelStreaming);
+        var level = world.PersistentLevel.Load<ULevel>();
+        if (level == null) return;
         
-        for (var i = 0; streaming && i < world.StreamingLevels.Length; i++)
+        if (level.WorldSettings.TryLoad<AWorldSettings>(out var settings) &&
+            settings.WorldPartition.TryLoad<UWorldPartition>(out var partition))
         {
-            Process(world.StreamingLevels[i]);
-            if (i > 5) break; // TODO: optimize
+            Children.Add(new PartitionActor(partition));
         }
-
+        
         var created = new List<LevelActor>();
-        var actors = world.PersistentLevel.Load<ULevel>()?.Actors ?? [];
-        foreach (var ptr in actors)
+        foreach (var ptr in level.Actors)
         {
             if (ptr == null || !ptr.TryLoad<UObject>(out var data))
             {
                 continue;
             }
             
-            if (partition)
-            {
-                Process(data.GetOrDefault<FPackageIndex?>("WorldPartition"));
-            }
-
             var a = new LevelActor(data, _parents, type);
             if (a.RootComponent is not null)
             {
@@ -78,6 +72,15 @@ public class WorldActor : Actor
         
         created.Clear();
         _parents.Clear();
+        
+        if (type.Includes(WorldActorType.LevelStreaming))
+        {
+            for (var i = 0; i < world.StreamingLevels.Length; i++)
+            {
+                Process(world.StreamingLevels[i]);
+                if (i > 5) break; // TODO: optimize
+            }
+        }
     }
 
     private readonly Dictionary<FPackageIndex, SpatialComponent> _parents = [];

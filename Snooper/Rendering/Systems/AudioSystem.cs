@@ -66,7 +66,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
             if (!_sources.TryGetValue(component, out var source) || source == null)
                 continue;
             
-            if (component.IsDirty(DirtyFlags.InstanceData))
+            if (component.IsDirty(DirtyFlags.Transform))
             {
                 source.SetPosition(component.WorldMatrix.Translation);
                 source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));

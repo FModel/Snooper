@@ -41,7 +41,7 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
 
     private void UpdateTransformComponentsRecursive(SpatialComponent component)
     {
-        if (!component.IsDirty(DirtyFlags.InstanceData)) return;
+        if (!component.IsDirty(DirtyFlags.Transform)) return;
 
         component.UpdateWorldMatrix(false);
 

@@ -3,9 +3,7 @@ using ImGuiNET;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
-using Snooper.Core;
 using Snooper.Core.Containers;
-using Snooper.Extensions;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -392,15 +390,20 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
     private void DrawActorActionButtons(Actor actor)
     {
-        var actionButtons = new List<(string id, string icon, string tooltip, Action action)>
+        var actionButtons = new List<(string id, string icon, string tooltip, Action action, bool enabled)>
         {
-            ("visibility", actor.IsVisible ? "eye" : "eye_closed", actor.IsVisible ? "Hide" : "Show", () => actor.IsVisible = !actor.IsVisible),
+            ("visibility", actor.IsVisible ? "eye" : "eye_closed", actor.IsVisible ? "Hide" : "Show", () => actor.IsVisible = !actor.IsVisible, true),
             ("delete", "trash", "Delete", () =>
             {
                 actor.Parent?.Children.Remove(actor);
                 if (actor.IsSelected) SelectedComponentId = 0;
-            }),
+            }, true),
         };
+        
+        if (actor is CellActor cell)
+        {
+            actionButtons.Insert(0, ("download", cell.IsLoaded ? "download_off" : "download", "Load", () => cell.Load(), cell is { CanLoad: true, IsLoaded: false, IsLoading: false }));
+        }
 
         switch (actor.RootComponent)
         {
@@ -428,7 +431,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         {
             ImGui.SetCursorPosY(buttonY);
 
-            var (id, iconName, tooltip, action) = actionButtons[i];
+            var (id, iconName, tooltip, action, enabled) = actionButtons[i];
+            ImGui.BeginDisabled(!enabled);
             if (Icons.TryGetValue(iconName, out var buttonIcon))
             {
                 if (ImGui.ImageButton(id, buttonIcon.GetPointer(), _actionIconSize))
@@ -443,6 +447,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     action();
                 }
             }
+            ImGui.EndDisabled();
             
             if (ImGui.IsItemHovered())
             {
@@ -473,17 +478,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             return;
         }
 
-        ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
-        ImGui.TextUnformatted(actor.Name);
-        ImGui.PopFont();
-        if (actor.ExportType != null)
-        {
-            ImGui.Text($"Export Type: {actor.ExportType}");
-        }
-        if (actor.InternalType != null)
-        {
-            ImGui.Text($"Internal Type: {actor.InternalType}");
-        }
+        actor.DrawInterface();
 
         var components = actor.Components;
         if (components.Count == 0)

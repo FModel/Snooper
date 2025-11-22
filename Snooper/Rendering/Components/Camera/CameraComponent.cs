@@ -80,6 +80,7 @@ public sealed class CameraComponent : SpatialComponent
             if (_teleportProgress >= 1f)
             {
                 LocalTransform.Position = _teleportTarget.Value;
+                MarkDirty(DirtyFlags.Transform);
                 _teleportTarget = null;
                 _velocity = Vector3.Zero;
                 _teleportProgress = 0f;
@@ -89,6 +90,7 @@ public sealed class CameraComponent : SpatialComponent
                 // SmoothStep interpolation for smooth easing
                 var t = _teleportProgress * _teleportProgress * (3f - 2f * _teleportProgress);
                 LocalTransform.Position = Vector3.Lerp(_teleportStart, _teleportTarget.Value, t);
+                MarkDirty(DirtyFlags.Transform);
                 return; // Skip manual input during teleportation
             }
         }
@@ -109,6 +111,7 @@ public sealed class CameraComponent : SpatialComponent
         _velocity = Vector3.Lerp(_velocity, direction, 1f - MathF.Exp(-smoothing * time));
 
         LocalTransform.Position += _velocity * time;
+        MarkDirty(DirtyFlags.Transform);
 
         if (keyboard.IsKeyDown(Keys.X)) FieldOfView = Math.Clamp(FieldOfView + 0.5f, 1.0f, 89.0f);
         if (keyboard.IsKeyDown(Keys.C)) FieldOfView = Math.Clamp(FieldOfView - 0.5f, 1.0f, 89.0f);
@@ -122,6 +125,7 @@ public sealed class CameraComponent : SpatialComponent
         var pitchRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, deltaY * sensitivity);
 
         LocalTransform.Rotation = Quaternion.Normalize(yawRotation * LocalTransform.Rotation * pitchRotation);
+        MarkDirty(DirtyFlags.Transform);
     }
     
     internal override string Icon => "camera";

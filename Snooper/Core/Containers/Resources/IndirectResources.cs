@@ -69,16 +69,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             throw new InvalidOperationException("Primitive component must have at least one material assigned before being added to IndirectResources.");
         
         var primitive = component.Descriptor;
-        var instances = component.GetPerInstanceData();
-        
         var geometryHandle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
-        var instanceAllocation = _instanceData.AddRange(instances);
+        var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
         foreach (var material in component.Materials)
         {
             material.Allocation = _materialData.Add(new TPerMaterialData());
         }
 
-        var instanceCount = (uint)instances.Length;
+        var instanceCount = component.IsVisible ? (uint)instanceAllocation.Length : 0;
         var baseMaterial = 0u;
         if (component.Materials[0].Allocation is { } allocation)
         {
@@ -133,7 +131,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         if (component.IsDirty(DirtyFlags.Visibility))
         {
-            // TODO: this only works for culled systems, we need to manually set InstanceCount to 0 for non-culled systems
             const int offset = 40; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
             if (component.IsVisible)
             {
@@ -141,11 +138,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 foreach (var drawAllocation in metadata.DrawAllocations)
                 {
                     _commands.Current.UpdateCustom(drawAllocation, originalInstanceCount, offset);
+                    _commands.Current.UpdateCustom(drawAllocation, originalInstanceCount, 4);
                 }
             }
             else foreach (var drawAllocation in metadata.DrawAllocations)
             {
                 _commands.Current.UpdateCustom(drawAllocation, 0u, offset);
+                _commands.Current.UpdateCustom(drawAllocation, 0u, 4);
             }
             component.MarkClean(DirtyFlags.Visibility);
         }
