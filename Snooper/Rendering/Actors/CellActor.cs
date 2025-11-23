@@ -13,19 +13,22 @@ public class CellActor : Actor
     public bool IsLoaded { get; private set; }
     public bool IsLoading { get; private set; }
     public bool CanLoad { get; }
+    public Vector3 Center { get; }
 
     private readonly FSoftObjectPath? _worldAsset;
     private Task? _loadTask;
     
-    public CellActor(UWorldPartitionRuntimeCell cell, bool load = false) : base(cell.Name)
+    public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool load = false) : base(cell.Name)
     {
         if (cell.RuntimeCellData?.TryLoad<UWorldPartitionRuntimeCellData>(out var data) == true)
         {
-            var color = new Vector3(cell.CellDebugColor.R, cell.CellDebugColor.G, cell.CellDebugColor.B);
+            color ??= new Vector3(cell.CellDebugColor.R, cell.CellDebugColor.G, cell.CellDebugColor.B);
             var box = (data.CellBounds ?? data.ContentBounds) * Settings.GlobalScale;
             box.GetCenterAndExtents(out var center, out var extents);
 
-            Components.Add(new SpatialComponent(new Transform(new Vector3(center.X, center.Z, center.Y)), "CellRoot"));
+            Center = new Vector3(center.X, center.Z, center.Y);
+
+            Components.Add(new SpatialComponent(new Transform(Center), "CellRoot"));
             Components.Add(new DebugComponent(Vector3.Zero, new Vector3(extents.X, extents.Z, extents.Y), color, 5, "CellBounds"));
             
             var spanX = extents.X * 2;

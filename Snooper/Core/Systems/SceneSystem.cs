@@ -4,6 +4,7 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
+using System.Numerics;
 
 namespace Snooper.Core.Systems;
 
@@ -68,7 +69,26 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
         }
         
         DequeuePairs(1);
+        
+        if (ActiveCamera != null && ActiveCamera.IsDirty(DirtyFlags.Transform) && _rootActor != null)
+        {
+            var cameraPosition = ActiveCamera.LocalTransform.Position;
+            UpdatePartitionActorsRecursive(_rootActor, cameraPosition);
+        }
+        
         base.Update(delta);
+    }
+
+    private void UpdatePartitionActorsRecursive(Actor actor, Vector3 cameraPosition)
+    {
+        if (actor is PartitionActor partition)
+        {
+            partition.UpdateCellVisibility(cameraPosition);
+        }
+        else foreach (var child in actor.Children)
+        {
+            UpdatePartitionActorsRecursive(child, cameraPosition);
+        }
     }
 
     public virtual void Render()

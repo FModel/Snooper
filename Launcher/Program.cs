@@ -22,12 +22,14 @@ using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.UI;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
     .WriteTo.Console(
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}]: {Message:lj}{NewLine}{Exception}",
         theme: AnsiConsoleTheme.Literate)
+    .WriteTo.Sink(new ImGuiSink())
     .CreateLogger();
 
 OodleHelper.Initialize();
@@ -157,7 +159,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/Patrick/SK_Patrick_Default.SK_Patrick_Default"), new FTransform(new FVector(100, 0, 0))));
         // break;
         
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/Global/BB_P_Background.BB_P_Background"), WorldActorType.Landscape));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/Global/BB_P_Background.BB_P_Background")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z11_HUB10/BB_Z11_HUB10_Geo.BB_Z11_HUB10_Geo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z09_HUB9/BB_Z09_HUB9_Geo.BB_Z09_HUB9_Geo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z08_HUB8/BB_Z08_HUB8_Geo.BB_Z08_HUB8_Geo")));

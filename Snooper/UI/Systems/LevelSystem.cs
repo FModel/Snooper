@@ -241,6 +241,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
         ImGui.End();
         
+        LogWindow.Draw();
+        
         TexturePreviewWindow.DrawAll();
     }
     
@@ -270,13 +272,13 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
     private void NotifyOnFirstRender()
     {
-        var systems = Systems.Values.OfType<ITexturedSystem>().Where(s => s.TextureManager.IsLoadingTextures).ToArray();
+        var systems = Systems.Values.OfType<ITexturedSystem>().Where(s => s.TextureManager.IsLoading).ToArray();
         if (systems.Length == 0)
             return;
 
         foreach (var system in systems)
         {
-            Notifications.PushNotification("Loading textures, please wait...", $"{system.GetType().Name}: {system.TextureManager.NumberOfTexturesToLoad} textures", 1, () => system.TextureManager.LoadingProgress);
+            Notifications.PushNotification("Loading textures, please wait...", $"{system.GetType().Name}: {system.TextureManager.PendingTextureCount} textures", 1, () => system.TextureManager.LoadingProgress);
         }
     }
 

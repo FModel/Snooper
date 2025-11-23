@@ -2,71 +2,44 @@
 using Serilog;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
-using Snooper.Extensions;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Systems;
 
-/// <summary>
-/// TODO: improve
-/// </summary>
 public class TextureManager : IGameSystem, IMemoryDetailsProvider
 {
-    public int NumberOfTextures => _textures.Count;
-    public int NumberOfBindlessTextures => _bindless.Count;
-    public int NumberOfTexturesToLoad => _texturesToLoad.Count;
-    public bool IsLoadingTextures => _bLoaded && NumberOfTexturesToLoad > 0;
+    private bool _isLoaded;
+    private int _totalTexturesRequested;
+    
+    public int LoadedTextureCount => _textures.Count;
+    public int PendingTextureCount => _loadQueue.Count;
+    public int BindlessTextureCount => _bindless.Count;
+    public bool IsLoading => _isLoaded && PendingTextureCount > 0;
+    
     public float LoadingProgress
     {
         get
         {
-            if (!IsLoadingTextures)
-                return 1f;
-
-            var loaded = _textures.Count;
-            var pending = _texturesToLoad.Count;
-            var total = loaded + pending;
-            if (total == 0)
-                return 1f;
-
-            return (float)loaded / total;
+            if (!IsLoading) return 1f;
+            if (_totalTexturesRequested == 0) return 1f;
+            return (float)LoadedTextureCount / _totalTexturesRequested;
         }
     }
+    
+    /// <summary>
+    /// fired when a material section has all its textures loaded and ready.
+    /// </summary>
+    public event Action<MaterialSection>? OnMaterialReady;
     
     private readonly Dictionary<FGuid, Texture> _textures = [];
     private readonly Dictionary<FGuid, BindlessTexture> _bindless = [];
+    private readonly Queue<Texture> _loadQueue = [];
+    private readonly HashSet<FGuid> _queuedGuids = [];
     
-    private readonly Dictionary<FGuid, List<(int SectionId, string Key)>> _textureToSections = [];
-    private readonly Dictionary<int, (MaterialSection Section, int RemainingTextures)> _sectionPendingTextures = [];
-    
-    public event Action<MaterialSection>? OnMaterialReady;
-    
-    private void Add(MaterialSection material, string key, Texture texture)
-    {
-        ArgumentNullException.ThrowIfNull(texture);
-        
-        var guid = texture.Guid;
-        var sectionId = material.SectionId;
-        
-        if (_textures.ContainsKey(guid) || _texturesToLoad.Contains(texture))
-        {
-            if (!_textureToSections.TryGetValue(guid, out var list))
-            {
-                list = [];
-                _textureToSections[guid] = list;
-            }
-
-            // Avoid duplicate section+key pair
-            if (!list.Exists(entry => entry.SectionId == sectionId && entry.Key == key))
-                list.Add((sectionId, key));
-        
-            return;
-        }
-        
-        _texturesToLoad.Enqueue(texture);
-        _textureToSections[guid] = [(sectionId, key)];
-    }
+    // tracks which material sections are waiting for which textures
+    private readonly Dictionary<FGuid, List<MaterialDependency>> _dependencies = [];
+    private readonly Dictionary<int, MaterialLoadState> _states = [];
     
     public void AddRange(MaterialSection[] materials)
     {
@@ -81,68 +54,106 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
             }
             
             var textures = material.MaterialDataContainer.GetTextures();
-            _sectionPendingTextures[material.SectionId] = (material, textures.Count);
+            _states[material.SectionId] = new MaterialLoadState(material, textures.Count);
             
-            foreach (var kvp in textures)
+            foreach (var (key, texture) in textures)
             {
-                Add(material, kvp.Key, kvp.Value);
+                QueueTexture(texture, material.SectionId, key);
             }
         }
     }
-
-    private bool _bLoaded;
-    public void Load() => _bLoaded = true;
-    public void Update(float delta) => DequeueTextures(1);
-    public void Render(CameraComponent camera) => throw new NotImplementedException();
-
-    private readonly Queue<Texture> _texturesToLoad = [];
-    private void DequeueTextures(int limit = 0)
+    
+    private void QueueTexture(Texture texture, int sectionId, string key)
     {
-        var count = 0;
-        while (_texturesToLoad.Count > 0 && (limit == 0 || count < limit))
+        var guid = texture.Guid;
+        var dependency = new MaterialDependency(sectionId, key);
+        
+        if (_bindless.ContainsKey(guid))
         {
-            // from wherever this is called, this will async decode the texture and upload it to the GPU on the main thread
-            // once the texture is GPU ready, it will create a BindlessTexture representation of it and pass it to the event
-            
-            var texture = _texturesToLoad.Dequeue();
+            ApplyBindlessToMaterial(guid, dependency);
+            return;
+        }
+        
+        if (!_dependencies.TryGetValue(guid, out var dependencies))
+        {
+            dependencies = [];
+            _dependencies[guid] = dependencies;
+        }
+        
+        if (!dependencies.Exists(d => d.SectionId == sectionId && d.Key == key))
+        {
+            dependencies.Add(dependency);
+        }
+        
+        if (_textures.ContainsKey(guid) || _queuedGuids.Contains(guid))
+        {
+            return;
+        }
+        
+        _loadQueue.Enqueue(texture);
+        _queuedGuids.Add(guid);
+        _totalTexturesRequested++;
+    }
+    
+    public void Load() => _isLoaded = true;
+    public void Update(float delta) => ProcessTextureQueue(1);
+    public void Render(CameraComponent camera) => throw new NotImplementedException();
+    
+    private void ProcessTextureQueue(int limit)
+    {
+        var processed = 0;
+        while (_loadQueue.Count > 0 && (limit == 0 || processed < limit))
+        {
+            var texture = _loadQueue.Dequeue();
             var guid = texture.Guid;
-            texture.TextureReadyForBindless += () =>
-            {
-                Log.Debug("Texture {Guid} is ready for bindless usage.", guid);
-                
-                var bindless = new BindlessTexture(texture);
-                _bindless.Add(guid, bindless);
-            
-                if (_textureToSections.TryGetValue(guid, out var mappings))
-                {
-                    foreach (var (sectionId, key) in mappings)
-                    {
-                        if (!_sectionPendingTextures.TryGetValue(sectionId, out var entry))
-                            continue;
+            _queuedGuids.Remove(guid);
 
-                        var (section, remaining) = entry;
-
-                        section.MaterialDataContainer?.SetBindlessTexture(key, bindless);
-
-                        remaining--;
-                        if (remaining <= 0)
-                        {
-                            _sectionPendingTextures.Remove(sectionId);
-                            OnMaterialReady?.Invoke(section);
-                        }
-                        else
-                        {
-                            _sectionPendingTextures[sectionId] = (section, remaining);
-                        }
-                    }
-
-                    _textureToSections.Remove(guid);
-                }
-            };
+            texture.TextureReadyForBindless += () => OnTextureReady(guid, texture);
             texture.Generate();
             
             _textures.Add(guid, texture);
-            count++;
+            processed++;
+        }
+    }
+    
+    private void OnTextureReady(FGuid guid, Texture texture)
+    {
+        Log.Debug("Texture {Guid} is ready for bindless usage.", guid);
+        
+        var bindless = new BindlessTexture(texture);
+        _bindless.Add(guid, bindless);
+        
+        if (_dependencies.TryGetValue(guid, out var dependencies))
+        {
+            foreach (var dependency in dependencies)
+            {
+                ApplyBindlessToMaterial(guid, dependency);
+            }
+            
+            _dependencies.Remove(guid);
+        }
+    }
+    
+    private void ApplyBindlessToMaterial(FGuid guid, MaterialDependency dependency)
+    {
+        if (!_bindless.TryGetValue(guid, out var bindless))
+        {
+            Log.Warning("Attempted to apply non-existent bindless texture {Guid}", guid);
+            return;
+        }
+        
+        if (!_states.TryGetValue(dependency.SectionId, out var state))
+        {
+            return;
+        }
+        
+        state.Section.MaterialDataContainer?.SetBindlessTexture(dependency.Key, bindless);
+        state.RemainingTextures--;
+        
+        if (state.RemainingTextures <= 0)
+        {
+            _states.Remove(dependency.SectionId);
+            OnMaterialReady?.Invoke(state.Section);
         }
     }
     
@@ -160,8 +171,12 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
         
         _textures.Clear();
         _bindless.Clear();
+        _loadQueue.Clear();
+        _queuedGuids.Clear();
+        _dependencies.Clear();
+        _states.Clear();
     }
-
+    
     public long Allocated
     {
         get
@@ -194,5 +209,13 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
         {
             yield return new MemoryDetail(texture.Name, texture);
         }
+    }
+    
+    private record MaterialDependency(int SectionId, string Key);
+    
+    private class MaterialLoadState(MaterialSection section, int textureCount)
+    {
+        public MaterialSection Section { get; } = section;
+        public int RemainingTextures { get; set; } = textureCount;
     }
 }

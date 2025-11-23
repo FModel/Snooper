@@ -40,6 +40,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     private readonly CullingResources _culling = new();
     
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
+    private Action<uint>? _vertexLayoutSetter;
     
     public void Generate()
     {
@@ -55,14 +56,16 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     public void SetVertexLayout(Action<uint> setter)
     {
+        _vertexLayoutSetter = setter;
         BindBuffersToVao();
-        setter.Invoke(_vao);
     }
     
     private void BindBuffersToVao()
     {
         GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
         GL.VertexArrayElementBuffer(_vao, _ebo);
+        
+        _vertexLayoutSetter?.Invoke(_vao);
     }
     
     public void Allocate(AllocationCounts counts)
