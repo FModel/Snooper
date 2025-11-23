@@ -17,11 +17,12 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 {
     private bool _firstRender;
     private bool _scrollToSelected;
-    
+    private int _selectedCameraIndex;
+
     protected override void RenderInterface()
     {
         ImGui.DockSpaceOverViewport();
-        
+
         Notifications.DrawNotifications();
         if (!_firstRender)
         {
@@ -32,10 +33,14 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.ShowDemoWindow();
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        foreach (var pair in Pairs)
+        if (ImGui.Begin("Viewport"))
         {
-            if (ImGui.Begin($"Viewport ({pair.Camera.Actor?.Name})", ref pair.IsOpen))
+            if (Pairs.Count > 0)
             {
+                if (_selectedCameraIndex >= Pairs.Count)
+                    _selectedCameraIndex = 0;
+
+                var pair = Pairs[_selectedCameraIndex];
                 if (ImGui.IsWindowFocused()) ActiveCamera = pair.Camera;
 
                 var largest = ImGui.GetContentRegionAvail();
@@ -46,7 +51,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 var size = new Vector2(largest.X, largest.Y);
                 pair.Camera.ViewportSize = size;
                 ImGui.Image(framebuffers[^1].GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
-                DrawAtOrigin(SelectedComponent, pair.Camera, ImGui.GetWindowDrawList(), 8f, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
+                DrawAtOrigin(pair.Camera, ImGui.GetWindowDrawList(), 8f, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
 
                 if (ImGui.IsItemHovered())
                 {
@@ -65,9 +70,17 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                     {
-                        SelectedComponentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
+                        var componentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos());
+                        SelectedActor = null;
+                        SelectedComponent = FindComponentById(componentId);
                         _scrollToSelected = true;
-                        ImGui.SetWindowFocus("Scene Hierarchy");
+                        ImGui.SetWindowFocus("Outliner");
+                    }
+
+                    if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && ActiveCamera != null && SelectedComponent is SpatialComponent spatial)
+                    {
+                        var (center, distance) = spatial.GetTeleportPosition(ActiveCamera);
+                        ActiveCamera.TeleportTo(center - ActiveCamera.Forward * distance);
                     }
                 }
 
@@ -76,6 +89,8 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
                 var drawList = ImGui.GetWindowDrawList();
                 var pos = ImGui.GetItemRectMin();
+
+                DrawCameraControls(pair.Camera, pos, margin);
 
                 if (ShowFramebuffers)
                 {
@@ -100,7 +115,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                         drawList.AddRect(pMin, pMax, ImGui.GetColorU32(ImGuiCol.Border));
                     }
                 }
-                
+
                 ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);
 
                 var framerate = ImGui.GetIO().Framerate;
@@ -110,26 +125,26 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms)"
                 );
 
-                var col = ImGui.GetColorU32(new Vector4(1.00f, 1.00f, 1.00f, 0.50f));
-                const string label1 = "F10: Toggle UI | LMB: Select Object | RMB: Move Camera | Scroll: Adjust Speed";
+                const string label = "Previewed content may differ from final version saved or used in-game.";
                 drawList.AddText(
-                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label1).X - margin, pos.Y + margin),
-                    col, label1
+                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label).X - margin, pos.Y + size.Y - frameHeight),
+                    ImGui.GetColorU32(new Vector4(1.00f, 1.00f, 1.00f, 0.50f)),
+                    label
                 );
 
-                const string label2 = "Previewed content may differ from final version saved or used in-game.";
-                drawList.AddText(
-                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label2).X - margin, pos.Y + size.Y - frameHeight),
-                    col, label2
-                );
-                
                 ImGui.PopFont();
             }
-            ImGui.End();
+            else
+            {
+                ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(8f));
+                ImGui.TextUnformatted("No camera available.");
+                ImGui.PopStyleVar();
+            }
         }
+        ImGui.End();
         ImGui.PopStyleVar();
 
-        if (ImGui.Begin("Scene Hierarchy"))
+        if (ImGui.Begin("Outliner"))
         {
             if (RootActor is { } root && root.Children.ToList() is { Count: > 0 } children)
             {
@@ -152,35 +167,35 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     ImGui.Text($"OpenGL: {Context.Version}");
                     ImGui.Text($"Vendor: {Context.DeviceInfo.Vendor}");
                     ImGui.Columns(1);
-                    
+
                     ImGui.Spacing();
                     ImGui.Separator();
                     ImGui.Spacing();
-                    
+
                     ImGui.Checkbox("Show Framebuffers", ref ShowFramebuffers);
                     ImGui.SameLine();
                     var c = (int) DebugColorMode;
                     ImGui.SetNextItemWidth(200);
                     ImGui.Combo("Debug Mode", ref c, "None\0Per Component\0Per Instance\0Per Material\0Per Primitive\0Vertex Colors\0");
                     DebugColorMode = (ActorDebugColorMode) c;
-                    
+
                     ImGui.Spacing();
                     ImGui.Separator();
                     ImGui.Spacing();
-                    
+
                     ImGui.TextUnformatted("GPU Memory");
                     ImGui.Spacing();
                     MemoryDetailsUI.DrawMemorySummary(this);
-                    
+
                     ImGui.EndTabItem();
                 }
-                
+
                 if (ImGui.BeginTabItem("Memory"))
                 {
                     MemoryDetailsUI.DrawMemoryTable(this, Icons);
                     ImGui.EndTabItem();
                 }
-                
+
                 if (ImGui.BeginTabItem("Systems"))
                 {
                     foreach (var system in Systems.Values)
@@ -194,7 +209,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                                 ImGui.Spacing();
                                 ImGui.TextDisabled("Is Enabled");
                                 ImGui.Checkbox($"##Enabled{system.Order}", ref system.IsEnabled);
-                            
+
                                 ImGui.NextColumn();
                                 ImGui.TextDisabled("Components");
                                 ImGui.TextUnformatted($"{system.ComponentsCount:N0} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}");
@@ -204,19 +219,19 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                                 ImGui.TextUnformatted($"{system.Profiler.PrimitivesGenerated:N0}");
                             }
                             ImGui.Columns(1);
-                            
+
                             if (system is IMemorySizeProvider provider)
                             {
                                 ImGui.Spacing();
                                 MemoryDetailsUI.DrawMemorySummary(provider);
                             }
-                            
+
                             if (ImGui.TreeNode($"Performance Metrics##SysMetrics{system.Order}"))
                             {
                                 MemoryDetailsUI.DrawPerformanceMetrics(system.Profiler, system.Order.ToString());
                                 ImGui.TreePop();
                             }
-                            
+
                             if (system is IControllable controllable)
                             {
                                 if (ImGui.TreeNode($"Controls##SysControls{system.Order}"))
@@ -229,7 +244,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     }
                     ImGui.EndTabItem();
                 }
-                
+
                 ImGui.EndTabBar();
             }
         }
@@ -240,29 +255,47 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             DrawActorInspector();
         }
         ImGui.End();
-        
+
+        if (ImGui.Begin("Content Browser"))
+        {
+
+        }
+        ImGui.End();
+        if (ImGui.Begin("Timeline"))
+        {
+
+        }
+        ImGui.End();
         LogWindow.Draw();
-        
+
         TexturePreviewWindow.DrawAll();
     }
-    
-    private void DrawAtOrigin(
-        ActorComponent? component,
-        CameraComponent? camera,
-        ImDrawListPtr drawList,
-        float rectSize = 16f,
-        Vector4? color = null)
-    {
-        if (component is not SpatialComponent spatial || camera == null) return;
 
+    private void DrawAtOrigin(CameraComponent? camera, ImDrawListPtr drawList, float rectSize = 16f, Vector4? color = null)
+    {
+        if (camera == null) return;
+
+        if (SelectedComponent is not SpatialComponent spatial)
+        {
+            if (SelectedActor?.RootComponent is not null)
+            {
+                spatial = SelectedActor.RootComponent;
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        var frameHeight = ImGui.GetFrameHeight();
         foreach (var matrix in spatial.GetInstanceMatrices())
         {
             var clip = Vector4.Transform(new Vector4(matrix.Translation, 1f), camera.ViewProjectionMatrix);
             if (clip.W <= 0) continue;
-        
+
             clip /= clip.W;
             var ndc = new Vector2(clip.X, clip.Y);
-            var screenPos = new Vector2((ndc.X + 1f) * 0.5f * camera.ViewportSize.X, (1f - ndc.Y) * 0.5f * camera.ViewportSize.Y + ImGui.GetFrameHeight());
+            var screenPos = new Vector2((ndc.X + 1f) * 0.5f * camera.ViewportSize.X, (1f - ndc.Y) * 0.5f * camera.ViewportSize.Y + frameHeight);
             var pMin = screenPos - new Vector2(rectSize / 2f);
             var pMax = screenPos + new Vector2(rectSize / 2f);
 
@@ -284,7 +317,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
     private readonly Vector2 _iconSize = new(18);
     private readonly Vector2 _actionIconSize = new(16);
-    
+
     private bool HasSelectedDescendant(Actor actor)
     {
         if (actor.IsSelected) return true;
@@ -296,26 +329,26 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
     private void DrawActorTree(Actor actor, bool clip = false)
     {
         ImGui.PushID(actor.Id);
-        
+
         var count = actor.Children.Count;
         var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.AllowOverlap | ImGuiTreeNodeFlags.FramePadding;
         if (actor.IsSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
-        
+
         var anyChildSelected = _scrollToSelected && HasSelectedDescendant(actor);
         if (anyChildSelected && count > 0) ImGui.SetNextItemOpen(true);
 
         var open = ImGui.TreeNodeEx("##Tree", flags);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
         {
-            SelectedComponentId = actor.RootComponent?.Id ?? 0;
+            SelectedActor = actor;
         }
-        if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && ActiveCamera != null && actor.Components.OfType<SpatialComponent>().FirstOrDefault(x => x.Id == SelectedComponentId) is { } spatial)
+        if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && ActiveCamera != null && actor.RootComponent is not null)
         {
-            var (center, distance) = spatial.GetTeleportPosition(ActiveCamera);
+            var (center, distance) = actor.RootComponent.GetTeleportPosition(ActiveCamera);
             ActiveCamera.TeleportTo(center - ActiveCamera.Forward * distance);
         }
-        
+
         ImGui.SameLine();
         if (Icons.TryGetValue(actor.Icon, out var icon))
         {
@@ -327,7 +360,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         {
             ImGui.Dummy(_iconSize);
         }
-        
+
         ImGui.SameLine();
         ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);
         ImGui.PushStyleColor(ImGuiCol.Text, actor.IsVisible ? ImGui.GetColorU32(ImGuiCol.Text) : ImGui.GetColorU32(ImGuiCol.TextDisabled));
@@ -336,7 +369,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.PopFont();
 
         DrawActorActionButtons(actor);
-        
+
         if (open && count > 0 && actor.Children.ToList() is { Count: > 0 } children)
         {
             var anyChildExpanded = false;
@@ -354,7 +387,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     }
                 }
             }
-            
+
             // only use clipper if no child is expanded and not scrolling to selected
             if (clip && !anyChildSelected && !anyChildExpanded)
             {
@@ -377,7 +410,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             {
                 DrawActorTree(child);
             }
-            
+
             ImGui.TreePop();
         }
 
@@ -398,10 +431,10 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             ("delete", "trash", "Delete", () =>
             {
                 actor.Parent?.Children.Remove(actor);
-                if (actor.IsSelected) SelectedComponentId = 0;
+                if (actor.IsSelected) SelectedActor = null;
             }, true),
         };
-        
+
         if (actor is CellActor cell)
         {
             actionButtons.Insert(0, ("download", cell.IsLoaded ? "download_off" : "download", "Load", () => cell.Load(), cell is { CanLoad: true, IsLoaded: false, IsLoading: false }));
@@ -413,9 +446,9 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 actionButtons.RemoveRange(0, 2);
                 break;
         }
-        
+
         if (actionButtons.Count == 0) return;
-        
+
         var style = ImGui.GetStyle();
         var buttonX = ImGui.GetWindowWidth() - style.FramePadding.X - style.WindowPadding.X;
         buttonX -= ImGui.GetScrollMaxY() > 0 ? style.ScrollbarSize : 0;
@@ -450,18 +483,18 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 }
             }
             ImGui.EndDisabled();
-            
+
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip(tooltip);
             }
-            
+
             if (i < actionButtons.Count - 1)
             {
                 ImGui.SameLine();
             }
         }
-        
+
         ImGui.PopStyleColor(3);
         ImGui.PopStyleVar();
     }
@@ -470,13 +503,17 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
     {
         if (SelectedComponent is not { } component)
         {
-            ImGui.TextUnformatted("No component selected.");
-            return;
+            component = SelectedActor?.RootComponent;
+            if (component is null)
+            {
+                ImGui.TextUnformatted("No actor or component selected.");
+                return;
+            }
         }
 
         if (component.Actor is not { } actor)
         {
-            ImGui.TextUnformatted("No actor selected.");
+            ImGui.TextUnformatted("This component is not assigned to any actor.");
             return;
         }
 
@@ -506,10 +543,10 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     ImGui.Image(0, _iconSize, Vector2.UnitX, Vector2.UnitY, Vector4.One, Vector4.One);
                 ImGui.SameLine();
 
-                var selected = c.Id == SelectedComponentId;
+                var selected = c.Id == SelectedComponent?.Id;
                 if (ImGui.Selectable(c.Name, selected))
                 {
-                    SelectedComponentId = c.Id;
+                    SelectedComponent = c;
                 }
 
                 if (selected) ImGui.SetItemDefaultFocus();
@@ -518,5 +555,93 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         }
 
         component.DrawInterface();
+    }
+
+    private void DrawCameraControls(CameraComponent camera, Vector2 viewportPos, float margin)
+    {
+        var controlsPos = new Vector2(viewportPos.X + margin, viewportPos.Y + margin);
+
+        ImGui.SetCursorScreenPos(controlsPos);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(2f, 4f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.4f, 0.4f, 0.4f, 0.8f));
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, ImGui.GetColorU32(ImGuiCol.FrameBgHovered));
+        ImGui.PushStyleColor(ImGuiCol.SliderGrab, ImGui.GetColorU32(ImGuiCol.HeaderHovered));
+        ImGui.PushStyleColor(ImGuiCol.SliderGrabActive, ImGui.GetColorU32(ImGuiCol.HeaderActive));
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(6f, 3f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2f);
+        ImGui.PushStyleVar(ImGuiStyleVar.GrabMinSize, 12f);
+
+        if (Pairs.Count > 1)
+        {
+            ImGui.BeginGroup();
+            ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
+
+            var buttonSize = new Vector2(16);
+            if (ImGui.ImageButton("PreviousCameraButton", Icons["arrow-left"].GetPointer(), buttonSize))
+            {
+                _selectedCameraIndex = (_selectedCameraIndex - 1 + Pairs.Count) % Pairs.Count;
+                ActiveCamera = Pairs[_selectedCameraIndex].Camera;
+            }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Previous Camera");
+
+            ImGui.SameLine(0, 2f);
+            var cameraName = Pairs[_selectedCameraIndex].Camera.Actor?.Name ?? $"Camera {_selectedCameraIndex}";
+            ImGui.Button(cameraName, new Vector2(140, 0));
+            ImGui.SameLine(0, 2f);
+
+            if (ImGui.ImageButton("NextCameraButton", Icons["arrow-right"].GetPointer(), buttonSize))
+            {
+                _selectedCameraIndex = (_selectedCameraIndex + 1) % Pairs.Count;
+                ActiveCamera = Pairs[_selectedCameraIndex].Camera;
+            }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Next Camera");
+
+            ImGui.PopStyleColor();
+            ImGui.EndGroup();
+
+            ImGui.SameLine(0, 12f);
+        }
+
+        ImGui.BeginGroup();
+        {
+            var toggleSize = new Vector2(32, 0);
+            var fxaa = camera.bFXAA;
+            if (fxaa) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
+            if (ImGui.Button("AA", toggleSize)) camera.bFXAA = !fxaa;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip($"FXAA: {(fxaa ? "ON" : "OFF")}");
+            if (fxaa) ImGui.PopStyleColor(1);
+
+            ImGui.SameLine(0, 2f);
+
+            var ao = camera.bAmbientOcclusion;
+            if (ao) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
+            if (ImGui.Button("AO", toggleSize)) camera.bAmbientOcclusion = !ao;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Ambient Occlusion: {(ao ? "ON" : "OFF")}");
+            if (ao) ImGui.PopStyleColor(1);
+        }
+        ImGui.EndGroup();
+
+        ImGui.SameLine(0, 12f);
+
+        ImGui.BeginGroup();
+        var fov = camera.FieldOfView;
+        ImGui.SetNextItemWidth(120);
+        if (ImGui.SliderFloat("##FOV", ref fov, 1.0f, 89.0f, "FOV %.0f°", ImGuiSliderFlags.AlwaysClamp))
+            camera.FieldOfView = fov;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Field of View: {fov:F1}°");
+        ImGui.EndGroup();
+
+        ImGui.SameLine(0, 12f);
+
+        ImGui.BeginGroup();
+        var speed = camera.MovementSpeed;
+        ImGui.SetNextItemWidth(120);
+        if (ImGui.SliderFloat("##Speed", ref speed, 1f, 100f, "Speed %.0f m/s", ImGuiSliderFlags.AlwaysClamp))
+            camera.MovementSpeed = speed;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Movement Speed: {speed:F1}");
+        ImGui.EndGroup();
+
+        ImGui.PopStyleVar(4);
+        ImGui.PopStyleColor(4);
     }
 }

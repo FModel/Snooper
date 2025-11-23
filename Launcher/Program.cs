@@ -104,7 +104,7 @@ switch (provider.ProjectName)
         // PovegliaV2
         // Rook
         // Triad
-        
+
         // camera.CameraComponent.FarPlaneDistance = 1000f;
         // grid.Components.Clear();
         // grid.Components.Add(new OpaqueGridComponent());
@@ -114,20 +114,20 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0))));
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
         // break;
-        
+
         var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
         foreach (var file in files)
         {
             var parts = file.NameWithoutExtension.Split('_');
             if (parts.Length < 2) continue;
-            
+
             var trigger = parts[1];
             if (trigger is "Art" or "Skybox" or "Audio" or "Lighting" or "Mode" or "TeamSpawnPoints")
             {
                 var obj = file.NameWithoutExtension;
                 if (obj == "Duality_Art_MIdPathB")
                     obj = "Duality_Art_MidPathB";
-            
+
                 scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>(file.PathWithoutExtension + "." + obj)));
             }
         }
@@ -142,9 +142,9 @@ switch (provider.ProjectName)
         //
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("Gameface/Content/ViceCity/Characters/Peds/SK_hmotr.SK_hmotr")));
         // break;
-        
+
         var world = new WorldActor(provider.LoadPackageObject<UWorld>("Gameface/Content/ViceCity/Maps/VCWorld/VCWorld.VCWorld"), WorldActorType.LevelStreaming);
-        
+
         scene.Children.Add(world);
         break;
     }
@@ -158,7 +158,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/SpongeBob/SK_SpongeBob_RoboSpongeBob.SK_SpongeBob_RoboSpongeBob"), new FTransform(new FVector(-100, 0, 0))));
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/Patrick/SK_Patrick_Default.SK_Patrick_Default"), new FTransform(new FVector(100, 0, 0))));
         // break;
-        
+
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/Global/BB_P_Background.BB_P_Background")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z11_HUB10/BB_Z11_HUB10_Geo.BB_Z11_HUB10_Geo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z09_HUB9/BB_Z09_HUB9_Geo.BB_Z09_HUB9_Geo")));

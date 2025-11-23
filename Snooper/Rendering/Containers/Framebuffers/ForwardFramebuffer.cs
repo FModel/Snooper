@@ -13,10 +13,10 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : FullQua
     {
         _picking.Generate();
         _picking.Resize(Width, Height);
-        
+
         _depth.Generate();
         _depth.Resize(Width, Height);
-        
+
         base.Generate();
         GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment1, _picking, 0);
         GL.NamedFramebufferDrawBuffers(Handle, 2, [DrawBuffersEnum.ColorAttachment0, DrawBuffersEnum.ColorAttachment1]);
@@ -33,15 +33,23 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : FullQua
         _picking.Resize(newWidth, newHeight);
         _depth.Resize(newWidth, newHeight);
     }
-    
+
     public override long Allocated => base.Allocated + _picking.Allocated + _depth.Allocated;
     public override long Used => base.Used + _picking.Used + _depth.Used;
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
-        
+
         yield return new MemoryDetail("Picking Texture", _picking);
         yield return new MemoryDetail("Depth Renderbuffer", _depth);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _picking.Dispose();
+        _depth.Dispose();
     }
 }

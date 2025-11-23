@@ -17,47 +17,147 @@ namespace Snooper.UI.Systems;
 public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
 {
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
-    
+
     private WindowState _pWindowState;
 
     protected bool Enabled { get; private set; } = true;
     protected Dictionary<string, Texture> Icons { get; } = new();
     protected NotificationManager Notifications { get; } = new();
-    
-    private uint _selectedComponentId;
-    protected uint SelectedComponentId
+
+    private Actor? _selectedActor;
+    protected Actor? SelectedActor
     {
-        get => _selectedComponentId;
+        get => _selectedActor;
         set
         {
-            if (_selectedComponentId == value)
+            if (_selectedActor == value)
                 return;
-            
-            if (SelectedComponent?.Actor != null)
-                foreach (var c in SelectedComponent.Actor.Components)
-                    c.IsSelected = false;
-            
-            _selectedComponentId = value;
-            Log.Debug("Selected Component ID: {ComponentId}", _selectedComponentId);
-            
-            SelectedComponent = FindComponentById(_selectedComponentId);
-            if (SelectedComponent is not null)
-                SelectedComponent.IsSelected = true;
-            
-            foreach (var pair in Pairs)
+
+            ClearSelection();
+
+            _selectedActor = value;
+            _selectedComponent = null;
+            if (_selectedActor is not null)
             {
-                pair.OverridePickingId(_selectedComponentId); // enables outline rendering
+                Log.Debug("Selected Actor: {ActorName}", _selectedActor.Name);
+                _selectedActor.IsSelected = true;
             }
+
+            UpdatePickedIds();
         }
     }
-    
-    protected ActorComponent? SelectedComponent { get; private set; }
-    
+
+    private ActorComponent? _selectedComponent;
+    protected ActorComponent? SelectedComponent
+    {
+        get => _selectedComponent;
+        set
+        {
+            if (_selectedComponent == value)
+                return;
+
+            ClearSelection();
+
+            _selectedComponent = value;
+            _selectedActor = _selectedComponent?.Actor;
+            if (_selectedComponent is not null)
+            {
+                Log.Debug("Selected Component ID: {ComponentId}", _selectedComponent.Id);
+                _selectedComponent.IsSelected = true;
+
+                // mark actor as selected but don't outline all its components
+                if (_selectedComponent.Actor is not null)
+                    _selectedComponent.Actor._isSelected = true;
+            }
+
+            UpdatePickedIds();
+        }
+    }
+
+    private void ClearSelection()
+    {
+        if (_selectedActor is not null)
+        {
+            _selectedActor.IsSelected = false;
+        }
+
+        if (_selectedComponent is not null)
+        {
+            _selectedComponent.IsSelected = false;
+            if (_selectedComponent.Actor is not null)
+                _selectedComponent.Actor._isSelected = false;
+        }
+    }
+
+    private void UpdatePickedIds()
+    {
+        var pickedIds = new HashSet<uint>();
+        if (_selectedComponent is not null)
+        {
+            // only outline this specific component
+            pickedIds.Add(_selectedComponent.Id);
+        }
+        else if (_selectedActor is not null)
+        {
+            // outline all components of actor and children
+            void CollectIds(Actor? actor)
+            {
+                if (actor is null) return;
+
+                foreach (var component in actor.Components)
+                {
+                    if (!component.IsOutlined) continue;
+                    pickedIds.Add(component.Id);
+                }
+
+                foreach (var child in actor.Children)
+                {
+                    CollectIds(child);
+                }
+            }
+
+            CollectIds(_selectedActor);
+        }
+
+        foreach (var pair in Pairs)
+        {
+            pair.SetPickedIds(pickedIds);
+        }
+    }
+
+    protected ActorComponent? FindComponentById(uint componentId)
+    {
+        if (componentId == 0 || RootActor == null)
+            return null;
+
+        return FindRecursive(RootActor);
+
+        ActorComponent? FindRecursive(Actor actor)
+        {
+            foreach (var component in actor.Components)
+            {
+                if (component.Id == componentId)
+                {
+                    return component;
+                }
+            }
+
+            foreach (var child in actor.Children)
+            {
+                var found = FindRecursive(child);
+                if (found != null)
+                    return found;
+            }
+
+            return null;
+        }
+    }
+
     public override void Load()
     {
         _controller.Load();
         Theme();
-        
+
         var icons = Assembly.GetExecutingAssembly().GetManifestResourceNames()
             .Where(x => x.StartsWith("Snooper.UI.Textures.") && x.EndsWith(".png"))
             .Select(x => x["Snooper.".Length..]).ToList();
@@ -65,10 +165,10 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         {
             var texture = new EmbeddedTexture2D(icon);
             texture.Generate();
-                
+
             Icons.Add(icon["UI.Textures.".Length..^4], texture);
         }
-        
+
         base.Load();
     }
 
@@ -89,41 +189,51 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
                 Window.WindowState = WindowState.Fullscreen;
             }
         }
-        
-        if (Enabled)
-            _controller.Update(Window, delta);
-        else if (Window.IsMouseButtonPressed(MouseButton.Right))
-            Window.CursorState = CursorState.Grabbed;
-        
+
         if (ActiveCamera is null && Pairs.Count > 0)
             ActiveCamera = Pairs[0].Camera;
 
-        if (ActiveCamera is not null)
+        if (Enabled)
         {
-            if (pressed && !Enabled)
-                ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+            _controller.Update(Window, delta);
         }
-        
+        else
+        {
+            if (Window.IsMouseButtonPressed(MouseButton.Right))
+                Window.CursorState = CursorState.Grabbed;
+
+            if (ActiveCamera is not null)
+            {
+                ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+                if (Window.IsMouseButtonPressed(MouseButton.Left) && ActiveCamera.PairIndex < Pairs.Count)
+                {
+                    var mousePos = new Vector2(Window.MousePosition.X, Window.MousePosition.Y);
+                    var componentId = Pairs[ActiveCamera.PairIndex].ReadPickingPixel(mousePos, Vector2.Zero);
+                    SelectedComponent = FindComponentById(componentId);
+                }
+            }
+        }
+
         ActiveCamera?.Update(Window.KeyboardState, delta);
         if (Window.CursorState == CursorState.Grabbed)
         {
             ActiveCamera?.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
             if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
         }
-        
+
         base.Update(delta);
     }
 
     public sealed override void Render()
     {
         base.Render();
-        
+
         if (Enabled)
         {
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.ClearColor(0, 0, 0, 1);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-            
+
             RenderInterface();
             _controller.Render();
         }
@@ -132,46 +242,19 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
             Pairs[ActiveCamera.PairIndex].RenderToScreen(Window.ClientSize.X, Window.ClientSize.Y);
         }
     }
-    
+
     protected abstract void RenderInterface();
 
     public override void Resize(int newWidth, int newHeight)
     {
         base.Resize(newWidth, newHeight);
-        
+
         _controller.Resize(newWidth, newHeight);
     }
-    
-    private ActorComponent? FindComponentById(uint componentId)
-    {
-        if (componentId == 0 || RootActor == null)
-            return null;
-        
-        return FindRecursive(RootActor);
 
-        ActorComponent? FindRecursive(Actor actor)
-        {
-            foreach (var component in actor.Components)
-            {
-                if (component.Id == componentId)
-                {
-                    return component;
-                }
-            }
-            
-            foreach (var child in actor.Children)
-            {
-                var found = FindRecursive(child);
-                if (found != null)
-                    return found;
-            }
-            
-            return null;
-        }
-    }
 
     public void TextInput(char c) => _controller.TextInput(c);
-    
+
     private void Theme()
     {
         var style = ImGui.GetStyle();
@@ -203,7 +286,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
         style.ButtonTextAlign = new Vector2(0.5f);
         style.SelectableTextAlign = new Vector2(0f);
         style.DisplaySafeAreaPadding = new Vector2(3f);
-        
+
 
         style.Colors[(int) ImGuiCol.Text]                   = new Vector4(1.00f, 1.00f, 1.00f, 1.00f);
         style.Colors[(int) ImGuiCol.TextDisabled]           = new Vector4(0.50f, 0.50f, 0.50f, 1.00f);
@@ -268,7 +351,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
-        
+
         // foreach (var icon in Icons.Values)
         // {
         //     yield return new MemoryDetail(icon.Name, icon);

@@ -10,43 +10,31 @@ public abstract partial class ActorComponent
 {
     private static uint _nextId = 1;
     public readonly uint Id = _nextId++;
-    
+
     public readonly string Name;
     protected readonly string Header;
     private readonly string? _exportType;
     private readonly string? _internalType;
 
-    private bool _isSelected;
-    public bool IsSelected
-    {
-        get => _isSelected;
-        internal set
-        {
-            if (_isSelected == value)
-                return;
-            
-            _isSelected = value;
+    public bool IsSelected { get; internal set; }
 
-            Actor?.ComputeSelected();
-        }
-    }
-    
+    public bool IsOutlined => IsSelected || Actor is { IsOutlined: true };
     internal virtual string Icon => "component";
 
     protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
     {
         Name = name ?? "Unnamed";
         Header = UpperCaseToSpace().Replace(GetType().Name[..^"Component".Length], " $1");
-        
+
         _exportType = exportType;
         _internalType = internalType;
     }
-    
+
     protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType, component.GetType().Name)
     {
 
     }
-    
+
     private Actor? _actor;
     public Actor? Actor
     {
@@ -57,20 +45,20 @@ public abstract partial class ActorComponent
 
             if (_actor == null)
                 OnReworkThis();
-            
+
             _actor = value;
-            
+
             if (this is SpatialComponent { Relation: null } spatial)
             {
                 spatial.Relation = _actor?.RootComponent;
             }
         }
     }
-    
+
     private DirtyFlags _dirtyFlags = DirtyFlags.None;
-    public bool IsDirty(DirtyFlags flags) => (_dirtyFlags & flags) != 0;
-    internal virtual void MarkDirty(DirtyFlags flags) => _dirtyFlags |= flags;
-    internal virtual void MarkClean(DirtyFlags flags)
+    internal bool IsDirty(DirtyFlags flags) => (_dirtyFlags & flags) != 0;
+    internal void MarkDirty(DirtyFlags flags) => _dirtyFlags |= flags;
+    internal void MarkClean(DirtyFlags flags)
     {
         if (flags == DirtyFlags.All)
             _dirtyFlags = DirtyFlags.None;
@@ -84,7 +72,7 @@ public abstract partial class ActorComponent
         // it is triggered by the component being assigned to an actor for "the first time"
         // but this is not a great way to handle materials specifically and it can be retriggered if the component is moved between actors
     }
-    
+
     internal void DrawInterface()
     {
         if (this is not IControllable controllable) return;
@@ -106,12 +94,12 @@ public abstract partial class ActorComponent
         {
             ImGui.Spacing();
         }
-        
+
         controllable.DrawControls();
-        
+
         ImGui.PopID();
     }
-    
+
     [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]
     private partial System.Text.RegularExpressions.Regex UpperCaseToSpace();
 }

@@ -86,11 +86,11 @@ void main()
         _vao.Generate();
         _ebo.Generate();
         _vbo.Generate();
-        
+
         // Initial size, will grow as needed
         _ebo.Allocate(4500);
         _vbo.Allocate(3000);
-        
+
         GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
         GL.VertexArrayElementBuffer(_vao, _ebo);
         GL.VertexArrayAttribFormat(_vao, 0, 2, VertexAttribType.Float, false, 0);
@@ -230,7 +230,7 @@ void main()
         _vao.Bind();
         _ebo.Bind();
         _vbo.Bind();
-        
+
         // Render command lists
         for (var i = 0; i < drawData.CmdListsCount; i++)
         {
@@ -246,7 +246,7 @@ void main()
             {
                 var pcmd = cmd.CmdBuffer[j];
                 if (pcmd.UserCallback != IntPtr.Zero) throw new NotImplementedException();
-                
+
                 var texture = (uint)pcmd.TextureId;
                 if (!GL.IsTexture(texture)) continue;
                 GL.BindTextureUnit(0, texture);

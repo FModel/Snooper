@@ -33,9 +33,9 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 {
     public abstract GetPName PName { get; }
     public int PreviousHandle { get; private set; }
-    
+
     public event Action<uint, uint>? OnHandleChanged;
-    
+
     private int _count;
     public int Count
     {
@@ -43,18 +43,18 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         private set
         {
             if (_count == value) return;
-            
+
             _count = value;
             OnCountChanged(value);
         }
     }
-    
+
     public int Stride { get; } = Marshal.SizeOf<T>();
 
     private int _capacity;
     private bool _bInitialized;
     private readonly Dictionary<int, BufferAllocationMetadata> _allocations = new();
-    private readonly SortedSet<FreeBlock> _freeBlocks = new(Comparer<FreeBlock>.Create((a, b) => 
+    private readonly SortedSet<FreeBlock> _freeBlocks = new(Comparer<FreeBlock>.Create((a, b) =>
     {
         var sizeCompare = a.Length.CompareTo(b.Length);
         return sizeCompare != 0 ? sizeCompare : a.StartIndex.CompareTo(b.StartIndex);
@@ -71,13 +71,13 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         Handle = handle;
         _bInitialized = false;
     }
-    
+
     public void Bind()
     {
         PreviousHandle = GL.GetInteger(PName);
         GL.BindBuffer(target, Handle);
     }
-    
+
     public void Unbind()
     {
         GL.BindBuffer(target, PreviousHandle);
@@ -88,13 +88,13 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         if (newSize <= _capacity) return;
 
         newSize = (int) Math.Max(_capacity * factor, newSize);
-        
+
         var oldCapacity = _capacity;
         _capacity = newSize;
 
         if (_bInitialized)
         {
-            Log.Verbose("Resizing buffer {0} ({1}) from {2} to {3} (initialized!!!!!!)", Handle, PName, oldCapacity, _capacity);
+            Log.Warning("Resizing buffer {0} ({1}) from {2} to {3} (initialized!!!!!!)", Handle, PName, oldCapacity, _capacity);
 
             _bInitialized = false;
             if (copy)
@@ -108,7 +108,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
                 GL.DeleteBuffer(oldBuffer);
 
                 Log.Verbose("Buffer {OldBuffer} ({GetPName}) has a new handle {I}.", oldBuffer, PName, Handle);
-                
+
                 OnHandleChanged?.Invoke(oldBuffer, Handle);
             }
             else
@@ -124,7 +124,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size);
         if (_bInitialized)
             throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
-        
+
         if (size > _capacity)
             ResizeIfNeeded(size);
         else if (size < _capacity)
@@ -146,12 +146,12 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     {
         var length = data.Length;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
-        
+
         if (!_bInitialized)
         {
             Allocate(length);
         }
-        
+
         var (allocationId, startIndex) = AllocateSpace(length);
         if (startIndex + length > _capacity)
         {
@@ -159,7 +159,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         }
 
         GL.NamedBufferSubData(Handle, startIndex * Stride, length * Stride, data);
-        
+
         var metadata = new BufferAllocationMetadata(allocationId, startIndex, length, DateTime.UtcNow);
         _allocations[allocationId] = metadata;
         Count += length;
@@ -187,13 +187,13 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
         _allocations[allocationId] = metadata with { LastModified = DateTime.UtcNow };
     }
-    
+
     public void UpdateCustom<TCustom>(BufferAllocation allocation, TCustom data, int offset) where TCustom : unmanaged => UpdateCustomInternal(allocation.AllocationId, data, offset);
     private void UpdateCustomInternal<TCustom>(int allocationId, TCustom data, int offset) where TCustom : unmanaged
     {
-        if (!_bInitialized) 
+        if (!_bInitialized)
             throw new InvalidOperationException("Buffer is not initialized. Use Add method to initialize it.");
-        
+
         if (!_allocations.TryGetValue(allocationId, out var metadata))
             throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
@@ -217,10 +217,10 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
             throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
         GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, metadata.Length * Stride, new T[metadata.Length]);
-        
+
         _freeBlocks.Add(new FreeBlock(metadata.StartIndex, metadata.Length));
         MergeAdjacentFreeBlocks();
-        
+
         _allocations.Remove(allocationId);
         Count -= metadata.Length;
     }
@@ -246,14 +246,14 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     {
         GL.DeleteBuffer(Handle);
     }
-    
+
     public override long Allocated => _capacity * Stride;
     public override long Used => Count * Stride;
     public BufferStatistics GetBufferStatistics()
     {
         var allocations = _allocations.Values.OrderBy(a => a.StartIndex).ToList();
         var freeBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
-        
+
         return new BufferStatistics(
             Capacity: _capacity,
             UsedItems: Count,
@@ -267,7 +267,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     private (int allocationId, int startIndex) AllocateSpace(int length)
     {
         var allocationId = _allocationIdCounter++;
-        
+
         FreeBlock? suitableBlock = null;
         foreach (var block in _freeBlocks)
         {
@@ -283,7 +283,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         {
             startIndex = suitableBlock.Value.StartIndex;
             _freeBlocks.Remove(suitableBlock.Value);
-            
+
             // If the block is larger than needed, split it
             if (suitableBlock.Value.Length > length)
             {
@@ -311,14 +311,14 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         for (var i = 0; i < sortedBlocks.Count; i++)
         {
             var current = sortedBlocks[i];
-            
+
             // try to merge with subsequent blocks
             while (i + 1 < sortedBlocks.Count && current.StartIndex + current.Length == sortedBlocks[i + 1].StartIndex)
             {
                 current = new FreeBlock(current.StartIndex, current.Length + sortedBlocks[i + 1].Length);
                 i++;
             }
-            
+
             _freeBlocks.Add(current);
         }
     }
@@ -326,10 +326,10 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     private double CalculateFragmentation()
     {
         if (_capacity == 0 || _freeBlocks.Count == 0) return 0.0;
-        
+
         var totalFreeSpace = _freeBlocks.Sum(fb => fb.Length);
         if (totalFreeSpace == 0) return 0.0;
-        
+
         // Fragmentation is high when we have many small free blocks
         // Perfect score (0%) = one contiguous free block
         // Worst score (100%) = many tiny free blocks

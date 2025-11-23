@@ -26,14 +26,21 @@ public class FxaaFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
             callback?.Invoke(_shader);
         });
     }
-    
+
     public override long Allocated => base.Allocated + _shader.Allocated;
     public override long Used => base.Used + _shader.Used;
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
-        
+
         yield return new MemoryDetail("Main Shader", _shader);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _shader.Dispose();
     }
 }

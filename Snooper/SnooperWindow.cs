@@ -17,7 +17,7 @@ namespace Snooper;
 public partial class SnooperWindow : GameWindow
 {
     private readonly InterfaceSystem _interface;
-    
+
     public SnooperWindow(double fps, int width, int height, bool startVisible = true) : base(
         new GameWindowSettings { UpdateFrequency = fps },
         new NativeWindowSettings
@@ -50,12 +50,12 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<TextRenderSystem>();
         ActorManager.RegisterSystemFactory<AudioSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
-        
+
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
-        
+
         // TODO: move this into its own Editor project
         _interface = new LevelSystem(this);
-        
+
         Closing += _ =>
         {
             _interface.Dispose();
@@ -97,7 +97,7 @@ public partial class SnooperWindow : GameWindow
             _interface.RootActor.Children.Add(actor);
         }
     }
-    
+
     protected override void OnLoad()
     {
         base.OnLoad();
@@ -107,7 +107,7 @@ public partial class SnooperWindow : GameWindow
 
         GL.Enable(EnableCap.Blend);
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-        
+
         GL.PatchParameter(PatchParameterInt.PatchVertices, 4);
 
         // GL.Enable(EnableCap.VertexProgramPointSize);
@@ -137,7 +137,7 @@ public partial class SnooperWindow : GameWindow
     {
         if (!IsFocused) return;
         base.OnRenderFrame(args);
-        
+
         _interface.Render();
 
         SwapBuffers();

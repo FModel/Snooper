@@ -12,12 +12,12 @@ namespace Snooper.Rendering.Systems;
 public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData> : ActorSystem<TComponent>, ITexturedSystem
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
-    where TInstanceData : unmanaged, IPerInstanceData 
+    where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
-    
+
     protected abstract Action<uint> VertexLayout { get; }
 
     protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; }
@@ -26,7 +26,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     protected IndirectRenderSystem(PrimitiveType type)
     {
         Resources = new IndirectResources<TVertex, TInstanceData, TPerMaterialData>(type);
-        
+
         TextureManager = new TextureManager();
         TextureManager.OnMaterialReady += material =>
         {
@@ -35,7 +35,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             {
                 throw new InvalidOperationException($"Material data container raw type {material.MaterialDataContainer?.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
             }
-            
+
             Resources.Update(material.Allocation!.Value, raw);
         };
     }
@@ -46,9 +46,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
         Resources.Generate();
         Resources.Allocate(_counts);
-        
+
         TextureManager.Load();
-        
+
         foreach (var component in Components)
         {
             component.Generate(Resources, TextureManager);
@@ -59,7 +59,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     protected override void OnUpdate(float delta)
     {
         base.OnUpdate(delta);
-        
+
         // dequeue textures
         TextureManager.Update(delta);
 
@@ -67,7 +67,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         {
             component.Update(Resources, TextureManager);
         }
-        
+
         Resources.FlushUpdates();
     }
 
@@ -75,14 +75,14 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     {
         Resources.Render();
     }
-    
+
     private AllocationCounts _counts;
     private readonly HashSet<FGuid> _guids = [];
 
     protected override void OnActorComponentEnqueued(TComponent component)
     {
         base.OnActorComponentEnqueued(component);
-        
+
         _counts.Components++;
         _counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
         _counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
@@ -95,7 +95,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
                 _counts.Sections += (uint)lod.Sections.Length;
                 _counts.Indices += lod.IndexCount;
                 _counts.Vertices += lod.VertexCount;
-                
+
                 if (lod.HasVertexColors)
                 {
                     _counts.ColoredVertices += lod.VertexCount;
@@ -107,7 +107,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     protected override void OnActorComponentRemoved(TComponent component)
     {
         base.OnActorComponentRemoved(component);
-        
+
         // not used ig
         _counts.Components--;
         _counts.Instances -= component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
@@ -120,21 +120,21 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             {
                 _counts.Indices -= lod.IndexCount;
                 _counts.Vertices -= lod.VertexCount;
-                
+
                 if (lod.HasVertexColors)
                 {
                     _counts.ColoredVertices -= lod.VertexCount;
                 }
             }
         }
-        
+
         Resources.Remove(component);
         foreach (var material in component.Materials)
         {
             material.Dispose();
         }
     }
-    
+
     public override void Dispose()
     {
         base.Dispose();
@@ -163,7 +163,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             return total;
         }
     }
-    
+
     public virtual IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("GPU Resources", Resources);

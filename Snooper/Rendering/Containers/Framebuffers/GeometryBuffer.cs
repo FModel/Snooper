@@ -39,12 +39,12 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         _color.Resize(Width, Height);
         GL.TextureParameter(_color, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TextureParameter(_color, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        
+
         _specular.Generate();
         _specular.Resize(Width, Height);
         GL.TextureParameter(_specular, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TextureParameter(_specular, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        
+
         _picking.Generate();
         _picking.Resize(Width, Height);
 
@@ -90,7 +90,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
         GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fullQuad);
         GL.BlitFramebuffer(0, 0, Width, Height, 0, 0, Width, Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
-        
+
         _fullQuad.Render(() =>
         {
             BindTextures(true, true, true, true);
@@ -156,7 +156,7 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
             return total;
         }
     }
-    
+
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("Full Quad Framebuffer", _fullQuad);
@@ -167,5 +167,19 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         yield return new MemoryDetail("Picking Texture", _picking);
         yield return new MemoryDetail("Depth Renderbuffer", _depth);
         yield return new MemoryDetail("Main Shader", _shader);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _fullQuad.Dispose();
+        _position.Dispose();
+        _normal.Dispose();
+        _color.Dispose();
+        _specular.Dispose();
+        _picking.Dispose();
+        _depth.Dispose();
+        _shader.Dispose();
     }
 }

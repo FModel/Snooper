@@ -17,8 +17,20 @@ public class Actor
     public string Name { get; }
     public string? ExportType { get; }
     public string? InternalType { get; }
-    public bool IsSelected { get; private set; }
-    
+
+    internal bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        internal set
+        {
+            if (_isSelected == value) return;
+
+            _isSelected = value;
+            IsOutlined = value;
+        }
+    }
+
     private bool _isVisible = true;
     public bool IsVisible
     {
@@ -26,16 +38,33 @@ public class Actor
         set
         {
             if (_isVisible == value) return;
-            
+
             _isVisible = value;
             foreach (var component in Components.OfType<IPrimitiveComponent>())
             {
                 component.IsVisible = value;
             }
-            
+
             foreach (var child in Children)
             {
                 child.IsVisible = value;
+            }
+        }
+    }
+
+    private bool _isOutlined;
+    public bool IsOutlined
+    {
+        get => _isOutlined;
+        private set
+        {
+            if (_isOutlined == value) return;
+
+            _isOutlined = value;
+
+            foreach (var child in Children)
+            {
+                child.IsOutlined = value;
             }
         }
     }
@@ -57,7 +86,7 @@ public class Actor
         {
             Name = a.ActorLabel;
         }
-        
+
         ExportType = actor.ExportType;
         InternalType = actor.GetType().Name;
     }
@@ -72,14 +101,14 @@ public class Actor
         private set
         {
             if (this == value || _parent == value) return;
-            
+
             _parent?.Children.Remove(this);
             value?.Children.Add(this);
         }
     }
 
     public ActorManager? ActorManager { get; internal set; }
-    
+
     private SpatialComponent? _rootComponent;
     public SpatialComponent? RootComponent
     {
@@ -87,9 +116,9 @@ public class Actor
         private set
         {
             if (_rootComponent == value) return;
-            
+
             _rootComponent = value;
-            
+
             Icon = _rootComponent?.Icon ?? "component";
         }
     }
@@ -103,14 +132,14 @@ public class Actor
         {
             throw new InvalidOperationException("This actor already has a parent.");
         }
-        
+
         actor._parent = this;
-        
+
         if (actor.RootComponent != null)
         {
             actor.RootComponent.Relation = RootComponent;
         }
-        
+
         if (!IsVisible)
         {
             actor.IsVisible = false;
@@ -125,7 +154,7 @@ public class Actor
         }
 
         actor._parent = null;
-        
+
         if (actor.RootComponent != null)
         {
             actor.RootComponent.Relation = null;
@@ -138,14 +167,14 @@ public class Actor
         {
             throw new InvalidOperationException("An actor component cannot be set on more than one actor.");
         }
-        
+
         if (RootComponent == null && component is SpatialComponent spatial)
         {
             RootComponent = spatial;
         }
 
         component.Actor = this;
-        
+
         if (!IsVisible && component is IPrimitiveComponent primitive)
         {
             primitive.IsVisible = false;
@@ -166,7 +195,7 @@ public class Actor
         {
             throw new InvalidOperationException("This actor component is not set on this actor.");
         }
-        
+
         if (RootComponent == component)
         {
             RootComponent = null;
@@ -214,14 +243,6 @@ public class Actor
                 RootComponent = null;
                 break;
         }
-    }
-    
-    internal void ComputeSelected()
-    {
-        var any = Components.Any(component => component.IsSelected);
-        if (IsSelected == any) return;
-        
-        IsSelected = any;
     }
 
     internal virtual void DrawInterface()

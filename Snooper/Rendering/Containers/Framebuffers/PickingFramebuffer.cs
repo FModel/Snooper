@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
@@ -24,34 +25,38 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
     private readonly ResizableTexture2D _mask = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red);
     private readonly ResizableTexture2D _outline = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.DepthComponent, false);
-    
+
     private readonly ShaderProgram _combineShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/combine.frag");
     private readonly ShaderProgram _maskShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/mask.frag");
     private readonly ShaderProgram _outlineShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/outline.frag");
     private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/picking.frag");
 
+    private readonly List<uint> _ids = [];
+    private readonly ShaderStorageBuffer<uint> _idsBuffer = new(BufferUsageHint.DynamicDraw);
+    private bool _idsDirty;
+
     public override void Generate()
     {
         _picking.Generate();
         _picking.Resize(Width, Height);
-        
+
         _mask.Generate();
         _mask.Resize(Width, Height);
         GL.TextureParameter(_mask, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TextureParameter(_mask, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
         GL.TextureParameter(_mask, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
         GL.TextureParameter(_mask, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
-        
+
         _outline.Generate();
         _outline.Resize(Width, Height);
         GL.TextureParameter(_outline, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TextureParameter(_outline, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
         GL.TextureParameter(_outline, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
         GL.TextureParameter(_outline, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
-        
+
         _depth.Generate();
         _depth.Resize(Width, Height);
-        
+
         base.Generate();
         GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment1, _picking, 0);
         GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment2, _mask, 0);
@@ -59,18 +64,21 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
         GL.NamedFramebufferRenderbuffer(Handle, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, _depth);
 
         CheckStatus();
-        
+
         _combineShader.Generate();
         _combineShader.Link();
-        
+
         _maskShader.Generate();
         _maskShader.Link();
 
         _outlineShader.Generate();
         _outlineShader.Link();
-        
+
         _shader.Generate();
         _shader.Link();
+
+        _idsBuffer.Generate();
+        _idsBuffer.Allocate(100);
     }
 
     public void Render()
@@ -85,19 +93,21 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             _combineShader.SetUniform("deferredPicking", 0);
             _combineShader.SetUniform("forwardPicking", 1);
         });
-        
-        // use that combined texture to create a mask of the currently selected object
+
+        // use that combined texture to create a mask of the currently selected objects
         GL.DrawBuffer(DrawBufferMode.ColorAttachment2);
         GL.ClearColor(0, 0, 0, 0);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
         base.Render(() =>
         {
             _maskShader.Use();
-            _maskShader.SetUniform("picked", _id);
             _maskShader.SetUniform("pickingTexture", 0);
             _picking.Bind(0);
+
+            UpdateIdsBuffer();
+            _idsBuffer.Bind(3);
         });
-        
+
         // use that mask to create an outline
         GL.DrawBuffer(DrawBufferMode.ColorAttachment3);
         GL.ClearColor(0, 0, 0, 0);
@@ -110,7 +120,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             _outlineShader.SetUniform("selectionMask", 0);
             _mask.Bind(0);
         });
-        
+
         // use that outline to highlight the selected object with a color
         GL.DrawBuffer(DrawBufferMode.ColorAttachment0);
         GL.ClearColor(0, 0, 0, 0);
@@ -123,7 +133,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             _outline.Bind(0);
         });
     }
-    
+
     public uint ReadPixel(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
     {
         Bind();
@@ -132,7 +142,13 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
         var scaleX = windowSize.X / Width;
         var scaleY = windowSize.Y / Height;
         var x = Convert.ToInt32((mousePos.X - windowPos.X) / scaleX);
-        var y = -Convert.ToInt32((mousePos.Y - windowPos.Y) / scaleY);
+        var y = Convert.ToInt32((mousePos.Y - windowPos.Y) / scaleY);
+
+        // ui disabled / enabled
+        if (windowPos == Vector2.Zero)
+            y = Height - 1 - y;
+        else
+            y = -y;
 
         // picking texture is in color attachment 1 and we the first channel of a single pixel
         GL.ReadBuffer(ReadBufferMode.ColorAttachment1);
@@ -142,13 +158,37 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
         Unbind();
         return pixel;
     }
-    
-    private uint _id;
-    public void OverrideId(uint id)
+
+    public void SetPickedIds(IEnumerable<uint> ids)
     {
-        _id = id;
+        _ids.Clear();
+        _ids.AddRange(ids.Where(id => id != 0));
+        _idsDirty = true;
     }
-    
+
+    private void UpdateIdsBuffer()
+    {
+        if (!_idsDirty) return;
+
+        var sortedIds = _ids.OrderBy(id => id).ToArray();
+        var data = new uint[1 + sortedIds.Length];
+        data[0] = (uint)sortedIds.Length;
+        for (int i = 0; i < sortedIds.Length; i++)
+        {
+            data[i + 1] = sortedIds[i];
+        }
+
+        unsafe
+        {
+            fixed (uint* ptr = data)
+            {
+                _idsBuffer.Update(data.Length, (nint)ptr);
+            }
+        }
+
+        _idsDirty = false;
+    }
+
     public override void Resize(int newWidth, int newHeight)
     {
         base.Resize(newWidth, newHeight);
@@ -171,6 +211,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             total += _maskShader.Allocated;
             total += _outlineShader.Allocated;
             total += _shader.Allocated;
+            total += _idsBuffer.Allocated;
             return total;
         }
     }
@@ -188,6 +229,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
             total += _maskShader.Used;
             total += _outlineShader.Used;
             total += _shader.Used;
+            total += _idsBuffer.Used;
             return total;
         }
     }
@@ -196,7 +238,7 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
-        
+
         yield return new MemoryDetail("Picking Texture", _picking);
         yield return new MemoryDetail("Mask Texture", _mask);
         yield return new MemoryDetail("Outline Texture", _outline);
@@ -205,5 +247,21 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
         yield return new MemoryDetail("Mask Shader", _maskShader);
         yield return new MemoryDetail("Outline Shader", _outlineShader);
         yield return new MemoryDetail("Main Shader", _shader);
+        yield return new MemoryDetail("Picked IDs Buffer", _idsBuffer);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _picking.Dispose();
+        _mask.Dispose();
+        _outline.Dispose();
+        _depth.Dispose();
+        _combineShader.Dispose();
+        _maskShader.Dispose();
+        _outlineShader.Dispose();
+        _shader.Dispose();
+        _idsBuffer.Dispose();
     }
 }

@@ -7,10 +7,10 @@ namespace Snooper.UI;
 
 public static class LogWindow
 {
-    private const int MaxLogEntries = 1000;
+    private const int MaxLogEntries = 10000;
 
-    private static readonly ConcurrentQueue<LogEvent> LogEntries = new();
-    private static readonly List<LogEvent> DisplayEntries = [];
+    private static readonly ConcurrentQueue<LogEvent> _logEntries = new();
+    private static readonly List<LogEvent> _displayEntries = [];
 
     private static LogEventLevel _minLevel = LogEventLevel.Verbose;
     private static string _filterText = string.Empty;
@@ -19,11 +19,11 @@ public static class LogWindow
 
     public static void AddLog(LogEvent logEvent)
     {
-        LogEntries.Enqueue(logEvent);
-        
-        while (LogEntries.Count > MaxLogEntries)
+        _logEntries.Enqueue(logEvent);
+
+        while (_logEntries.Count > MaxLogEntries)
         {
-            LogEntries.TryDequeue(out _);
+            _logEntries.TryDequeue(out _);
         }
     }
 
@@ -35,22 +35,22 @@ public static class LogWindow
             return;
         }
 
-        while (LogEntries.TryDequeue(out var entry))
+        while (_logEntries.TryDequeue(out var entry))
         {
-            DisplayEntries.Add(entry);
+            _displayEntries.Add(entry);
             if (_autoScroll)
                 _scrollToBottom = true;
         }
-        
-        while (DisplayEntries.Count > MaxLogEntries)
+
+        while (_displayEntries.Count > MaxLogEntries)
         {
-            DisplayEntries.RemoveAt(0);
+            _displayEntries.RemoveAt(0);
         }
-        
+
         DrawControls();
         ImGui.Separator();
         DrawLogEntries();
-        
+
         ImGui.End();
     }
 
@@ -58,9 +58,9 @@ public static class LogWindow
     {
         ImGui.SetNextItemWidth(200);
         ImGui.InputTextWithHint("##filter", "Filter...", ref _filterText, 256);
-        
+
         ImGui.SameLine();
-        
+
         ImGui.SetNextItemWidth(120);
         if (ImGui.BeginCombo("##level", _minLevel.ToString()))
         {
@@ -70,59 +70,76 @@ public static class LogWindow
                 if (ImGui.Selectable(level.ToString(), isSelected))
                 {
                     _minLevel = level;
+                    _scrollToBottom = true;
                 }
-                
+
                 if (isSelected) ImGui.SetItemDefaultFocus();
             }
             ImGui.EndCombo();
         }
-        
+
         ImGui.SameLine();
         ImGui.Checkbox("Auto-scroll", ref _autoScroll);
-        
+
         ImGui.SameLine();
         if (ImGui.Button("Clear"))
         {
-            DisplayEntries.Clear();
+            _displayEntries.Clear();
         }
-        
+
         ImGui.SameLine();
-        ImGui.Text($"({DisplayEntries.Count} entries)");
+        ImGui.Text($"({_displayEntries.Count} entries)");
     }
 
     private static void DrawLogEntries()
     {
-        if (!ImGui.BeginChild("LogEntries", Vector2.Zero, ImGuiChildFlags.Borders))
-        {
-            ImGui.EndChild();
-            return;
-        }
-        
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, ImGui.GetColorU32(ImGuiCol.WindowBg));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 2));
-        
-        foreach (var entry in DisplayEntries)
+
+        if (ImGui.BeginChild("LogEntries", Vector2.Zero, ImGuiChildFlags.Borders))
         {
-            if (entry.Level < _minLevel) continue;
-            
-            if (!string.IsNullOrWhiteSpace(_filterText))
+            var filtered = new List<LogEvent>();
+            foreach (var entry in _displayEntries)
             {
-                var message = entry.RenderMessage();
-                if (!message.Contains(_filterText, StringComparison.OrdinalIgnoreCase))
-                    continue;
+                if (entry.Level < _minLevel) continue;
+
+                if (!string.IsNullOrWhiteSpace(_filterText))
+                {
+                    var message = entry.RenderMessage();
+                    if (!message.Contains(_filterText, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+
+                filtered.Add(entry);
             }
-            
-            DrawLogEntry(entry);
+
+            unsafe
+            {
+                var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
+                clipper.Begin(filtered.Count);
+
+                while (clipper.Step())
+                {
+                    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                    {
+                        DrawLogEntry(filtered[i]);
+                    }
+                }
+
+                clipper.End();
+                clipper.Destroy();
+            }
+
+            if (_scrollToBottom)
+            {
+                ImGui.SetScrollHereY(1.0f);
+                _scrollToBottom = false;
+            }
         }
-        
-        ImGui.PopStyleVar();
-        
-        if (_scrollToBottom)
-        {
-            ImGui.SetScrollHereY(1.0f);
-            _scrollToBottom = false;
-        }
-        
+
         ImGui.EndChild();
+        ImGui.PopStyleVar();
+        ImGui.PopStyleColor();
     }
 
     private static void DrawLogEntry(LogEvent entry)
@@ -132,15 +149,15 @@ public static class LogWindow
         ImGui.TextColored(GetLevelColor(entry.Level), $"[{GetLevelShortName(entry.Level)}] ");
         ImGui.SameLine();
         ImGui.TextUnformatted(entry.RenderMessage());
-        
-        if (entry.Exception != null)
-        {
-            ImGui.Indent();
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
-            ImGui.TextWrapped(entry.Exception.ToString());
-            ImGui.PopStyleColor();
-            ImGui.Unindent();
-        }
+
+        // if (entry.Exception != null)
+        // {
+        //     ImGui.Indent();
+        //     ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+        //     ImGui.TextUnformatted(entry.Exception.ToString());
+        //     ImGui.PopStyleColor();
+        //     ImGui.Unindent();
+        // }
     }
 
     private static Vector4 GetLevelColor(LogEventLevel level)

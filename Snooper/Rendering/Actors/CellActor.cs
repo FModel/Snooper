@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
+using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Core.Containers.Textures;
@@ -17,20 +18,30 @@ public class CellActor : Actor
 
     private readonly FSoftObjectPath? _worldAsset;
     private Task? _loadTask;
-    
+
     public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool load = false) : base(cell.Name)
     {
         if (cell.RuntimeCellData?.TryLoad<UWorldPartitionRuntimeCellData>(out var data) == true)
         {
+            FVector center;
+            FVector extents;
+            if (data is UWorldPartitionRuntimeCellDataSpatialHash spatial)
+            {
+                center = spatial.Position * Settings.GlobalScale;
+                extents = new FVector(spatial.Extent * Settings.GlobalScale);
+            }
+            else
+            {
+                var box = (data.CellBounds ?? data.ContentBounds) * Settings.GlobalScale;
+                box.GetCenterAndExtents(out center, out extents);
+            }
             color ??= new Vector3(cell.CellDebugColor.R, cell.CellDebugColor.G, cell.CellDebugColor.B);
-            var box = (data.CellBounds ?? data.ContentBounds) * Settings.GlobalScale;
-            box.GetCenterAndExtents(out var center, out var extents);
 
             Center = new Vector3(center.X, center.Z, center.Y);
 
             Components.Add(new SpatialComponent(new Transform(Center), "CellRoot"));
             Components.Add(new DebugComponent(Vector3.Zero, new Vector3(extents.X, extents.Z, extents.Y), color, 5, "CellBounds"));
-            
+
             var spanX = extents.X * 2;
             var spanY = extents.Y * 2;
             var useY = spanY > spanX;
@@ -39,14 +50,14 @@ public class CellActor : Actor
             var estimatedPixelWidth = Name.Length * atlasFontSize * 0.6f;
             var pixelToWorld = Settings.GlobalScale / atlasFontSize;
             var fontSize = fontWidth / (estimatedPixelWidth * pixelToWorld);
-            
-            Components.Add(new TextRenderComponent(Name, fontSize, color, name: Name) 
+
+            Components.Add(new TextRenderComponent(Name, fontSize, color, name: Name)
             {
-                LocalTransform = new Transform 
+                LocalTransform = new Transform
                 {
                     Position = new Vector3(0, extents.Z, 0),
                     Rotation = useY
-                        ? Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2) 
+                        ? Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2)
                         : Quaternion.Identity
                 }
             });
@@ -86,7 +97,7 @@ public class CellActor : Actor
             }
         });
     }
-    
+
     private void AddWorld(FSoftObjectPath world)
     {
         var w = new WorldActor(world.Load<UWorld>());

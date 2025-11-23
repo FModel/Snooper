@@ -71,7 +71,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
     {
         GL.Uniform1(GetUniformLocation(name), value);
     }
-    
+
     public void SetUniform(string name, int count, int[] values)
     {
         GL.Uniform1(GetUniformLocation(name), count, values);
@@ -94,7 +94,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
     {
         GL.Uniform1(GetUniformLocation(name), value);
     }
-    
+
     public void SetUniform(string name, float[] values)
     {
         GL.Uniform1(GetUniformLocation(name), values.Length, values);
@@ -131,7 +131,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
     {
         GL.Uniform4(GetUniformLocation(name), x, y, z, w);
     }
-    
+
     public unsafe void SetUniform(string name, Plane[] value)
     {
         var length = value.Length;

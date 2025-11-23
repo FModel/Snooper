@@ -29,9 +29,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer());
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new();
     private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new();
-    
+
     private readonly List<Action> _geometryUpdates = []; // TODO: remove this hack
-    
+
     public void Generate()
     {
         _geometry.Generate();
@@ -39,16 +39,16 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _instanceData.Generate();
         _materialData.Generate();
     }
-    
+
     public void SetVertexLayout(Action<uint> setter) => _geometry.SetVertexLayout(setter);
-    
+
     public void Allocate(AllocationCounts counts)
     {
         _geometry.Allocate(counts);
         _commands.Current.Allocate(counts.Draws);
         _instanceData.Allocate(counts.Instances);
         _materialData.Allocate(counts.Materials);
-        
+
         Log.Debug("Allocated IndirectResources<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
             typeof(TVertex).Name,
             typeof(TInstanceData).Name,
@@ -62,12 +62,12 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             counts.Vertices,
             counts.ColoredVertices);
     }
-    
+
     public ResourcesMetadata Add(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
         if (component.Materials.Length == 0)
             throw new InvalidOperationException("Primitive component must have at least one material assigned before being added to IndirectResources.");
-        
+
         var primitive = component.Descriptor;
         var geometryHandle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
         var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
@@ -105,7 +105,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 SectionId = i,
             });
         }
-        
+
         component.MarkClean(DirtyFlags.All);
         return new ResourcesMetadata(geometryHandle, instanceAllocation, component.Materials[0].Allocation!.Value, drawAllocations);
     }
@@ -113,7 +113,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
         if (component.Metadata is not { } metadata) return;
-        
+
         if (metadata.GeometryHandle.IsDirty)
         {
             _geometryUpdates.Add(() =>
@@ -122,7 +122,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 metadata.GeometryHandle.MarkClean();
             });
         }
-        
+
         if (component.IsDirty(DirtyFlags.InstanceData))
         {
             _instanceData.QueueUpdate(metadata.InstanceAllocation, component.GetPerInstanceData());
@@ -149,15 +149,15 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             component.MarkClean(DirtyFlags.Visibility);
         }
     }
-    
+
     public void Update(BufferAllocation allocation, TPerMaterialData materialData)
     {
-        if (!materialData.IsReady) 
+        if (!materialData.IsReady)
             throw new InvalidOperationException("Material data is not ready.");
 
         _materialData.QueueUpdate(allocation, materialData);
     }
-    
+
     public void FlushUpdates()
     {
         if (_geometryUpdates.Count > 0)
@@ -166,21 +166,21 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 update();
             _geometryUpdates.Clear();
         }
-        
+
         _instanceData.FlushUpdates();
         _materialData.FlushUpdates();
     }
-    
+
     public void Remove(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
         if (component.Metadata is not { } metadata) return;
-        
+
         Log.Debug("Removing component {ComponentId}, freeing {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials.",
             component.Id,
             metadata.DrawAllocations.Length,
             metadata.InstanceAllocation.Length,
             metadata.MaterialAllocation.Length);
-        
+
         _geometry.Remove(metadata.GeometryHandle);
         _commands.Current.RemoveRange(metadata.DrawAllocations);
         _instanceData.Remove(metadata.InstanceAllocation);
@@ -195,13 +195,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _commands.Current.Bind(0);
         _instanceData.Bind(1);
         _materialData.Bind(2);
-        
+
         _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.MaxCountHeld, _commands.Current.Stride));
 
         _commands.Current.Unbind();
         // _commands.Swap();
     }
-    
+
     public void Dispose()
     {
         _geometry.Dispose();
@@ -235,7 +235,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             return total;
         }
     }
-    
+
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("Geometry Pool", _geometry);

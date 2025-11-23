@@ -9,7 +9,7 @@ public class PartitionActor : Actor
     public PartitionActor(UWorldPartition partition) : base(partition)
     {
         Components.Add(new SpatialComponent(null, "PartitionRoot"));
-        
+
         switch (partition.RuntimeHash?.Load<UWorldPartitionRuntimeHash>())
         {
             case UWorldPartitionRuntimeHashSet set:
@@ -21,8 +21,12 @@ public class PartitionActor : Actor
                 }
                 break;
             }
-            case UWorldPartitionRuntimeSpatialHash spatial when spatial.StreamingGrids[0].GridLevels.Length > 0:
+            case UWorldPartitionRuntimeSpatialHash spatial:
             {
+                foreach (var grid in spatial.StreamingGrids)
+                {
+                    Children.Add(new HierarchicalActor(grid));
+                }
                 break;
             }
         }
@@ -35,7 +39,7 @@ public class PartitionActor : Actor
         {
             hlods[i].UpdateCellVisibility(position, i > 0 ? hlods[i - 1].LoadingRange : 0f);
         }
-        
+
         // TODO: no holes + no overlaps between HLODs
     }
 }

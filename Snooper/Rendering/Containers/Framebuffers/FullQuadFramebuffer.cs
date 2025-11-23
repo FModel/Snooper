@@ -103,12 +103,22 @@ public class FullQuadFramebuffer(
             return total;
         }
     }
-    
+
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("Vertex Array", _vao);
-        yield return new MemoryDetail("Index Buffer", _ebo);
         yield return new MemoryDetail("Vertex Buffer", _vbo);
+        yield return new MemoryDetail("Index Buffer", _ebo);
         yield return new MemoryDetail("Color Texture", _color);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _vao.Dispose();
+        _vbo.Dispose();
+        _ebo.Dispose();
+        _color.Dispose();
     }
 }

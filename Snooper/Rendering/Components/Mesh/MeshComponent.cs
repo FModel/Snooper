@@ -4,7 +4,6 @@ using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
@@ -104,7 +103,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 {
                     var parameters = new CMaterialParams2();
                     material.GetParams(parameters, EMaterialFormat.FirstLayer);
-
+                    
                     Materials[index].Name = material.Name;
                     Materials[index].MaterialDataContainer = ParseMaterialParameters(parameters, material.Owner.Provider.ProjectName.ToUpperInvariant());
                 }
@@ -313,7 +312,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
 
         public IPerMaterialData? Raw { get; private set; }
-        
+
         private int _selectedLayer;
         public void DrawControls()
         {

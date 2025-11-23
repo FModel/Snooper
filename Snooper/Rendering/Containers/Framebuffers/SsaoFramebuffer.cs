@@ -49,7 +49,7 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
         _blur.Bind();
         GL.ClearColor(1, 1, 1, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit);
-        
+
         _blur.Render(() =>
         {
             base.Bind(0);
@@ -64,7 +64,7 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
     {
         base.Resize(newWidth, newHeight);
         _blur.Resize(newWidth / ScaleRatio, newHeight / ScaleRatio);
-        
+
         _frameCount = 0;
     }
 
@@ -98,9 +98,18 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
-        
+
         yield return new MemoryDetail("Blur Full Quad Framebuffer", _blur);
         yield return new MemoryDetail("Main Shader", _shader);
         yield return new MemoryDetail("Blur Shader", _blurShader);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _blur.Dispose();
+        _shader.Dispose();
+        _blurShader.Dispose();
     }
 }
