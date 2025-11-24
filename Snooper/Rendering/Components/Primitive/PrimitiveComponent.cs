@@ -26,12 +26,16 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         get => _descriptor ?? throw new InvalidOperationException($"Descriptor not initialized for {Name} of type {GetType().Name}.");
         protected init => _descriptor = value;
     }
-    
-    public ResourcesMetadata? Metadata { get; private set; }
-    
-    public abstract MaterialSection[] Materials { get; }
 
-    public bool IsOpaque => !Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks
+    public ResourcesMetadata? Metadata { get; private set; }
+
+    /// <summary>
+    /// indicates whether materials have finished loading. Override in derived classes that load materials asynchronously.
+    /// TODO: remove this dog shit logic and use an event to call TextureManager.AddRange when it's ready
+    /// </summary>
+    public virtual bool AreMaterialsReady => true;
+    public abstract MaterialSection[] Materials { get; }
+    public bool IsOpaque => !Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks (read up)
 
     private bool _isVisible = true;
     public bool IsVisible
@@ -40,15 +44,15 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         set
         {
             if (_isVisible == value) return;
-            
+
             _isVisible = value;
             MarkDirty(DirtyFlags.Visibility);
         }
     }
-    
+
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
-        
+
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
@@ -58,6 +62,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
+        if (!AreMaterialsReady) return; // wait until materials are ready
         Metadata = resources.Add(this);
         textureManager.AddRange(Materials);
     }
@@ -73,7 +78,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             resources.Update(this);
         }
     }
-    
+
     private TInstanceData[]? _cachedInstanceData { get; set; }
     public TInstanceData[] GetPerInstanceData()
     {
@@ -83,7 +88,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         {
             data[i] = new TInstanceData { Matrix = matrices[i] };
         }
-        
+
         if (_cachedInstanceData is null)
         {
             if (ApplyInstanceData(data))
@@ -102,7 +107,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     }
     protected virtual void CopyCachedData(TInstanceData[] data, TInstanceData[] cached)
     {
-        
+
     }
 
     public override (Vector3, float) GetTeleportPosition(CameraComponent camera)
@@ -117,7 +122,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             overallCenter += worldCenter;
         }
         overallCenter /= matrices.Length;
-        
+
         var extents = Descriptor.Bounds.Extents;
         var maxExtent = MathF.Max(extents.X, MathF.Max(extents.Y, extents.Z));
         var distance = maxExtent * 1.25f / MathF.Tan(camera.FieldOfViewRadians / 2f);
@@ -132,7 +137,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     public override void DrawControls()
     {
         base.DrawControls();
-        
+
         if (ImGui.CollapsingHeader(Header, ImGuiTreeNodeFlags.DefaultOpen))
         {
             EditorUI.SharedTreeNode("Descriptor", ImGuiTreeNodeFlags.DefaultOpen, Id, () =>
@@ -142,7 +147,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     EditorUI.Text("Path", Descriptor.Path ?? "N/A");
                     EditorUI.Text("Guid", Descriptor.Guid.ToString(EGuidFormats.UniqueObjectGuid));
                     EditorUI.Text("Is Visible", IsVisible.ToString());
-                    
+
                     EditorUI.Property($"LODs ({Descriptor.Lods.Length})");
                     ImGui.BeginGroup();
 
@@ -164,7 +169,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
                     ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                     ImGui.SetWindowFontScale(0.85f);
-                    
+
                     var lod = Descriptor.Lods[Math.Max(0, value)];
                     switch (value)
                     {
@@ -180,25 +185,25 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     ImGui.PopStyleVar();
                     ImGui.Spacing();
                     ImGui.EndGroup();
-                    
+
                     EditorUI.Property($"Sections ({lod.Sections.Length})");
                     ImGui.BeginGroup();
-                    
+
                     if (lod.Sections.Length > 0)
                     {
                         var maxSection = lod.Sections.Length - 1;
-                        
+
                         ImGui.BeginDisabled(maxSection == 0);
                         var slided2 = ImGui.SliderInt("##SectionSlider", ref _sectionIndex, 0, maxSection);
                         ImGui.EndDisabled();
-                        
+
                         ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                         ImGui.SetWindowFontScale(0.85f);
-                        
+
                         var section = lod.Sections[_sectionIndex];
                         if (slided1 || slided2) _materialIndex = (int)section.MaterialIndex;
                         ImGui.TextUnformatted($"{section.Name}: Material {section.MaterialIndex}, {section.IndexCount} Indices (offset {section.FirstIndex})");
-                        
+
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();
                         ImGui.Spacing();
@@ -207,7 +212,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     {
                         ImGui.TextDisabled("No Sections?");
                     }
-                    
+
                     ImGui.EndGroup();
                 });
             });
@@ -223,22 +228,22 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     if (Materials.Length > 0)
                     {
                         var maxMaterial = Materials.Length - 1;
-                        
+
                         if (maxMaterial == 0) ImGui.BeginDisabled();
                         ImGui.SliderInt("##MaterialSlider", ref _materialIndex, 0, maxMaterial);
                         if (maxMaterial == 0) ImGui.EndDisabled();
-                        
+
                         ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
                         ImGui.SetWindowFontScale(0.85f);
-                        
+
                         material = Materials[_materialIndex];
                         ImGui.TextUnformatted($"{material.Name} (offset {material.Allocation?.StartIndex ?? -1})");
-                        
+
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();
                         ImGui.Spacing();
                     }
-            
+
                     ImGui.EndGroup();
 
                     if (material?.MaterialDataContainer != null)
@@ -252,7 +257,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     }
                 });
             });
-            
+
             EditorUI.SharedTreeNode("Metadata", ImGuiTreeNodeFlags.None, Id, () =>
             {
                 ImGui.Indent();
@@ -281,15 +286,15 @@ public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<
     {
         Descriptor = new PrimitiveDescriptor<TVertex>(bounds, () => primitive);
     }
-    
+
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
-        
+
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        
+
     }
 
     public sealed override MaterialSection[] Materials { get; } = [new(0)];
@@ -301,17 +306,17 @@ public class PrimitiveComponent<TPerMaterialData> : PrimitiveComponent<Vector3, 
 {
     protected PrimitiveComponent(PrimitiveData primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(primitive, bounds, transform, name)
     {
-        
+
     }
-    
+
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
-        
+
     }
-    
+
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        
+
     }
 }
 
@@ -321,16 +326,16 @@ public class PrimitiveComponent : PrimitiveComponent<PerMaterialData>
 {
     public PrimitiveComponent(PrimitiveData primitive, Transform? transform = null, string? name = null) : base(primitive, new FBox(), transform, name)
     {
-        
+
     }
-    
+
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
-        
+
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        
+
     }
 }

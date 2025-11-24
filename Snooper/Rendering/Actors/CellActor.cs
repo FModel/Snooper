@@ -17,7 +17,6 @@ public class CellActor : Actor
     public Vector3 Center { get; }
 
     private readonly FSoftObjectPath? _worldAsset;
-    private Task? _loadTask;
 
     public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool load = false) : base(cell.Name)
     {
@@ -85,7 +84,7 @@ public class CellActor : Actor
             return;
 
         IsLoading = true;
-        _loadTask = Task.Run(() =>
+        ActorManager?.ThreadManager.Enqueue(() =>
         {
             try
             {

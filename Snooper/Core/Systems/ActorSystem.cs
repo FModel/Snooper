@@ -27,7 +27,7 @@ public abstract class ActorSystem : IGameSystem
     public bool IsEnabled = true;
     public ActorManager? ActorManager { get; internal set; }
     public float Time { get; private set; }
-    
+
     public abstract ActorSystemType SystemType { get; }
     public abstract uint Order { get; }
     public abstract int ComponentsCount { get; }
@@ -45,7 +45,7 @@ public abstract class ActorSystem : IGameSystem
         if (!IsEnabled) return;
         Profiler.Time(ProfilerMetric.Load, OnLoad);
     }
-    
+
     public void Update(float delta)
     {
         if (!IsEnabled) return;
@@ -55,7 +55,7 @@ public abstract class ActorSystem : IGameSystem
             OnUpdate(delta);
         });
     }
-    
+
     public void Render(CameraComponent camera)
     {
         if (!IsEnabled) return;
@@ -66,13 +66,13 @@ public abstract class ActorSystem : IGameSystem
             Profiler.EndQuery();
         });
     }
-    
+
     protected abstract void OnLoad();
     protected abstract void OnUpdate(float delta);
     protected abstract void OnRender(CameraComponent camera);
-    
+
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
-    
+
     protected virtual bool AllowDerivation => true;
     public virtual bool Accepts(Type type)
     {
@@ -94,7 +94,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override ActorSystemType SystemType => ActorSystemType.Forward;
     public override int ComponentsCount => Components.Count;
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
-    
+
     protected HashSet<TComponent> Components { get; } = [];
 
     protected override void OnLoad() => DequeueComponents();
@@ -104,7 +104,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     {
         if (component is not TComponent actorComponent)
             throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));
-        
+
         switch (Components.Contains(actorComponent))
         {
             case false when CanEnqueueActorComponent(actorComponent):
@@ -118,12 +118,12 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
                 break;
         }
     }
-    
+
     protected virtual bool CanEnqueueActorComponent(TComponent component)
     {
         return true;
     }
-    
+
     protected virtual void OnActorComponentEnqueued(TComponent component)
     {
 

@@ -1,5 +1,6 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.UI;
@@ -23,7 +24,7 @@ public abstract partial class ActorComponent
 
     protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
     {
-        Name = name ?? "Unnamed";
+        Name = name ?? Settings.NoName;
         Header = UpperCaseToSpace().Replace(GetType().Name[..^"Component".Length], " $1");
 
         _exportType = exportType;
@@ -43,10 +44,9 @@ public abstract partial class ActorComponent
         {
             if (_actor == value) return;
 
-            if (_actor == null)
-                OnReworkThis();
-
+            if (_actor != null) OnActorDetached(_actor);
             _actor = value;
+            if (_actor != null) OnActorAttached(_actor);
 
             if (this is SpatialComponent { Relation: null } spatial)
             {
@@ -66,11 +66,24 @@ public abstract partial class ActorComponent
             _dirtyFlags &= ~flags;
     }
 
-    protected virtual void OnReworkThis()
+    protected virtual void OnActorAttached(Actor actor)
     {
-        // TODO: this is used to start parsing materials asynchronously in MeshComponent
-        // it is triggered by the component being assigned to an actor for "the first time"
-        // but this is not a great way to handle materials specifically and it can be retriggered if the component is moved between actors
+        actor.OnAttachedToScene += OnActorAttachedToScene;
+        actor.OnDetachedFromScene += OnActorDetachedFromScene;
+    }
+    protected virtual void OnActorDetached(Actor actor)
+    {
+        actor.OnAttachedToScene -= OnActorAttachedToScene;
+        actor.OnDetachedFromScene -= OnActorDetachedFromScene;
+    }
+
+    protected virtual void OnActorAttachedToScene(IGameSystem scene)
+    {
+
+    }
+    protected virtual void OnActorDetachedFromScene(IGameSystem scene)
+    {
+
     }
 
     internal void DrawInterface()

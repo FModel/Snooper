@@ -16,10 +16,10 @@ public abstract class Texture(
     PixelType type = PixelType.UnsignedByte,
     string? name = null) : HandledObject, IMemorySizeProvider, IControllable
 {
-    public string Name { get; } = name ?? "Unnamed";
+    public string Name { get; } = name ?? Settings.NoName;
     public FGuid Guid { get; protected init; }
     public TextureTarget Target { get; } = target;
-    
+
     public int Width { get; protected set; } = width;
     public int Height { get; protected set; } = height;
     public ITextureFormatInfo FormatInfo { get; protected set; } = new TextureFormatInfo(internalFormat, format, type);
@@ -47,7 +47,7 @@ public abstract class Texture(
     {
         if (Target != TextureTarget.Texture2D)
             throw new NotSupportedException("Resizing the texture storage is only supported for Texture2D targets.");
-        
+
         Width = newWidth;
         Height = newHeight;
 
@@ -59,7 +59,7 @@ public abstract class Texture(
             GL.TextureParameter(Handle, TextureParameterName.TextureBaseLevel, 0);
             GL.TextureParameter(Handle, TextureParameterName.TextureMaxLevel, mipCount - 1);
         }
-                
+
         if (pixels.Length == 0) return;
         switch (FormatInfo)
         {
@@ -73,12 +73,12 @@ public abstract class Texture(
                 throw new NotSupportedException("Unknown texture format info.");
         }
     }
-    
+
     public void Swizzle()
     {
         GL.TextureParameter(Handle, TextureParameterName.TextureSwizzleRgba, SwizzleMask);
     }
-    
+
     public event Action? TextureReadyForBindless;
     protected void OnTextureReadyForBindless()
     {
@@ -86,11 +86,11 @@ public abstract class Texture(
     }
 
     public IntPtr GetPointer() => (IntPtr)Handle;
-    
+
     public void DrawControls()
     {
         const float previewSize = 64.0f;
-        
+
         ImGui.Image(GetPointer(), new Vector2(previewSize, previewSize), Vector2.Zero, Vector2.One, Vector4.One, Vector4.One / 2);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
         {
@@ -101,9 +101,9 @@ public abstract class Texture(
                 new Vector2(Width, Height)
             );
         }
-        
+
         ImGui.SameLine();
-        
+
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Name);
         ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);

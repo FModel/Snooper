@@ -11,11 +11,13 @@ public static class LogWindow
 
     private static readonly ConcurrentQueue<LogEvent> _logEntries = new();
     private static readonly List<LogEvent> _displayEntries = [];
+    private static readonly List<LogEvent> _filteredEntries = [];
 
     private static LogEventLevel _minLevel = LogEventLevel.Verbose;
     private static string _filterText = string.Empty;
     private static bool _autoScroll = true;
     private static bool _scrollToBottom;
+    private static bool _needsRefilter;
 
     public static void AddLog(LogEvent logEvent)
     {
@@ -39,12 +41,22 @@ public static class LogWindow
         {
             _displayEntries.Add(entry);
             if (_autoScroll)
+            {
                 _scrollToBottom = true;
+            }
+            _needsRefilter = true;
         }
 
         while (_displayEntries.Count > MaxLogEntries)
         {
             _displayEntries.RemoveAt(0);
+            _needsRefilter = true;
+        }
+
+        if (_needsRefilter)
+        {
+            RebuildFilteredEntries();
+            _needsRefilter = false;
         }
 
         DrawControls();
@@ -54,10 +66,39 @@ public static class LogWindow
         ImGui.End();
     }
 
+    private static bool NeedsFiltering()
+    {
+        return _minLevel != LogEventLevel.Verbose || !string.IsNullOrWhiteSpace(_filterText);
+    }
+
+    private static void RebuildFilteredEntries()
+    {
+        _filteredEntries.Clear();
+
+        if (!NeedsFiltering())
+        {
+            return;
+        }
+
+        foreach (var entry in _displayEntries)
+        {
+            if (entry.Level < _minLevel) continue;
+
+            if (!string.IsNullOrWhiteSpace(_filterText))
+            {
+                var message = entry.RenderMessage();
+                if (!message.Contains(_filterText, StringComparison.OrdinalIgnoreCase))
+                    continue;
+            }
+
+            _filteredEntries.Add(entry);
+        }
+    }
+
     private static void DrawControls()
     {
         ImGui.SetNextItemWidth(200);
-        ImGui.InputTextWithHint("##filter", "Filter...", ref _filterText, 256);
+        _needsRefilter = ImGui.InputTextWithHint("##filter", "Filter...", ref _filterText, 256);
 
         ImGui.SameLine();
 
@@ -70,6 +111,7 @@ public static class LogWindow
                 if (ImGui.Selectable(level.ToString(), isSelected))
                 {
                     _minLevel = level;
+                    _needsRefilter = true;
                     _scrollToBottom = true;
                 }
 
@@ -85,10 +127,11 @@ public static class LogWindow
         if (ImGui.Button("Clear"))
         {
             _displayEntries.Clear();
+            _filteredEntries.Clear();
         }
 
         ImGui.SameLine();
-        ImGui.Text($"({_displayEntries.Count} entries)");
+        ImGui.Text($"({(NeedsFiltering() ? _filteredEntries : _displayEntries).Count} entries)");
     }
 
     private static void DrawLogEntries()
@@ -98,31 +141,17 @@ public static class LogWindow
 
         if (ImGui.BeginChild("LogEntries", Vector2.Zero, ImGuiChildFlags.Borders))
         {
-            var filtered = new List<LogEvent>();
-            foreach (var entry in _displayEntries)
-            {
-                if (entry.Level < _minLevel) continue;
-
-                if (!string.IsNullOrWhiteSpace(_filterText))
-                {
-                    var message = entry.RenderMessage();
-                    if (!message.Contains(_filterText, StringComparison.OrdinalIgnoreCase))
-                        continue;
-                }
-
-                filtered.Add(entry);
-            }
-
             unsafe
             {
+                var entriesToRender = NeedsFiltering() ? _filteredEntries : _displayEntries;
                 var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
-                clipper.Begin(filtered.Count);
+                clipper.Begin(entriesToRender.Count);
 
                 while (clipper.Step())
                 {
                     for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                     {
-                        DrawLogEntry(filtered[i]);
+                        DrawLogEntry(entriesToRender[i]);
                     }
                 }
 

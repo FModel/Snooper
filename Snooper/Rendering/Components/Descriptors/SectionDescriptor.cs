@@ -5,5 +5,5 @@ public struct SectionDescriptor(uint firstIndex, uint indexCount, uint materialI
     public readonly uint FirstIndex = firstIndex;
     public readonly uint IndexCount = indexCount;
     public readonly uint MaterialIndex = materialIndex;
-    public readonly string Name = name ?? "Unnamed";
+    public readonly string Name = name ?? Settings.NoName;
 }

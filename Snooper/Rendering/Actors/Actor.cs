@@ -3,6 +3,7 @@ using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using ImGuiNET;
+using Snooper.Core;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Mesh;
@@ -107,7 +108,19 @@ public class Actor
         }
     }
 
-    public ActorManager? ActorManager { get; internal set; }
+    private ActorManager? _actorManager;
+    public ActorManager? ActorManager
+    {
+        get => _actorManager;
+        internal set
+        {
+            if (_actorManager == value) return;
+
+            if (_actorManager != null) OnSceneDetached(_actorManager);
+            _actorManager = value;
+            if (_actorManager != null) OnSceneAttached(_actorManager);
+        }
+    }
 
     private SpatialComponent? _rootComponent;
     public SpatialComponent? RootComponent
@@ -126,7 +139,19 @@ public class Actor
     internal readonly int Id = Random.Shared.Next();
     internal string Icon { get; private set; } = "component";
 
-    private void AddInternal(Actor actor)
+    public event Action<IGameSystem>? OnAttachedToScene;
+    public event Action<IGameSystem>? OnDetachedFromScene;
+
+    protected virtual void OnSceneAttached(IGameSystem scene)
+    {
+        OnAttachedToScene?.Invoke(scene);
+    }
+    protected virtual void OnSceneDetached(IGameSystem scene)
+    {
+        OnDetachedFromScene?.Invoke(scene);
+    }
+
+    private void AddChildrenInternal(Actor actor)
     {
         if (actor.Parent != null)
         {
@@ -146,7 +171,7 @@ public class Actor
         }
     }
 
-    private void RemoveInternal(Actor actor)
+    private void RemoveChildrenInternal(Actor actor)
     {
         if (actor.Parent != this)
         {
@@ -161,7 +186,7 @@ public class Actor
         }
     }
 
-    private void AddInternal(ActorComponent component)
+    private void AddComponentInternal(ActorComponent component)
     {
         if (component.Actor != null)
         {
@@ -189,7 +214,7 @@ public class Actor
 #endif
     }
 
-    private void RemoveInternal(ActorComponent component)
+    private void RemoveComponentInternal(ActorComponent component)
     {
         if (component.Actor != this)
         {
@@ -211,13 +236,13 @@ public class Actor
             case NotifyCollectionChangedAction.Add:
                 foreach (var actor in e.NewItems!.Cast<Actor>())
                 {
-                    AddInternal(actor);
+                    AddChildrenInternal(actor);
                 }
                 break;
             case NotifyCollectionChangedAction.Remove:
                 foreach (var actor in e.OldItems!.Cast<Actor>())
                 {
-                    RemoveInternal(actor);
+                    RemoveChildrenInternal(actor);
                 }
                 break;
         }
@@ -230,13 +255,13 @@ public class Actor
             case NotifyCollectionChangedAction.Add:
                 foreach (var component in e.NewItems!.Cast<ActorComponent>())
                 {
-                    AddInternal(component);
+                    AddComponentInternal(component);
                 }
                 break;
             case NotifyCollectionChangedAction.Remove:
                 foreach (var component in e.OldItems!.Cast<ActorComponent>())
                 {
-                    RemoveInternal(component);
+                    RemoveComponentInternal(component);
                 }
                 break;
             case NotifyCollectionChangedAction.Reset:

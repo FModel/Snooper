@@ -21,7 +21,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     protected abstract Action<uint> VertexLayout { get; }
 
     protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; }
-    public TextureManager TextureManager { get; }
+    public TextureManager TextureManager { get; } // TODO: make it shared bruh no need one per system
 
     protected IndirectRenderSystem(PrimitiveType type)
     {

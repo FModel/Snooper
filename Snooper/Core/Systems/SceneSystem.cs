@@ -41,13 +41,9 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
             if (_rootActor == value)
                 return;
 
-            if (_rootActor != null)
-                RemoveRoot(_rootActor);
-
-            if (value != null)
-                AddRoot(value);
-
+            if (_rootActor != null) RemoveRoot(_rootActor);
             _rootActor = value;
+            if (_rootActor != null) AddRoot(_rootActor);
         }
     }
 
@@ -67,15 +63,15 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
                 _rootActor?.Children.Remove(pair.Camera.Actor);
             }
         }
-        
+
         DequeuePairs(1);
-        
+
         if (ActiveCamera != null && ActiveCamera.IsDirty(DirtyFlags.Transform) && _rootActor != null)
         {
             var cameraPosition = ActiveCamera.LocalTransform.Position;
             UpdatePartitionActorsRecursive(_rootActor, cameraPosition);
         }
-        
+
         base.Update(delta);
     }
 
@@ -98,7 +94,7 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
             pair.DeferredRendering(Render);
             pair.ForwardRendering(Render);
             pair.PickingRendering();
-            
+
             pair.CombineRendering();
             pair.ApplyFxaa();
         }

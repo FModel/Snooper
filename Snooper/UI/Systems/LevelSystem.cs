@@ -4,6 +4,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core.Containers;
+using Snooper.Extensions;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -160,7 +161,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             {
                 if (ImGui.BeginTabItem("Overview"))
                 {
-                    ImGui.Columns(2, "sysinfo", false);
+                    ImGui.Columns(2, "SysInfo", false);
                     ImGui.Text($"API: {Context.Name}");
                     ImGui.Text($"GPU: {Context.DeviceInfo.Name}");
                     ImGui.NextColumn();
@@ -169,22 +170,63 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     ImGui.Columns(1);
 
                     ImGui.Spacing();
-                    ImGui.Separator();
-                    ImGui.Spacing();
+                    ImGui.SeparatorText("Thread Manager");
 
-                    ImGui.Checkbox("Show Framebuffers", ref ShowFramebuffers);
-                    ImGui.SameLine();
-                    var c = (int) DebugColorMode;
-                    ImGui.SetNextItemWidth(200);
-                    ImGui.Combo("Debug Mode", ref c, "None\0Per Component\0Per Instance\0Per Material\0Per Primitive\0Vertex Colors\0");
-                    DebugColorMode = (ActorDebugColorMode) c;
+                    ImGui.Columns(3, "ThreadInfo", false);
+                    ImGui.Text($"Workers: {ThreadManager.WorkerCount}");
+                    ImGui.Text($"Queued Jobs: {ThreadManager.CurrentQueuedJobs}");
+                    ImGui.NextColumn();
+                    ImGui.Text($"Jobs Processed: {ThreadManager.TotalJobsProcessed:N0}");
+                    ImGui.Text($"Jobs Enqueued: {ThreadManager.TotalJobsEnqueued:N0}");
+                    ImGui.NextColumn();
+                    ImGui.Text($"Avg Job Time: {ThreadManager.AverageJobTimeMs.FormatTime()}");
+                    ImGui.Text($"Max Job Time: {ThreadManager.MaxJobTimeMs.FormatTime()}");
+                    ImGui.Columns(1);
+
+                    if (ImGui.TreeNode("Worker Threads"))
+                    {
+                        if (ImGui.BeginTable("WorkerTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
+                        {
+                            ImGui.TableSetupColumn("Name");
+                            ImGui.TableSetupColumn("Status");
+                            ImGui.TableSetupColumn("Queue");
+                            ImGui.TableSetupColumn("Jobs Processed");
+                            ImGui.TableSetupColumn("Avg Time (ms)");
+                            ImGui.TableSetupColumn("Max Time (ms)");
+                            ImGui.TableHeadersRow();
+
+                            var workerStats = ThreadManager.GetWorkerStats();
+                            foreach (var worker in workerStats)
+                            {
+                                ImGui.TableNextRow();
+                                ImGui.TableNextColumn();
+                                ImGui.TextUnformatted(worker.Name);
+                                ImGui.TableNextColumn();
+                                if (worker.IsIdle)
+                                {
+                                    ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1.0f), "Idle");
+                                }
+                                else
+                                {
+                                    ImGui.TextColored(new Vector4(0.0f, 1.0f, 0.0f, 1.0f), "Working");
+                                }
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{worker.QueueLength}");
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{worker.JobsProcessed:N0}");
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{worker.AverageJobTimeMs:F3}");
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{worker.MaxJobTimeMs:F3}");
+                            }
+
+                            ImGui.EndTable();
+                        }
+                        ImGui.TreePop();
+                    }
 
                     ImGui.Spacing();
-                    ImGui.Separator();
-                    ImGui.Spacing();
-
-                    ImGui.TextUnformatted("GPU Memory");
-                    ImGui.Spacing();
+                    ImGui.SeparatorText("GPU Memory");
                     MemoryDetailsUI.DrawMemorySummary(this);
 
                     ImGui.EndTabItem();
@@ -602,13 +644,20 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
             ImGui.SameLine(0, 12f);
         }
 
+        var toggleSize = new Vector2(32, 0);
         ImGui.BeginGroup();
         {
-            var toggleSize = new Vector2(32, 0);
+            var fbo = ShowFramebuffers;
+            if (fbo) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
+            if (ImGui.Button("FBO", toggleSize)) ShowFramebuffers = !fbo;
+            if (fbo) ImGui.PopStyleColor(1);
+
+            ImGui.SameLine(0, 2f);
+
             var fxaa = camera.bFXAA;
             if (fxaa) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
             if (ImGui.Button("AA", toggleSize)) camera.bFXAA = !fxaa;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip($"FXAA: {(fxaa ? "ON" : "OFF")}");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Anti-Aliasing: {(fxaa ? "ON" : "OFF")}");
             if (fxaa) ImGui.PopStyleColor(1);
 
             ImGui.SameLine(0, 2f);
@@ -624,21 +673,41 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         ImGui.SameLine(0, 12f);
 
         ImGui.BeginGroup();
-        var fov = camera.FieldOfView;
-        ImGui.SetNextItemWidth(120);
-        if (ImGui.SliderFloat("##FOV", ref fov, 1.0f, 89.0f, "FOV %.0f°", ImGuiSliderFlags.AlwaysClamp))
-            camera.FieldOfView = fov;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Field of View: {fov:F1}°");
+        {
+            var vertexColors = DebugColorMode == ActorDebugColorMode.VertexColors;
+            if (vertexColors) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
+            if (ImGui.Button("VC", toggleSize)) DebugColorMode = vertexColors ? ActorDebugColorMode.None : ActorDebugColorMode.VertexColors;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Vertex Colors: {(vertexColors ? "ON" : "OFF")}");
+            if (vertexColors) ImGui.PopStyleColor(1);
+
+            ImGui.SameLine(0, 0);
+
+            var primitiveColors = DebugColorMode == ActorDebugColorMode.PerPrimitive;
+            if (primitiveColors) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
+            if (ImGui.Button("PC", toggleSize)) DebugColorMode = primitiveColors ? ActorDebugColorMode.None : ActorDebugColorMode.PerPrimitive;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Primitive Colors: {(primitiveColors ? "ON" : "OFF")}");
+            if (primitiveColors) ImGui.PopStyleColor(1);
+        }
         ImGui.EndGroup();
 
         ImGui.SameLine(0, 12f);
 
         ImGui.BeginGroup();
-        var speed = camera.MovementSpeed;
-        ImGui.SetNextItemWidth(120);
-        if (ImGui.SliderFloat("##Speed", ref speed, 1f, 100f, "Speed %.0f m/s", ImGuiSliderFlags.AlwaysClamp))
-            camera.MovementSpeed = speed;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Movement Speed: {speed:F1}");
+        {
+            var fov = camera.FieldOfView;
+            ImGui.SetNextItemWidth(120);
+            if (ImGui.SliderFloat("##FOV", ref fov, 1.0f, 89.0f, "FOV %.0f°", ImGuiSliderFlags.AlwaysClamp))
+                camera.FieldOfView = fov;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Field of View: {fov:F1}°");
+
+            ImGui.SameLine(0, 2f);
+
+            var speed = camera.MovementSpeed;
+            ImGui.SetNextItemWidth(120);
+            if (ImGui.SliderFloat("##Speed", ref speed, 1f, 100f, "Speed %.0f m/s", ImGuiSliderFlags.AlwaysClamp))
+                camera.MovementSpeed = speed;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Movement Speed: {speed:F1}");
+        }
         ImGui.EndGroup();
 
         ImGui.PopStyleVar(4);

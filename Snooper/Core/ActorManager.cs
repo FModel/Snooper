@@ -1,19 +1,19 @@
 ﻿using System.Collections.Specialized;
 using System.Reflection;
-using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
+using Snooper.Core.Systems;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
-namespace Snooper.Core.Systems;
+namespace Snooper.Core;
 
 public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
-    
+
     private static readonly Dictionary<Type, Func<ActorSystem>> _registeredFactories = [];
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private readonly HashSet<int> _actors = [];
@@ -27,13 +27,14 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         _registeredFactories.Add(typeof(T), factory);
     }
 
+    public ThreadManager ThreadManager { get; private set; } = new(Environment.ProcessorCount - 2);
     protected ContextInfo Context { get; private set; }
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
         Context = new ContextInfo();
-        
+
         DequeueSystems();
     }
 
@@ -44,14 +45,12 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         {
             system.Update(delta);
         }
-        
-        MainThreadDispatcher.Dequeue(1);
     }
 
     [Obsolete("Use Render(CameraComponent camera, ActorSystemType systemType) instead.")]
     public void Render(CameraComponent camera) => Render(camera, ActorSystemType.Forward);
     protected void Render(CameraComponent camera, ActorSystemType systemType)
-    { 
+    {
         foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
         {
             system.Render(camera);
@@ -65,27 +64,25 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
             throw new ArgumentException("This actor should not have a parent.", nameof(actor));
         }
 
-        AddInternal(actor);
+        AddActorInternal(actor);
     }
-
-    private void AddInternal(Actor actor)
+    private void AddActorInternal(Actor actor)
     {
-        if (_actors.Contains(actor.Id))
+        if (!_actors.Add(actor.Id))
             throw new ArgumentException("This actor is already added to the actor manager.", nameof(actor));
         if (actor.ActorManager != null)
             throw new ArgumentException("This actor is already used by another actor manager.", nameof(actor));
 
         actor.ActorManager = this;
-        _actors.Add(actor.Id);
 
-        for (var i = 0; i < actor.Components.Count; i++)
+        foreach (var component in actor.Components)
         {
-            AddComponent(actor.Components[i], actor);
+            AddComponent(component, actor);
         }
 
         foreach (var child in actor.Children)
         {
-            AddInternal(child);
+            AddActorInternal(child);
         }
 
         actor.Children.CollectionChanged += OnChildrenCollectionChanged;
@@ -94,38 +91,40 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
 
     protected void RemoveRoot(Actor actor)
     {
-        RemoveInternal(actor);
-    }
+        if (actor.Parent != null)
+        {
+            throw new ArgumentException("This actor should not have a parent.", nameof(actor));
+        }
 
-    private void RemoveInternal(Actor actor)
+        RemoveActorInternal(actor);
+    }
+    private void RemoveActorInternal(Actor actor)
     {
-        if (!_actors.Remove(actor.Id)) return;
+        if (!_actors.Remove(actor.Id))
+            throw new ArgumentException("This actor is not part of the actor manager.", nameof(actor));
+        if (actor.ActorManager != this)
+            throw new ArgumentException("This actor is not part of this actor manager.", nameof(actor));
+
+        actor.ActorManager = null;
 
         actor.Components.CollectionChanged -= OnComponentsCollectionChanged;
         actor.Children.CollectionChanged -= OnChildrenCollectionChanged;
 
-        for (var i = 0; i < actor.Components.Count; i++)
+        foreach (var component in actor.Components)
         {
-            RemoveComponent(actor.Components[i], actor);
+            RemoveComponent(component, actor);
         }
 
         foreach (var child in actor.Children)
         {
-            RemoveInternal(child);
+            RemoveActorInternal(child);
         }
-
-        actor.ActorManager = null;
     }
 
     protected virtual void AddComponent(ActorComponent component, Actor actor)
-    {
-        CheckActorComponentWithSystems(component, actor, false);
-    }
-
+        => CheckActorComponentWithSystems(component, actor, false);
     protected virtual void RemoveComponent(ActorComponent component, Actor actor)
-    {
-        CheckActorComponentWithSystems(component, actor, true);
-    }
+        => CheckActorComponentWithSystems(component, actor, true);
 
     private void CheckActorComponentWithSystems(ActorComponent component, Actor actor, bool bRemove)
     {
@@ -186,13 +185,13 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
             case NotifyCollectionChangedAction.Add:
                 foreach (var actor in e.NewItems!.Cast<Actor>())
                 {
-                    AddInternal(actor);
+                    AddActorInternal(actor);
                 }
                 break;
             case NotifyCollectionChangedAction.Remove:
                 foreach (var actor in e.OldItems!.Cast<Actor>())
                 {
-                    RemoveInternal(actor);
+                    RemoveActorInternal(actor);
                 }
                 break;
         }
@@ -218,7 +217,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
                 break;
         }
     }
-    
+
     private readonly Queue<ActorSystem> _systemsToLoad = [];
     private void DequeueSystems(int limit = 0)
     {
@@ -232,7 +231,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
                 continue;
             }
             system.Load();
-            
+
             Systems.Add(system.Order, system);
             count++;
         }
@@ -245,6 +244,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
             system.Dispose();
         }
         Systems.Clear();
+        ThreadManager.Dispose();
     }
 
     public virtual long Allocated

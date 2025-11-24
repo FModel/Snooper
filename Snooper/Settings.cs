@@ -2,6 +2,7 @@
 
 public static class Settings
 {
+    public const string NoName = "Unnamed";
     public const int MaxTextureMipSize = 1024;
     public const int MaxNumberOfLods = 8;
     public const int NumberOfSamples = 4;

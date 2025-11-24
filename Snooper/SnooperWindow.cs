@@ -6,7 +6,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Serilog;
-using Snooper.Core.Systems;
+using Snooper.Core;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Systems;
