@@ -57,10 +57,7 @@ public unsafe struct PerMaterialMeshData : IPerMaterialData
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>
 {
     private readonly ResolvedObject?[] _materials;
-    private int _pendingMaterialLoads;
-    private volatile bool _materialsReady;
 
-    public override bool AreMaterialsReady => _materialsReady;
     public sealed override MaterialSection[] Materials { get; }
 
     protected MeshComponent(ResolvedObject?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
@@ -68,6 +65,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         _materials = materials;
 
         Materials = new MaterialSection[_materials.Length];
+        // TODO: preload materials for basic properties (blend mode, etc.)
     }
 
     protected MeshComponent(ResolvedObject?[] materials, UMeshComponent component) : base(component)
@@ -89,46 +87,34 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
 
         Materials = new MaterialSection[_materials.Length];
+        // TODO: preload materials for basic properties (blend mode, etc.)
     }
 
     protected override void OnActorAttachedToScene(IGameSystem scene)
     {
         base.OnActorAttachedToScene(scene);
 
-        _pendingMaterialLoads = _materials.Length;
-        _materialsReady = false;
-
         for (var i = 0; i < _materials.Length; i++)
         {
             var index = i;
-            Materials[index] = new MaterialSection((uint)index);
+            Materials[index] = new MaterialSection();
 
             if (Actor?.ActorManager == null)
                 throw new InvalidOperationException("Actor or ActorManager is null when loading materials???");
 
             Actor?.ActorManager?.ThreadManager.Enqueue(() =>
             {
-                try
+                if (_materials[index]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
                 {
-                    if (_materials[index]?.TryLoad(out var m) == true && m is UUnrealMaterial material)
-                    {
-                        var parameters = new CMaterialParams2();
-                        material.GetParams(parameters, EMaterialFormat.FirstLayer);
+                    var parameters = new CMaterialParams2();
+                    material.GetParams(parameters, EMaterialFormat.FirstLayer);
 
-                        Materials[index].Name = material.Name;
-                        Materials[index].MaterialDataContainer = ParseMaterialParameters(parameters, material.Owner.Provider.ProjectName.ToUpperInvariant());
-                    }
-                    else
-                    {
-                        Log.Warning("Material at index {MatIndex} is not valid or could not be loaded.", index);
-                    }
+                    Materials[index].Name = material.Name;
+                    Materials[index].MaterialDataContainer = ParseMaterialParameters(parameters, material.Owner.Provider.ProjectName.ToUpperInvariant());
                 }
-                finally
+                else
                 {
-                    if (Interlocked.Decrement(ref _pendingMaterialLoads) == 0)
-                    {
-                        _materialsReady = true;
-                    }
+                    Log.Warning("Material at index {MatIndex} is not valid or could not be loaded.", index);
                 }
             });
         }

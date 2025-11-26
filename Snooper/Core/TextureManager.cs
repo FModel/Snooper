@@ -4,8 +4,10 @@ using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
+using System.Collections.Concurrent;
+using Snooper.Core.Systems;
 
-namespace Snooper.Core.Systems;
+namespace Snooper.Core;
 
 public class TextureManager : IGameSystem, IMemoryDetailsProvider
 {
@@ -32,34 +34,31 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
     /// </summary>
     public event Action<MaterialSection>? OnMaterialReady;
 
-    private readonly Dictionary<FGuid, Texture> _textures = [];
-    private readonly Dictionary<FGuid, BindlessTexture> _bindless = [];
-    private readonly Queue<Texture> _loadQueue = [];
-    private readonly HashSet<FGuid> _queuedGuids = [];
+    private readonly ConcurrentDictionary<FGuid, Texture> _textures = new();
+    private readonly ConcurrentDictionary<FGuid, BindlessTexture> _bindless = new();
+    private readonly ConcurrentQueue<Texture> _loadQueue = new();
+    private readonly ConcurrentDictionary<FGuid, byte> _queuedGuids = new();
 
     // tracks which material sections are waiting for which textures
-    private readonly Dictionary<FGuid, List<MaterialDependency>> _dependencies = [];
-    private readonly Dictionary<int, MaterialLoadState> _states = [];
+    private readonly ConcurrentDictionary<FGuid, ConcurrentBag<MaterialDependency>> _dependencies = new();
+    private readonly ConcurrentDictionary<int, MaterialLoadState> _states = new();
 
-    public void AddRange(MaterialSection[] materials)
+    public void Add(MaterialSection material)
     {
-        foreach (var material in materials)
+        if (material.MaterialDataContainer is null) return;
+
+        if (!material.MaterialDataContainer.HasTextures)
         {
-            if (material.MaterialDataContainer is null) continue;
+            OnMaterialReady?.Invoke(material);
+            return;
+        }
 
-            if (!material.MaterialDataContainer.HasTextures)
-            {
-                OnMaterialReady?.Invoke(material);
-                continue;
-            }
+        var textures = material.MaterialDataContainer.GetTextures();
+        _states[material.SectionId] = new MaterialLoadState(material, textures.Count);
 
-            var textures = material.MaterialDataContainer.GetTextures();
-            _states[material.SectionId] = new MaterialLoadState(material, textures.Count);
-
-            foreach (var (key, texture) in textures)
-            {
-                QueueTexture(texture, material.SectionId, key);
-            }
+        foreach (var (key, texture) in textures)
+        {
+            QueueTexture(texture, material.SectionId, key);
         }
     }
 
@@ -74,25 +73,13 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
             return;
         }
 
-        if (!_dependencies.TryGetValue(guid, out var dependencies))
-        {
-            dependencies = [];
-            _dependencies[guid] = dependencies;
-        }
+        _dependencies.GetOrAdd(guid, _ => []).Add(dependency);
 
-        if (!dependencies.Exists(d => d.SectionId == sectionId && d.Key == key))
+        if (_queuedGuids.TryAdd(guid, 0))
         {
-            dependencies.Add(dependency);
+            _loadQueue.Enqueue(texture);
+            Interlocked.Increment(ref _totalTexturesRequested);
         }
-
-        if (_textures.ContainsKey(guid) || _queuedGuids.Contains(guid))
-        {
-            return;
-        }
-
-        _loadQueue.Enqueue(texture);
-        _queuedGuids.Add(guid);
-        _totalTexturesRequested++;
     }
 
     public void Load() => _isLoaded = true;
@@ -102,16 +89,21 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
     private void ProcessTextureQueue(int limit)
     {
         var processed = 0;
-        while (_loadQueue.Count > 0 && (limit == 0 || processed < limit))
+        while (processed < limit && _loadQueue.TryDequeue(out var texture))
         {
-            var texture = _loadQueue.Dequeue();
             var guid = texture.Guid;
-            _queuedGuids.Remove(guid);
+            _queuedGuids.TryRemove(guid, out _);
+
+            if (_textures.ContainsKey(guid))
+            {
+                processed++;
+                continue;
+            }
 
             texture.TextureReadyForBindless += () => OnTextureReady(guid, texture);
             texture.Generate();
 
-            _textures.Add(guid, texture);
+            _textures.TryAdd(guid, texture);
             processed++;
         }
     }
@@ -121,16 +113,14 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
         Log.Debug("Texture {Guid} is ready for bindless usage.", guid);
 
         var bindless = new BindlessTexture(texture);
-        _bindless.Add(guid, bindless);
+        _bindless.TryAdd(guid, bindless);
 
-        if (_dependencies.TryGetValue(guid, out var dependencies))
+        if (_dependencies.TryRemove(guid, out var dependencies))
         {
             foreach (var dependency in dependencies)
             {
                 ApplyBindlessToMaterial(guid, dependency);
             }
-
-            _dependencies.Remove(guid);
         }
     }
 
@@ -148,11 +138,11 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
         }
 
         state.Section.MaterialDataContainer?.SetBindlessTexture(dependency.Key, bindless);
-        state.RemainingTextures--;
 
-        if (state.RemainingTextures <= 0)
+        var remaining = Interlocked.Decrement(ref state.RemainingTextures);
+        if (remaining <= 0)
         {
-            _states.Remove(dependency.SectionId);
+            _states.TryRemove(dependency.SectionId, out _);
             OnMaterialReady?.Invoke(state.Section);
         }
     }
@@ -216,6 +206,6 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
     private class MaterialLoadState(MaterialSection section, int textureCount)
     {
         public MaterialSection Section { get; } = section;
-        public int RemainingTextures { get; set; } = textureCount;
+        public int RemainingTextures = textureCount;
     }
 }

@@ -25,14 +25,14 @@ public class LevelActor : Actor
         var compoments = type.Includes(WorldActorType.Components);
         var landscape = type.Includes(WorldActorType.Landscape);
         var additional = type.Includes(WorldActorType.AdditionalWorlds);
-        
+
         if (compoments)
         {
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
         }
-        
+
         if (landscape)
         {
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
@@ -45,12 +45,13 @@ public class LevelActor : Actor
             _ptrs.Remove(ptr);
             break;
         }
-        
-        if (additional && actor.TryGetValue(out UWorld[] additionalWorlds, "AdditionalWorlds"))
+
+        if (additional && actor.TryGetValue(out FSoftObjectPath[] additionalWorlds, "AdditionalWorlds"))
         {
             foreach (var additionalWorld in additionalWorlds)
             {
-                Children.Add(new WorldActor(additionalWorld, WorldActorType.Components));
+                if (!additionalWorld.TryLoad<UWorld>(out var w)) continue;
+                Children.Add(new WorldActor(w, WorldActorType.Components));
             }
         }
     }
@@ -61,15 +62,15 @@ public class LevelActor : Actor
         {
             CreateComponentRecursive(components, ptr);
         }
-        
+
         _ptrs.Clear();
         return _parent;
     }
-    
+
     private Pair CreateComponentRecursive(Dictionary<FPackageIndex, SpatialComponent> components, FPackageIndex ptr)
     {
         Pair root;
-        
+
         var pair = root = CreateComponent(ptr);
         if (pair is { ParentPtr: not null })
         {
@@ -78,12 +79,12 @@ public class LevelActor : Actor
 
             pair.Component.Relation = components[pair.ParentPtr];
         }
-            
+
         components.TryAdd(ptr, pair.Component);
         Components.Add(pair.Component);
         return root;
     }
-    
+
     private Pair CreateComponent(FPackageIndex ptr)
     {
         FPackageIndex? parent = null;
@@ -95,7 +96,7 @@ public class LevelActor : Actor
             case USceneComponent sceneComponent:
             {
                 parent = sceneComponent.GetOrDefault<FPackageIndex?>("AttachParent");
-                
+
                 component = sceneComponent switch
                 {
                     UStaticMeshComponent sm when sm.GetStaticMesh().TryLoad<UStaticMesh>(out var mesh) => sm switch
@@ -134,7 +135,7 @@ public class LevelActor : Actor
 
         return new Pair(parent, component);
     }
-    
+
     private readonly FPackageIndex? _parent;
     private readonly HashSet<FPackageIndex> _ptrs = [];
     private void EnqueuePointers(params FPackageIndex?[] ptrs)
@@ -147,7 +148,7 @@ public class LevelActor : Actor
             }
         }
     }
-    
+
     private readonly struct Pair(FPackageIndex? parentPtr, SpatialComponent component)
     {
         public readonly FPackageIndex? ParentPtr = parentPtr;

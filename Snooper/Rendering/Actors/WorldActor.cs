@@ -25,16 +25,17 @@ public class WorldActor : Actor
     public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world)
     {
         Components.Add(new SpatialComponent(null, "WorldRoot"));
-        
+
         var level = world.PersistentLevel.Load<ULevel>();
         if (level == null) return;
-        
+
         if (level.WorldSettings.TryLoad<AWorldSettings>(out var settings) &&
             settings.WorldPartition.TryLoad<UWorldPartition>(out var partition))
         {
             Children.Add(new PartitionActor(partition));
         }
-        
+
+        var parents = new Dictionary<FPackageIndex, SpatialComponent>();
         var created = new List<LevelActor>();
         foreach (var ptr in level.Actors)
         {
@@ -42,8 +43,8 @@ public class WorldActor : Actor
             {
                 continue;
             }
-            
-            var a = new LevelActor(data, _parents, type);
+
+            var a = new LevelActor(data, parents, type);
             if (a.RootComponent is not null)
             {
                 created.Add(a);
@@ -52,10 +53,10 @@ public class WorldActor : Actor
 
         foreach (var actor in created)
         {
-            var parent = actor.ProcessEnqueuedComponents(_parents);
+            var parent = actor.ProcessEnqueuedComponents(parents);
             if (parent != null)
             {
-                if (_parents.TryGetValue(parent, out var root))
+                if (parents.TryGetValue(parent, out var root))
                 {
                     root.Actor?.Children.Add(actor);
                 }
@@ -69,10 +70,10 @@ public class WorldActor : Actor
                 Children.Add(actor);
             }
         }
-        
+
         created.Clear();
-        _parents.Clear();
-        
+        parents.Clear();
+
         if (type.Includes(WorldActorType.LevelStreaming))
         {
             for (var i = 0; i < world.StreamingLevels.Length; i++)
@@ -83,7 +84,6 @@ public class WorldActor : Actor
         }
     }
 
-    private readonly Dictionary<FPackageIndex, SpatialComponent> _parents = [];
 
     private void Process(FPackageIndex? ptr)
     {

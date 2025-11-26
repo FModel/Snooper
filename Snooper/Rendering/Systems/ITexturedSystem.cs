@@ -1,5 +1,5 @@
-﻿using Snooper.Core.Containers;
-using Snooper.Core.Systems;
+﻿using Snooper.Core;
+using Snooper.Core.Containers;
 
 namespace Snooper.Rendering.Systems;
 

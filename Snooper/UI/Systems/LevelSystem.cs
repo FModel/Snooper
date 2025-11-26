@@ -61,7 +61,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                         var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
                         pair.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
                         pair.Camera.MovementSpeed = MathF.Max(1f, pair.Camera.MovementSpeed);
-                        Notifications.PushNotification("Camera", $"Movement speed set to {pair.Camera.MovementSpeed}.");
+                        Notifications.PushNotification("Camera", () => $"Movement speed set to {pair.Camera.MovementSpeed}.");
                     }
 
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
@@ -353,7 +353,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
         foreach (var system in systems)
         {
-            Notifications.PushNotification("Loading textures, please wait...", $"{system.GetType().Name}: {system.TextureManager.PendingTextureCount} textures", 1, () => system.TextureManager.LoadingProgress);
+            Notifications.PushNotification($"{system.GetType().Name}: Textures", () => $"Loading {system.TextureManager.PendingTextureCount} textures, please wait...", 1, () => system.TextureManager.LoadingProgress);
         }
     }
 

@@ -26,7 +26,7 @@ public struct PerMaterialTextData : IPerMaterialData
 [DefaultActorSystem(typeof(TextRenderSystem))]
 public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, PerMaterialTextData>
 {
-    public sealed override MaterialSection[] Materials { get; } = [new(0)];
+    public sealed override MaterialSection[] Materials { get; } = [new()];
 
     private readonly string _text;
     private readonly EHorizTextAligment _horizontalAlignment;
@@ -37,7 +37,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         _text = text;
         _horizontalAlignment = hAlign;
         _verticalAlignment = vAlign;
-        
+
         var fontAtlas = FontAtlasTexture.Instance;
         var textQuad = new Geometry(_text, fontAtlas, _horizontalAlignment, _verticalAlignment, fontSize);
         Descriptor = new PrimitiveDescriptor<Vector4>(ComputeBounds(textQuad), () => textQuad);
@@ -53,15 +53,15 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         _text = component.GetOrDefault<FText?>("Text")?.Text ?? "DefaultText";
         _horizontalAlignment = component.GetOrDefault("HorizontalAlignment", EHorizTextAligment.EHTA_Left);
         _verticalAlignment = component.GetOrDefault("VerticalAlignment", EVerticalTextAligment.EVRTA_TextCenter);
-        
+
         var color = component.GetOrDefault<FColor?>("TextRenderColor");
         var worldSize = component.GetOrDefault("WorldSize", 30.0f);
-        
+
         var fontAtlas = FontAtlasTexture.Instance;
         var textQuad = new Geometry(_text, fontAtlas, _horizontalAlignment, _verticalAlignment, worldSize);
-        
+
         Descriptor = new PrimitiveDescriptor<Vector4>(ComputeBounds(textQuad), () => textQuad);
-        
+
         if (color is { } c)
         {
             Materials[0].MaterialDataContainer = new MaterialDataContainer(new Vector3(c.R, c.G, c.B) / 255f);
@@ -72,7 +72,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         var yRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2f);
         LocalTransform.Rotation *= zFlip * zRotation * yRotation;
     }
-    
+
     private CullingBounds ComputeBounds(Geometry geometry)
     {
         if (geometry.Vertices is { Length: > 0 } vertices)
@@ -90,7 +90,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
             var extents = new Vector3((maxX - minX) / 2, 0, (maxZ - minZ) / 2);
             return new CullingBounds(center, extents);
         }
-        
+
         return new CullingBounds(Vector3.Zero, Vector3.One);
     }
 
@@ -99,7 +99,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
     public override void DrawControls()
     {
         base.DrawControls();
-        
+
         EditorUI.CollapsingTable("Text", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Text("Content", _text);
@@ -107,7 +107,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
             EditorUI.Text("V-Align", _verticalAlignment.GetDescription());
         });
     }
-    
+
     private class MaterialDataContainer(Vector3 color) : IMaterialDataContainer
     {
         public bool HasTextures => false;
@@ -119,19 +119,19 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         {
             if (Raw is not null)
                 throw new InvalidOperationException("GPU data has already been finalized and sent.");
-            
+
             Raw = new PerMaterialTextData
             {
                 IsReady = true,
                 FontColor = color,
             };
         }
-        
+
         public IPerMaterialData? Raw { get; private set; }
-        
+
         public void DrawControls()
         {
-            
+
         }
 
         public void Dispose()
@@ -139,7 +139,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
             Raw = null;
         }
     }
-    
+
     private class Geometry : PrimitiveData<Vector4>
     {
         public Geometry(string text, FontAtlasTexture fontAtlas, EHorizTextAligment hAlign, EVerticalTextAligment vAlign, float scale)

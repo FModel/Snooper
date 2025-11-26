@@ -29,13 +29,19 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public ResourcesMetadata? Metadata { get; private set; }
 
-    /// <summary>
-    /// indicates whether materials have finished loading. Override in derived classes that load materials asynchronously.
-    /// TODO: remove this dog shit logic and use an event to call TextureManager.AddRange when it's ready
-    /// </summary>
-    public virtual bool AreMaterialsReady => true;
     public abstract MaterialSection[] Materials { get; }
-    public bool IsOpaque => !Materials.Any(m => m.IsTranslucent); // TODO: this is delayed by tasks (read up)
+
+    /// <summary>
+    /// Materials are all opaque by default
+    /// If by the time we check this property, none of the materials have data assigned (because it can be delayed, see MeshComponent)
+    /// We assume they are opaque and will be processed by the deferred renderer.
+    /// TODO: revisit this, maybe preload some of the material data earlier, or support changing renderers on the fly when material data is assigned
+    /// materials starts to be parsed as soon as the actor is added to the scene
+    /// right after that, all its components are checked against systems, this is where this property is used
+    /// so there's a small window of time where materials can be assigned but not yet have their data container set
+    /// this result in translucent friendly renderer to never be used for such components
+    /// </summary>
+    public bool IsOpaque => !Materials.Any(m => m.IsTranslucent);
 
     private bool _isVisible = true;
     public bool IsVisible
@@ -62,9 +68,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public void Generate(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
-        if (!AreMaterialsReady) return; // wait until materials are ready
         Metadata = resources.Add(this);
-        textureManager.AddRange(Materials);
+
+        // register textures for all materials either now or later, when their data container is set
+        foreach (var material in Materials)
+            material.OnMaterialDataContainerSet += textureManager.Add;
     }
 
     public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
@@ -297,7 +305,7 @@ public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<
 
     }
 
-    public sealed override MaterialSection[] Materials { get; } = [new(0)];
+    public sealed override MaterialSection[] Materials { get; } = [new()];
 }
 
 /// <inheritdoc />
