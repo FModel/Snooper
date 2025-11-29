@@ -15,25 +15,25 @@ public class SpatialComponent : ActorComponent, IControllable
     {
         LocalTransform = transform ?? Transform.Identity;
     }
-    
+
     public SpatialComponent(UActorComponent component) : base(component)
     {
         LocalTransform = Transform.Identity;
     }
-    
+
     public SpatialComponent(USceneComponent component) : base(component)
     {
         LocalTransform = component.GetRelativeTransform();
-        
+
         _absPosition = component.GetOrDefault<bool>("bAbsoluteLocation");
         _absRotation = component.GetOrDefault<bool>("bAbsoluteRotation");
         _absScale = component.GetOrDefault<bool>("bAbsoluteScale");
     }
-    
+
     private readonly bool _absPosition;
     private readonly bool _absRotation;
     private readonly bool _absScale;
-    
+
     private Transform _localTransform = Transform.Identity;
     public Transform LocalTransform
     {
@@ -42,12 +42,12 @@ public class SpatialComponent : ActorComponent, IControllable
         {
             if (_localTransform == value)
                 return;
-            
+
             _localTransform = value;
             MarkDirtyUpward(DirtyFlags.Transform);
         }
     }
-    
+
     private SpatialComponent? _relation;
     public SpatialComponent? Relation
     {
@@ -67,11 +67,11 @@ public class SpatialComponent : ActorComponent, IControllable
     }
 
     public readonly List<SpatialComponent> Children = [];
-    
+
     public Matrix4x4 WorldMatrix { get; private set; } = Matrix4x4.Identity;
 
     public virtual Matrix4x4[] GetInstanceMatrices() => [WorldMatrix];
-    
+
     public virtual (Vector3, float) GetTeleportPosition(CameraComponent camera)
     {
         var matrices = GetInstanceMatrices();
@@ -84,7 +84,7 @@ public class SpatialComponent : ActorComponent, IControllable
         }
         return (center / matrices.Length, 2.50f);
     }
-    
+
     public void UpdateWorldMatrix(bool recursive = true)
     {
         if (Relation is null)
@@ -101,7 +101,7 @@ public class SpatialComponent : ActorComponent, IControllable
             else
             {
                 Matrix4x4.Decompose(Relation.WorldMatrix, out var scale, out var rotation, out _);
-                
+
                 WorldMatrix = new Transform
                 {
                     Position = _absPosition ? LocalTransform.Position : Vector3.Transform(LocalTransform.Position, Relation.WorldMatrix),
@@ -110,18 +110,18 @@ public class SpatialComponent : ActorComponent, IControllable
                 }.ToMatrix();
             }
         }
-        
+
         // this component's WorldMatrix is now clean and needs to be updated on GPU
         MarkClean(DirtyFlags.Transform);
         MarkDirty(DirtyFlags.InstanceData);
-        
+
         // since this component's WorldMatrix changed, all children need to update theirs too
         foreach (var child in Children)
         {
             child.MarkDirty(DirtyFlags.Transform);
         }
     }
-    
+
     private void MarkDirtyUpward(DirtyFlags flags)
     {
         MarkDirty(flags);

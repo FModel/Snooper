@@ -28,13 +28,14 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
             Materials[0].MaterialDataContainer = new MaterialDataContainer(new Texture2D(sprite), component.GetOrDefault("OpacityMaskRefVal", 0.5f));
         }
     }
-    
+
     internal override string Icon => "chalkboard";
-    
+
     private class MaterialDataContainer(Texture sprite, float opacityMask) : IMaterialDataContainer
     {
         private BindlessTexture? _sprite;
-        
+
+        public string Name => Settings.NoName;
         public bool HasTextures => true;
         public bool IsTranslucent => true;
 
@@ -53,12 +54,12 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
         {
             if (Raw is not null)
                 throw new InvalidOperationException("GPU data has already been finalized and sent.");
-            
+
             if (_sprite is null)
             {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
             }
-            
+
             _sprite.Generate();
             _sprite.MakeResident();
 
@@ -69,23 +70,23 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
                 Sprite = _sprite,
             };
         }
-        
+
         public IPerMaterialData? Raw { get; private set; }
-        
+
         public void DrawControls()
         {
-            
+
         }
 
         public void Dispose()
         {
             _sprite?.Dispose();
             _sprite = null;
-            
+
             Raw = null;
         }
     }
-    
+
     private class Geometry : PrimitiveData<Vector2>
     {
         public Geometry()
@@ -97,7 +98,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
                 new Vector2(1f, 1f),
                 new Vector2(-1f, 1f)
             ];
-            
+
             Indices = [0, 1, 2, 2, 3, 0];
         }
     }

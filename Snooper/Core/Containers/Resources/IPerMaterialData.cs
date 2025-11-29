@@ -17,12 +17,13 @@ public struct PerMaterialData : IPerMaterialData
 
 public interface IMaterialDataContainer : IControllable, IDisposable
 {
+    public string Name { get; }
     public IPerMaterialData? Raw { get; }
     public bool HasTextures { get; }
     public bool IsTranslucent { get; }
-    
+
     public Dictionary<string, Texture> GetTextures();
     public void SetBindlessTexture(string key, BindlessTexture bindless);
-    
+
     public void FinalizeGpuData();
 }

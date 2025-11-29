@@ -60,6 +60,7 @@ public partial class SnooperWindow : GameWindow
         {
             _interface.Dispose();
             MeshCache.ClearAndDispose();
+            MaterialCache.ClearAndDispose();
             Log.CloseAndFlush();
         };
     }

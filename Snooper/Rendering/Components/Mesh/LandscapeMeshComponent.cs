@@ -25,7 +25,7 @@ public unsafe struct PerMaterialLandscapeData : IPerMaterialData
     public ulong Heightmap;
     public fixed ulong Weightmaps[4];
     public fixed uint Weight_EnabledChannels[4]; // packed data representing which channels are used in each weightmap texture (4 channels as 4 bytes in a uint)
-    
+
     public Vector2 HeightmapScaleBias;
     public Vector2 WeightmapScaleBias;
 }
@@ -36,14 +36,14 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
     public readonly uint SizeQuads;
     public readonly Vector2[] Scales;
     public readonly Dictionary<string, LayerMapping> Layers;
-    
+
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
         var sizeQuads = (uint)component.ComponentSizeQuads;
         // frustum culling is broken because the bounding box is for the cached geometry, not the actual tessellated one
         // do not cache the geometry to fix this
         Descriptor = PrimitiveDescriptor<Vector2>.GetOrCreate(sizeQuads, component.CachedLocalBox, id => new Geometry(id));
-        
+
         if (component.GetHeightmap() is not { } heightmap)
         {
             throw new InvalidOperationException("Landscape component does not have a valid heightmap.");
@@ -55,7 +55,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         {
             weightmaps[i] = new Texture2D(textures[i]);
         }
-        
+
         Materials[0].MaterialDataContainer = new MaterialDataContainer(
             new Texture2D(heightmap),
             new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
@@ -65,7 +65,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
         SizeQuads = sizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
-        
+
         const int quadCount = Settings.TessellationQuadCount;
         for (var x = 0; x < quadCount; x++)
         {
@@ -74,7 +74,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
                 Scales[x * quadCount + y] = new Vector2(x, y);
             }
         }
-        
+
         Layers = new Dictionary<string, LayerMapping>();
         foreach (var allocation in component.WeightmapLayerAllocations)
         {
@@ -88,14 +88,15 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             });
         }
     }
-    
+
     internal override string Icon => "mountain";
 
     private class MaterialDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, FWeightmapLayerAllocationInfo[] allocations) : IMaterialDataContainer
     {
         private BindlessTexture? _heightmap;
         private BindlessTexture?[]? _weightmaps = new BindlessTexture[weightmaps.Length];
-        
+
+        public string Name => Settings.NoName;
         public bool HasTextures => true;
         public bool IsTranslucent => false;
 
@@ -134,22 +135,22 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         {
             if (Raw is not null)
                 throw new InvalidOperationException("GPU data has already been finalized and sent.");
-            
+
             if (_heightmap is null || _weightmaps?.Length != weightmaps.Length)
             {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
             }
-            
+
             _heightmap.Generate();
             _heightmap.MakeResident();
-            
+
             var data = new PerMaterialLandscapeData
             {
                 IsReady = true,
-                
+
                 Heightmap = _heightmap,
                 HeightmapScaleBias = heightmapScaleBias,
-                
+
                 WeightmapCount = (uint)weightmaps.Length,
                 WeightmapScaleBias = weightmapScaleBias,
             };
@@ -159,7 +160,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
                 for (var i = 0; i < 4; i++)
                 {
                     if (i >= _weightmaps.Length) break;
-                    
+
                     var weightmap = _weightmaps[i];
                     if (weightmap is null)
                     {
@@ -168,10 +169,10 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
                     weightmap.Generate();
                     weightmap.MakeResident();
-                    
+
                     data.Weightmaps[i] = weightmap;
                     data.Weight_EnabledChannels[i] = 0;
-                    
+
                     foreach (var allocation in allocations)
                     {
                         if (allocation.WeightmapTextureIndex != i) continue;
@@ -182,19 +183,19 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
             Raw = data;
         }
-        
+
         public IPerMaterialData? Raw { get; private set; }
-        
+
         public void DrawControls()
         {
-            
+
         }
 
         public void Dispose()
         {
             _heightmap?.Dispose();
             _heightmap = null;
-            
+
             if (_weightmaps is not null)
             {
                 for (var i = 0; i < _weightmaps.Length; i++)
@@ -204,7 +205,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
                 Array.Clear(_weightmaps);
                 _weightmaps = null;
             }
-            
+
             Raw = null;
         }
     }

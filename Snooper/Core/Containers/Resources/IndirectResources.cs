@@ -3,6 +3,7 @@ using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Containers.Resources;
@@ -150,12 +151,21 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         }
     }
 
-    public void Update(BufferAllocation allocation, TPerMaterialData materialData)
+    public void Update(MaterialSection material)
     {
-        if (!materialData.IsReady)
-            throw new InvalidOperationException("Material data is not ready.");
+        if (material.Allocation is not { } allocation)
+            throw new InvalidOperationException("Material section allocation is null.");
+        if (material.MaterialDataContainer is not { } data)
+            throw new InvalidOperationException("Material data container is null.");
 
-        _materialData.QueueUpdate(allocation, materialData);
+        if (data.Raw == null)
+            material.MaterialDataContainer.FinalizeGpuData();
+
+        if (data.Raw is not TPerMaterialData raw)
+            throw new InvalidOperationException($"Material data container raw type {material.MaterialDataContainer?.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
+
+        // TODO: remove duplicates in GPU memory
+        _materialData.QueueUpdate(allocation, raw);
     }
 
     public void FlushUpdates()

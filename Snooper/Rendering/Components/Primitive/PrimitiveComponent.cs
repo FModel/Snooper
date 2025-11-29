@@ -245,7 +245,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                         ImGui.SetWindowFontScale(0.85f);
 
                         material = Materials[_materialIndex];
-                        ImGui.TextUnformatted($"{material.Name} (offset {material.Allocation?.StartIndex ?? -1})");
+                        ImGui.TextUnformatted($"{material.MaterialDataContainer?.Name ?? Settings.NoName} (offset {material.Allocation?.StartIndex ?? -1})");
 
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();

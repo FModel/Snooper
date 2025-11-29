@@ -110,6 +110,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
 
     private class MaterialDataContainer(Vector3 color) : IMaterialDataContainer
     {
+        public string Name => Settings.NoName;
         public bool HasTextures => false;
         public bool IsTranslucent => false;
         public Dictionary<string, Texture> GetTextures() => throw new NotImplementedException();

@@ -169,9 +169,10 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
     public void Update(BufferAllocation allocation, T data) => UpdateInternal(allocation.AllocationId, [data]);
     public void Update(BufferAllocation allocation, T[] data) => UpdateInternal(allocation.AllocationId, data);
+    public void UpdateBatch(BufferAllocation startAllocation, T[] data) => UpdateInternal(startAllocation.AllocationId, data, true);
     public void Update(int allocationId, T data) => UpdateInternal(allocationId, [data]);
     public void Update(int allocationId, T[] data) => UpdateInternal(allocationId, data);
-    private void UpdateInternal(int allocationId, T[] data)
+    private void UpdateInternal(int allocationId, T[] data, bool batched = false)
     {
         if (!_bInitialized)
             throw new InvalidOperationException("Buffer is not initialized. Use Add method to initialize it.");
@@ -180,7 +181,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
             throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
         var length = data.Length;
-        if (length != metadata.Length) // TODO: allow updates with different sizes (reconstructed by batching)
+        if (!batched && length != metadata.Length)
             throw new ArgumentException($"Data length ({length}) does not match allocation length ({metadata.Length}). Cannot update with different size.", nameof(data));
 
         GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, length * Stride, data);

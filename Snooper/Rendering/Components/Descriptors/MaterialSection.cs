@@ -8,7 +8,6 @@ public class MaterialSection : IDisposable
     private static int _nextId;
     public readonly int SectionId = Interlocked.Increment(ref _nextId);
 
-    public string Name { get; internal set; } = Settings.NoName;
     public BufferAllocation? Allocation { get; internal set; } // set when added to the material data buffer
 
     private IMaterialDataContainer? _materialDataContainer;
