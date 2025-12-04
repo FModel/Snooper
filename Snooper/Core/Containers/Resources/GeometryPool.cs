@@ -13,18 +13,17 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation c
     public readonly BufferAllocation CullingAllocation = cullingAllocation;
     public readonly uint BaseColor = baseColor;
 
-    private int _overrideLod = overrideLod;
     public int OverrideLod
     {
-        get => _overrideLod;
+        get;
         internal set
         {
-            if (_overrideLod == value) return;
+            if (field == value) return;
 
-            _overrideLod = value;
+            field = value;
             IsDirty = true;
         }
-    }
+    } = overrideLod;
 
     public bool IsDirty { get; private set; }
 

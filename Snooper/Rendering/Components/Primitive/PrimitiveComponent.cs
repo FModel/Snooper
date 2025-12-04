@@ -20,11 +20,10 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
-    private readonly PrimitiveDescriptor<TVertex>? _descriptor;
     public PrimitiveDescriptor<TVertex> Descriptor
     {
-        get => _descriptor ?? throw new InvalidOperationException($"Descriptor not initialized for {Name} of type {GetType().Name}.");
-        protected init => _descriptor = value;
+        get => field ?? throw new InvalidOperationException($"Descriptor not initialized for {Name} of type {GetType().Name}.");
+        protected init;
     }
 
     public ResourcesMetadata? Metadata { get; private set; }

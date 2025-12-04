@@ -10,15 +10,14 @@ public class MaterialSection : IDisposable
 
     public BufferAllocation? Allocation { get; internal set; } // set when added to the material data buffer
 
-    private IMaterialDataContainer? _materialDataContainer;
     public IMaterialDataContainer? MaterialDataContainer
     {
-        get => _materialDataContainer;
+        get;
         internal set
         {
-            if (_materialDataContainer == value) return;
+            if (field == value) return;
 
-            _materialDataContainer = value;
+            field = value;
             _onMaterialDataContainerSet?.Invoke(this);
         }
     }
@@ -30,7 +29,7 @@ public class MaterialSection : IDisposable
         {
             _onMaterialDataContainerSet += value;
             // fire immediately if the material data container is already set
-            if (_materialDataContainer != null && value != null)
+            if (MaterialDataContainer != null && value != null)
             {
                 value(this);
             }

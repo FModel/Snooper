@@ -32,40 +32,38 @@ public class Actor
         }
     }
 
-    private bool _isVisible = true;
     public bool IsVisible
     {
-        get => _isVisible;
+        get;
         set
         {
-            if (_isVisible == value) return;
+            if (field == value) return;
 
-            _isVisible = value;
+            field = value;
             foreach (var component in Components.OfType<IPrimitiveComponent>())
             {
-                component.IsVisible = value;
+                component.IsVisible = field;
             }
 
             foreach (var child in Children)
             {
-                child.IsVisible = value;
+                child.IsVisible = field;
             }
         }
-    }
+    } = true;
 
-    private bool _isOutlined;
     public bool IsOutlined
     {
-        get => _isOutlined;
+        get;
         private set
         {
-            if (_isOutlined == value) return;
+            if (field == value) return;
 
-            _isOutlined = value;
+            field = value;
 
             foreach (var child in Children)
             {
-                child.IsOutlined = value;
+                child.IsOutlined = field;
             }
         }
     }
@@ -108,31 +106,28 @@ public class Actor
         }
     }
 
-    private ActorManager? _actorManager;
     public ActorManager? ActorManager
     {
-        get => _actorManager;
+        get;
         internal set
         {
-            if (_actorManager == value) return;
+            if (field == value) return;
 
-            if (_actorManager != null) OnSceneDetached(_actorManager);
-            _actorManager = value;
-            if (_actorManager != null) OnSceneAttached(_actorManager);
+            if (field != null) OnSceneDetached(field);
+            field = value;
+            if (field != null) OnSceneAttached(field);
         }
     }
 
-    private SpatialComponent? _rootComponent;
     public SpatialComponent? RootComponent
     {
-        get => _rootComponent;
+        get;
         private set
         {
-            if (_rootComponent == value) return;
+            if (field == value) return;
 
-            _rootComponent = value;
-
-            Icon = _rootComponent?.Icon ?? "component";
+            field = value;
+            Icon = field?.Icon ?? "component";
         }
     }
 
@@ -160,10 +155,7 @@ public class Actor
 
         actor._parent = this;
 
-        if (actor.RootComponent != null)
-        {
-            actor.RootComponent.Relation = RootComponent;
-        }
+        actor.RootComponent?.Relation = RootComponent;
 
         if (!IsVisible)
         {
@@ -180,10 +172,7 @@ public class Actor
 
         actor._parent = null;
 
-        if (actor.RootComponent != null)
-        {
-            actor.RootComponent.Relation = null;
-        }
+        actor.RootComponent?.Relation = null;
     }
 
     private void AddComponentInternal(ActorComponent component)

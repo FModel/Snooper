@@ -13,22 +13,16 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
     protected GameWindow Window { get; } = wnd;
     protected List<CameraFramePair> Pairs { get; } = [];
 
-    private CameraComponent? _activeCamera;
     protected CameraComponent? ActiveCamera
     {
-        get => _activeCamera;
+        get;
         set
         {
-            if (_activeCamera == value)
-                return;
+            if (field == value) return;
 
-            if (_activeCamera != null)
-                _activeCamera.IsActive = false;
-
-            if (value != null)
-                value.IsActive = true;
-
-            _activeCamera = value;
+            field?.IsActive = false;
+            field = value;
+            field?.IsActive = true;
         }
     }
 
@@ -38,8 +32,7 @@ public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
         get => _rootActor;
         set
         {
-            if (_rootActor == value)
-                return;
+            if (_rootActor == value) return;
 
             if (_rootActor != null) RemoveRoot(_rootActor);
             _rootActor = value;

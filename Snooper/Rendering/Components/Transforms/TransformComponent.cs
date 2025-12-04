@@ -34,33 +34,30 @@ public class SpatialComponent : ActorComponent, IControllable
     private readonly bool _absRotation;
     private readonly bool _absScale;
 
-    private Transform _localTransform = Transform.Identity;
     public Transform LocalTransform
     {
-        get => _localTransform;
+        get;
         set
         {
-            if (_localTransform == value)
-                return;
+            if (field == value) return;
 
-            _localTransform = value;
+            field = value;
             MarkDirtyUpward(DirtyFlags.Transform);
         }
     }
 
-    private SpatialComponent? _relation;
     public SpatialComponent? Relation
     {
-        get => _relation;
+        get;
         set
         {
-            if (this == value || _relation == value) return;
+            if (this == value || field == value) return;
 
-            _relation?.Children.Remove(this);
-            _relation = value;
+            field?.Children.Remove(this);
+            field = value;
 
-            if (_relation != null && !_relation.Children.Contains(this))
-                _relation.Children.Add(this);
+            if (field != null && !field.Children.Contains(this))
+                field.Children.Add(this);
 
             MarkDirtyUpward(DirtyFlags.Transform);
         }

@@ -36,21 +36,20 @@ public abstract partial class ActorComponent
 
     }
 
-    private Actor? _actor;
     public Actor? Actor
     {
-        get => _actor;
+        get;
         internal set
         {
-            if (_actor == value) return;
+            if (field == value) return;
 
-            if (_actor != null) OnActorDetached(_actor);
-            _actor = value;
-            if (_actor != null) OnActorAttached(_actor);
+            if (field != null) OnActorDetached(field);
+            field = value;
+            if (field != null) OnActorAttached(field);
 
             if (this is SpatialComponent { Relation: null } spatial)
             {
-                spatial.Relation = _actor?.RootComponent;
+                spatial.Relation = field?.RootComponent;
             }
         }
     }

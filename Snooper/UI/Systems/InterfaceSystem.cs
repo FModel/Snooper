@@ -76,16 +76,12 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
 
     private void ClearSelection()
     {
-        if (_selectedActor is not null)
-        {
-            _selectedActor.IsSelected = false;
-        }
+        _selectedActor?.IsSelected = false;
 
         if (_selectedComponent is not null)
         {
             _selectedComponent.IsSelected = false;
-            if (_selectedComponent.Actor is not null)
-                _selectedComponent.Actor._isSelected = false;
+            _selectedComponent.Actor?._isSelected = false;
         }
     }
 

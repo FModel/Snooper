@@ -36,16 +36,15 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
     public event Action<uint, uint>? OnHandleChanged;
 
-    private int _count;
     public int Count
     {
-        get => _count;
+        get;
         private set
         {
-            if (_count == value) return;
+            if (field == value) return;
 
-            _count = value;
-            OnCountChanged(value);
+            field = value;
+            OnCountChanged(field);
         }
     }
 
