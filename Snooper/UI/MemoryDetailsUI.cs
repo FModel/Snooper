@@ -13,7 +13,7 @@ public static class MemoryDetailsUI
 {
     private static readonly Stack<(string Name, IMemoryDetailsProvider Provider)> _navStack = new();
     private static string _selectedLeafNode = string.Empty;
-    
+
     public static void DrawMemoryTable(IMemoryDetailsProvider provider, IDictionary<string, Texture> icons)
     {
         ImGui.BeginDisabled(_navStack.Count == 0);
@@ -34,9 +34,9 @@ public static class MemoryDetailsUI
             ImGui.SameLine();
             ImGui.Text(name);
         }
-                
+
         ImGui.Separator();
-        
+
         var current = provider;
         if (_navStack.Count > 0)
         {
@@ -55,7 +55,7 @@ public static class MemoryDetailsUI
             DrawMemoryItem(detail);
         }
     }
-    
+
     private static void DrawMemoryItem(MemoryDetail detail)
     {
         const float itemHeight = 24f;
@@ -65,7 +65,7 @@ public static class MemoryDetailsUI
 
         var nodeId = $"{detail.Name}##{detail.Type}";
         var isSelected = _selectedLeafNode == nodeId;
-        
+
         if (ImGui.InvisibleButton($"item_{nodeId}", new Vector2(availWidth, itemHeight)))
         {
             if (detail.Provider is IMemoryDetailsProvider provider)
@@ -78,7 +78,7 @@ public static class MemoryDetailsUI
                 _selectedLeafNode = isSelected ? string.Empty : nodeId;
             }
         }
-        
+
         if (ImGui.IsItemHovered() || isSelected)
         {
             drawList.AddRectFilled(
@@ -86,42 +86,42 @@ public static class MemoryDetailsUI
                 ImGui.GetColorU32(new Vector4(1f, 1f, 1f, isSelected ? 0.1f : 0.05f)),
                 2f);
         }
-        
+
         const float padding = 8f;
         const float usageBarWidth = 100f;
         const float usageBarHeight = 10f;
         const float percentageWidth = 45f;
         const float memoryTextWidth = 150f;
-        
+
         var extraX = 0f;
         var notLeaf = detail.Provider is IMemoryDetailsProvider;
         var hasStats = detail.Provider?.GetBufferStatistics() != null;
         if (notLeaf || hasStats)
         {
             extraX = padding * 1.5f;
-            
+
             const float radius = 2.5f;
             var dotX = cursorPos.X + padding + 3f;
             var dotY = cursorPos.Y + itemHeight / 2f;
             drawList.AddCircleFilled(new Vector2(dotX, dotY), radius, GenerateDistinctColor(notLeaf ? 3 : hasStats ? 7 : 0, 10));
         }
-        
+
         var textY = cursorPos.Y + (itemHeight - ImGui.GetTextLineHeight()) / 2f;
         drawList.AddText(new Vector2(cursorPos.X + padding + extraX, textY), ImGui.GetColorU32(ImGuiCol.Text), detail.Name);
-        
+
         var memoryX = cursorPos.X + availWidth - usageBarWidth - percentageWidth - memoryTextWidth - padding * 3;
         drawList.AddText(
-            new Vector2(memoryX, textY), 
+            new Vector2(memoryX, textY),
             ImGui.GetColorU32(new Vector4(0.55f, 0.55f, 0.55f, 1)),
             $"{detail.Used.GetReadableSize()} / {detail.Allocated.GetReadableSize()}"
         );
-        
+
         var percentage = detail.UsagePercentage;
         var usageColor = percentage < 50 ? new Vector4(0.85f, 0.45f, 0.45f, 1) :
             percentage < 70 ? new Vector4(0.85f, 0.7f, 0.4f, 1) :
             percentage < 85 ? new Vector4(0.5f, 0.75f, 0.5f, 1) :
             new Vector4(0.4f, 0.6f, 0.8f, 1);
-        
+
         var barX = cursorPos.X + availWidth - usageBarWidth - percentageWidth - padding * 2;
         var barY = cursorPos.Y + (itemHeight - usageBarHeight) / 2f;
         drawList.AddRectFilled(
@@ -130,7 +130,7 @@ public static class MemoryDetailsUI
             ImGui.GetColorU32(new Vector4(0.2f, 0.2f, 0.2f, 0.5f)),
             2f
         );
-        
+
         var fillWidth = (float)(usageBarWidth * (percentage / 100f));
         if (fillWidth > 0)
         {
@@ -141,20 +141,20 @@ public static class MemoryDetailsUI
                 2f
             );
         }
-        
+
         var percentX = cursorPos.X + availWidth - percentageWidth;
         drawList.AddText(
             new Vector2(percentX, textY),
             ImGui.GetColorU32(new Vector4(0.7f, 0.7f, 0.7f, 1)),
             $"{percentage:F0}%"
         );
-        
+
         if (isSelected && detail.Provider?.GetBufferStatistics() is { } stats)
         {
             DrawExpandedBufferStats(stats);
         }
     }
-    
+
     private static void DrawExpandedBufferStats(BufferStatistics stats)
     {
         var definitions = new[]
@@ -169,11 +169,11 @@ public static class MemoryDetailsUI
                 minWidth: 150f
             )
         };
-        
+
         DrawStatsPanel(definitions);
         DrawLargeBufferVisualization(stats);
     }
-    
+
     private static void DrawLargeBufferVisualization(BufferStatistics stats)
     {
         if (stats.Capacity == 0) return;
@@ -185,7 +185,7 @@ public static class MemoryDetailsUI
 
         const float height = 100f;
         drawList.AddRectFilled(cursorPos, new Vector2(cursorPos.X + availWidth, cursorPos.Y + height), ImGui.GetColorU32(new Vector4(0.1f, 0.1f, 0.1f, 1)));
-        
+
         var length = stats.Allocations.Count;
         for (var i = 0; i < length; i++)
         {
@@ -195,7 +195,7 @@ public static class MemoryDetailsUI
 
             drawList.AddRectFilled(cursorPos with { X = startX }, new Vector2(endX, cursorPos.Y + height), GenerateDistinctColor(i, length));
         }
-        
+
         foreach (var block in stats.FreeBlocks)
         {
             var startX = cursorPos.X + block.StartIndex * pixelsPerItem;
@@ -207,19 +207,19 @@ public static class MemoryDetailsUI
             for (var i = 0; i < numStripes; i++)
             {
                 var offset = i * stripeSpacing;
-                
+
                 var lineStartX = startX + offset;
                 var lineStartY = cursorPos.Y;
                 var lineEndX = startX + offset - height;
                 var lineEndY = cursorPos.Y + height;
-                
+
                 if (lineStartX > endX)
                 {
                     var excess = lineStartX - endX;
                     lineStartX = endX;
                     lineStartY = cursorPos.Y + excess;
                 }
-                
+
                 if (lineEndX < startX)
                 {
                     var excess = startX - lineEndX;
@@ -239,28 +239,28 @@ public static class MemoryDetailsUI
                 }
             }
         }
-        
+
         drawList.AddRect(
-            cursorPos, 
-            new Vector2(cursorPos.X + availWidth, cursorPos.Y + height), 
+            cursorPos,
+            new Vector2(cursorPos.X + availWidth, cursorPos.Y + height),
             ImGui.GetColorU32(new Vector4(0.25f, 0.25f, 0.25f, 1)),
             0f,
             ImDrawFlags.None,
             1f
         );
-        
+
         ImGui.InvisibleButton("BufferVisLarge", new Vector2(availWidth, height));
         if (ImGui.IsItemHovered())
         {
             var mousePos = ImGui.GetMousePos();
             var relativeX = mousePos.X - cursorPos.X;
             var index = (int)(relativeX / pixelsPerItem);
-            
+
             if (index >= 0 && index < stats.Capacity)
             {
                 ImGui.BeginTooltip();
                 ImGui.TextUnformatted($"Index: {index}");
-                
+
                 var foundAlloc = stats.Allocations.FirstOrDefault(a => index >= a.StartIndex && index <= a.EndIndex);
                 if (foundAlloc != null)
                 {
@@ -290,37 +290,37 @@ public static class MemoryDetailsUI
                         ImGui.TextDisabled("Unused space");
                     }
                 }
-                
+
                 ImGui.EndTooltip();
             }
         }
-        
+
         ImGui.Spacing();
     }
-    
+
     public static void DrawMemorySummary(IMemorySizeProvider provider)
     {
         var wastedPercentage = (float)provider.Wasted / provider.Allocated * 100;
         var wastedColor = wastedPercentage > 30 ? new Vector4(0.85f, 0.45f, 0.45f, 1) :
                          wastedPercentage > 15 ? new Vector4(0.85f, 0.7f, 0.4f, 1) :
                          new Vector4(0.5f, 0.75f, 0.65f, 1);
-        
+
         var definitions = new[]
         {
             new BufferStatDefinition("Used", provider.Used.GetReadableSize()),
             new BufferStatDefinition("Allocated", provider.Allocated.GetReadableSize()),
             new BufferStatDefinition("Wasted", provider.Wasted.GetReadableSize(), $" ({wastedPercentage:F1}%)", color: wastedColor)
         };
-        
+
         DrawStatsPanel(definitions);
     }
-    
+
     private static void DrawStatsPanel(BufferStatDefinition[] definitions)
     {
         const float padding = 12f;
         const float panelHeight = 35f;
         const float separatorWidth = 1f;
-        
+
         var cursorPos = ImGui.GetCursorScreenPos();
         var drawList = ImGui.GetWindowDrawList();
         var availWidth = ImGui.GetContentRegionAvail().X;
@@ -331,7 +331,7 @@ public static class MemoryDetailsUI
             ImGui.GetColorU32(new Vector4(0.15f, 0.15f, 0.15f, 0.5f)),
             4f
         );
-        
+
         definitions = definitions.Where(s => s.MinWidth <= availWidth).ToArray();
         if (definitions.Length > 0)
         {
@@ -343,31 +343,31 @@ public static class MemoryDetailsUI
                     entry.UseLongVersion = true;
                 }
             }
-        
+
             var numSeparators = definitions.Length - 1;
             var totalContentWidth = padding * 2 + definitions.Sum(d => d.Label.Width + padding + (d.UseLongVersion ? d.LongValue.Width : d.Value.Width));
             var remainingSpace = availWidth - totalContentWidth;
             var gapBetweenSections = numSeparators > 0 ? Math.Max(15f, remainingSpace / numSeparators) : 0f;
-        
+
             var textY = cursorPos.Y + 9f;
             var textX = cursorPos.X + padding;
-        
+
             for (var i = 0; i < definitions.Length; i++)
             {
                 var def = definitions[i];
-            
+
                 drawList.AddText(new Vector2(textX, textY), ImGui.GetColorU32(new Vector4(0.5f, 0.5f, 0.5f, 1)), def.Label.Text);
                 textX += def.Label.Width + padding;
-            
+
                 var value = def.UseLongVersion ? def.LongValue : def.Value;
                 var valueColor = def.Color.HasValue ? ImGui.GetColorU32(def.Color.Value) : ImGui.GetColorU32(ImGuiCol.Text);
                 drawList.AddText(new Vector2(textX, textY), valueColor, value.Text);
                 textX += value.Width;
-            
+
                 if (i < numSeparators)
                 {
                     textX += gapBetweenSections;
-                
+
                     drawList.AddLine(
                         new Vector2(textX - gapBetweenSections / 2, cursorPos.Y + 8),
                         new Vector2(textX - gapBetweenSections / 2, cursorPos.Y + panelHeight - 8),
@@ -377,7 +377,7 @@ public static class MemoryDetailsUI
                 }
             }
         }
-        
+
         ImGui.Dummy(new Vector2(0, panelHeight));
     }
 
@@ -385,32 +385,33 @@ public static class MemoryDetailsUI
     {
         var colors = new Dictionary<ProfilerMetric, Vector4>
         {
-            { ProfilerMetric.Render, new Vector4(0.2f, 0.8f, 0.2f, 1.0f) },
+            { ProfilerMetric.CpuRender, new Vector4(0.2f, 0.8f, 0.2f, 1.0f) },
+            { ProfilerMetric.GpuRender, new Vector4(1.0f, 0.2f, 0.2f, 1.0f) },
             { ProfilerMetric.Update, new Vector4(0.2f, 0.6f, 1.0f, 1.0f) },
             { ProfilerMetric.Load, new Vector4(1.0f, 0.8f, 0.2f, 1.0f) },
             { ProfilerMetric.Custom, new Vector4(1.0f, 0.4f, 0.8f, 1.0f) }
         };
         var allMetrics = profiler.GetAllMetrics();
-        
+
         if (ImGui.BeginTable($"##MetricsTable{idSuffix}", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
         {
-            ImGui.TableSetupColumn("Metric");
-            ImGui.TableSetupColumn("Last");
-            ImGui.TableSetupColumn("Avg");
-            ImGui.TableSetupColumn("Max");
+            ImGui.TableSetupColumn("Metric", ImGuiTableColumnFlags.WidthStretch, 2.0f);
+            ImGui.TableSetupColumn("Last", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+            ImGui.TableSetupColumn("Avg", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+            ImGui.TableSetupColumn("Max", ImGuiTableColumnFlags.WidthStretch, 1.0f);
             ImGui.TableHeadersRow();
-            
+
             foreach (var (metric, data) in allMetrics)
             {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                
+
                 if (colors.TryGetValue(metric, out var color))
                 {
                     if (metric != ProfilerMetric.Load)
                     {
                         ImGui.PushStyleColor(ImGuiCol.Text, color);
-                        ImGui.BulletText($"{metric}");
+                        ImGui.BulletText($"{metric.GetDescription()}");
                         ImGui.PopStyleColor();
                     }
                     else
@@ -422,7 +423,7 @@ public static class MemoryDetailsUI
                 {
                     ImGui.BulletText(metric.ToString());
                 }
-                
+
                 ImGui.TableNextColumn();
                 ImGui.Text($"{data.LastTimeElapsedMs:F2} ms");
                 ImGui.TableNextColumn();
@@ -434,7 +435,7 @@ public static class MemoryDetailsUI
                 {
                     ImGui.TextDisabled("-");
                 }
-                
+
                 ImGui.TableNextColumn();
                 if (metric != ProfilerMetric.Load)
                 {
@@ -445,24 +446,24 @@ public static class MemoryDetailsUI
                     ImGui.TextDisabled("-");
                 }
             }
-            
+
             ImGui.EndTable();
         }
-        
+
         ImGui.Spacing();
-        
+
         if (allMetrics.Where(m => m.Key != ProfilerMetric.Load).ToArray() is { Length: > 0 } plottable)
         {
             var allTimeMax = plottable.Max(m => m.Value.AllTimeMaxTimeElapsedMs);
             var recentMax = plottable.Max(m => m.Value.MaxTimeElapsedMs);
             var globalMax = recentMax >= allTimeMax * 0.5f ? allTimeMax : Math.Max(recentMax * 2f, 0.1f);
-            
+
             var minRecentMax = plottable.Min(m => m.Value.MaxTimeElapsedMs);
             if (minRecentMax > 0 && minRecentMax < globalMax * 0.1f)
             {
                 globalMax = Math.Max(recentMax * 1.2f, 0.1f);
             }
-            
+
             if (ImGui.BeginChild($"##PlotChild{idSuffix}", new Vector2(-1, 80), ImGuiChildFlags.Borders))
             {
                 var drawList = ImGui.GetWindowDrawList();
@@ -470,9 +471,9 @@ public static class MemoryDetailsUI
                 var plotMax = plotMin + ImGui.GetContentRegionAvail();
                 var plotWidth = plotMax.X - plotMin.X;
                 var plotHeight = plotMax.Y - plotMin.Y;
-                
+
                 drawList.AddRectFilled(plotMin, plotMax, ImGui.GetColorU32(ImGuiCol.FrameBg));
-                
+
                 var gridColor = ImGui.GetColorU32(ImGuiCol.Border);
                 for (var i = 1; i < 4; i++)
                 {
@@ -484,63 +485,63 @@ public static class MemoryDetailsUI
                 {
                     if (!colors.TryGetValue(metric, out var color))
                         color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-                    
+
                     var colorU32 = ImGui.GetColorU32(color);
                     var timeData = data.TimeElapsedMs;
                     for (var i = 0; i < SystemProfiler.MaxFrameHistory - 1; i++)
                     {
                         var x1 = plotMin.X + (plotWidth * (SystemProfiler.MaxFrameHistory - 1 - i)) / SystemProfiler.MaxFrameHistory;
                         var x2 = plotMin.X + (plotWidth * (SystemProfiler.MaxFrameHistory - 2 - i)) / SystemProfiler.MaxFrameHistory;
-                        
+
                         var t1 = globalMax > 0 ? Math.Clamp(timeData[i] / globalMax, 0f, 1f) : 0f;
                         var t2 = globalMax > 0 ? Math.Clamp(timeData[i + 1] / globalMax, 0f, 1f) : 0f;
-                        
+
                         var y1 = plotMax.Y - (plotHeight * t1);
                         var y2 = plotMax.Y - (plotHeight * t2);
-                        
+
                         drawList.AddLine(new Vector2(x1, y1), new Vector2(x2, y2), colorU32, 1.5f);
                     }
                 }
-                
+
                 drawList.AddRect(plotMin, plotMax, ImGui.GetColorU32(ImGuiCol.Border));
-                
-                var labelText = allTimeMax > recentMax * 1.5f 
+
+                var labelText = allTimeMax > recentMax * 1.5f
                     ? $"{globalMax:F2} ms (peak: {allTimeMax:F2} ms)"
                     : $"{globalMax:F2} ms";
                 drawList.AddText(new Vector2(plotMin.X + 4, plotMin.Y + 2), ImGui.GetColorU32(ImGuiCol.Text), labelText);
             }
-            
+
             ImGui.EndChild();
         }
     }
-    
+
     private static string FormatTimeAgo(DateTime timestamp)
     {
         var now = DateTime.UtcNow;
         var elapsed = now - timestamp.ToUniversalTime();
-        
+
         if (elapsed.TotalSeconds < 60)
             return $"{(int)elapsed.TotalSeconds}s ago";
         if (elapsed.TotalMinutes < 60)
             return $"{(int)elapsed.TotalMinutes}min ago";
         if (elapsed.TotalHours < 24)
             return $"{(int)elapsed.TotalHours}h ago";
-        
+
         return timestamp.ToLocalTime().ToString("MMM dd");
     }
-    
+
     private static uint GenerateDistinctColor(int index, int total)
     {
         var hue = (float)index / total;
         return ImGui.GetColorU32(HsvToRgb(hue, 0.7f, 0.9f));
     }
-    
+
     private static Vector4 HsvToRgb(float h, float s, float v)
     {
         var c = v * s;
         var x = c * (1 - MathF.Abs(h * 6 % 2 - 1));
         var m = v - c;
-        
+
         float r, g, b;
         switch (h)
         {
@@ -563,7 +564,7 @@ public static class MemoryDetailsUI
                 r = c; g = 0; b = x;
                 break;
         }
-        
+
         return new Vector4(r + m, g + m, b + m, 1);
     }
 }

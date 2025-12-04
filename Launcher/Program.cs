@@ -37,8 +37,8 @@ ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\Game-5.7.0-47291259+++Fortnite+Release-38.00-FortniteGame.usmap";
-const string key = "0x1BC2DDCEC20348852EA75830E606B17EF4D5F7ADAE0AB2B97924B4D7CF124A2E";
+const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-39.00-CL-48444883_br.usmap";
+const string key = "0x8E95784F8ECC94113349AE1678C62EBB50ABBA8C10422E7C5D8399B13DA07AE8";
 var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
@@ -210,7 +210,9 @@ switch (provider.ProjectName)
         // break;
 
         grid.Parent?.Children.Remove(grid);
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_Terrain.Hera_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/Chrisk/ReactiveQuests.ReactiveQuests")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/QA/TestMap_AccessEnemies.TestMap_AccessEnemies"))); // TODO: GPU crash
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Maps/Frontend.Frontend")));

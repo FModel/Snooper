@@ -14,22 +14,22 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
     {
         Compute = "culling.comp"
     };
-    
+
     public void Generate()
     {
         _primitives.Generate();
         _sections.Generate();
-        
+
         _compute.Generate();
         _compute.Link();
     }
-    
+
     public void Allocate(AllocationCounts counts)
     {
         _primitives.Allocate(counts.UniqueComponents);
         _sections.Allocate(counts.Sections);
     }
-    
+
     public BufferAllocation Add(SectionDescriptor[] sections)
     {
         var offsets = new SectionOffsets[sections.Length];
@@ -37,17 +37,17 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         {
             offsets[i] = new SectionOffsets(sections[i]);
         }
-        
+
         return _sections.AddRange(offsets);
     }
 
     public BufferAllocation Add(PrimitiveOffsets offsets) => _primitives.Add(offsets);
-    
+
     public void UpdateOverrideLod(BufferAllocation allocation, int overrideLod)
     {
         _primitives.UpdateCustom(allocation, overrideLod, 32);
     }
-    
+
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
     {
         var frustum = camera.GetWorldFrustumPlanes();
@@ -55,7 +55,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         {
             throw new ArgumentException("Frustum must be defined by exactly six planes.");
         }
-        
+
         _compute.Use();
         _compute.SetUniform("uFrustumPlanes", frustum);
         _compute.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
@@ -67,7 +67,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _sections.Bind(3);
 
         GL.DispatchCompute(commands.Count, 1, 1);
-        GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit);
+        GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
     }
 
     public void Remove(int index)
@@ -111,7 +111,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
             return total;
         }
     }
-    
+
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("Primitive Offsets", _primitives);

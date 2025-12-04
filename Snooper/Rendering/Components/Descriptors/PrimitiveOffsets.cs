@@ -10,7 +10,7 @@ public unsafe struct PrimitiveOffsets
     public uint MaxLOD = 0;
     public int OverrideLod = -1; // -1 for automatic LOD selection, >= 0 to force a specific LOD
     public Vector3 Padding;
-    
+
     // vec4 alignment needed
     public fixed uint LOD_FirstIndex[Settings.MaxNumberOfLods];
     public fixed uint LOD_BaseVertex[Settings.MaxNumberOfLods];
@@ -24,7 +24,7 @@ public unsafe struct PrimitiveOffsets
         Center = bounds.Center;
         SphereRadius = bounds.Extents.Length();
         Extents = bounds.Extents;
-        
+
         for (var i = 0; i < Settings.MaxNumberOfLods; i++)
         {
             LOD_BaseColor[i] = uint.MaxValue;

@@ -79,7 +79,7 @@ void main()
     uint drawId = gl_WorkGroupID.x;
     uint threadId = gl_LocalInvocationID.x;
     uint threadCount = gl_WorkGroupSize.x;
-    
+
     if (drawId >= uDrawCommandBuffer.length()) return;
 
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[drawId];
@@ -142,12 +142,12 @@ void main()
     {
         newCmd.BaseInstance = baseInstance + sMinVisible[0];
         newCmd.InstanceCount = sMaxVisible[0] - sMinVisible[0] + 1;
-        
+
         // if primitive has at least 2 lods, switch based on screen size or override
         if (primitive.maxLod > 0)
         {
             uint chosenLod = 0u;
-            
+
             // Check if LOD override is set (>= 0)
             if (primitive.overrideLod >= 0)
             {
@@ -183,7 +183,7 @@ void main()
             {
                 uint sectionOffset = primitive.sectionOffset[lodGroup][lodSub] + cmd.SectionId;
                 SectionDescriptor section = uSectionDescriptors[sectionOffset];
-                
+
                 newCmd.IndexCount = section.count;
                 newCmd.FirstIndex = primitive.firstIndex[lodGroup][lodSub] + section.firstIndex;
                 newCmd.BaseVertex = primitive.baseVertex[lodGroup][lodSub];
@@ -196,7 +196,7 @@ void main()
     {
         newCmd.InstanceCount = 0;
     }
-    
+
     if (!equals(cmd, newCmd))
     {
         uDrawCommandBuffer[drawId].IndexCount    = newCmd.IndexCount;

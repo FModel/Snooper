@@ -12,7 +12,7 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation c
     public readonly uint BaseVertex = baseVertex; // base vertex of lod 0
     public readonly BufferAllocation CullingAllocation = cullingAllocation;
     public readonly uint BaseColor = baseColor;
-    
+
     private int _overrideLod = overrideLod;
     public int OverrideLod
     {
@@ -20,14 +20,14 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation c
         internal set
         {
             if (_overrideLod == value) return;
-            
+
             _overrideLod = value;
             IsDirty = true;
         }
     }
-    
+
     public bool IsDirty { get; private set; }
-    
+
     public void MarkClean() => IsDirty = false;
 }
 
@@ -38,10 +38,10 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     private readonly ArrayBuffer<TVertex> _vbo = new();
     private readonly ShaderStorageBuffer<int> _colors = new();
     private readonly CullingResources _culling = new();
-    
+
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
     private Action<uint>? _vertexLayoutSetter;
-    
+
     public void Generate()
     {
         _vao.Generate();
@@ -49,7 +49,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _vbo.Generate();
         _colors.Generate();
         _culling.Generate();
-        
+
         _ebo.OnHandleChanged += (_, _) => BindBuffersToVao();
         _vbo.OnHandleChanged += (_, _) => BindBuffersToVao();
     }
@@ -59,15 +59,15 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _vertexLayoutSetter = setter;
         BindBuffersToVao();
     }
-    
+
     private void BindBuffersToVao()
     {
         GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
         GL.VertexArrayElementBuffer(_vao, _ebo);
-        
+
         _vertexLayoutSetter?.Invoke(_vao);
     }
-    
+
     public void Allocate(AllocationCounts counts)
     {
         _ebo.Allocate(counts.Indices);
@@ -78,7 +78,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         }
         _culling.Allocate(counts);
     }
-    
+
     public GeometryHandle Add(FGuid guid, LodDescriptor<TVertex>[] lods, CullingBounds bounds)
     {
         if (!_cache.TryGetValue(guid, out var handle))
@@ -87,7 +87,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(offsets), baseColor, lods.Length > 1 ? -1 : 0);
             _cache.Add(guid, handle);
         }
-        
+
         return handle;
 
         unsafe (uint, uint, uint, PrimitiveOffsets) CreateOffsets()
@@ -102,13 +102,13 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
                     continue;
                     // throw new InvalidOperationException("Primitive data is not valid.");
                 }
-                
+
                 o.LOD_FirstIndex[i] = (uint)_ebo.AddRange(primitive.Indices).StartIndex;
                 o.LOD_BaseVertex[i] = (uint)_vbo.AddRange(primitive.Vertices).StartIndex;
                 o.LOD_ScreenSize[i] = lods[i].ScreenSize;
                 o.LOD_SectionCount[i] = (uint)lods[i].Sections.Length;
                 o.LOD_SectionOffset[i] = (uint)_culling.Add(lods[i].Sections).StartIndex;
-                
+
                 if (primitive.Colors != null)
                 {
                     o.LOD_BaseColor[i] = (uint)_colors.AddRange(primitive.Colors).StartIndex;
@@ -121,20 +121,20 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], o);
         }
     }
-    
+
     public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands)
         where TInstanceData : unmanaged, IPerInstanceData => _culling.Cull(camera, instances, commands);
-    
+
     public void Render(Action mdi)
     {
         _colors.Bind(5);
-        
+
         _vao.Bind();
         _ebo.Bind();
         _vbo.Bind();
-        
+
         mdi.Invoke();
-        
+
         _vbo.Unbind();
         _ebo.Unbind();
         _vao.Unbind();
@@ -183,7 +183,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             return total;
         }
     }
-    
+
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("Index Buffer", _ebo);

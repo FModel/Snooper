@@ -59,9 +59,9 @@ public abstract class ActorSystem : IGameSystem
     public void Render(CameraComponent camera)
     {
         if (!IsEnabled) return;
-        Profiler.Time(ProfilerMetric.Render, () =>
+        Profiler.Time(ProfilerMetric.CpuRender, () =>
         {
-            Profiler.BeginQuery(QueryTarget.PrimitivesGenerated);
+            Profiler.BeginQuery(QueryTarget.TimeElapsed, QueryTarget.PrimitivesGenerated);
             OnRender(camera);
             Profiler.EndQuery();
         });

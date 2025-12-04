@@ -16,45 +16,41 @@ public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanage
     public FGuid Guid { get; } // does not have to match the cached GUID (if descriptor is cached), but it's better for debug purposes if it does
     public CullingBounds Bounds { get; }
     public LodDescriptor<TVertex>[] Lods { get; }
-    
+
     public PrimitiveDescriptor(CullingBounds bounds, Func<TPrimitiveData<TVertex>> factory)
     {
         Guid = FGuid.Random();
         Bounds = bounds;
         Lods = [new LodDescriptor<TVertex>(factory())];
     }
-    
+
     private PrimitiveDescriptor(uint id, CullingBounds bounds, Func<uint, TPrimitiveData<TVertex>> factory)
     {
         Guid = new FGuid(id);
         Bounds = bounds;
         Lods = [new LodDescriptor<TVertex>(factory(id))];
     }
-    
+
     private PrimitiveDescriptor(UStaticMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Path = owner.Name;
         Guid = owner.LightingGuid;
-        
+
         if (!owner.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert static mesh.", nameof(owner));
 
         using (mesh)
         {
             Bounds = new CullingBounds(mesh.BoundingBox);
-            Lods = new LodDescriptor<TVertex>[mesh.LODs.Count];
-            for (var i = 0; i < Lods.Length; i++)
-            {
-                Lods[i] = new LodDescriptor<TVertex>(mesh.LODs[i], factory);
-            }
+            Lods = (from lod in mesh.LODs where lod.NumVerts != 0 select new LodDescriptor<TVertex>(lod, factory)).ToArray();
         }
     }
-    
+
     private PrimitiveDescriptor(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Path = owner.Name;
         Guid = new FGuid((uint)owner.Name.GetHashCode());
-        
+
         if (!owner.TryConvert(out var mesh))
             throw new ArgumentException("Failed to convert skeletal mesh.", nameof(owner));
 
@@ -68,21 +64,21 @@ public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanage
             }
         }
     }
-    
+
     /// <summary>
     /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> based on the provided ID.
     /// The factory function is used to generate the primitive data if it doesn't already exist in the cache.
     /// </summary>
     public static PrimitiveDescriptor<TVertex> GetOrCreate(uint id, CullingBounds bounds, Func<uint, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(new FGuid(id), () => new PrimitiveDescriptor<TVertex>(id, bounds, factory));
-    
+
     /// <summary>
     /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> for the given static mesh.
     /// The factory function is used to generate the primitive data if it doesn't already exist in the cache.
     /// </summary>
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.LightingGuid, () => new PrimitiveDescriptor<TVertex>(owner, factory));
-    
+
     /// <summary>
     /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> for the given skeletal mesh.
     /// The factory function is used to generate the primitive data if it doesn't already exist in the

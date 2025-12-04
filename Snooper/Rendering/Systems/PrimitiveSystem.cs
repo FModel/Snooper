@@ -19,7 +19,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     protected override bool AllowDerivation => false;
     protected virtual bool IsCulled => true;
     protected virtual ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default");
-    
+
     protected override void OnLoad()
     {
         base.OnLoad();
@@ -40,7 +40,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         // this trigger a shader use, do it before pre-rendering to avoid conflicts
         if (IsCulled)
             Resources.Cull(camera);
-        
+
         PreRender(camera, Shader);
         base.OnRender(camera);
         PostRender(camera, Shader);
@@ -48,7 +48,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
 
     protected virtual void PostRender(CameraComponent camera, ShaderProgram shader)
     {
-        
+
     }
 
     public override long Allocated => base.Allocated + Shader.Allocated;
@@ -57,7 +57,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
-        
+
         yield return new MemoryDetail("Main Shader", Shader);
     }
 }

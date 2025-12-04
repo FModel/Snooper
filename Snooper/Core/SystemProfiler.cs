@@ -1,40 +1,51 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core;
 
 public enum ProfilerMetric
 {
-    Render,
+    [Description("CPU Render Time")]
+    CpuRender,
+
+    [Description("GPU Render Time")]
+    GpuRender,
+
+    [Description("Update Time")]
     Update,
+
+    [Description("Load Time")]
     Load,
+
+    [Description("Custom Metric")]
     Custom
 }
 
 public class ProfilerMetricData
 {
     public const int MaxFrameHistory = 100;
-    
+
     public float[] TimeElapsedMs { get; } = new float[MaxFrameHistory];
     public float MaxTimeElapsedMs { get; private set; }
     public float AverageTimeElapsedMs { get; private set; }
     public float LastTimeElapsedMs => TimeElapsedMs[0];
     public float AllTimeMaxTimeElapsedMs { get; private set; }
-    
+
     private readonly Stopwatch _stopwatch = new();
-    
+
     public void Begin()
     {
         _stopwatch.Restart();
     }
-    
+
     public void End()
     {
         _stopwatch.Stop();
         AddTimeSample((float)_stopwatch.Elapsed.TotalMilliseconds);
     }
-    
-    private void AddTimeSample(float ms)
+
+    public void AddTimeSample(float ms)
     {
         for (var i = TimeElapsedMs.Length - 1; i > 0; i--)
             TimeElapsedMs[i] = TimeElapsedMs[i - 1];
@@ -42,11 +53,11 @@ public class ProfilerMetricData
         TimeElapsedMs[0] = ms;
         MaxTimeElapsedMs = TimeElapsedMs.Max();
         AverageTimeElapsedMs = TimeElapsedMs.Average();
-        
+
         if (ms > AllTimeMaxTimeElapsedMs)
             AllTimeMaxTimeElapsedMs = ms;
     }
-    
+
     public void Reset()
     {
         Array.Clear(TimeElapsedMs);
@@ -59,18 +70,19 @@ public class ProfilerMetricData
 public class SystemProfiler : IDisposable
 {
     public const int MaxFrameHistory = ProfilerMetricData.MaxFrameHistory;
-    
-    public long PrimitivesGenerated { get; private set; } // OpenGL
+
+    public long PrimitivesGenerated { get; private set; }
 
     private readonly Dictionary<ProfilerMetric, ProfilerMetricData> _metrics = new()
     {
-        { ProfilerMetric.Render, new ProfilerMetricData() },
+        { ProfilerMetric.CpuRender, new ProfilerMetricData() },
+        { ProfilerMetric.GpuRender, new ProfilerMetricData() },
         { ProfilerMetric.Update, new ProfilerMetricData() },
         { ProfilerMetric.Load, new ProfilerMetricData() },
     };
     private readonly Dictionary<QueryTarget, int> _activeQueries = new();
     private readonly Dictionary<QueryTarget, int> _pendingQueries = new();
-    
+
     public IReadOnlyDictionary<ProfilerMetric, ProfilerMetricData> GetAllMetrics() => _metrics;
 
     public ProfilerMetricData GetMetric(ProfilerMetric metric)
@@ -82,10 +94,10 @@ public class SystemProfiler : IDisposable
         }
         return data;
     }
-    
+
     public void BeginTiming(ProfilerMetric metric) => GetMetric(metric).Begin();
     public void EndTiming(ProfilerMetric metric) => GetMetric(metric).End();
-    
+
     public void Time(ProfilerMetric metric, Action action)
     {
         BeginTiming(metric);
@@ -98,20 +110,20 @@ public class SystemProfiler : IDisposable
             EndTiming(metric);
         }
     }
-    
+
     public void BeginQuery(params QueryTarget[] targets)
     {
         foreach (var target in targets)
         {
             if (_activeQueries.ContainsKey(target))
                 throw new InvalidOperationException($"A query for target {target} is already active. End the previous query before starting a new one.");
-        
+
             if (_pendingQueries.TryGetValue(target, out var old))
             {
                 GL.DeleteQuery(old);
                 _pendingQueries.Remove(target);
             }
-            
+
             var query = GL.GenQuery();
             _activeQueries.Add(target, query);
             GL.BeginQuery(target, query);
@@ -125,7 +137,7 @@ public class SystemProfiler : IDisposable
             EndQuery(target);
         }
     }
-    
+
     public void EndQuery(QueryTarget target)
     {
         if (!_activeQueries.Remove(target, out var query))
@@ -142,11 +154,11 @@ public class SystemProfiler : IDisposable
             var available = 0;
             while (available == 0)
                 GL.GetQueryObject(query, GetQueryObjectParam.QueryResultAvailable, out available);
-        
+
             GL.GetQueryObject(query, GetQueryObjectParam.QueryResult, out long result);
             GL.DeleteQuery(query);
             _pendingQueries.Remove(target);
-        
+
             switch (target)
             {
                 case QueryTarget.PrimitivesGenerated:
@@ -154,10 +166,15 @@ public class SystemProfiler : IDisposable
                     PrimitivesGenerated = result;
                     break;
                 }
+                case QueryTarget.TimeElapsed:
+                {
+                    _metrics[ProfilerMetric.GpuRender].AddTimeSample(result / 1_000_000.0f);
+                    break;
+                }
             }
         }
     }
-    
+
     public void Reset()
     {
         foreach (var metric in _metrics.Values)
@@ -171,17 +188,17 @@ public class SystemProfiler : IDisposable
     {
         Reset();
         _metrics.Clear();
-        
+
         foreach (var query in _activeQueries.Values)
         {
             GL.DeleteQuery(query);
         }
-        
+
         foreach (var query in _pendingQueries.Values)
         {
             GL.DeleteQuery(query);
         }
-        
+
         _activeQueries.Clear();
         _pendingQueries.Clear();
     }
