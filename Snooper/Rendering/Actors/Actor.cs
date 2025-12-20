@@ -3,7 +3,7 @@ using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using ImGuiNET;
-using Snooper.Core;
+using Snooper.Core.Managers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Mesh;

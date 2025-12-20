@@ -8,7 +8,7 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
-namespace Snooper.Core;
+namespace Snooper.Core.Managers;
 
 public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
 {

@@ -42,7 +42,7 @@ public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanage
         using (mesh)
         {
             Bounds = new CullingBounds(mesh.BoundingBox);
-            Lods = (from lod in mesh.LODs where lod.NumVerts != 0 select new LodDescriptor<TVertex>(lod, factory)).ToArray();
+            Lods = (from lod in mesh.LODs where lod.NumVerts > 0 select new LodDescriptor<TVertex>(lod, factory)).ToArray();
         }
     }
 

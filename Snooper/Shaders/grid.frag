@@ -12,6 +12,7 @@ in VS_OUT {
 out vec4 FragColor;
 
 uniform bool uIsOpaque;
+uniform vec3 uColor;
 uniform sampler2D uTexture;
 
 vec4 grid(vec3 fragPos, float scale)
@@ -62,7 +63,7 @@ void main()
 
     if (uIsOpaque)
     {
-        FragColor.rgb = texture(uTexture, fragPos3D.xz).rgb * vec3(0.3921, 0.4117, 0.4705);
+        FragColor.rgb = texture(uTexture, fragPos3D.xz).rgb * uColor;
         FragColor.a = 1.0 - smoothstep(0.0, 0.1, linearDepth);
     }
     else

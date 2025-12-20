@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Serilog;
+using Snooper.Core.Managers;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;

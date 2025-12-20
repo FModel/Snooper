@@ -7,7 +7,7 @@ using Snooper.Rendering.Components.Descriptors;
 using System.Collections.Concurrent;
 using Snooper.Core.Systems;
 
-namespace Snooper.Core;
+namespace Snooper.Core.Managers;
 
 public class TextureManager : IGameSystem, IMemoryDetailsProvider
 {

@@ -5,7 +5,7 @@ using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
-using Snooper.Core.Systems;
+using Snooper.Core.Managers;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;

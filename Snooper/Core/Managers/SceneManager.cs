@@ -5,10 +5,11 @@ using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
 using System.Numerics;
+using Snooper.Core.Systems;
 
-namespace Snooper.Core.Systems;
+namespace Snooper.Core.Managers;
 
-public class SceneSystem(GameWindow wnd) : ActorManager, IResizable
+public class SceneManager(GameWindow wnd) : ActorManager, IResizable
 {
     protected GameWindow Window { get; } = wnd;
     protected List<CameraFramePair> Pairs { get; } = [];

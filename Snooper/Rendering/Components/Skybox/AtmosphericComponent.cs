@@ -21,16 +21,16 @@ public class AtmosphericComponent : CubeComponent
     {
         Position = new Vector3(0, 1, 0),
         Intensity = 56.0f,
-        Radius = 6363e3f,
-        AtmosphereRadius = 6381e3f
+        Radius = 6350e3f,
+        AtmosphereRadius = 6400e3f
     };
-    
+
     internal override string Icon => "hemisphere";
 
     public override void DrawControls()
     {
         base.DrawControls();
-        
+
         EditorUI.CollapsingTable("Atmosphere", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.DragFloat3("Sun Direction", ref Sun.Position, 0.01f, -1.0f, 2.0f);

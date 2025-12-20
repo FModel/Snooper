@@ -87,6 +87,8 @@ var grid = new Actor("Grid");
 grid.Components.Add(new GridComponent());
 scene.Children.Add(grid);
 
+scene.Children.Add(new SkyboxActor());
+
 switch (provider.ProjectName)
 {
     case "ShooterGame":
@@ -108,7 +110,6 @@ switch (provider.ProjectName)
         // camera.CameraComponent.FarPlaneDistance = 1000f;
         // grid.Components.Clear();
         // grid.Components.Add(new OpaqueGridComponent());
-        // scene.Children.Add(new SkyboxActor());
         //
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0))));
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0))));
@@ -138,7 +139,6 @@ switch (provider.ProjectName)
         // camera.CameraComponent.FarPlaneDistance = 1000f;
         // grid.Components.Clear();
         // grid.Components.Add(new OpaqueGridComponent());
-        // scene.Children.Add(new SkyboxActor());
         //
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("Gameface/Content/ViceCity/Characters/Peds/SK_hmotr.SK_hmotr")));
         // break;
@@ -153,7 +153,6 @@ switch (provider.ProjectName)
         // camera.CameraComponent.FarPlaneDistance = 1000f;
         // grid.Components.Clear();
         // grid.Components.Add(new OpaqueGridComponent());
-        // scene.Children.Add(new SkyboxActor());
         //
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/SpongeBob/SK_SpongeBob_RoboSpongeBob.SK_SpongeBob_RoboSpongeBob"), new FTransform(new FVector(-100, 0, 0))));
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/Patrick/SK_Patrick_Default.SK_Patrick_Default"), new FTransform(new FVector(100, 0, 0))));
@@ -188,7 +187,6 @@ switch (provider.ProjectName)
         // camera.CameraComponent.FarPlaneDistance = 1000f;
         // grid.Components.Clear();
         // grid.Components.Add(new OpaqueGridComponent());
-        // scene.Children.Add(new SkyboxActor());
         //
         // var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/F_MED_RoseForm.F_MED_RoseForm"));
         // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Heads/F_MED_RoseForm_Head/Meshes/F_MED_RoseForm_Head.F_MED_RoseForm_Head")));
@@ -211,8 +209,8 @@ switch (provider.ProjectName)
 
         grid.Parent?.Children.Remove(grid);
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_Terrain.Hera_Terrain")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_Terrain.Hera_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/Chrisk/ReactiveQuests.ReactiveQuests")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/QA/TestMap_AccessEnemies.TestMap_AccessEnemies"))); // TODO: GPU crash
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Maps/Frontend.Frontend")));

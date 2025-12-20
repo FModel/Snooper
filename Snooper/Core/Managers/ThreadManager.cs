@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using Serilog;
 
-namespace Snooper.Core;
+namespace Snooper.Core.Managers;
 
 public class ThreadManager : IDisposable
 {

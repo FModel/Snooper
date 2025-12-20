@@ -7,7 +7,6 @@ using Snooper.Core.Containers;
 using Snooper.Extensions;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
-using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;

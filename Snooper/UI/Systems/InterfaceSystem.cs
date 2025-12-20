@@ -8,13 +8,13 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
-using Snooper.Core.Systems;
+using Snooper.Core.Managers;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 
 namespace Snooper.UI.Systems;
 
-public abstract class InterfaceSystem(GameWindow wnd) : SceneSystem(wnd)
+public abstract class InterfaceSystem(GameWindow wnd) : SceneManager(wnd)
 {
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
 
