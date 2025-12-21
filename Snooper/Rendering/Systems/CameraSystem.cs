@@ -16,13 +16,9 @@ public sealed class CameraSystem : ActorSystem<CameraComponent>
         }
     }
 
-    protected override void OnUpdate(float delta)
+    protected override void OnComponentUpdate(CameraComponent component, float delta)
     {
-        base.OnUpdate(delta);
-        foreach (var component in Components)
-        {
-            component.Update();
-        }
+        component.Update();
     }
 
     protected override void OnRender(CameraComponent camera)

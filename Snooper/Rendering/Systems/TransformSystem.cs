@@ -19,14 +19,9 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
         }
     }
 
-    protected override void OnUpdate(float delta)
+    protected override void OnComponentUpdate(SpatialComponent component, float delta)
     {
-        base.OnUpdate(delta);
-
-        foreach (var component in Components)
-        {
-            UpdateTransformComponentsRecursive(component);
-        }
+        UpdateTransformComponentsRecursive(component);
     }
 
     protected override void OnRender(CameraComponent camera)

@@ -15,12 +15,12 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 {
     public override ActorSystemType SystemType => ActorSystemType.Audio;
     public override uint Order => 100;
-    
+
     private ALDevice _device;
     private ALContext _context;
     private readonly Dictionary<AudioComponent, AudioSource?> _sources = [];
     private readonly AudioCache _audioCache = new();
-    
+
     private float _volume = 0.5f;
     private bool _volumeChanged;
     private const float MinDb = -35f;
@@ -29,14 +29,14 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     protected override void OnLoad()
     {
         base.OnLoad();
-        
+
         _device = ALC.OpenDevice(null);
         if (_device == ALDevice.Null)
         {
             Log.Error("Failed to open OpenAL device");
             return;
         }
-        
+
         _context = ALC.CreateContext(_device, (int[])null!);
         if (_context == ALContext.Null)
         {
@@ -52,48 +52,50 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
     protected override void OnUpdate(float delta)
     {
-        base.OnUpdate(delta);
-
         if (_context == ALContext.Null) return;
 
-        foreach (var component in Components)
+        base.OnUpdate(delta);
+
+        if (_volumeChanged)
         {
-            if (component.ShouldPlay && !_sources.ContainsKey(component))
+            foreach (var (component, source) in _sources)
             {
-                _sources[component] = CreateAudioSource(component);
+                source?.SetGain(component.VolumeMultiplier * LinearToLogarithmicVolume(_volume));
             }
-            
-            if (!_sources.TryGetValue(component, out var source) || source == null)
-                continue;
-            
-            if (component.IsDirty(DirtyFlags.Transform))
-            {
-                source.SetPosition(component.WorldMatrix.Translation);
-                source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));
-            }
-            
-            if (component.ShouldPlay && !source.IsPlaying)
-            {
-                source.Play();
-            }
-            else if (!component.ShouldPlay && source.IsPlaying)
-            {
-                source.Stop();
-            }
-            
-            if (_volumeChanged)
-            {
-                source.SetGain(component.VolumeMultiplier * LinearToLogarithmicVolume(_volume));
-            }
+            _volumeChanged = false;
         }
-        
-        _volumeChanged = false;
+    }
+
+    protected override void OnComponentUpdate(AudioComponent component, float delta)
+    {
+        if (component.ShouldPlay && !_sources.ContainsKey(component))
+        {
+            _sources[component] = CreateAudioSource(component);
+        }
+
+        if (!_sources.TryGetValue(component, out var source) || source == null)
+            return;
+
+        if (component.IsDirty(DirtyFlags.Transform))
+        {
+            source.SetPosition(component.WorldMatrix.Translation);
+            source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));
+        }
+
+        if (component.ShouldPlay && !source.IsPlaying)
+        {
+            source.Play();
+        }
+        else if (!component.ShouldPlay && source.IsPlaying)
+        {
+            source.Stop();
+        }
     }
 
     protected override void OnRender(CameraComponent camera)
     {
         if (_context == ALContext.Null) return;
-        
+
         var position = camera.WorldMatrix.Translation;
         var forward = Vector3.Transform(Vector3.UnitZ, camera.LocalTransform.Rotation);
         var up      = Vector3.Transform(Vector3.UnitY, camera.LocalTransform.Rotation);
@@ -107,7 +109,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     protected override void OnActorComponentRemoved(AudioComponent component)
     {
         base.OnActorComponentRemoved(component);
-        
+
         if (_sources.TryGetValue(component, out var source))
         {
             source?.Stop();
@@ -115,20 +117,20 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
             _sources.Remove(component);
         }
     }
-    
+
     private AudioSource? CreateAudioSource(AudioComponent component)
     {
         if (component.Sound == null) return null;
-        
+
         var buffer = _audioCache.GetOrCreateBuffer(component.Sound);
         if (buffer == 0)
         {
             Log.Warning("Failed to load audio buffer for {Sound}", component.Sound.Name);
             return null;
         }
-    
+
         Log.Debug("Creating audio source with buffer {BufferId} for component {Name}", buffer, component.Name);
-    
+
         var source = new AudioSource(buffer);
         source.SetPosition(component.WorldMatrix.Translation);
         source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));
@@ -138,15 +140,15 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
         return source;
     }
-    
+
     private float LinearToLogarithmicVolume(float linearVolume)
     {
         if (linearVolume <= 0f) return 0f;
-        
+
         var db = MinDb + (MaxDb - MinDb) * linearVolume;
         return MathF.Pow(10f, db / 20f);
     }
-    
+
     private void CheckAlError(string context)
     {
         var error = AL.GetError();
@@ -159,7 +161,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
     public override void Dispose()
     {
         base.Dispose();
-        
+
         foreach (var source in _sources.Values)
         {
             source?.Dispose();

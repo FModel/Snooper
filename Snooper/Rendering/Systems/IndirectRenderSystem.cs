@@ -50,17 +50,17 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
     protected override void OnUpdate(float delta)
     {
-        base.OnUpdate(delta);
-
         // dequeue textures
         TextureManager.Update(delta);
 
-        foreach (var component in Components)
-        {
-            component.Update(Resources, TextureManager);
-        }
+        base.OnUpdate(delta);
 
         Resources.FlushUpdates();
+    }
+
+    protected override void OnComponentUpdate(TComponent component, float delta)
+    {
+        component.Update(Resources, TextureManager);
     }
 
     protected override void OnRender(CameraComponent camera)

@@ -97,9 +97,19 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
 
     protected HashSet<TComponent> Components { get; } = [];
+    protected HashSet<TComponent> DirtyComponents { get; } = [];
 
     protected override void OnLoad() => DequeueComponents();
-    protected override void OnUpdate(float delta) => DequeueComponents(5);
+    protected override void OnUpdate(float delta)
+    {
+        DequeueComponents(5);
+
+        foreach (var component in DirtyComponents)
+        {
+            OnComponentUpdate(component, delta);
+        }
+        DirtyComponents.Clear();
+    }
 
     public sealed override void ProcessActorComponent(ActorComponent component, Actor actor)
     {
@@ -132,12 +142,29 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 
     protected virtual void OnActorComponentAdded(TComponent component)
     {
-
+        component.OnRequestUpdate += OnComponentRequestUpdate;
     }
 
     protected virtual void OnActorComponentRemoved(TComponent component)
     {
+        component.OnRequestUpdate -= OnComponentRequestUpdate;
+        DirtyComponents.Remove(component);
+    }
 
+    protected virtual void OnComponentUpdate(TComponent component, float delta)
+    {
+
+    }
+
+    private void OnComponentRequestUpdate(ActorComponent component)
+    {
+        if (component is not TComponent actorComponent)
+            throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));
+
+        if (Components.Contains(actorComponent))
+        {
+            DirtyComponents.Add(actorComponent);
+        }
     }
 
     private readonly Queue<TComponent> _componentsToLoad = [];

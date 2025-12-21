@@ -28,7 +28,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         GL.EnableVertexArrayAttrib(vao, 0);
         GL.VertexArrayAttribBinding(vao, 0, 0);
     };
-    
+
     private readonly ShaderStorageBuffer<Vector2> _scales = new();
     private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new();
     private readonly List<string> _layers = ["None"];
@@ -43,15 +43,15 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 
         _scales.Generate();
         _mapping.Generate();
-        
+
         _scales.Allocate(ComponentsCount * Settings.TessellationQuadCountTotal);
         _mapping.Allocate(ComponentsCount);
-        
+
         foreach (var component in Components)
         {
             _scales.AddRange(component.Scales);
             _mapping.Add(new WeightHighlightMapping());
-            
+
             foreach (var layer in component.Layers.Keys)
             {
                 if (!_layers.Contains(layer)) _layers.Add(layer);
@@ -63,17 +63,18 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     protected override void OnUpdate(float delta)
     {
         base.OnUpdate(delta);
+
         if (!_updateMapping || _colorMode != ColorMode.Weightmap)
             return;
 
         var layer = _layers[_selectedLayer];
         Log.Information("Updating weightmap highlight for layer {Layer}", layer);
-        
+
         foreach (var component in Components)
         {
             if (component.Metadata is not { } metadata || metadata.DrawAllocations.Length == 0)
                 continue;
-            
+
             var m = new WeightHighlightMapping();
             if (component.Layers.TryGetValue(layer, out var mapping))
             {
@@ -84,35 +85,35 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
                     DebugColor = mapping.DebugColor
                 };
             }
-            
+
             // this only works because there's a match between the draw allocation id and the mapping allocation id
             // would be better to have a direct reference
             _mapping.Update(metadata.DrawAllocations[0], m);
         }
-        
+
         _updateMapping = false;
     }
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
         base.PreRender(camera, shader);
-    
+
         shader.SetUniform("uColorMode", (uint)_colorMode);
         shader.SetUniform("uSizeQuads", _sizeQuads);
         shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
         shader.SetUniform("uGlobalScale", Settings.GlobalScale);
-        
+
         _scales.Bind(3);
         _mapping.Bind(4);
     }
-    
+
     public override long Allocated => base.Allocated + _scales.Allocated + _mapping.Allocated;
     public override long Used => base.Used + _scales.Used + _mapping.Used;
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
-        
+
         yield return new MemoryDetail("Scales Buffer", _scales);
         yield return new MemoryDetail("Weightmap Highlight Buffer", _mapping);
     }
@@ -122,7 +123,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         var c = (int) _colorMode;
         ImGui.Combo("Color Mode", ref c, "Heightmap\0Weightmap\0");
         _colorMode = (ColorMode) c;
-        
+
         if (_colorMode == ColorMode.Weightmap)
         {
             var before = _selectedLayer;
@@ -130,13 +131,13 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
             if (!_updateMapping) _updateMapping = before != _selectedLayer;
         }
     }
-    
+
     private enum ColorMode : byte
     {
         Heightmap,
         Weightmap
     }
-    
+
     private struct WeightHighlightMapping
     {
         public uint WeightmapIndex;
