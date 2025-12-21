@@ -23,6 +23,8 @@ public class PartitionActor : Actor
             }
             case UWorldPartitionRuntimeSpatialHash spatial:
             {
+                // TODO: does not seem to be correct when one StreamingGrids and multiple grid levels
+                // on COE33, one grid level is one hlod?
                 foreach (var grid in spatial.StreamingGrids)
                 {
                     Children.Add(new HierarchicalActor(grid));

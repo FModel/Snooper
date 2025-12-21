@@ -34,16 +34,16 @@ public static class TextureExtensions
             _ => texture.SwizzleMask
         };
     }
-    
+
     public static ITextureFormatInfo GetTextureFormat(this EPixelFormat format, bool srgb)
     {
         var compressed = format.IsCompressed();
         if (compressed) return new CompressedTextureFormatInfo(format.GetCompressedFormat(srgb));
-        
+
         var (internalFormat, pixelFormat, pixelType) = format.GetUncompressedFormats(srgb);
         return new TextureFormatInfo(internalFormat, pixelFormat, pixelType);
     }
-    
+
     public static PixelInternalFormat ToPixelInternalFormat(this SizedInternalFormat format)
     {
         return format switch
@@ -63,11 +63,11 @@ public static class TextureExtensions
             SizedInternalFormat.R16 => PixelInternalFormat.R16,
             SizedInternalFormat.Rgb32f => PixelInternalFormat.Rgb32f,
             SizedInternalFormat.R32ui => PixelInternalFormat.R32ui,
-            
+
             _ => throw new NotImplementedException($"Unsupported sized internal format: {format}")
         };
     }
-    
+
     public static InternalFormat ToInternalFormat(this SizedInternalFormat format)
     {
         return format switch
@@ -87,32 +87,33 @@ public static class TextureExtensions
             SizedInternalFormat.R16 => InternalFormat.R16,
             SizedInternalFormat.Rgb32f => InternalFormat.Rgb32f,
             SizedInternalFormat.R32ui => InternalFormat.R32ui,
-            
+
             _ => throw new NotImplementedException($"Unsupported sized internal format: {format}")
         };
     }
-    
+
     private static bool IsCompressed(this EPixelFormat format)
         => format switch
         {
             EPixelFormat.PF_B8G8R8A8 or
-                EPixelFormat.PF_G8 or
-                EPixelFormat.PF_A32B32G32R32F or
-                EPixelFormat.PF_FloatRGB or
-                EPixelFormat.PF_FloatRGBA or
-                EPixelFormat.PF_R32_FLOAT or
-                EPixelFormat.PF_G16R16F or
-                EPixelFormat.PF_G16R16F_FILTER or
-                EPixelFormat.PF_G16R16 or
-                EPixelFormat.PF_G32R32F or
-                EPixelFormat.PF_A16B16G16R16 or
-                EPixelFormat.PF_R16F or
-                EPixelFormat.PF_R16F_FILTER or
-                EPixelFormat.PF_G16 or
-                EPixelFormat.PF_R32G32B32F => false,
+            EPixelFormat.PF_R8G8B8A8 or
+            EPixelFormat.PF_G8 or
+            EPixelFormat.PF_A32B32G32R32F or
+            EPixelFormat.PF_FloatRGB or
+            EPixelFormat.PF_FloatRGBA or
+            EPixelFormat.PF_R32_FLOAT or
+            EPixelFormat.PF_G16R16F or
+            EPixelFormat.PF_G16R16F_FILTER or
+            EPixelFormat.PF_G16R16 or
+            EPixelFormat.PF_G32R32F or
+            EPixelFormat.PF_A16B16G16R16 or
+            EPixelFormat.PF_R16F or
+            EPixelFormat.PF_R16F_FILTER or
+            EPixelFormat.PF_G16 or
+            EPixelFormat.PF_R32G32B32F => false,
             _ => true
         };
-    
+
     private static (SizedInternalFormat, PixelFormat, PixelType) GetUncompressedFormats(this EPixelFormat format, bool srgb)
     {
         return format switch
@@ -125,6 +126,16 @@ public static class TextureExtensions
             EPixelFormat.PF_B8G8R8A8 => (
                 SizedInternalFormat.Rgba8,
                 PixelFormat.Bgra,
+                PixelType.UnsignedByte
+            ),
+            EPixelFormat.PF_R8G8B8A8 when srgb => (
+                SizedInternalFormat.Srgb8Alpha8,
+                PixelFormat.Rgba,
+                PixelType.UnsignedByte
+            ),
+            EPixelFormat.PF_R8G8B8A8 => (
+                SizedInternalFormat.Rgba8,
+                PixelFormat.Rgba,
                 PixelType.UnsignedByte
             ),
             EPixelFormat.PF_G8 => (
@@ -190,7 +201,7 @@ public static class TextureExtensions
             _ => throw new NotImplementedException($"Unsupported pixel format: {format}")
         };
     }
-    
+
     private static SizedInternalFormat GetCompressedFormat(this EPixelFormat format, bool srgb)
     {
         return format switch
@@ -205,7 +216,7 @@ public static class TextureExtensions
             EPixelFormat.PF_BC5 => SizedInternalFormat.CompressedRgRgtc2,
             EPixelFormat.PF_BC6H => SizedInternalFormat.CompressedRgbBptcUnsignedFloat,
             EPixelFormat.PF_BC7 => SizedInternalFormat.CompressedRgbaBptcUnorm,
-        
+
             EPixelFormat.PF_ASTC_4x4 when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Astc4X4,
             EPixelFormat.PF_ASTC_6x6 when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Astc6X6,
             EPixelFormat.PF_ASTC_8x8 when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Astc8X8,
@@ -216,14 +227,14 @@ public static class TextureExtensions
             EPixelFormat.PF_ASTC_8x8 => SizedInternalFormat.CompressedRgbaAstc8X8,
             EPixelFormat.PF_ASTC_10x10 => SizedInternalFormat.CompressedRgbaAstc10X10,
             EPixelFormat.PF_ASTC_12x12 => SizedInternalFormat.CompressedRgbaAstc12X12,
-            
+
             // EPixelFormat.PF_ETC1 when srgb => SizedInternalFormat.CompressedSrgb8Etc2,
             EPixelFormat.PF_ETC2_RGB when srgb => SizedInternalFormat.CompressedSrgb8Etc2,
             EPixelFormat.PF_ETC2_RGBA when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac,
             // EPixelFormat.PF_ETC1 => SizedInternalFormat.CompressedRgb8Etc2,
             EPixelFormat.PF_ETC2_RGB => SizedInternalFormat.CompressedRgb8Etc2,
             EPixelFormat.PF_ETC2_RGBA => SizedInternalFormat.CompressedRgba8Etc2Eac,
-        
+
             _ => throw new NotImplementedException($"Unsupported pixel format: {format}")
         };
     }

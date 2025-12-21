@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse_Conversion.Textures.BC;
 using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
@@ -34,6 +35,7 @@ Log.Logger = new LoggerConfiguration()
 
 OodleHelper.Initialize();
 ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
+DetexHelper.Initialize("D:\\FModel\\.data\\Detex.dll");
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
@@ -65,6 +67,11 @@ const string dir = "D:\\CSGO\\steamapps\\common\\Stray\\Hk_project\\Content\\Pak
 const string mapping = "";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_Stray);
+#elif COE33
+const string dir = "D:\\Games\\Clair Obscur - Expedition 33\\Sandfall\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\5.4.4-61339+++streams+ProjectW-release-Sandfall.usmap";
+const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
+var version = new VersionContainer(EGame.GAME_UE5_4);
 #endif
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
@@ -182,6 +189,16 @@ switch (provider.ProjectName)
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Hk_project/Content/Map/_MainGame/01_InsideTheWall/ToDeadCity_TRANS/ToDeadCity_GRAPH.ToDeadCity_GRAPH")));
         break;
     }
+    case "Sandfall":
+    {
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/CleasTower/CleasTower_GroundFloorEntrance.CleasTower_GroundFloorEntrance")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/WorldMap/Level_WorldMap_Main_V2.Level_WorldMap_Main_V2")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/CleasTower/Level_Side_CleasTower.Level_Side_CleasTower")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/Goblu/Level_Goblu_Main_V5.Level_Goblu_Main_V5")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/WorldMap/Camps/Level_Camp_Main.Level_Camp_Main")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/WorldMap/GestralBeaches/Level_GestralBeach_Day.Level_GestralBeach_Day")));
+        break;
+    }
     case "FortniteGame":
     {
         // camera.CameraComponent.FarPlaneDistance = 1000f;
@@ -209,12 +226,12 @@ switch (provider.ProjectName)
 
         grid.Parent?.Children.Remove(grid);
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_Terrain.Hera_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/Chrisk/ReactiveQuests.ReactiveQuests")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/QA/TestMap_AccessEnemies.TestMap_AccessEnemies"))); // TODO: GPU crash
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Maps/Frontend.Frontend")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/DelMarGame/Content/Environments/Desert/Levels/Level_DM_NeonCity_SmallBuilding_A.Level_DM_NeonCity_SmallBuilding_A")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Figment/Figment_S06_Map/Content/Athena_Terrain_S06.Athena_Terrain_S06")));
         break;
