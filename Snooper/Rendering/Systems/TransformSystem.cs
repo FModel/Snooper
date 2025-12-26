@@ -9,16 +9,6 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
 {
     public override uint Order => 9;
 
-    protected override void OnLoad()
-    {
-        base.OnLoad();
-
-        foreach (var component in Components)
-        {
-            UpdateTransformComponentsRecursive(component);
-        }
-    }
-
     protected override void OnComponentUpdate(SpatialComponent component, float delta)
     {
         UpdateTransformComponentsRecursive(component);

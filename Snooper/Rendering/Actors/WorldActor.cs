@@ -1,10 +1,13 @@
-﻿using CUE4Parse.UE4.Assets.Exports;
+﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
+using CUE4Parse.UE4.Assets.Exports.WorldPartition.DataLayer;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Transforms;
+using ImGuiNET;
 
 namespace Snooper.Rendering.Actors;
 
@@ -22,6 +25,9 @@ public enum WorldActorType
 
 public class WorldActor : Actor
 {
+    private readonly Dictionary<string, string> _dataLayers = new();
+    private readonly HashSet<string> _visibleDataLayers = [];
+
     public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world)
     {
         Components.Add(new SpatialComponent(null, "WorldRoot"));
@@ -29,11 +35,8 @@ public class WorldActor : Actor
         var level = world.PersistentLevel.Load<ULevel>();
         if (level == null) return;
 
-        if (level.WorldSettings.TryLoad<AWorldSettings>(out var settings) &&
-            settings.WorldPartition.TryLoad<UWorldPartition>(out var partition))
-        {
-            Children.Add(new PartitionActor(partition));
-        }
+        ProcessDataLayers(level);
+        ProcessWorldPartition(level);
 
         var parents = new Dictionary<FPackageIndex, SpatialComponent>();
         var created = new List<LevelActor>();
@@ -54,7 +57,7 @@ public class WorldActor : Actor
         foreach (var actor in created)
         {
             var parent = actor.ProcessEnqueuedComponents(parents);
-            if (parent != null)
+            if (parent is { IsNull: false })
             {
                 if (parents.TryGetValue(parent, out var root))
                 {
@@ -82,8 +85,35 @@ public class WorldActor : Actor
                 if (i > 5) break; // TODO: optimize
             }
         }
+
+        GC.Collect();
     }
 
+    private void ProcessDataLayers(ULevel level)
+    {
+        if (!level.WorldDataLayers.TryLoad<AWorldDataLayers>(out var worldDataLayers)) return;
+
+        foreach (var instancePtr in worldDataLayers.DataLayerInstances)
+        {
+            if (!instancePtr.TryLoad<UDataLayerInstance>(out var instance)) continue;
+
+            switch (instance)
+            {
+                case UDataLayerInstanceWithAsset withAsset when withAsset.DataLayerAsset.TryLoad<UDataLayerAsset>(out var dataLayer):
+                    _dataLayers[withAsset.Name] = dataLayer.Name;
+                    break;
+            }
+        }
+    }
+
+    private void ProcessWorldPartition(ULevel level)
+    {
+        if (!level.WorldSettings.TryLoad<AWorldSettings>(out var worldSettings) ||
+            !worldSettings.WorldPartition.TryLoad<UWorldPartition>(out var worldPartition))
+            return;
+
+        Children.Add(new PartitionActor(worldPartition));
+    }
 
     private void Process(FPackageIndex? ptr)
     {
@@ -123,6 +153,44 @@ public class WorldActor : Actor
                 Children.Add(new WorldActor(world.Load<UWorld>()));
                 break;
             }
+        }
+    }
+
+    internal override void DrawInterface()
+    {
+        base.DrawInterface();
+
+        ImGui.SeparatorText("Data Layers");
+        if (_dataLayers.Count == 0)
+        {
+            ImGui.TextUnformatted("No data layers found");
+            return;
+        }
+
+        if (ImGui.BeginListBox("##DataLayers", new Vector2(ImGui.GetContentRegionAvail().X, 0)))
+        {
+            var partition = Children.OfType<PartitionActor>().FirstOrDefault();
+            if (partition != null)
+            {
+                foreach (var (instanceName, layerName) in _dataLayers)
+                {
+                    var isVisible = _visibleDataLayers.Contains(instanceName);
+                    if (ImGui.Checkbox(layerName, ref isVisible))
+                    {
+                        if (isVisible)
+                        {
+                            _visibleDataLayers.Add(instanceName);
+                        }
+                        else
+                        {
+                            _visibleDataLayers.Remove(instanceName);
+                        }
+
+                        partition.SetVisibilityByDataLayer(instanceName, isVisible);
+                    }
+                }
+            }
+            ImGui.EndListBox();
         }
     }
 }

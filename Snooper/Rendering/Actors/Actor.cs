@@ -154,13 +154,7 @@ public class Actor
         }
 
         actor._parent = this;
-
         actor.RootComponent?.Relation = RootComponent;
-
-        if (!IsVisible)
-        {
-            actor.IsVisible = false;
-        }
     }
 
     private void RemoveChildrenInternal(Actor actor)
@@ -171,7 +165,6 @@ public class Actor
         }
 
         actor._parent = null;
-
         actor.RootComponent?.Relation = null;
     }
 

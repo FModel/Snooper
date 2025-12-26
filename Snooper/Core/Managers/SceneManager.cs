@@ -73,7 +73,7 @@ public class SceneManager(GameWindow wnd) : ActorManager, IResizable
     {
         if (actor is PartitionActor partition)
         {
-            partition.UpdateCellVisibility(cameraPosition);
+            partition.SetVisibilityByDistance(cameraPosition);
         }
         else foreach (var child in actor.Children)
         {

@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Components.Transforms;
 using System.Numerics;
+using ImGuiNET;
 
 namespace Snooper.Rendering.Actors;
 
@@ -9,27 +10,20 @@ public class HierarchicalActor : Actor
 {
     public float LoadingRange { get; }
 
-    public HierarchicalActor(FRuntimePartitionStreamingData hlod, int index, bool load) : base(hlod.Name.ToString())
+    public HierarchicalActor(FRuntimePartitionStreamingData hlod) : base(hlod.Name.ToString())
     {
         Components.Add(new SpatialComponent(null, "HLODRoot"));
 
         LoadingRange = hlod.LoadingRange * Settings.GlobalScale;
 
-        var hue = index * 0.618033988749895f % 1f;
-        var h = hue * 6;
-        var x = 1 - MathF.Abs(h % 2 - 1);
-        var color = h switch
-        {
-            < 1 => new Vector3(1, x, 0),
-            < 2 => new Vector3(x, 1, 0),
-            < 3 => new Vector3(0, 1, x),
-            < 4 => new Vector3(0, x, 1),
-            < 5 => new Vector3(x, 0, 1),
-            _ => new Vector3(1, 0, x)
-        } * 0.5f;
+        var color = new Vector3(
+            (MathF.Sin(LoadingRange * 0.1f + 0) + 1) * 0.5f,
+            (MathF.Sin(LoadingRange * 0.1f + 2) + 1) * 0.5f,
+            (MathF.Sin(LoadingRange * 0.1f + 4) + 1) * 0.5f
+        );
 
-        ProcessStreamingCells(hlod.SpatiallyLoadedCells, color, load);
-        ProcessStreamingCells(hlod.NonSpatiallyLoadedCells, color, load);
+        ProcessStreamingCells(hlod.SpatiallyLoadedCells, color);
+        ProcessStreamingCells(hlod.NonSpatiallyLoadedCells, color, true);
     }
 
     public HierarchicalActor(FSpatialHashStreamingGrid grid) : base(grid.GridName.ToString())
@@ -49,29 +43,49 @@ public class HierarchicalActor : Actor
         }
     }
 
-    private void ProcessStreamingCells(FPackageIndex[] ptrs, Vector3? color = null, bool load = false)
+    private void ProcessStreamingCells(FPackageIndex[] ptrs, Vector3? color = null, bool isNonSpatiallyLoaded = false)
     {
         foreach (var ptr in ptrs)
         {
             if (!ptr.TryLoad<UWorldPartitionRuntimeCell>(out var cell))
                 continue;
 
-            Children.Add(new CellActor(cell, color, load));
+            Children.Add(new CellActor(cell, color, isNonSpatiallyLoaded));
         }
     }
 
-    public void UpdateCellVisibility(Vector3 position, float minDistance = 0f)
+    public void SetVisibilityByDistance(Vector3 position, float minDistance = 0f)
     {
-        if (!IsVisible) return;
-
-        foreach (var cell in Children.OfType<CellActor>())
+        foreach (var cell in Children.OfType<CellActor>().Where(x => x is { IsNonSpatiallyLoaded: false, DataLayers.Length: 0 }))
         {
-            var distance = Vector3.Distance(position, cell.Center);
+            var distance = Vector3.Distance(position, cell.RootComponent?.LocalTransform.Position ?? Vector3.Zero);
             cell.IsVisible = distance > minDistance && distance <= LoadingRange;
-            // if (cell.IsVisible && cell is { IsLoaded: false, IsLoading: false })
-            // {
-            //     cell.Load();
-            // }
         }
+    }
+
+    internal override void DrawInterface()
+    {
+        base.DrawInterface();
+
+        ImGui.SeparatorText("HLOD Cells");
+
+        var visible = Children.Where(x => x.IsVisible).ToArray();
+        var cells = visible.OfType<CellActor>().Where(x => x is { CanLoad: true, IsLoaded: false, IsLoading: false }).ToArray();
+
+        ImGui.Text($"Visible Cells: {visible.Length}/{Children.Count} (Loadable: {cells.Length})");
+
+        ImGui.BeginDisabled(cells.Length == 0);
+        var width = new Vector2(ImGui.GetContentRegionAvail().X, 0);
+        if (ImGui.Button($"Load {cells.Length} Cells", width))
+        {
+            foreach (var cell in cells) cell.Load();
+        }
+        ImGui.EndDisabled();
+        ImGui.BeginDisabled(Children.Count > 50);
+        if (ImGui.Button("Load All Cells", width))
+        {
+            foreach (var cell in Children.OfType<CellActor>()) cell.Load();
+        }
+        ImGui.EndDisabled();
     }
 }

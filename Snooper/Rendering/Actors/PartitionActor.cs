@@ -14,17 +14,14 @@ public class PartitionActor : Actor
         {
             case UWorldPartitionRuntimeHashSet set:
             {
-                var sortedData = set.RuntimeStreamingData.OrderBy(x => x.LoadingRange).ToArray();
-                for (var i = 0; i < sortedData.Length; i++)
+                foreach (var streamingData in set.RuntimeStreamingData.OrderBy(x => x.LoadingRange))
                 {
-                    Children.Add(new HierarchicalActor(sortedData[i], i, i > 0));
+                    Children.Add(new HierarchicalActor(streamingData));
                 }
                 break;
             }
             case UWorldPartitionRuntimeSpatialHash spatial:
             {
-                // TODO: does not seem to be correct when one StreamingGrids and multiple grid levels
-                // on COE33, one grid level is one hlod?
                 foreach (var grid in spatial.StreamingGrids)
                 {
                     Children.Add(new HierarchicalActor(grid));
@@ -34,14 +31,28 @@ public class PartitionActor : Actor
         }
     }
 
-    public void UpdateCellVisibility(Vector3 position)
+    public void SetVisibilityByDistance(Vector3 position)
     {
-        var hlods = Children.OfType<HierarchicalActor>().ToArray();
+        var hlods = Children.Where(x => x.IsVisible).OfType<HierarchicalActor>().ToArray();
         for (var i = 0; i < hlods.Length; i++)
         {
-            hlods[i].UpdateCellVisibility(position, i > 0 ? hlods[i - 1].LoadingRange : 0f);
+            hlods[i].SetVisibilityByDistance(position, i > 0 ? hlods[i - 1].LoadingRange : 0f);
         }
 
         // TODO: no holes + no overlaps between HLODs
+    }
+
+    public void SetVisibilityByDataLayer(string dataLayer, bool isVisible)
+    {
+        var cells = Children
+            .SelectMany(x => x.Children)
+            .OfType<CellActor>()
+            .Where(x => x.DataLayers.Contains(dataLayer))
+            .ToArray();
+
+        foreach (var cell in cells)
+        {
+            cell.IsVisible = isVisible || cell.IsNonSpatiallyLoaded;
+        }
     }
 }

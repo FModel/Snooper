@@ -72,7 +72,7 @@ public class LevelActor : Actor
         Pair root;
 
         var pair = root = CreateComponent(ptr);
-        if (pair is { ParentPtr: not null })
+        if (pair.ParentPtr is { IsNull: false })
         {
             if (!components.ContainsKey(pair.ParentPtr))
                 root = CreateComponentRecursive(components, pair.ParentPtr);

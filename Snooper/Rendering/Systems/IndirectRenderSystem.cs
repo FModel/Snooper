@@ -40,11 +40,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Allocate(_counts);
 
         TextureManager.Load();
-
-        foreach (var component in Components)
-        {
-            component.Generate(Resources, TextureManager);
-        }
         Resources.SetVertexLayout(VertexLayout);
     }
 

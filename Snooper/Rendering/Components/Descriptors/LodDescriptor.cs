@@ -55,7 +55,7 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         for (var i = 0; i < Sections.Length; i++)
         {
             var section = sections[i];
-            Sections[i] = new SectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex, section.MaterialName);
+            Sections[i] = new SectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex, section.CastShadow, section.MaterialName);
         }
 
         // capture vertices and indices for lazy factory creation

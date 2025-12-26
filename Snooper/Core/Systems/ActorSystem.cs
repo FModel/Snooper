@@ -143,6 +143,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     protected virtual void OnActorComponentAdded(TComponent component)
     {
         component.OnRequestUpdate += OnComponentRequestUpdate;
+        component.MarkDirty(DirtyFlags.All);
     }
 
     protected virtual void OnActorComponentRemoved(TComponent component)
