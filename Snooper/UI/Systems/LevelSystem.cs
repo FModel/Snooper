@@ -4,12 +4,12 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core.Containers;
+using Snooper.Core.Systems;
 using Snooper.Extensions;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.Rendering.Systems;
 
 namespace Snooper.UI.Systems;
 
@@ -258,6 +258,10 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                                 system.Profiler.PollResults();
                                 ImGui.TextDisabled("Primitives");
                                 ImGui.TextUnformatted($"{system.Profiler.PrimitivesGenerated:N0}");
+
+                                ImGui.NextColumn();
+                                ImGui.TextDisabled("Show Wireframe");
+                                ImGui.Checkbox($"##ShowWireframe{system.Order}", ref system.ShowWireframe);
                             }
                             ImGui.Columns(1);
 
@@ -478,7 +482,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
         if (actor is CellActor cell)
         {
-            actionButtons.Insert(0, ("download", cell.IsLoaded ? "download_off" : "download", "Load", () => cell.Load(), cell is { CanLoad: true, IsLoaded: false, IsLoading: false }));
+            actionButtons.Insert(0, ("download", cell.IsLoaded ? "download_off" : "download", "Load", () => cell.EnqueueLoad(), cell is { CanLoad: true, IsLoaded: false, IsLoading: false }));
         }
 
         switch (actor.RootComponent)

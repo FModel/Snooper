@@ -27,8 +27,8 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         _registeredFactories.Add(typeof(T), factory);
     }
 
-    public ThreadManager ThreadManager { get; private set; } = new(Environment.ProcessorCount - 2);
     protected ContextInfo Context { get; private set; }
+    public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()

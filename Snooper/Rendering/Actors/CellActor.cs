@@ -102,14 +102,14 @@ public class CellActor : Actor
         }
     }
 
-    public void Load()
+    public Action? GetLoadJob()
     {
         if (!CanLoad || IsLoaded || IsLoading || _worldAsset == null)
-            return;
+            return null;
 
-        IsLoading = true;
-        ActorManager?.ThreadManager.Enqueue(() =>
+        return () =>
         {
+            IsLoading = true;
             try
             {
                 AddWorld(_worldAsset.Value);
@@ -118,7 +118,17 @@ public class CellActor : Actor
             {
                 IsLoading = false;
             }
-        });
+        };
+    }
+
+    public void EnqueueLoad()
+    {
+        var action = GetLoadJob();
+        if (action == null)
+            return;
+
+        IsLoading = true;
+        ActorManager?.ThreadManager.Enqueue(action);
     }
 
     private void AddWorld(FSoftObjectPath world)

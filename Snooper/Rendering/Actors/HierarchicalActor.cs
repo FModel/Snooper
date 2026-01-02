@@ -69,22 +69,25 @@ public class HierarchicalActor : Actor
 
         ImGui.SeparatorText("HLOD Cells");
 
-        var visible = Children.Where(x => x.IsVisible).ToArray();
-        var cells = visible.OfType<CellActor>().Where(x => x is { CanLoad: true, IsLoaded: false, IsLoading: false }).ToArray();
+        var cells = Children.OfType<CellActor>().ToArray();
+        var visible = cells.Where(x => x.IsVisible).ToArray();
+        var loadable = visible.Where(x => x is { CanLoad: true, IsLoaded: false, IsLoading: false }).ToArray();
 
-        ImGui.Text($"Visible Cells: {visible.Length}/{Children.Count} (Loadable: {cells.Length})");
+        var availWidth = ImGui.GetContentRegionAvail().X;
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
+        var buttonSize = new Vector2((availWidth - spacing) / 2, 0);
 
-        ImGui.BeginDisabled(cells.Length == 0);
-        var width = new Vector2(ImGui.GetContentRegionAvail().X, 0);
-        if (ImGui.Button($"Load {cells.Length} Cells", width))
+        ImGui.BeginDisabled(loadable.Length == 0);
+        if (ImGui.Button($"Load {loadable.Length} Visible Cells", buttonSize))
         {
-            foreach (var cell in cells) cell.Load();
+            ActorManager?.ThreadManager.EnqueueBatch(loadable.Select(cell => cell.GetLoadJob()).OfType<Action>().ToList());
         }
         ImGui.EndDisabled();
-        ImGui.BeginDisabled(Children.Count > 50);
-        if (ImGui.Button("Load All Cells", width))
+        ImGui.SameLine();
+        ImGui.BeginDisabled(cells.Length > 50);
+        if (ImGui.Button($"Load All {cells.Length} Cells", buttonSize))
         {
-            foreach (var cell in Children.OfType<CellActor>()) cell.Load();
+            ActorManager?.ThreadManager.EnqueueBatch(cells.Select(cell => cell.GetLoadJob()).OfType<Action>().ToList());
         }
         ImGui.EndDisabled();
     }

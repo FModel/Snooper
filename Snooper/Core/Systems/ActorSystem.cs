@@ -26,6 +26,7 @@ public abstract class ActorSystem : IGameSystem
     public readonly SystemProfiler Profiler;
 
     public bool IsEnabled = true;
+    public bool ShowWireframe = false;
     public ActorManager? ActorManager { get; internal set; }
     public float Time { get; private set; }
 
@@ -63,7 +64,11 @@ public abstract class ActorSystem : IGameSystem
         Profiler.Time(ProfilerMetric.CpuRender, () =>
         {
             Profiler.BeginQuery(QueryTarget.TimeElapsed, QueryTarget.PrimitivesGenerated);
+
+            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
             OnRender(camera);
+            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
+
             Profiler.EndQuery();
         });
     }
@@ -142,13 +147,13 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 
     protected virtual void OnActorComponentAdded(TComponent component)
     {
-        component.OnRequestUpdate += OnComponentRequestUpdate;
+        component.OnRequestSystemUpdate += OnComponentRequestUpdate;
         component.MarkDirty(DirtyFlags.All);
     }
 
     protected virtual void OnActorComponentRemoved(TComponent component)
     {
-        component.OnRequestUpdate -= OnComponentRequestUpdate;
+        component.OnRequestSystemUpdate -= OnComponentRequestUpdate;
         DirtyComponents.Remove(component);
     }
 

@@ -1,7 +1,7 @@
 ﻿using Snooper.Core.Containers;
 using Snooper.Core.Managers;
 
-namespace Snooper.Rendering.Systems;
+namespace Snooper.Core.Systems;
 
 public interface ITexturedSystem : IMemoryDetailsProvider
 {

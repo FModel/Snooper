@@ -76,10 +76,11 @@ public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(Primit
     };
 }
 
-public class PrimitiveSystem<TComponent>
-    : PrimitiveSystem<TComponent, PerInstanceData, PerMaterialData>
+public class PrimitiveSystem<TComponent>(PrimitiveType type = PrimitiveType.Triangles)
+    : PrimitiveSystem<TComponent, PerInstanceData, PerMaterialData>(type)
     where TComponent : PrimitiveComponent<Vector3, PerInstanceData, PerMaterialData>
 {
     protected override bool IsCulled => false; // disable culling for grid, skybox, and default primitives
 }
-public class PrimitiveSystem() : PrimitiveSystem<PrimitiveComponent>;
+
+public class PrimitiveSystem : PrimitiveSystem<PrimitiveComponent>;

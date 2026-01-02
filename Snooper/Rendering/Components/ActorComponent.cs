@@ -22,7 +22,7 @@ public abstract partial class ActorComponent
     public bool IsOutlined => IsSelected || Actor is { IsOutlined: true };
     internal virtual string Icon => "component";
 
-    public event Action<ActorComponent>? OnRequestUpdate;
+    public event Action<ActorComponent>? OnRequestSystemUpdate;
 
     protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
     {
@@ -61,7 +61,7 @@ public abstract partial class ActorComponent
     internal void MarkDirty(DirtyFlags flags)
     {
         _dirtyFlags |= flags;
-        RequestUpdate();
+        OnRequestSystemUpdate?.Invoke(this);
     }
     internal void MarkClean(DirtyFlags flags)
     {
@@ -69,11 +69,6 @@ public abstract partial class ActorComponent
             _dirtyFlags = DirtyFlags.None;
         else
             _dirtyFlags &= ~flags;
-    }
-
-    protected void RequestUpdate()
-    {
-        OnRequestUpdate?.Invoke(this);
     }
 
     protected virtual void OnActorAttached(Actor actor)

@@ -21,28 +21,28 @@ public readonly struct ResourcesMetadata(GeometryHandle geometryHandle, BufferAl
             ImGui.TableSetupColumn("Length", ImGuiTableColumnFlags.WidthStretch, 0.15f);
             ImGui.TableSetupColumn("End", ImGuiTableColumnFlags.WidthStretch, 0.2f);
             ImGui.TableHeadersRow();
-            
+
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); ImGui.Text("Geometry Culling");
             ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.CullingAllocation.AllocationId.ToString());
             ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.CullingAllocation.StartIndex.ToString());
             ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.CullingAllocation.Length.ToString());
             ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.CullingAllocation.EndIndex.ToString());
-            
+
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); ImGui.Text("Instance");
             ImGui.TableNextColumn(); ImGui.Text(InstanceAllocation.AllocationId.ToString());
             ImGui.TableNextColumn(); ImGui.Text(InstanceAllocation.StartIndex.ToString());
             ImGui.TableNextColumn(); ImGui.Text(InstanceAllocation.Length.ToString());
             ImGui.TableNextColumn(); ImGui.Text(InstanceAllocation.EndIndex.ToString());
-            
+
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); ImGui.Text("Material");
             ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation.AllocationId.ToString());
             ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation.StartIndex.ToString());
             ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation.Length.ToString());
             ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation.EndIndex.ToString());
-            
+
             for (var i = 0; i < DrawAllocations.Length; i++)
             {
                 ImGui.TableNextRow();
@@ -53,7 +53,7 @@ public readonly struct ResourcesMetadata(GeometryHandle geometryHandle, BufferAl
                 ImGui.TableNextColumn(); ImGui.Text(draw.Length.ToString());
                 ImGui.TableNextColumn(); ImGui.Text(draw.EndIndex.ToString());
             }
-            
+
             ImGui.EndTable();
         }
     }

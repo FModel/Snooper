@@ -51,6 +51,7 @@ public static class TextureExtensions
             SizedInternalFormat.Rgba8 => PixelInternalFormat.Rgba8,
             SizedInternalFormat.Srgb8Alpha8 => PixelInternalFormat.Srgb8Alpha8,
             SizedInternalFormat.R8 => PixelInternalFormat.R8,
+            SizedInternalFormat.Rg8 => PixelInternalFormat.Rg8,
             SizedInternalFormat.Rgba32f => PixelInternalFormat.Rgba32f,
             SizedInternalFormat.Rgb16f => PixelInternalFormat.Rgb16f,
             SizedInternalFormat.Rgba16f => PixelInternalFormat.Rgba16f,

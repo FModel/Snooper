@@ -8,6 +8,7 @@ public class ThreadManager : IDisposable
 {
     private readonly Worker[] _workers;
     private long _totalJobsEnqueued;
+    private int _nextWorkerIndex;
 
     public int WorkerCount => _workers.Length;
     public long TotalJobsEnqueued => _totalJobsEnqueued;
@@ -19,7 +20,7 @@ public class ThreadManager : IDisposable
 
     public ThreadManager(int workerCount)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(workerCount, 0, nameof(workerCount));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(workerCount, 0);
 
         _workers = new Worker[workerCount];
         for (int i = 0; i < workerCount; i++)
@@ -30,17 +31,24 @@ public class ThreadManager : IDisposable
 
     public void Enqueue(Action job)
     {
-        var target = _workers[0];
-        for (int i = 1; i < _workers.Length; i++)
+        var workerIndex = Interlocked.Increment(ref _nextWorkerIndex) % _workers.Length;
+        _workers[workerIndex].Enqueue(job);
+        Interlocked.Increment(ref _totalJobsEnqueued);
+    }
+
+    public void EnqueueBatch(IList<Action> jobs)
+    {
+        var jobCount = jobs.Count;
+        if (jobCount == 0) return;
+
+        var startIndex = Interlocked.Add(ref _nextWorkerIndex, jobCount) - jobCount;
+        for (int i = 0; i < jobCount; i++)
         {
-            if (_workers[i].QueueLength < target.QueueLength)
-            {
-                target = _workers[i];
-            }
+            var workerIndex = (startIndex + i) % _workers.Length;
+            _workers[workerIndex].Enqueue(jobs[i]);
         }
 
-        target.Enqueue(job);
-        Interlocked.Increment(ref _totalJobsEnqueued);
+        Interlocked.Add(ref _totalJobsEnqueued, jobCount);
     }
 
     public void Dispose()
