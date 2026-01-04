@@ -87,9 +87,9 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
 
     public void Render(Action<ShaderProgram> callback)
     {
-        GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, Handle);
-        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fullQuad);
-        GL.BlitFramebuffer(0, 0, Width, Height, 0, 0, Width, Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+        _fullQuad.Bind();
+        GL.ClearColor(0, 0, 0, 1);
+        GL.Clear(ClearBufferMask.ColorBufferBit);
 
         _fullQuad.Render(() =>
         {

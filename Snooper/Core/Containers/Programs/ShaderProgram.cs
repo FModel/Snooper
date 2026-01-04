@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
-using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Programs;
 

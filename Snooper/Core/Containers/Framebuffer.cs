@@ -7,7 +7,7 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable, IMemoryDet
 {
     public abstract int Width { get; }
     public abstract int Height { get; }
-    
+
     public GetPName PName => GetPName.FramebufferBinding;
     public int PreviousHandle { get; private set; }
 
@@ -16,11 +16,12 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable, IMemoryDet
         GL.CreateFramebuffers(1, out uint handle);
         Handle = handle;
     }
-    
+
     public void Bind()
     {
         PreviousHandle = GL.GetInteger(PName);
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, Handle);
+        GL.Viewport(0, 0, Width, Height);
     }
 
     public void Unbind()

@@ -55,14 +55,13 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
             base.Bind(0);
 
             _blurShader.Use();
-            _blurShader.SetUniform("uScaleRatio", ScaleRatio);
             _blurShader.SetUniform("aoInput", 0);
         });
     }
 
     public override void Resize(int newWidth, int newHeight)
     {
-        base.Resize(newWidth, newHeight);
+        base.Resize(newWidth / ScaleRatio, newHeight / ScaleRatio);
         _blur.Resize(newWidth / ScaleRatio, newHeight / ScaleRatio);
 
         _frameCount = 0;

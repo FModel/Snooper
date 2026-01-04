@@ -173,13 +173,15 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         }
     }
 
-    private readonly Queue<TComponent> _componentsToLoad = [];
+    private readonly Queue<TComponent?> _componentsToLoad = [];
     private void DequeueComponents(int limit = 0)
     {
         var count = 0;
         while (_componentsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
             var component = _componentsToLoad.Dequeue();
+            if (component == null) continue;
+
             if (Components.Add(component))
             {
                 OnActorComponentAdded(component);

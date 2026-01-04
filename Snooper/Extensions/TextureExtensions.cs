@@ -64,6 +64,9 @@ public static class TextureExtensions
             SizedInternalFormat.R16 => PixelInternalFormat.R16,
             SizedInternalFormat.Rgb32f => PixelInternalFormat.Rgb32f,
             SizedInternalFormat.R32ui => PixelInternalFormat.R32ui,
+            SizedInternalFormat.DepthComponent16 => PixelInternalFormat.DepthComponent16,
+            SizedInternalFormat.DepthComponent24 => PixelInternalFormat.DepthComponent24,
+            SizedInternalFormat.DepthComponent32f => PixelInternalFormat.DepthComponent32f,
 
             _ => throw new NotImplementedException($"Unsupported sized internal format: {format}")
         };

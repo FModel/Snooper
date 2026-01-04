@@ -65,20 +65,15 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         _isVisible = component.GetOrDefault("bVisible", _isVisible);
     }
 
-    public void Generate(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
-    {
-        Metadata = resources.Add(this);
-
-        // register textures for all materials either now or later, when their data container is set
-        foreach (var material in Materials)
-            material.OnMaterialDataContainerSet += textureManager.Add;
-    }
-
     public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
     {
         if (Metadata is null)
         {
-            Generate(resources, textureManager);
+            Metadata = resources.Add(this);
+
+            // register textures for all materials either now or later, when their data container is set
+            foreach (var material in Materials)
+                material.OnMaterialDataContainerSet += textureManager.Add;
         }
         else
         {
