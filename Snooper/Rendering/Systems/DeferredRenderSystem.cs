@@ -1,22 +1,45 @@
-﻿using Snooper.Core.Systems;
+﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers.Programs;
+using Snooper.Core.Systems;
+using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class DeferredRenderSystem : RenderSystem
+public class DeferredRenderSystem : RenderSystem, IShadowSupportedSystem
 {
     public override uint Order => 23;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
-    
+
+    private readonly ShaderProgram _shadowShader = new EmbeddedShaderProgram("default.vert", "empty.frag");
+
     protected override void OnLoad()
     {
         Shader.Fragment = "geometry.frag";
-        
+
+        _shadowShader.Generate();
+        _shadowShader.Link();
+
         base.OnLoad();
     }
 
     protected override bool CanEnqueueActorComponent(MeshComponent component)
     {
         return component is { IsOpaque: true, IsVisible: true };
+    }
+
+    public void RenderShadows(CameraComponent light)
+    {
+        PreRender(light, _shadowShader);
+
+        GL.Enable(EnableCap.CullFace);
+        GL.CullFace(TriangleFace.Front);
+
+        OnRender(light);
+
+        GL.CullFace(TriangleFace.Back);
+        GL.Disable(EnableCap.CullFace);
+
+        PostRender(light, _shadowShader);
     }
 }

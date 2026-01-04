@@ -14,11 +14,11 @@ public sealed class CameraComponent : SpatialComponent
 {
     internal int PairIndex = -1;
     internal bool IsActive = false;
-    
+
     public Matrix4x4 ViewMatrix = Matrix4x4.Identity;
     public Matrix4x4 ProjectionMatrix = Matrix4x4.Identity;
     public Matrix4x4 ViewProjectionMatrix = Matrix4x4.Identity;
-    
+
     public Vector3 Forward => Vector3.Transform(Vector3.UnitZ, LocalTransform.Rotation);
     public Vector3 Up => Vector3.Transform(Vector3.UnitY, LocalTransform.Rotation);
     public Vector3 Right => Vector3.Transform(-Vector3.UnitX, LocalTransform.Rotation);
@@ -33,20 +33,24 @@ public sealed class CameraComponent : SpatialComponent
     public float NearPlaneDistance = 0.1f;
     public Vector2 ViewportSize = new(16, 9);
 
+    // Orthographic camera properties
+    public bool bOrthographic = false;
+    public float OrthographicSize = 10.0f;
+
     public float FieldOfViewRadians => MathF.PI / 180.0f * FieldOfView;
     public float AspectRatio => ViewportSize.X / ViewportSize.Y;
-    
+
     private Vector3 _velocity = Vector3.Zero;
     private Vector3? _teleportTarget = null;
     private Vector3 _teleportStart = Vector3.Zero;
     private float _teleportProgress = 0f;
     private const float TeleportDuration = 1f; // 1 second
-    
+
     public CameraComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
-        
+
     }
-    
+
     public CameraComponent(UCameraComponent component) : base(component)
     {
         FieldOfView = component.GetOrDefault(nameof(FieldOfView), FieldOfView);
@@ -55,17 +59,28 @@ public sealed class CameraComponent : SpatialComponent
     public void Update()
     {
         Matrix4x4.Decompose(WorldMatrix, out _, out var rotation, out var position);
-        
+
         ViewMatrix = Matrix4x4.CreateLookAt(
             position,
             position + Vector3.Transform(Vector3.UnitZ, rotation),
             Vector3.Transform(Vector3.UnitY, rotation));
 
-        ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(
-            FieldOfViewRadians,
-            AspectRatio,
-            NearPlaneDistance,
-            FarPlaneDistance);
+        if (bOrthographic)
+        {
+            ProjectionMatrix = Matrix4x4.CreateOrthographic(
+                OrthographicSize * AspectRatio,
+                OrthographicSize,
+                NearPlaneDistance,
+                FarPlaneDistance);
+        }
+        else
+        {
+            ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(
+                FieldOfViewRadians,
+                AspectRatio,
+                NearPlaneDistance,
+                FarPlaneDistance);
+        }
 
         ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
     }
@@ -76,7 +91,7 @@ public sealed class CameraComponent : SpatialComponent
         if (_teleportTarget.HasValue)
         {
             _teleportProgress += time / TeleportDuration;
-            
+
             if (_teleportProgress >= 1f)
             {
                 LocalTransform.Position = _teleportTarget.Value;
@@ -127,13 +142,13 @@ public sealed class CameraComponent : SpatialComponent
         LocalTransform.Rotation = Quaternion.Normalize(yawRotation * LocalTransform.Rotation * pitchRotation);
         MarkDirty(DirtyFlags.Transform);
     }
-    
+
     internal override string Icon => "camera";
 
     public override void DrawControls()
     {
         base.DrawControls();
-        
+
         EditorUI.CollapsingTable("Camera", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Checkbox("FXAA", ref bFXAA);
@@ -147,6 +162,11 @@ public sealed class CameraComponent : SpatialComponent
             EditorUI.DragFloat("FOV", ref FieldOfView, 0.1f, 1.0f, 89.0f);
             EditorUI.DragFloat("Near Plane", ref NearPlaneDistance, 0.001f, 0.001f, FarPlaneDistance - 1);
             EditorUI.DragFloat("Far Plane", ref FarPlaneDistance, 0.1f , NearPlaneDistance + 1, 1000.0f);
+            EditorUI.Checkbox("Orthographic", ref bOrthographic);
+            ImGui.BeginDisabled(!bOrthographic);
+            EditorUI.Property("Size");
+            ImGui.SliderFloat("##Size", ref OrthographicSize, 0.1f, 100.0f);
+            ImGui.EndDisabled();
         });
     }
 

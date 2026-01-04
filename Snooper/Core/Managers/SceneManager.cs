@@ -85,6 +85,7 @@ public class SceneManager(GameWindow wnd) : ActorManager, IResizable
     {
         foreach (var pair in Pairs)
         {
+            pair.ShadowRendering(RenderShadows);
             pair.DeferredRendering(Render);
             pair.ForwardRendering(Render);
             pair.PickingRendering();

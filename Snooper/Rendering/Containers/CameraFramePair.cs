@@ -22,10 +22,24 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
     private readonly CombinedFramebuffer _combined = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly FxaaFramebuffer _fxaa = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly PickingFramebuffer _picking = new(DefaultWidthHeight, DefaultWidthHeight);
+    private readonly ShadowFramebuffer _shadow = new(1024, 1024);
+
+    private bool _updateShadows = true;
+    private Vector3 _lightPos = new(0, 10, 0);
+    private Matrix4x4 _shadowViewMatrix = Matrix4x4.CreateLookAt(new Vector3(0, 10, 0), Vector3.Zero, Vector3.UnitZ);
+    private Matrix4x4 _shadowProjectionMatrix = Matrix4x4.CreateOrthographic(10, 10, 1.0f, 200.0f);
+    private Matrix4x4 _lastOrthoViewProjectionMatrix = Matrix4x4.Identity;
 
     public void Generate(int pairIndex, int width, int height)
     {
         Camera.PairIndex = pairIndex;
+        Camera.OnRequestSystemUpdate += component =>
+        {
+            if (component is CameraComponent { bOrthographic: true })
+            {
+                _updateShadows = true;
+            }
+        };
 
         _geometry.Generate();
         _ssao.Generate();
@@ -33,6 +47,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _combined.Generate();
         _fxaa.Generate();
         _picking.Generate();
+        _shadow.Generate();
 
         Resize(width, height);
     }
@@ -83,10 +98,19 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
             ]);
 
             shader.SetUniform("useSsao", Camera.bAmbientOcclusion);
-            if (!Camera.bAmbientOcclusion) return;
+            if (Camera.bAmbientOcclusion)
+            {
+                _ssao.Bind(4);
+                shader.SetUniform("ssao", 4);
+            }
 
-            _ssao.Bind(4);
-            shader.SetUniform("ssao", 4);
+            // Pass shadow map and matrices
+            Matrix4x4.Invert(Camera.ViewMatrix, out var inverseViewMatrix);
+            shader.SetUniform("uInverseViewMatrix", inverseViewMatrix);
+            shader.SetUniform("uLightViewProjectionMatrix", _lastOrthoViewProjectionMatrix);
+            // shader.SetUniform("uLightPos", _lightPos);
+            _shadow.Bind(5);
+            shader.SetUniform("shadowMap", 5);
         });
     }
 
@@ -109,6 +133,34 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _geometry.BindPicking(0);
         _forward.BindPicking(1);
         _picking.Render();
+    }
+
+    public void ShadowRendering(Action<CameraComponent> render)
+    {
+        if (!_updateShadows) return;
+
+        _shadow.Bind();
+        GL.Clear(ClearBufferMask.DepthBufferBit);
+
+        if (Camera.bOrthographic)
+        {
+            _shadowViewMatrix = Camera.ViewMatrix;
+            _shadowProjectionMatrix = Camera.ProjectionMatrix;
+            _lightPos = Camera.LocalTransform.Position;
+        }
+
+        // Create a temporary camera component for shadow rendering
+        var shadowCamera = new CameraComponent
+        {
+            ViewMatrix = _shadowViewMatrix,
+            ProjectionMatrix = _shadowProjectionMatrix,
+            ViewProjectionMatrix = _shadowViewMatrix * _shadowProjectionMatrix
+        };
+        _lastOrthoViewProjectionMatrix = shadowCamera.ViewProjectionMatrix;
+
+        render(shadowCamera);
+
+        _updateShadows = false;
     }
 
     public void CombineRendering()
@@ -160,6 +212,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         .._geometry.GetTextures(),
         .._ssao.GetTextures(),
         .._forward.GetTextures(),
+        .._shadow.GetTextures(),
         ..Camera.bFXAA ? _fxaa.GetTextures() : _combined.GetTextures(),
     ];
 
@@ -174,6 +227,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
             total += _combined.Allocated;
             total += _fxaa.Allocated;
             total += _picking.Allocated;
+            total += _shadow.Allocated;
             return total;
         }
     }
@@ -189,6 +243,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
             total += _combined.Used;
             total += _fxaa.Used;
             total += _picking.Used;
+            total += _shadow.Used;
             return total;
         }
     }
@@ -201,5 +256,6 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         yield return new MemoryDetail("Combined", _combined);
         yield return new MemoryDetail("FXAA", _fxaa);
         yield return new MemoryDetail("Picking", _picking);
+        yield return new MemoryDetail("Shadow", _shadow);
     }
 }

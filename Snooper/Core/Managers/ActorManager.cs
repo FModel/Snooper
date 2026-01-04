@@ -7,6 +7,7 @@ using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.Core.Managers;
 
@@ -54,6 +55,14 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
         {
             system.Render(camera);
+        }
+    }
+
+    protected void RenderShadows(CameraComponent camera)
+    {
+        foreach (var system in Systems.Values.OfType<IShadowSupportedSystem>())
+        {
+            system.RenderShadows(camera);
         }
     }
 
