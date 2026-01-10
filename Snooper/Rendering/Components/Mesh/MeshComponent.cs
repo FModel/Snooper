@@ -1,12 +1,11 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion.Meshes.PSK;
+using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Component;
-using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
-using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
@@ -53,6 +52,7 @@ public unsafe struct PerMaterialMeshData : IPerMaterialData
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>
 {
     private readonly ResolvedObject?[] _materials;
+    private readonly List<UBuildingTextureData?> _textureData = [];
 
     public sealed override MaterialSection[] Materials { get; }
 
@@ -86,6 +86,15 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         // TODO: preload materials for basic properties (blend mode, etc.)
     }
 
+    public void RegisterTextureData(UBuildingTextureData textureData, int layerIndex)
+    {
+        while (_textureData.Count <= layerIndex)
+        {
+            _textureData.Add(null);
+        }
+        _textureData[layerIndex] = textureData;
+    }
+
     protected override void OnActorAttachedToScene(IGameSystem scene)
     {
         base.OnActorAttachedToScene(scene);
@@ -93,14 +102,23 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         for (var i = 0; i < _materials.Length; i++)
         {
             var index = i;
+            var textureData = _textureData.ToArray();
             Materials[index] = new MaterialSection();
 
             if (Actor?.ActorManager == null)
                 throw new InvalidOperationException("Actor or ActorManager is null when loading materials???");
 
             Actor?.ActorManager?.ThreadManager.Enqueue(() =>
-                Materials[index].MaterialDataContainer = MaterialCache.GetOrCreate(_materials[index], Descriptor.Lods[0].LayerCount)
-            );
+            {
+                if (index == 0 && textureData.Length > 0)
+                {
+                    Materials[index].MaterialDataContainer = MaterialCache.CreateFromTextureData(textureData, _materials[index], Descriptor.Lods[0].LayerCount);
+                }
+                else
+                {
+                    Materials[index].MaterialDataContainer = MaterialCache.GetOrCreate(_materials[index], Descriptor.Lods[0].LayerCount);
+                }
+            });
         }
     }
 

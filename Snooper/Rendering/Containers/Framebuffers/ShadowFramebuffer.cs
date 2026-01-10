@@ -9,7 +9,7 @@ public class ShadowFramebuffer(int originalWidth, int originalHeight) : Framebuf
     public override int Width => _depth.Width;
     public override int Height => _depth.Height;
 
-    private readonly ResizableTexture2D _depth = new(originalWidth, originalHeight, SizedInternalFormat.DepthComponent24, PixelFormat.DepthComponent, PixelType.Float);
+    private readonly ResizableTexture2D _depth = new(originalWidth, originalHeight, SizedInternalFormat.DepthComponent32f, PixelFormat.DepthComponent, PixelType.Float);
 
     public override void Generate()
     {

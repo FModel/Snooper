@@ -115,13 +115,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     {
         if (component.Metadata is not { } metadata) return;
 
-        if (metadata.GeometryHandle.IsDirty)
+        if (component.IsDirty(DirtyFlags.ManualLodSwap))
         {
-            _geometryUpdates.Add(() =>
-            {
-                _geometry.UpdateOverrideLod(metadata.GeometryHandle);
-                metadata.GeometryHandle.MarkClean();
-            });
+            _geometryUpdates.Add(() => _geometry.UpdateOverrideLod(metadata.GeometryHandle));
         }
 
         if (component.IsDirty(DirtyFlags.InstanceData))

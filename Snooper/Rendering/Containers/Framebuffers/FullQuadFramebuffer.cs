@@ -12,8 +12,8 @@ public class FullQuadFramebuffer(
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte) : Framebuffer
 {
-    public override int Width => _color.Width;
-    public override int Height => _color.Height;
+    public sealed override int Width => _color.Width;
+    public sealed override int Height => _color.Height;
 
     private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, internalFormat, format, type);
     private readonly VertexArray _vao = new();

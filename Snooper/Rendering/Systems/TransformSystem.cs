@@ -9,8 +9,14 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
 {
     public override uint Order => 9;
 
+    /// <summary>
+    /// useful to update shadows
+    /// </summary>
+    internal static event Action<SpatialComponent>? OnTransformComponentUpdated;
+
     protected override void OnComponentUpdate(SpatialComponent component, float delta)
     {
+        OnTransformComponentUpdated?.Invoke(component);
         UpdateTransformComponentsRecursive(component);
     }
 

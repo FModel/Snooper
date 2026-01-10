@@ -26,6 +26,7 @@ public sealed class CameraComponent : SpatialComponent
     public CameraType Mode;
     public bool bFXAA = true;
     public bool bAmbientOcclusion = true;
+    public bool bShadows = true;
     public float SsaoRadius = 1.5f;
     public float MovementSpeed = 10f;
     public float FieldOfView = 89.0f;
@@ -152,6 +153,7 @@ public sealed class CameraComponent : SpatialComponent
         EditorUI.CollapsingTable("Camera", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Checkbox("FXAA", ref bFXAA);
+            EditorUI.Checkbox("Shadows", ref bShadows);
             EditorUI.Checkbox("Ambient Occlusion", ref bAmbientOcclusion);
             ImGui.BeginDisabled(!bAmbientOcclusion);
             EditorUI.Property("Radius");

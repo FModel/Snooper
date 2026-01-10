@@ -166,6 +166,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                         if (Metadata != null && IsVisible && maxLod > 0)
                         {
                             Metadata.Value.GeometryHandle.OverrideLod = value;
+                            MarkDirty(DirtyFlags.ManualLodSwap);
                         }
                     }
 

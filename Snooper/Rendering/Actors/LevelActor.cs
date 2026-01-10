@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Assets.Exports;
+﻿using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
@@ -20,6 +21,8 @@ namespace Snooper.Rendering.Actors;
 
 public class LevelActor : Actor
 {
+    private readonly FPackageIndex?[] _textureData;
+
     public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components, WorldActorType type) : base(actor)
     {
         var compoments = type.Includes(WorldActorType.Components);
@@ -31,6 +34,8 @@ public class LevelActor : Actor
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+
+            actor.TryGetAllValues(out _textureData, "TextureData");
         }
 
         if (landscape)
@@ -120,6 +125,18 @@ public class LevelActor : Actor
                     UTextRenderComponent textComponent => new TextRenderComponent(textComponent),
                     _ => new SpatialComponent(sceneComponent)
                 };
+
+                if (component is StaticMeshComponent staticMeshComponent)
+                {
+                    for (var i = 0; i < _textureData.Length; i++)
+                    {
+                        var dataPtr = _textureData[i];
+                        if (dataPtr == null || dataPtr.IsNull || !dataPtr.TryLoad<UBuildingTextureData>(out var textureData))
+                            continue;
+
+                        staticMeshComponent.RegisterTextureData(textureData, i);
+                    }
+                }
                 break;
             }
             case UActorComponent actorComponent:

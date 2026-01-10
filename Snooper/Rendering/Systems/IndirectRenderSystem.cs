@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Objects.Core.Misc;
+﻿using System.Collections.Concurrent;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Resources;
@@ -64,7 +65,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     }
 
     private AllocationCounts _counts;
-    private readonly HashSet<FGuid> _guids = [];
+    private readonly ConcurrentDictionary<FGuid, byte> _guids = [];
 
     protected override void OnActorComponentEnqueued(TComponent component)
     {
@@ -74,7 +75,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         _counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
         _counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
         _counts.Materials += (uint)component.Materials.Length;
-        if (_guids.Add(component.Descriptor.Guid))
+        if (_guids.TryAdd(component.Descriptor.Guid, 0))
         {
             _counts.UniqueComponents++;
             foreach (var lod in component.Descriptor.Lods)
@@ -100,7 +101,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         _counts.Instances -= component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
         _counts.Draws -= (uint)component.Descriptor.Lods[0].Sections.Length;
         _counts.Materials -= (uint)component.Materials.Length;
-        if (_guids.Remove(component.Descriptor.Guid))
+        if (_guids.Remove(component.Descriptor.Guid, out _))
         {
             _counts.UniqueComponents--;
             foreach (var lod in component.Descriptor.Lods)
