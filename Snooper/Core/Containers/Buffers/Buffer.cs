@@ -117,6 +117,12 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         }
     }
 
+    public void Reallocate(int size)
+    {
+        _bInitialized = false;
+        Allocate(size);
+    }
+
     public void Allocate(uint size) => Allocate((int)size);
     public void Allocate(int size)
     {

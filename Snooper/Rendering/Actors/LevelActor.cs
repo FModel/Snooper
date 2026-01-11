@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+using CUE4Parse.UE4.Assets.Exports.Component.Lights;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
@@ -13,6 +14,7 @@ using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Audio;
+using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
@@ -120,6 +122,15 @@ public class LevelActor : Actor
                         USphereComponent sphereComponent => new SphereComponent(sphereComponent),
                         UCapsuleComponent capsuleComponent => new CapsuleComponent(capsuleComponent),
                         _ => new SpatialComponent(shape)
+                    },
+                    ULightComponentBase light => light switch
+                    {
+                        USpotLightComponent spotLightComponent => new SpotLightComponent(spotLightComponent),
+                        UPointLightComponent pointLightComponent => new PointLightComponent(pointLightComponent),
+                        URectLightComponent rectLightComponent => new RectLightComponent(rectLightComponent),
+                        UDirectionalLightComponent directionalLightComponent => new DirectionalLightComponent(directionalLightComponent),
+                        USkyLightComponent skyLightComponent => new SkyLightComponent(skyLightComponent),
+                        _ => new LightComponent(light)
                     },
                     UAudioComponent audioComponent => new AudioComponent(audioComponent),
                     UTextRenderComponent textComponent => new TextRenderComponent(textComponent),

@@ -1,9 +1,11 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Containers.Framebuffers;
 using Snooper.Rendering.Systems;
 
@@ -24,6 +26,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
     private readonly FxaaFramebuffer _fxaa = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly PickingFramebuffer _picking = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly ShadowFramebuffer _shadow = new(2048, 2048);
+    private readonly LightClusterManager _lightClusterManager = new();
 
     private bool _updateShadows = true;
     private Matrix4x4 _shadowViewMatrix = Matrix4x4.CreateLookAt(new Vector3(10, 10, -10), Vector3.Zero, Vector3.UnitZ);
@@ -55,11 +58,18 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _fxaa.Generate();
         _picking.Generate();
         _shadow.Generate();
+        _lightClusterManager.Generate();
 
         Resize(width, height);
     }
 
-    public void DeferredRendering(Action<CameraComponent, ActorSystemType> render)
+    public void BuildClusters(ShaderStorageBuffer<LightData> ssbo)
+    {
+        _lightClusterManager.BuildClusters(Camera);
+        _lightClusterManager.CullLights(Camera, ssbo);
+    }
+
+    public void DeferredRendering(Action<CameraComponent, ActorSystemType> render, ShaderStorageBuffer<LightData>? ssbo, DirectionalLightComponent? directionalLightComponent = null)
     {
         _geometry.Bind();
         GL.ClearColor(0, 0, 0, 0);
@@ -84,20 +94,27 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
 
         _geometry.Render(shader =>
         {
-            // Calculate sun direction from shadow view matrix to match shadow direction
-            // Extract the forward vector (third column) - this is the direction FROM the light
-            Vector3 sunDirection = Vector3.Normalize(new Vector3(
-                _shadowViewMatrix.M13,
-                _shadowViewMatrix.M23,
-                _shadowViewMatrix.M33
-            ));
-
-            shader.SetUniform("uSunDirection", sunDirection);
-            shader.SetUniform("uSunColor", new Vector3(1.0f, 0.98f, 0.95f));
-            shader.SetUniform("uSunIntensity", 3.5f);
-
             Matrix4x4.Invert(Camera.ViewMatrix, out var inverseViewMatrix);
             shader.SetUniform("uInverseViewMatrix", inverseViewMatrix);
+
+            if (directionalLightComponent is { Actor.IsVisible: true })
+            {
+                Matrix4x4.Decompose(directionalLightComponent.WorldMatrix, out _, out var rotation, out _);
+
+                shader.SetUniform("useSunLight", true);
+                shader.SetUniform("uSunDirection", Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation)));
+                shader.SetUniform("uSunColor", directionalLightComponent.Color);
+                shader.SetUniform("uSunIntensity", directionalLightComponent.Intensity);
+
+                shader.SetUniform("useShadows", Camera.bShadows);
+                if (Camera.bShadows)
+                {
+                    shader.SetUniform("uLightViewProjectionMatrix", _lastOrthoViewProjectionMatrix);
+                    _shadow.Bind(5);
+                    shader.SetUniform("shadowMap", 5);
+                }
+            }
+            else shader.SetUniform("useSunLight", false);
 
             shader.SetUniform("useSsao", Camera.bAmbientOcclusion);
             if (Camera.bAmbientOcclusion)
@@ -106,12 +123,16 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
                 shader.SetUniform("ssao", 4);
             }
 
-            shader.SetUniform("useShadows", Camera.bShadows);
-            if (Camera.bShadows)
+            // Bind clustered lighting data
+            if (ssbo != null)
             {
-                shader.SetUniform("uLightViewProjectionMatrix", _lastOrthoViewProjectionMatrix);
-                _shadow.Bind(5);
-                shader.SetUniform("shadowMap", 5);
+                _lightClusterManager.BindForRendering(ssbo);
+
+                shader.SetUniform("uGridDimX", _lightClusterManager.GetGridDimX());
+                shader.SetUniform("uGridDimY", _lightClusterManager.GetGridDimY());
+                shader.SetUniform("uGridDimZ", _lightClusterManager.GetGridDimZ());
+                shader.SetUniform("uZNear", Camera.NearPlaneDistance);
+                shader.SetUniform("uZFar", Camera.FarPlaneDistance);
             }
         });
     }
@@ -137,18 +158,22 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _picking.Render();
     }
 
-    public void ShadowRendering(Action<CameraComponent> render)
+    public void ShadowRendering(Action<CameraComponent> render, DirectionalLightComponent? directionalLightComponent = null)
     {
-        if (!Camera.bShadows || !_updateShadows) return;
+        if (!Camera.bShadows || !_updateShadows || directionalLightComponent is not { Actor.IsVisible: true }) return;
 
         _shadow.Bind();
         GL.Clear(ClearBufferMask.DepthBufferBit);
 
-        if (Camera.bOrthographic)
-        {
-            _shadowViewMatrix = Camera.ViewMatrix;
-            _shadowProjectionMatrix = Camera.ProjectionMatrix;
-        }
+        // Create light view matrix from directional light
+        Matrix4x4.Decompose(directionalLightComponent.WorldMatrix, out _, out var rotation, out _);
+        var lightDirection = Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation));
+        var lightPosition = lightDirection * 50.0f; // Position the light far away in the direction opposite to its direction
+        _shadowViewMatrix = Matrix4x4.CreateLookAt(lightPosition, Vector3.Zero, Vector3.UnitZ);
+
+        // Create orthographic projection matrix
+        float orthoSize = 25.0f; // TODO: keep track of the global scene bounds to adjust this size
+        _shadowProjectionMatrix = Matrix4x4.CreateOrthographic(orthoSize, orthoSize, 1.0f, 200.0f);
 
         // Create a temporary camera component for shadow rendering
         var shadowCamera = new CameraComponent
@@ -206,6 +231,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _combined.Resize(newWidth, newHeight);
         _fxaa.Resize(newWidth, newHeight);
         _picking.Resize(newWidth, newHeight);
+        _lightClusterManager.Resize(newWidth, newHeight);
     }
 
     public Texture[] GetTextures() =>

@@ -32,6 +32,7 @@ public abstract class ActorSystem : IGameSystem
 
     public abstract ActorSystemType SystemType { get; }
     public abstract uint Order { get; }
+    public abstract int Capacity { get; }
     public abstract int ComponentsCount { get; }
     public abstract int EnqueuedComponentsCount { get; }
 
@@ -98,6 +99,7 @@ public abstract class ActorSystem : IGameSystem
 public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)) where TComponent : ActorComponent
 {
     public override ActorSystemType SystemType => ActorSystemType.Forward;
+    public override int Capacity => -1; // unlimited
     public override int ComponentsCount => Components.Count;
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
 
@@ -137,7 +139,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 
     protected virtual bool CanEnqueueActorComponent(TComponent component)
     {
-        return true;
+        return Capacity < 0 || Capacity > Components.Count; // TODO: some systems override this without calling base
     }
 
     protected virtual void OnActorComponentEnqueued(TComponent component)

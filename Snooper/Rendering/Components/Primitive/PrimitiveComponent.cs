@@ -81,7 +81,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         }
     }
 
-    private TInstanceData[]? _cachedInstanceData { get; set; }
+    private TInstanceData[]? _cachedInstanceData;
     public TInstanceData[] GetPerInstanceData()
     {
         var matrices = GetInstanceMatrices();

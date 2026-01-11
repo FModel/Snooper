@@ -6,6 +6,7 @@ using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Containers;
 using System.Numerics;
 using Snooper.Core.Systems;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.Core.Managers;
 
@@ -83,10 +84,19 @@ public class SceneManager(GameWindow wnd) : ActorManager, IResizable
 
     public virtual void Render()
     {
+        var lightSystem = Systems.Values.OfType<LightSystem>().FirstOrDefault();
+        var lightDataBuffer = lightSystem?.GetDataBuffer();
+        var directionalLight = lightSystem?.GetDirectionalLight();
+
         foreach (var pair in Pairs)
         {
-            pair.ShadowRendering(RenderShadows);
-            pair.DeferredRendering(Render);
+            if (lightDataBuffer != null)
+            {
+                pair.BuildClusters(lightDataBuffer);
+            }
+
+            pair.ShadowRendering(RenderShadows, directionalLight);
+            pair.DeferredRendering(Render, lightDataBuffer, directionalLight);
             pair.ForwardRendering(Render);
             pair.PickingRendering();
 

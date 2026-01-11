@@ -19,7 +19,10 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
     private readonly PickingTexture _picking = new(originalWidth, originalHeight);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
-    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/light.frag");
+    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/light_clustered.frag")
+    {
+        // Defines = ["DEBUG_CLUSTER_GRID_OVERLAY"]
+    };
 
     public override void Generate()
     {
