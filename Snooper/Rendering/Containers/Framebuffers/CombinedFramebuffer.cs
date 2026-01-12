@@ -5,7 +5,7 @@ namespace Snooper.Rendering.Containers.Framebuffers;
 
 public class CombinedFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight)
 {
-    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine");
+    private readonly EmbeddedShader _shader = new("Framebuffers/combine");
 
     public override void Generate()
     {

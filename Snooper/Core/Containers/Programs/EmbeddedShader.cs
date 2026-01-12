@@ -3,27 +3,27 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Programs;
 
-public class EmbeddedShaderProgram(string vertex, string fragment) : ShaderProgram(vertex, fragment)
+public class EmbeddedShader(string vertex, string fragment) : ShaderProgram(vertex, fragment)
 {
     private readonly Assembly _assembly = Assembly.GetExecutingAssembly();
-    
+
     public string[]? Defines { get; init; }
-    
-    public EmbeddedShaderProgram(string file) : this($"{file}.vert", $"{file}.frag")
+
+    public EmbeddedShader(string file) : this($"{file}.vert", $"{file}.frag")
     {
-        
+
     }
 
     protected override uint CompileShader(ShaderType type, string file)
     {
         var content = GetFileContent(file);
         ResolveIncludes(ref content);
-        
+
         if (Defines is { Length: > 0 })
         {
             content = string.Join("\n", Defines.Select(d => $"#define {d}")) + "\n" + content;
         }
-        
+
         return base.CompileShader(type, "#version 460 core\n\n" + content);
     }
 
@@ -33,15 +33,15 @@ public class EmbeddedShaderProgram(string vertex, string fragment) : ShaderProgr
         using var stream = _assembly.GetManifestResourceStream($"{assemblyName}.Shaders.{file.Replace('\\', '.').Replace('/', '.')}");
         if (stream == null)
             throw new FileNotFoundException($"Embedded shader file '{file}' not found in assembly '{assemblyName}'.");
-        
+
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
-    
+
     private void ResolveIncludes(ref string content)
     {
         const string include = "#include";
-        
+
         var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         foreach (var line in lines)
         {

@@ -118,6 +118,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (component.IsDirty(DirtyFlags.ManualLodSwap))
         {
             _geometryUpdates.Add(() => _geometry.UpdateOverrideLod(metadata.GeometryHandle));
+            component.MarkClean(DirtyFlags.ManualLodSwap);
         }
 
         if (component.IsDirty(DirtyFlags.InstanceData))
@@ -202,7 +203,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _instanceData.Bind(1);
         _materialData.Bind(2);
 
-        _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.MaxCountHeld, _commands.Current.Stride));
+        _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.Capacity, _commands.Current.Stride));
 
         _commands.Current.Unbind();
         // _commands.Swap();

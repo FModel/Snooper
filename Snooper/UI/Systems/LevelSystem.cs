@@ -55,17 +55,17 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
                 if (ImGui.IsItemHovered())
                 {
-                    if (Window.MouseState.ScrollDelta.Y != 0)
+                    if (wnd.MouseState.ScrollDelta.Y != 0)
                     {
-                        var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
-                        pair.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
+                        var multiplier = wnd.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+                        pair.Camera.MovementSpeed += wnd.MouseState.ScrollDelta.Y * multiplier;
                         pair.Camera.MovementSpeed = MathF.Max(1f, pair.Camera.MovementSpeed);
                         Notifications.PushNotification("Camera", () => $"Movement speed set to {pair.Camera.MovementSpeed}.");
                     }
 
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
                     {
-                        Window.CursorState = CursorState.Grabbed;
+                        wnd.CursorState = CursorState.Grabbed;
                     }
 
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))

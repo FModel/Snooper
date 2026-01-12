@@ -7,7 +7,7 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Light;
 
-[DefaultActorSystem(typeof(LightSystem))]
+[DefaultActorSystem(typeof(ClusteredLightSystem))]
 public class LightComponent : SpatialComponent
 {
     public readonly float Intensity;
@@ -28,17 +28,11 @@ public class LightComponent : SpatialComponent
         Color = color;
     }
 
-    private LightData? _cachedLightData;
     public LightData GetLightData()
     {
-        if (_cachedLightData is null)
-        {
-            var data = new LightData();
-            SetLightData(ref data);
-            _cachedLightData = data;
-        }
-
-        return _cachedLightData.Value;
+        var data = new LightData();
+        SetLightData(ref data);
+        return data;
     }
 
     protected virtual void SetLightData(ref LightData lightData)

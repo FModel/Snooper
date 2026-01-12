@@ -13,8 +13,8 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
 
     private readonly FullQuadFramebuffer _blur = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, PixelType.Float);
 
-    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/ssao.frag");
-    private readonly ShaderProgram _blurShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/ssao_blur.frag");
+    private readonly EmbeddedShader _shader = new("Framebuffers/combine.vert", "Framebuffers/ssao.frag");
+    private readonly EmbeddedShader _blurShader = new("Framebuffers/combine.vert", "Framebuffers/ssao_blur.frag");
 
     private int _frameCount;
 

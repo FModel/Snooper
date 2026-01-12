@@ -26,10 +26,10 @@ public class PickingFramebuffer(int originalWidth, int originalHeight) : FullQua
     private readonly ResizableTexture2D _outline = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.DepthComponent, false);
 
-    private readonly ShaderProgram _combineShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/combine.frag");
-    private readonly ShaderProgram _maskShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/mask.frag");
-    private readonly ShaderProgram _outlineShader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Picking/outline.frag");
-    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/picking.frag");
+    private readonly EmbeddedShader _combineShader = new("Framebuffers/combine.vert", "Picking/combine.frag");
+    private readonly EmbeddedShader _maskShader = new("Framebuffers/combine.vert", "Picking/mask.frag");
+    private readonly EmbeddedShader _outlineShader = new("Framebuffers/combine.vert", "Picking/outline.frag");
+    private readonly EmbeddedShader _shader = new("Framebuffers/combine.vert", "Framebuffers/picking.frag");
 
     private readonly List<uint> _ids = [];
     private readonly ShaderStorageBuffer<uint> _idsBuffer = new(BufferUsageHint.DynamicDraw);

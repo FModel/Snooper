@@ -121,7 +121,7 @@ public class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
 
         public Geometry(Vector3 center, float shaftRadius, float length, float coneHeight, float coneRadius)
         {
-            BuildTriangle(center, shaftRadius, length, coneHeight, coneRadius);
+            BuildArrow(center, shaftRadius, length, coneHeight, coneRadius);
         }
 
         /// <summary>
@@ -443,29 +443,29 @@ public class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
             }
         }
 
-        private void BuildTriangle(Vector3 center, float shaftRadius, float length, float coneHeight, float coneRadius)
+        private void BuildArrow(Vector3 center, float shaftRadius, float length, float coneHeight, float coneRadius)
         {
             const int segments = 12; // Number of segments around the cylinder and cone
 
             var vertices = new List<Vector3>();
 
-            // Calculate positions (arrow points along Y axis)
+            // Calculate positions (arrow points along Z axis - forward, matching mesh facing direction)
             var shaftLength = length - coneHeight;
-            var shaftStart = center with { Y = center.Y - length / 2 };
-            var shaftEnd = shaftStart with { Y = shaftStart.Y + shaftLength };
+            var shaftStart = center with { Z = center.Z - length / 2 };
+            var shaftEnd = shaftStart with { Z = shaftStart.Z + shaftLength };
             var coneBase = shaftEnd;
-            var coneTip = coneBase with { Y = coneBase.Y + coneHeight };
+            var coneTip = coneBase with { Z = coneBase.Z + coneHeight };
 
             // Generate cylinder (shaft) rings
             var cylinderRings = new Vector3[2, segments];
 
-            // Bottom ring of cylinder
+            // Bottom ring of cylinder (XY plane perpendicular to Z)
             for (var i = 0; i < segments; i++)
             {
                 var angle = 2.0f * MathF.PI * i / segments;
                 var x = MathF.Cos(angle) * shaftRadius;
-                var z = MathF.Sin(angle) * shaftRadius;
-                cylinderRings[0, i] = new Vector3(shaftStart.X + x, shaftStart.Y, shaftStart.Z + z);
+                var y = MathF.Sin(angle) * shaftRadius;
+                cylinderRings[0, i] = new Vector3(shaftStart.X + x, shaftStart.Y + y, shaftStart.Z);
             }
 
             // Top ring of cylinder (at cone base)
@@ -473,8 +473,8 @@ public class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
             {
                 var angle = 2.0f * MathF.PI * i / segments;
                 var x = MathF.Cos(angle) * shaftRadius;
-                var z = MathF.Sin(angle) * shaftRadius;
-                cylinderRings[1, i] = new Vector3(shaftEnd.X + x, shaftEnd.Y, shaftEnd.Z + z);
+                var y = MathF.Sin(angle) * shaftRadius;
+                cylinderRings[1, i] = new Vector3(shaftEnd.X + x, shaftEnd.Y + y, shaftEnd.Z);
             }
 
             // Draw vertical lines for cylinder shaft
@@ -501,8 +501,8 @@ public class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
             {
                 var angle = 2.0f * MathF.PI * i / segments;
                 var x = MathF.Cos(angle) * coneRadius;
-                var z = MathF.Sin(angle) * coneRadius;
-                coneBaseRing[i] = new Vector3(coneBase.X + x, coneBase.Y, coneBase.Z + z);
+                var y = MathF.Sin(angle) * coneRadius;
+                coneBaseRing[i] = new Vector3(coneBase.X + x, coneBase.Y + y, coneBase.Z);
             }
 
             // Draw cone base circumference

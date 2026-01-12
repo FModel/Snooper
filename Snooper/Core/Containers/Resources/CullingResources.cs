@@ -10,10 +10,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 {
     private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new();
     private readonly ShaderStorageBuffer<SectionOffsets> _sections = new();
-    private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
-    {
-        Compute = "culling.comp"
-    };
+    private readonly ComputeShader _compute = new("culling.comp");
 
     public void Generate()
     {

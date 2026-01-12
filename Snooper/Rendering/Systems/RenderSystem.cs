@@ -10,7 +10,7 @@ public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent, PerInstanceDa
 {
     public override uint Order => 22;
     protected override bool AllowDerivation => true;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("mesh");
+    protected override ShaderProgram Shader { get; } = new EmbeddedShader("mesh");
     protected override Action<uint> VertexLayout { get; } = vao =>
     {
         GL.VertexArrayAttribFormat(vao, 0, 3, VertexAttribType.Float, false, 0);

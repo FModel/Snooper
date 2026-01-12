@@ -14,7 +14,7 @@ public class GridSystem : PrimitiveSystem<GridComponent>, IControllable
 {
     public override uint Order => 2;
     protected override bool AllowDerivation => true;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("grid");
+    protected override ShaderProgram Shader { get; } = new EmbeddedShader("grid");
 
     private Texture? _texture;
     private Vector3 _color = Vector3.One;

@@ -15,7 +15,7 @@ namespace Snooper.Rendering.Systems;
 public class TextRenderSystem : PrimitiveSystem<Vector4, TextRenderComponent, PerInstanceData, PerMaterialTextData>, IControllable
 {
     public override uint Order => 51;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("text");
+    protected override ShaderProgram Shader { get; } = new EmbeddedShader("text");
     protected override Action<uint> VertexLayout { get; } = vao =>
     {
         GL.VertexArrayAttribFormat(vao, 0, 2, VertexAttribType.Float, false, 0);
@@ -29,36 +29,36 @@ public class TextRenderSystem : PrimitiveSystem<Vector4, TextRenderComponent, Pe
     protected override void OnLoad()
     {
         base.OnLoad();
-        
+
         FontAtlasTexture.Instance.Generate();
     }
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
         base.PreRender(camera, shader);
-        
+
         var fontAtlas = FontAtlasTexture.Instance;
         fontAtlas.Bind(0);
         shader.SetUniform("uTextTexture", 0);
     }
-    
+
     public override long Allocated => base.Allocated + FontAtlasTexture.Instance.Allocated;
     public override long Used => base.Used + FontAtlasTexture.Instance.Used;
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
-        
+
         yield return new MemoryDetail("Font Atlas Texture", FontAtlasTexture.Instance);
     }
-    
+
     public void DrawControls()
     {
         ImGui.TextUnformatted($"Width: {FontAtlasTexture.Instance.Width}, Height: {FontAtlasTexture.Instance.Height}");
 
         var width = ImGui.GetWindowWidth() - ImGui.GetScrollX();
         var aspect = (float)FontAtlasTexture.Instance.Height / FontAtlasTexture.Instance.Width;
-        
+
         ImGui.Image(FontAtlasTexture.Instance.GetPointer(), new Vector2(width, width * aspect));
     }
 }

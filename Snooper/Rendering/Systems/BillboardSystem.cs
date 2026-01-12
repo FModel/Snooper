@@ -9,7 +9,7 @@ namespace Snooper.Rendering.Systems;
 public class BillboardSystem : PrimitiveSystem<Vector2, BillboardComponent, PerInstanceData, PerMaterialBillboardData>
 {
     public override uint Order => 29;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("billboard");
+    protected override ShaderProgram Shader { get; } = new EmbeddedShader("billboard");
     protected override Action<uint> VertexLayout { get; } = vao =>
     {
         GL.VertexArrayAttribFormat(vao, 0, 2, VertexAttribType.Float, false, 0);

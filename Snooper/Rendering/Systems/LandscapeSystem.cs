@@ -17,7 +17,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 {
     public override uint Order => 21;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("Landscape/landscape")
+    protected override ShaderProgram Shader { get; } = new EmbeddedShader("Landscape/landscape")
     {
         TessellationControl = "Landscape/landscape.tesc",
         TessellationEvaluation = "Landscape/landscape.tese"

@@ -14,7 +14,7 @@ using Snooper.Rendering.Components;
 
 namespace Snooper.UI.Systems;
 
-public abstract class InterfaceSystem(GameWindow wnd) : SceneManager(wnd)
+public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
 {
     private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
 
@@ -170,19 +170,19 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager(wnd)
 
     public override void Update(float delta)
     {
-        var pressed = Window.IsKeyPressed(Keys.F10);
+        var pressed = wnd.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
 
-        if (Window.IsKeyPressed(Keys.F))
+        if (wnd.IsKeyPressed(Keys.F))
         {
-            if (Window.WindowState == WindowState.Fullscreen)
+            if (wnd.WindowState == WindowState.Fullscreen)
             {
-                Window.WindowState = _pWindowState;
+                wnd.WindowState = _pWindowState;
             }
             else
             {
-                _pWindowState = Window.WindowState;
-                Window.WindowState = WindowState.Fullscreen;
+                _pWindowState = wnd.WindowState;
+                wnd.WindowState = WindowState.Fullscreen;
             }
         }
 
@@ -191,30 +191,30 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager(wnd)
 
         if (Enabled)
         {
-            _controller.Update(Window, delta);
+            _controller.Update(wnd, delta);
         }
         else
         {
-            if (Window.IsMouseButtonPressed(MouseButton.Right))
-                Window.CursorState = CursorState.Grabbed;
+            if (wnd.IsMouseButtonPressed(MouseButton.Right))
+                wnd.CursorState = CursorState.Grabbed;
 
             if (ActiveCamera is not null)
             {
-                ActiveCamera.ViewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
-                if (Window.IsMouseButtonPressed(MouseButton.Left) && ActiveCamera.PairIndex < Pairs.Count)
+                ActiveCamera.ViewportSize = new Vector2(wnd.ClientSize.X, wnd.ClientSize.Y);
+                if (wnd.IsMouseButtonPressed(MouseButton.Left) && ActiveCamera.PairIndex < Pairs.Count)
                 {
-                    var mousePos = new Vector2(Window.MousePosition.X, Window.MousePosition.Y);
+                    var mousePos = new Vector2(wnd.MousePosition.X, wnd.MousePosition.Y);
                     var componentId = Pairs[ActiveCamera.PairIndex].ReadPickingPixel(mousePos, Vector2.Zero);
                     SelectedComponent = FindComponentById(componentId);
                 }
             }
         }
 
-        ActiveCamera?.Update(Window.KeyboardState, delta);
-        if (Window.CursorState == CursorState.Grabbed)
+        ActiveCamera?.Update(wnd.KeyboardState, delta);
+        if (wnd.CursorState == CursorState.Grabbed)
         {
-            ActiveCamera?.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
-            if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
+            ActiveCamera?.Update(wnd.MouseState.Delta.X, wnd.MouseState.Delta.Y);
+            if (wnd.IsMouseButtonReleased(MouseButton.Right)) wnd.CursorState = CursorState.Normal;
         }
 
         base.Update(delta);
@@ -235,7 +235,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager(wnd)
         }
         else if (ActiveCamera is not null && ActiveCamera.PairIndex < Pairs.Count)
         {
-            Pairs[ActiveCamera.PairIndex].RenderToScreen(Window.ClientSize.X, Window.ClientSize.Y);
+            Pairs[ActiveCamera.PairIndex].RenderToScreen(wnd.ClientSize.X, wnd.ClientSize.Y);
         }
     }
 

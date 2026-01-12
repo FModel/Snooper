@@ -50,7 +50,7 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<BillboardSystem>();
         ActorManager.RegisterSystemFactory<TextRenderSystem>();
         ActorManager.RegisterSystemFactory<AudioSystem>();
-        ActorManager.RegisterSystemFactory<LightSystem>();
+        ActorManager.RegisterSystemFactory<ClusteredLightSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
 
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
@@ -122,6 +122,7 @@ public partial class SnooperWindow : GameWindow
 #endif
 
         _interface.Load();
+        OnFramebufferResize(new FramebufferResizeEventArgs(ClientSize)); // we initialize a bunch of stuff to 1x1 by default until we know the true size of the framebuffer
 
         CenterWindow();
         IsVisible = true;

@@ -9,21 +9,11 @@ public class MeshActor : Actor
 {
     public MeshActor(UStaticMesh staticMesh, Transform? transform = null) : base(staticMesh)
     {
-        var component = new StaticMeshComponent(staticMesh);
-        
-        if (transform is not null)
-            component.LocalTransform = transform;
-        
-        Components.Add(component);
+        Components.Add(new StaticMeshComponent(staticMesh, transform));
     }
 
     public MeshActor(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh)
     {
-        var component = new SkeletalMeshComponent(skeletalMesh);
-        
-        if (transform is not null)
-            component.LocalTransform = transform;
-        
-        Components.Add(component);
+        Components.Add(new SkeletalMeshComponent(skeletalMesh, transform));
     }
 }

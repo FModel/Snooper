@@ -10,9 +10,8 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Core.Managers;
 
-public class SceneManager(GameWindow wnd) : ActorManager, IResizable
+public class SceneManager : ActorManager, IResizable
 {
-    protected GameWindow Window { get; } = wnd;
     protected List<CameraFramePair> Pairs { get; } = [];
 
     protected CameraComponent? ActiveCamera
@@ -84,19 +83,13 @@ public class SceneManager(GameWindow wnd) : ActorManager, IResizable
 
     public virtual void Render()
     {
-        var lightSystem = Systems.Values.OfType<LightSystem>().FirstOrDefault();
-        var lightDataBuffer = lightSystem?.GetDataBuffer();
+        var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
         var directionalLight = lightSystem?.GetDirectionalLight();
 
         foreach (var pair in Pairs)
         {
-            if (lightDataBuffer != null)
-            {
-                pair.BuildClusters(lightDataBuffer);
-            }
-
             pair.ShadowRendering(RenderShadows, directionalLight);
-            pair.DeferredRendering(Render, lightDataBuffer, directionalLight);
+            pair.DeferredRendering(Render, lightSystem, directionalLight);
             pair.ForwardRendering(Render);
             pair.PickingRendering();
 
@@ -137,7 +130,8 @@ public class SceneManager(GameWindow wnd) : ActorManager, IResizable
         while (_pairsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
             var pair = _pairsToLoad.Dequeue();
-            pair.Generate(Pairs.Count, Window.ClientSize.X, Window.ClientSize.Y);
+            pair.Generate(Pairs.Count);
+            // TODO: camera size will be 1x1 until a resize
 
             Pairs.Add(pair);
             count++;
@@ -148,6 +142,9 @@ public class SceneManager(GameWindow wnd) : ActorManager, IResizable
     {
         foreach (var pair in Pairs)
             pair.Resize(newWidth, newHeight);
+
+        foreach (var system in Systems.Values.OfType<IResizable>())
+            system.Resize(newWidth, newHeight);
     }
 
     public override long Allocated => base.Allocated + Pairs.Sum(p => p.Allocated);

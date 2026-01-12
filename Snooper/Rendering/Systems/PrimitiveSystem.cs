@@ -18,7 +18,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
     protected virtual bool IsCulled => true;
-    protected virtual ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default");
+    protected virtual ShaderProgram Shader { get; } = new EmbeddedShader("default");
 
     protected override void OnLoad()
     {

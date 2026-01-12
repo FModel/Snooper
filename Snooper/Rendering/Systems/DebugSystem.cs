@@ -12,7 +12,7 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
     public override uint Order => 50;
     protected override bool AllowDerivation => true;
     protected override bool IsCulled => false;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default.vert", "debug.frag")
+    protected override ShaderProgram Shader { get; } = new EmbeddedShader("default.vert", "debug.frag")
     {
         Geometry = "debug.geom",
         Defines = ["USE_GEOMETRY_SHADER"]

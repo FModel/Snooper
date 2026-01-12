@@ -139,7 +139,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 
     protected virtual bool CanEnqueueActorComponent(TComponent component)
     {
-        return Capacity < 0 || Capacity > Components.Count; // TODO: some systems override this without calling base
+        return Capacity < 0 || Capacity > (EnqueuedComponentsCount + ComponentsCount); // TODO: some systems override this without calling base
     }
 
     protected virtual void OnActorComponentEnqueued(TComponent component)

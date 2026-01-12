@@ -26,14 +26,13 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
     private readonly FxaaFramebuffer _fxaa = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly PickingFramebuffer _picking = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly ShadowFramebuffer _shadow = new(2048, 2048);
-    private readonly LightClusterManager _lightClusterManager = new();
 
     private bool _updateShadows = true;
     private Matrix4x4 _shadowViewMatrix = Matrix4x4.CreateLookAt(new Vector3(10, 10, -10), Vector3.Zero, Vector3.UnitZ);
     private Matrix4x4 _shadowProjectionMatrix = Matrix4x4.CreateOrthographic(25, 25, 1.0f, 200.0f);
     private Matrix4x4 _lastOrthoViewProjectionMatrix = Matrix4x4.Identity;
 
-    public void Generate(int pairIndex, int width, int height)
+    public void Generate(int pairIndex)
     {
         Camera.PairIndex = pairIndex;
         Camera.OnRequestSystemUpdate += component =>
@@ -58,18 +57,9 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _fxaa.Generate();
         _picking.Generate();
         _shadow.Generate();
-        _lightClusterManager.Generate();
-
-        Resize(width, height);
     }
 
-    public void BuildClusters(ShaderStorageBuffer<LightData> ssbo)
-    {
-        _lightClusterManager.BuildClusters(Camera);
-        _lightClusterManager.CullLights(Camera, ssbo);
-    }
-
-    public void DeferredRendering(Action<CameraComponent, ActorSystemType> render, ShaderStorageBuffer<LightData>? ssbo, DirectionalLightComponent? directionalLightComponent = null)
+    public void DeferredRendering(Action<CameraComponent, ActorSystemType> render, ClusteredLightSystem? lightSystem, DirectionalLightComponent? directionalLightComponent = null)
     {
         _geometry.Bind();
         GL.ClearColor(0, 0, 0, 0);
@@ -123,14 +113,13 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
                 shader.SetUniform("ssao", 4);
             }
 
-            // Bind clustered lighting data
-            if (ssbo != null)
+            if (lightSystem != null) // TODO: enable/disable lighting
             {
-                _lightClusterManager.BindForRendering(ssbo);
+                lightSystem.BindForRendering();
 
-                shader.SetUniform("uGridDimX", _lightClusterManager.GetGridDimX());
-                shader.SetUniform("uGridDimY", _lightClusterManager.GetGridDimY());
-                shader.SetUniform("uGridDimZ", _lightClusterManager.GetGridDimZ());
+                shader.SetUniform("uGridDimX", lightSystem.GridDimensionX);
+                shader.SetUniform("uGridDimY", lightSystem.GridDimensionY);
+                shader.SetUniform("uGridDimZ", lightSystem.GridDimensionZ);
                 shader.SetUniform("uZNear", Camera.NearPlaneDistance);
                 shader.SetUniform("uZFar", Camera.FarPlaneDistance);
             }
@@ -184,7 +173,13 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         };
         _lastOrthoViewProjectionMatrix = shadowCamera.ViewProjectionMatrix;
 
+        GL.Enable(EnableCap.CullFace);
+        GL.CullFace(TriangleFace.Front);
+
         render(shadowCamera);
+
+        GL.CullFace(TriangleFace.Back);
+        GL.Disable(EnableCap.CullFace);
 
         _updateShadows = false;
     }
@@ -231,7 +226,6 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _combined.Resize(newWidth, newHeight);
         _fxaa.Resize(newWidth, newHeight);
         _picking.Resize(newWidth, newHeight);
-        _lightClusterManager.Resize(newWidth, newHeight);
     }
 
     public Texture[] GetTextures() =>

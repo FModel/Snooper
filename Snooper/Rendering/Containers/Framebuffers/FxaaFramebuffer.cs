@@ -6,7 +6,7 @@ namespace Snooper.Rendering.Containers.Framebuffers;
 
 public class FxaaFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight)
 {
-    private readonly ShaderProgram _shader = new EmbeddedShaderProgram("Framebuffers/combine.vert", "Framebuffers/fxaa.frag");
+    private readonly EmbeddedShader _shader = new("Framebuffers/combine.vert", "Framebuffers/fxaa.frag");
 
     public override void Generate()
     {

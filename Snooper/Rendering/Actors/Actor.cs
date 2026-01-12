@@ -190,8 +190,8 @@ public class Actor
 #if DEBUG
         if (component is MeshComponent { IsVisible: false } mesh)
         {
-            Components.Add(new DebugComponent(mesh.Descriptor.Bounds, new Vector3(1, 0, 1), 1, $"{mesh.Name} (Bounds)") { Relation = mesh });
-            // Components.Add(new DebugComponent(mesh.Descriptor.Bounds, mesh.Descriptor.Bounds.Extents.Length(), new Vector3(1, 0.5f, 1), 1, $"{mesh.Name} (SphereRadius)") { Relation = mesh });
+            Components.Add(new DebugComponent(mesh.Descriptor.Bounds, new Vector3(1, 0, 1), 1, $"{mesh.Name} (Bounds)"));
+            // Components.Add(new DebugComponent(mesh.Descriptor.Bounds, mesh.Descriptor.Bounds.Extents.Length(), new Vector3(1, 0.5f, 1), 1, $"{mesh.Name} (SphereRadius)"));
         }
 #endif
     }

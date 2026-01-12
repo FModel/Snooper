@@ -1,5 +1,4 @@
-﻿using OpenTK.Graphics.OpenGL4;
-using Snooper.Core.Containers.Programs;
+﻿using Snooper.Core.Containers.Programs;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
@@ -11,7 +10,7 @@ public class DeferredRenderSystem : RenderSystem, IShadowSupportedSystem
     public override uint Order => 23;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
 
-    private readonly ShaderProgram _shadowShader = new EmbeddedShaderProgram("default.vert", "empty.frag");
+    private readonly ShaderProgram _shadowShader = new EmbeddedShader("default.vert", "empty.frag");
 
     protected override void OnLoad()
     {
@@ -31,15 +30,7 @@ public class DeferredRenderSystem : RenderSystem, IShadowSupportedSystem
     public void RenderShadows(CameraComponent light)
     {
         PreRender(light, _shadowShader);
-
-        GL.Enable(EnableCap.CullFace);
-        GL.CullFace(TriangleFace.Front);
-
         OnRender(light);
-
-        GL.CullFace(TriangleFace.Back);
-        GL.Disable(EnableCap.CullFace);
-
         PostRender(light, _shadowShader);
     }
 }

@@ -1,0 +1,240 @@
+﻿using System.Numerics;
+using System.Runtime.InteropServices;
+using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Programs;
+using Snooper.Core.Systems;
+using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Light;
+
+namespace Snooper.Rendering.Systems;
+
+[StructLayout(LayoutKind.Sequential)]
+public struct LightData
+{
+    public Vector3 Position;      // World space position
+    public float Range;           // Light range/radius
+    public Vector3 Color;         // Light color
+    public uint Type;             // 0 = point/sphere, 1 = spot
+    public Vector3 Direction;     // Spot light direction (world space)
+    public float SpotAngle;       // Spot light inner cone angle (cosine)
+    public float SpotOuterAngle;  // Spot light outer cone angle (cosine)
+    public float Intensity;       // Light intensity
+    public uint Padding1;
+    public uint Padding2;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct ClusterAABB
+{
+    public Vector3 MinPoint;
+    public float Padding1;
+    public Vector3 MaxPoint;
+    public float Padding2;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct ClusterData
+{
+    public uint Offset;   // Offset into light index list
+    public uint Count;    // Number of lights in this cluster
+}
+
+public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsProvider, IResizable
+{
+    private const int TileSize = 32;
+    private const int MaxLightsPerCluster = 256;
+
+    public override uint Order => 99; // at least after TransformSystem
+    public override int Capacity => 10000;
+
+    private readonly ShaderStorageBuffer<LightData> _lightDataBuffer = new();
+    private readonly ShaderStorageBuffer<ClusterAABB> _clusterAABBBuffer = new(BufferUsageHint.DynamicDraw);
+    private readonly ShaderStorageBuffer<ClusterData> _clusterDataBuffer = new(BufferUsageHint.DynamicDraw);
+    private readonly ShaderStorageBuffer<uint> _lightIndexListBuffer = new(BufferUsageHint.DynamicDraw);
+    private readonly ShaderStorageBuffer<uint> _globalIndexCountBuffer = new(BufferUsageHint.DynamicDraw);
+
+    private readonly ComputeShader _clusterBuildProgram = new("Lighting/cluster_build.comp");
+    private readonly ComputeShader _lightCullingProgram = new("Lighting/light_culling.comp");
+
+    public int GridDimensionX { get; private set; }
+    public int GridDimensionY { get; private set; }
+    public int GridDimensionZ => 16;
+
+    private int _clusterCount;
+    private int _screenWidth = 1;
+    private int _screenHeight = 1;
+
+    private BufferAllocation? _globalIndexCountAllocation;
+    private DirectionalLightComponent? _cachedDirectionalLight;
+
+    protected override void OnLoad()
+    {
+        base.OnLoad();
+
+        _lightDataBuffer.Generate();
+        _lightDataBuffer.Allocate(ComponentsCount);
+
+        _clusterAABBBuffer.Generate();
+        _clusterDataBuffer.Generate();
+        _lightIndexListBuffer.Generate();
+
+        _globalIndexCountBuffer.Generate();
+        _globalIndexCountAllocation = _globalIndexCountBuffer.Add(0u);
+
+        _clusterBuildProgram.Generate();
+        _clusterBuildProgram.Link();
+
+        _lightCullingProgram.Generate();
+        _lightCullingProgram.Link();
+    }
+
+    protected override void OnRender(CameraComponent camera)
+    {
+        BuildClusters(camera);
+        CullLights(camera);
+    }
+
+    private void BuildClusters(CameraComponent camera)
+    {
+        if (_clusterCount == 0) return;
+
+        _clusterBuildProgram.Use();
+        _clusterBuildProgram.SetUniform("uScreenWidth", _screenWidth);
+        _clusterBuildProgram.SetUniform("uScreenHeight", _screenHeight);
+        _clusterBuildProgram.SetUniform("uGridDimX", GridDimensionX);
+        _clusterBuildProgram.SetUniform("uGridDimY", GridDimensionY);
+        _clusterBuildProgram.SetUniform("uGridDimZ", GridDimensionZ);
+        _clusterBuildProgram.SetUniform("uZNear", camera.NearPlaneDistance);
+        _clusterBuildProgram.SetUniform("uZFar", camera.FarPlaneDistance);
+
+        Matrix4x4.Invert(camera.ProjectionMatrix, out var invProj);
+        _clusterBuildProgram.SetUniform("uInverseProjectionMatrix", invProj);
+
+        _clusterAABBBuffer.Bind(0);
+
+        // Dispatch one thread per cluster with work group size of 64
+        int workGroupSize = 64;
+        int numWorkGroups = (_clusterCount + workGroupSize - 1) / workGroupSize;
+
+        GL.DispatchCompute(numWorkGroups, 1, 1);
+        GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
+    }
+
+    private void CullLights(CameraComponent camera)
+    {
+        if (_clusterCount == 0 || _lightDataBuffer.Count == 0)
+        {
+            return;
+        }
+
+        // Reset global index counter
+        if (_globalIndexCountAllocation.HasValue)
+        {
+            _globalIndexCountBuffer.Update(_globalIndexCountAllocation.Value, 0u);
+        }
+
+        _lightCullingProgram.Use();
+        _lightCullingProgram.SetUniform("uLightCount", _lightDataBuffer.Capacity);
+        _lightCullingProgram.SetUniform("uGridDimX", GridDimensionX);
+        _lightCullingProgram.SetUniform("uGridDimY", GridDimensionY);
+        _lightCullingProgram.SetUniform("uGridDimZ", GridDimensionZ);
+        _lightCullingProgram.SetUniform("uViewMatrix", camera.ViewMatrix);
+
+        _lightDataBuffer.Bind(0);
+        _clusterAABBBuffer.Bind(1);
+        _clusterDataBuffer.Bind(2);
+        _lightIndexListBuffer.Bind(3);
+        _globalIndexCountBuffer.Bind(4);
+
+        // Each workgroup processes ONE cluster with 8x8x8=512 threads cooperating
+        // We need to dispatch one workgroup per cluster
+        GL.DispatchCompute(GridDimensionX, GridDimensionY, GridDimensionZ);
+        GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
+    }
+
+    protected override void OnComponentUpdate(LightComponent component, float delta)
+    {
+        base.OnComponentUpdate(component, delta);
+
+        var data = component.GetLightData();
+        if (component._lightDataAllocation is null)
+        {
+            component._lightDataAllocation = _lightDataBuffer.Add(data);
+        }
+        else
+        {
+            _lightDataBuffer.Update(component._lightDataAllocation.Value, data);
+        }
+    }
+
+    protected override void OnActorComponentAdded(LightComponent component)
+    {
+        base.OnActorComponentAdded(component);
+
+        if (component is DirectionalLightComponent dirLight)
+        {
+            _cachedDirectionalLight = dirLight;
+        }
+    }
+
+    protected override void OnActorComponentRemoved(LightComponent component)
+    {
+        base.OnActorComponentRemoved(component);
+
+        if (component._lightDataAllocation is { } allocation)
+        {
+            _lightDataBuffer.Remove(allocation);
+        }
+
+        if (component == _cachedDirectionalLight)
+        {
+            _cachedDirectionalLight = null;
+        }
+    }
+
+    public void Resize(int newWidth, int newHeight)
+    {
+        if (_screenWidth == newWidth && _screenHeight == newHeight) return;
+
+        _screenWidth = newWidth;
+        _screenHeight = newHeight;
+
+        // Calculate grid dimensions based on 32-pixel tiles
+        GridDimensionX = (_screenWidth + TileSize - 1) / TileSize;
+        GridDimensionY = (_screenHeight + TileSize - 1) / TileSize;
+        _clusterCount = GridDimensionX * GridDimensionY * GridDimensionZ;
+
+        _clusterAABBBuffer.Reallocate(_clusterCount);
+        _clusterDataBuffer.Reallocate(_clusterCount);
+        _lightIndexListBuffer.Reallocate(_clusterCount * MaxLightsPerCluster);
+    }
+
+    public long Allocated => _lightDataBuffer.Allocated;
+    public long Used => _lightDataBuffer.Used;
+    public IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail("Light Data Buffer", _lightDataBuffer);
+    }
+
+    internal void BindForRendering()
+    {
+        _lightDataBuffer.Bind(6);
+        _clusterDataBuffer.Bind(7);
+        _lightIndexListBuffer.Bind(8);
+    }
+    internal DirectionalLightComponent? GetDirectionalLight() => _cachedDirectionalLight;
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _clusterAABBBuffer.Dispose();
+        _clusterDataBuffer.Dispose();
+        _lightIndexListBuffer.Dispose();
+        _globalIndexCountBuffer.Dispose();
+        _clusterBuildProgram.Dispose();
+        _lightCullingProgram.Dispose();
+    }
+}
