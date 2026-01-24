@@ -41,6 +41,6 @@ public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent, PerInstanceDa
 
     protected override bool CanEnqueueActorComponent(MeshComponent component)
     {
-        return component is { IsOpaque: false, IsVisible: true };
+        return component is { IsOpaque: false };
     }
 }

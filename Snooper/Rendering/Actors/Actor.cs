@@ -6,6 +6,7 @@ using ImGuiNET;
 using Snooper.Core.Managers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
@@ -190,8 +191,20 @@ public class Actor
 #if DEBUG
         if (component is MeshComponent { IsVisible: false } mesh)
         {
-            Components.Add(new DebugComponent(mesh.Descriptor.Bounds, new Vector3(1, 0, 1), 1, $"{mesh.Name} (Bounds)"));
-            // Components.Add(new DebugComponent(mesh.Descriptor.Bounds, mesh.Descriptor.Bounds.Extents.Length(), new Vector3(1, 0.5f, 1), 1, $"{mesh.Name} (SphereRadius)"));
+            Components.Add(new BoxComponent(mesh.Descriptor.Bounds, new Vector3(1, 0, 1), name: $"{mesh.Name} (Bounds)") { Relation = mesh });
+            // Components.Add(new SphereComponent(mesh.Descriptor.Bounds.Extents.Length(), new Vector3(1, 0.5f, 1), name: $"{mesh.Name} (SphereRadius)")  { Relation = mesh });
+        }
+
+        if (component is LightComponent light)
+        {
+            if (component is DirectionalLightComponent)
+            {
+                Components.Add(new ArrowComponent(null, "Light Direction") { Relation = light });
+            }
+            else if (component is LocalLightComponent localLight)
+            {
+                Components.Add(new LightVisualizationComponent(localLight) { Relation = light });
+            }
         }
 #endif
     }

@@ -129,8 +129,7 @@ public class LevelActor : Actor
                         UPointLightComponent pointLightComponent => new PointLightComponent(pointLightComponent),
                         URectLightComponent rectLightComponent => new RectLightComponent(rectLightComponent),
                         UDirectionalLightComponent directionalLightComponent => new DirectionalLightComponent(directionalLightComponent),
-                        USkyLightComponent skyLightComponent => new SkyLightComponent(skyLightComponent),
-                        _ => new LightComponent(light)
+                        _ => new SpatialComponent(light)
                     },
                     UAudioComponent audioComponent => new AudioComponent(audioComponent),
                     UTextRenderComponent textComponent => new TextRenderComponent(textComponent),

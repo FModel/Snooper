@@ -3,13 +3,19 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Light;
 
-public class PointLightComponent : LightComponent
+public class PointLightComponent : LocalLightComponent
 {
-    public readonly float AttenuationRadius;
+    public readonly float LightFalloffExponent;
+    public readonly float SourceRadius;
+    public readonly float SoftSourceRadius;
+    public readonly float SourceLength;
 
     public PointLightComponent(UPointLightComponent component) : base(component)
     {
-        AttenuationRadius = component.AttenuationRadius * Settings.GlobalScale;
+        LightFalloffExponent = component.LightFalloffExponent;
+        SourceRadius = component.SourceRadius * Settings.GlobalScale;
+        SoftSourceRadius = component.SoftSourceRadius * Settings.GlobalScale;
+        SourceLength = component.SourceLength * Settings.GlobalScale;
     }
 
     protected override void SetLightData(ref LightData lightData)
@@ -17,6 +23,5 @@ public class PointLightComponent : LightComponent
         base.SetLightData(ref lightData);
 
         lightData.Type = 0;
-        lightData.Range = AttenuationRadius;
     }
 }

@@ -28,8 +28,6 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
     private readonly ShadowFramebuffer _shadow = new(2048, 2048);
 
     private bool _updateShadows = true;
-    private Matrix4x4 _shadowViewMatrix = Matrix4x4.CreateLookAt(new Vector3(10, 10, -10), Vector3.Zero, Vector3.UnitZ);
-    private Matrix4x4 _shadowProjectionMatrix = Matrix4x4.CreateOrthographic(25, 25, 1.0f, 200.0f);
     private Matrix4x4 _lastOrthoViewProjectionMatrix = Matrix4x4.Identity;
 
     public void Generate(int pairIndex)
@@ -113,16 +111,18 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
                 shader.SetUniform("ssao", 4);
             }
 
-            if (lightSystem != null) // TODO: enable/disable lighting
+            if (lightSystem is { IsEnabled: true })
             {
                 lightSystem.BindForRendering();
 
+                shader.SetUniform("useLighting", true);
                 shader.SetUniform("uGridDimX", lightSystem.GridDimensionX);
                 shader.SetUniform("uGridDimY", lightSystem.GridDimensionY);
                 shader.SetUniform("uGridDimZ", lightSystem.GridDimensionZ);
                 shader.SetUniform("uZNear", Camera.NearPlaneDistance);
                 shader.SetUniform("uZFar", Camera.FarPlaneDistance);
             }
+            else shader.SetUniform("useLighting", false);
         });
     }
 
@@ -158,18 +158,18 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         Matrix4x4.Decompose(directionalLightComponent.WorldMatrix, out _, out var rotation, out _);
         var lightDirection = Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation));
         var lightPosition = lightDirection * 50.0f; // Position the light far away in the direction opposite to its direction
-        _shadowViewMatrix = Matrix4x4.CreateLookAt(lightPosition, Vector3.Zero, Vector3.UnitZ);
+        var viewMatrix = Matrix4x4.CreateLookAt(lightPosition, Vector3.Zero, Vector3.UnitZ);
 
         // Create orthographic projection matrix
         float orthoSize = 25.0f; // TODO: keep track of the global scene bounds to adjust this size
-        _shadowProjectionMatrix = Matrix4x4.CreateOrthographic(orthoSize, orthoSize, 1.0f, 200.0f);
+        var projectionMatrix = Matrix4x4.CreateOrthographic(orthoSize, orthoSize, 1.0f, 200.0f);
 
         // Create a temporary camera component for shadow rendering
         var shadowCamera = new CameraComponent
         {
-            ViewMatrix = _shadowViewMatrix,
-            ProjectionMatrix = _shadowProjectionMatrix,
-            ViewProjectionMatrix = _shadowViewMatrix * _shadowProjectionMatrix
+            ViewMatrix = viewMatrix,
+            ProjectionMatrix = projectionMatrix,
+            ViewProjectionMatrix = viewMatrix * projectionMatrix
         };
         _lastOrthoViewProjectionMatrix = shadowCamera.ViewProjectionMatrix;
 

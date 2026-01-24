@@ -7,12 +7,12 @@ struct PerMaterialData
     uint LayerCount;
     uint GlobalFlags;
     uint LayerTextureFlags;
-    
+
     // Fixed arrays for up to 4 layers
     sampler2D Diffuse[4];
     sampler2D Normal[4];
     sampler2D Specular[4];
-    
+
     // Per-layer material properties
     // Roughness: 2 floats per layer (min, max) * 4 layers = 8 floats
     // DiffuseColor: 3 floats per layer (RGB) * 4 layers = 12 floats
@@ -51,12 +51,12 @@ vec4 SampleLayerDiffuse(PerMaterialData materialData, uint layer, vec2 uv)
 {
     if (layer >= materialData.LayerCount)
         layer = 0u;
-    
+
     if (HasLayerTexture(materialData, layer, 0u))
     {
         return texture(materialData.Diffuse[layer], uv);
     }
-    
+
     return vec4(1.0);
 }
 
@@ -65,14 +65,14 @@ vec3 SampleLayerNormal(PerMaterialData materialData, uint layer, vec2 uv)
 {
     if (layer >= materialData.LayerCount)
         layer = 0u;
-    
+
     if (HasLayerTexture(materialData, layer, 1u))
     {
         vec2 xy = texture(materialData.Normal[layer], uv).rg * 2.0 - 1.0;
         float z = sqrt(max(0.0, 1.0 - dot(xy, xy)));
         return normalize(vec3(xy, z));
     }
-    
+
     return vec3(0.0, 0.0, 1.0);
 }
 
@@ -81,7 +81,7 @@ vec3 SampleLayerSpecular(PerMaterialData materialData, uint layer, vec2 uv)
 {
     if (layer >= materialData.LayerCount)
         layer = 0u;
-    
+
     if (HasLayerTexture(materialData, layer, 2u))
     {
         vec3 spec = texture(materialData.Specular[layer], uv).rgb;
@@ -89,7 +89,7 @@ vec3 SampleLayerSpecular(PerMaterialData materialData, uint layer, vec2 uv)
         spec.b = mix(roughness.x, roughness.y, spec.b);
         return spec;
     }
-    
+
     // Default specular values if no texture
     vec2 roughness = GetLayerRoughness(materialData, layer);
     return vec3(0.5, 0.5, roughness.y);
@@ -106,21 +106,21 @@ struct LayerData
 LayerData SampleLayer(PerMaterialData materialData, uint layer, vec2 uv)
 {
     LayerData result;
-    
+
     // Clamp layer to valid range
     if (layer >= materialData.LayerCount)
         layer = 0u;
-    
+
     // Sample diffuse
     result.diffuse = SampleLayerDiffuse(materialData, layer, uv);
     result.diffuse.rgb *= GetLayerDiffuseColor(materialData, layer);
-    
+
     // Sample normal
     result.normal = SampleLayerNormal(materialData, layer, uv);
-    
+
     // Sample specular
     result.specular = SampleLayerSpecular(materialData, layer, uv);
-    
+
     return result;
 }
 

@@ -148,7 +148,9 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 {
                     EditorUI.Text("Path", Descriptor.Path ?? "N/A");
                     EditorUI.Text("Guid", Descriptor.Guid.ToString(EGuidFormats.UniqueObjectGuid));
-                    EditorUI.Text("Is Visible", IsVisible.ToString());
+
+                    var visible = IsVisible;
+                    if (EditorUI.Checkbox("Is Visible", ref visible)) IsVisible = visible;
 
                     EditorUI.Property($"LODs ({Descriptor.Lods.Length})");
                     ImGui.BeginGroup();

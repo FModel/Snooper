@@ -10,6 +10,7 @@ uniform sampler2D shadowMap;
 uniform bool useSsao;
 uniform bool useShadows;
 uniform bool useSunLight;
+uniform bool useLighting;
 
 uniform vec3 uSunDirection; // world space directional sun light
 uniform vec3 uSunColor;
@@ -28,20 +29,7 @@ uniform float uZFar;
 out vec4 FragColor;
 
 #include "pbr.glsl"
-
-struct LightData
-{
-    vec3 position;
-    float range;
-    vec3 color;
-    uint type; // 0 = point, 1 = spot
-    vec3 direction;
-    float spotAngle;
-    float spotOuterAngle;
-    float intensity;
-    uint padding1;
-    uint padding2;
-};
+#include "Buffers/PerLightData.glsl"
 
 struct ClusterData
 {
@@ -51,7 +39,7 @@ struct ClusterData
 
 layout(std430, binding = 6) readonly buffer LightBuffer
 {
-    LightData lights[];
+    PerLightData lights[];
 };
 
 layout(std430, binding = 7) readonly buffer ClusterDataBuffer
@@ -136,7 +124,18 @@ float CalculateAttenuation(float distance, float range)
     return attenuation * attenuation;
 }
 
-vec3 CalculatePointLight(LightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
+float CalculateInverseSquareAttenuation(float distance, float range)
+{
+    // avoid singularity at distance = 0
+    float invSq = 1.0 / max(1e-4, distance * distance);
+
+    // smooth fade to zero near range to avoid popping (0..1)
+    float fade = clamp(1.0 - pow(distance / range, 2.0), 0.0, 1.0);
+
+    return invSq * fade;
+}
+
+vec3 CalculatePointLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
     vec3 L = light.position - worldPos;
     float distance = length(L);
@@ -166,12 +165,12 @@ vec3 CalculatePointLight(LightData light, vec3 worldPos, vec3 worldNormal, vec3 
 
     vec3 diffuse = kD * albedo / PI;
 
-    float attenuation = CalculateAttenuation(distance, light.range);
+    float attenuation = CalculateInverseSquareAttenuation(distance, light.range);
 
     return (diffuse + specular) * light.color * light.intensity * NdotL * attenuation;
 }
 
-vec3 CalculateSpotLight(LightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
+vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
     vec3 L = light.position - worldPos;
     float distance = length(L);
@@ -215,6 +214,94 @@ vec3 CalculateSpotLight(LightData light, vec3 worldPos, vec3 worldNormal, vec3 w
     float attenuation = CalculateAttenuation(distance, light.range);
 
     return (diffuse + specular) * light.color * light.intensity * NdotL * attenuation * intensity;
+}
+
+// Calculate rectangular area light contribution
+vec3 CalculateRectLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
+{
+    // Direction from light center to shading point
+    vec3 centerToPoint = worldPos - light.position;
+    float distanceToCenter = length(centerToPoint);
+
+    if (distanceToCenter > light.range)
+        return vec3(0.0);
+
+    // Build orthonormal basis for the rect light using the exact same axes as visualization
+    // Forward = light direction (X axis in local space)
+    vec3 forward = normalize(light.direction);
+
+    // Check if point is behind the light (on the back side of the light plane)
+    if (dot(centerToPoint, forward) < 0.0)
+        return vec3(0.0);
+
+    // Use the exact up vector from the light's rotation (Y axis in local space)
+    vec3 heightDir = normalize(light.upVector);
+
+    // Calculate width direction as cross product (Z axis in local space)
+    vec3 widthDir = normalize(cross(forward, heightDir));
+
+    // Now we have: forward = X, heightDir = Y, widthDir = Z
+    // sizeX = width (Z direction), sizeY = height (Y direction)
+
+    // Use Representative Point method (approximate but efficient)
+    // Find the closest point on the rect light to the shading point
+    float halfWidth = light.sizeX * 0.5;
+    float halfHeight = light.sizeY * 0.5;
+
+    // Project centerToPoint onto the rect's local axes
+    float projWidth = dot(centerToPoint, widthDir);
+    float projHeight = dot(centerToPoint, heightDir);
+
+    // Clamp to rect bounds
+    float u = clamp(projWidth / halfWidth, -1.0, 1.0);
+    float v = clamp(projHeight / halfHeight, -1.0, 1.0);
+
+    // Calculate closest point on rect surface
+    vec3 closestPoint = light.position + u * halfWidth * widthDir + v * halfHeight * heightDir;
+    vec3 L = closestPoint - worldPos;
+    float distance = length(L);
+
+    if (distance < 0.001)
+        return vec3(0.0);
+
+    L = L / distance;
+
+    float NdotL = max(dot(worldNormal, L), 0.0);
+    if (NdotL <= 0.0)
+        return vec3(0.0);
+
+    // Check if light surface is facing the point
+    float lightNdotL = dot(forward, -L);
+    if (lightNdotL <= 0.0)
+        return vec3(0.0);
+
+    vec3 H = normalize(worldV + L);
+    float NdotV = max(dot(worldNormal, worldV), 0.001);
+
+    // PBR calculations
+    vec3 F = FresnelSchlick(max(dot(H, worldV), 0.0), F0);
+    float D = DistributionGGX(worldNormal, H, roughness);
+    float G = GeometrySmith(worldNormal, worldV, L, roughness);
+
+    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;
+
+    vec3 diffuse = kD * albedo / PI;
+
+    // Area light specific calculations
+    float area = light.sizeX * light.sizeY;
+    float solidAngle = (area * lightNdotL) / (distance * distance + area);
+
+    // Distance attenuation
+    float attenuation = CalculateAttenuation(distance, light.range);
+
+    // Combine with solid angle approximation for area lights
+    float areaAttenuation = solidAngle * attenuation;
+
+    return (diffuse + specular) * light.color * light.intensity * NdotL * areaAttenuation;
 }
 
 void main()
@@ -293,65 +380,48 @@ void main()
 
     // Clustered lighting
     vec3 localLighting = vec3(0.0);
-
-    uint clusterIndex = GetClusterIndex(viewPos);
-    ClusterData cluster = clusterData[clusterIndex];
-
-    // Extract 3D cluster coordinates from linear index (needed for both debug modes)
-    uint clusterZ = clusterIndex / (uint(uGridDimX) * uint(uGridDimY));
-    uint temp = clusterIndex % (uint(uGridDimX) * uint(uGridDimY));
-    uint clusterY = temp / uint(uGridDimX);
-    uint clusterX = temp % uint(uGridDimX);
-
-    // Debug: Visualize cluster assignment
-    #ifdef DEBUG_CLUSTER_VISUALIZATION
-    // Create a checkerboard pattern with cluster light count overlay
-    bool checkerboard = ((clusterX + clusterY) % 2) == 0;
-    vec3 baseColor = checkerboard ? vec3(0.2, 0.2, 0.3) : vec3(0.3, 0.2, 0.2);
-
-    if (cluster.count > 0)
+    if (useLighting)
     {
-        // Color based on number of lights in cluster
-        float intensity = float(cluster.count) / 7.0; // Normalize by expected max lights
-        baseColor = mix(baseColor, vec3(0.0, 1.0, 0.0), intensity);
+        #ifdef DEBUG_LIGHTS_NO_CLUSTERING
+        for (uint i = 0; i < min(uint(10), uint(lights.length())); i++)
+        {
+            PerLightData light = lights[i];
+
+            if (light.type == 0) // Point light
+            {
+                localLighting += CalculatePointLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+            }
+            else if (light.type == 1) // Spot light
+            {
+                localLighting += CalculateSpotLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+            }
+            else if (light.type == 2) // Rect light
+            {
+                localLighting += CalculateRectLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+            }
+        }
+        #else
+        ClusterData cluster = clusterData[GetClusterIndex(viewPos)];
+        for (uint i = 0; i < cluster.count; i++)
+        {
+            uint lightIndex = lightIndices[cluster.offset + i];
+            PerLightData light = lights[lightIndex];
+
+            if (light.type == 0) // Point light
+            {
+                localLighting += CalculatePointLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+            }
+            else if (light.type == 1) // Spot light
+            {
+                localLighting += CalculateSpotLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+            }
+            else if (light.type == 2) // Rect light
+            {
+                localLighting += CalculateRectLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+            }
+        }
+        #endif
     }
-
-    FragColor = vec4(baseColor, 1.0);
-    return;
-    #endif
-
-    // Debug: Test if we have any lights at all by checking all lights directly
-    // This bypasses clustering to see if the light data is valid
-    #ifdef DEBUG_LIGHTS_NO_CLUSTERING
-    for (uint i = 0; i < min(uint(10), uint(lights.length())); i++)
-    {
-        LightData light = lights[i];
-
-        if (light.type == 0) // Point light
-        {
-            localLighting += CalculatePointLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
-        }
-        else if (light.type == 1) // Spot light
-        {
-            localLighting += CalculateSpotLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
-        }
-    }
-    #else
-    for (uint i = 0; i < cluster.count; i++)
-    {
-        uint lightIndex = lightIndices[cluster.offset + i];
-        LightData light = lights[lightIndex];
-
-        if (light.type == 0) // Point light
-        {
-            localLighting += CalculatePointLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
-        }
-        else if (light.type == 1) // Spot light
-        {
-            localLighting += CalculateSpotLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
-        }
-    }
-    #endif
 
     // Combine all lighting
     vec3 color = ambient + sunLight + localLighting;
@@ -359,8 +429,15 @@ void main()
     // Gamma correction
     color = pow(color, vec3(1.0 / 2.2));
 
-    // Debug: Overlay cluster grid visualization
     #ifdef DEBUG_CLUSTER_GRID_OVERLAY
+    // Extract 3D cluster coordinates from linear index (needed for both debug modes)
+    uint clusterIndex = GetClusterIndex(viewPos);
+    ClusterData cluster = clusterData[GetClusterIndex(viewPos)];
+
+    uint temp = clusterIndex % (uint(uGridDimX) * uint(uGridDimY));
+    uint clusterY = temp / uint(uGridDimX);
+    uint clusterX = temp % uint(uGridDimX);
+
     // Draw grid lines at cluster boundaries
     vec2 screenPos = gl_FragCoord.xy;
     vec2 clusterPos = vec2(clusterX, clusterY) * 32.0;
@@ -377,32 +454,14 @@ void main()
     }
     else if (cluster.count > 0)
     {
-        // For clusters with lights assigned, show a distinct color
-        // Different colors based on number of lights in the cluster
-        vec3 clusterColor;
-        if (cluster.count == 1)
-        {
-            clusterColor = vec3(0.0, 0.6, 1.0); // Blue for 1 light
-        }
-        else if (cluster.count == 2)
-        {
-            clusterColor = vec3(0.0, 1.0, 0.8); // Cyan for 2 lights
-        }
-        else if (cluster.count == 3)
-        {
-            clusterColor = vec3(0.0, 1.0, 0.3); // Green for 3 lights
-        }
-        else if (cluster.count == 4)
-        {
-            clusterColor = vec3(1.0, 1.0, 0.0); // Yellow for 4 lights
-        }
-        else if (cluster.count >= 5)
-        {
-            clusterColor = vec3(1.0, 0.5, 0.0); // Orange for 5+ lights
-        }
+        // Show intensity based on light count (normalized to ~10 lights max)
+        float intensity = min(float(cluster.count) / 10.0, 1.0);
+        vec3 clusterColor = vec3(intensity * 0.8);
 
+        // Mix with 80% intensity
         color = mix(color, clusterColor, 0.8);
     }
+    // No color overlay for empty clusters - just show the original color
     #endif
 
     FragColor = vec4(color, 1.0);

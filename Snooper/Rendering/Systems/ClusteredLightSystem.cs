@@ -16,13 +16,15 @@ public struct LightData
     public Vector3 Position;      // World space position
     public float Range;           // Light range/radius
     public Vector3 Color;         // Light color
-    public uint Type;             // 0 = point/sphere, 1 = spot
+    public uint Type;             // 0 = point/sphere, 1 = spot, 2 = rect
     public Vector3 Direction;     // Spot light direction (world space)
     public float SpotAngle;       // Spot light inner cone angle (cosine)
     public float SpotOuterAngle;  // Spot light outer cone angle (cosine)
     public float Intensity;       // Light intensity
-    public uint Padding1;
-    public uint Padding2;
+    public float SizeX;           // Rect light width
+    public float SizeY;           // Rect light height
+    public Vector3 UpVector;
+    public float Padding;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -44,6 +46,7 @@ public struct ClusterData
 public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsProvider, IResizable
 {
     private const int TileSize = 32;
+    private const int WorkGroupSize = 64;
     private const int MaxLightsPerCluster = 256;
 
     public override uint Order => 99; // at least after TransformSystem
@@ -63,6 +66,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     public int GridDimensionZ => 16;
 
     private int _clusterCount;
+    private int _numWorkGroups;
     private int _screenWidth = 1;
     private int _screenHeight = 1;
 
@@ -88,12 +92,14 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
         _lightCullingProgram.Generate();
         _lightCullingProgram.Link();
+
+        IsEnabled = false;
     }
 
     protected override void OnRender(CameraComponent camera)
     {
         BuildClusters(camera);
-        CullLights(camera);
+        CullLights(camera); // TODO: improve, especially for rect lights
     }
 
     private void BuildClusters(CameraComponent camera)
@@ -114,11 +120,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
         _clusterAABBBuffer.Bind(0);
 
-        // Dispatch one thread per cluster with work group size of 64
-        int workGroupSize = 64;
-        int numWorkGroups = (_clusterCount + workGroupSize - 1) / workGroupSize;
-
-        GL.DispatchCompute(numWorkGroups, 1, 1);
+        GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
     }
 
@@ -148,9 +150,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         _lightIndexListBuffer.Bind(3);
         _globalIndexCountBuffer.Bind(4);
 
-        // Each workgroup processes ONE cluster with 8x8x8=512 threads cooperating
-        // We need to dispatch one workgroup per cluster
-        GL.DispatchCompute(GridDimensionX, GridDimensionY, GridDimensionZ);
+        GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
     }
 
@@ -205,6 +205,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         GridDimensionX = (_screenWidth + TileSize - 1) / TileSize;
         GridDimensionY = (_screenHeight + TileSize - 1) / TileSize;
         _clusterCount = GridDimensionX * GridDimensionY * GridDimensionZ;
+        _numWorkGroups = (_clusterCount + WorkGroupSize - 1) / WorkGroupSize;
 
         _clusterAABBBuffer.Reallocate(_clusterCount);
         _clusterDataBuffer.Reallocate(_clusterCount);

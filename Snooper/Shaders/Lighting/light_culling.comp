@@ -1,27 +1,13 @@
-﻿layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+﻿layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 const uint MAX_LIGHTS_PER_CLUSTER = 256;
 
-struct LightData
-{
-    vec3 position;
-    float range;
-    vec3 color;
-    uint type; // 0 = point, 1 = spot
-    vec3 direction;
-    float spotAngle;
-    float spotOuterAngle;
-    float intensity;
-    uint padding1;
-    uint padding2;
-};
+#include "Buffers/PerLightData.glsl"
 
 struct ClusterAABB
 {
     vec3 minPoint;
-    float _padding1;
     vec3 maxPoint;
-    float _padding2;
 };
 
 struct ClusterData
@@ -32,7 +18,7 @@ struct ClusterData
 
 layout(std430, binding = 0) readonly buffer LightBuffer
 {
-    LightData lights[];
+    PerLightData lights[];
 };
 
 layout(std430, binding = 1) readonly buffer ClusterAABBs
@@ -61,183 +47,146 @@ uniform int uGridDimY;
 uniform int uGridDimZ;
 uniform mat4 uViewMatrix;
 
-shared uint sharedLightCount;
-shared uint sharedLightIndices[MAX_LIGHTS_PER_CLUSTER];
-shared uint sharedGlobalOffset;
-
-// Test if sphere intersects AABB
+// Proper sphere-AABB intersection: does the light reach ANY point in the cluster?
 bool SphereIntersectsAABB(vec3 center, float radius, vec3 minPoint, vec3 maxPoint)
 {
-    // Add adaptive epsilon based on light size - smaller lights need more padding
-    float EPSILON = max(0.1, radius * 0.2);
-    vec3 expandedMin = minPoint - vec3(EPSILON);
-    vec3 expandedMax = maxPoint + vec3(EPSILON);
+    // Find the closest point on the AABB to the sphere center
+    vec3 closestPoint = clamp(center, minPoint, maxPoint);
 
-    vec3 closestPoint = clamp(center, expandedMin, expandedMax);
-    vec3 distance = center - closestPoint;
+    // Distance from sphere center to closest point on AABB
+    vec3 distVec = center - closestPoint;
+    float distSquared = dot(distVec, distVec);
 
-    // Use slightly larger effective radius for culling
-    float effectiveRadius = radius + EPSILON;
-    return dot(distance, distance) <= effectiveRadius * effectiveRadius;
+    // If closest point is within light range, the light affects this cluster
+    return distSquared <= (radius * radius);
 }
 
-// Test if cone intersects AABB (improved conservative test)
+// Proper cone-AABB intersection
 bool ConeIntersectsAABB(vec3 tipPos, vec3 direction, float range, float cosAngle, vec3 minPoint, vec3 maxPoint)
 {
-    // Add epsilon padding for spot lights too
-    const float EPSILON = 0.1; // Larger epsilon for spot lights
-    vec3 expandedMin = minPoint - vec3(EPSILON);
-    vec3 expandedMax = maxPoint + vec3(EPSILON);
-
-    // Conservative approach: use the cone's bounding sphere first
-    vec3 coneEnd = tipPos + direction * range;
-    float coneRadius = range * sqrt(1.0 - cosAngle * cosAngle);
+    // First, do a sphere test with the cone's bounding sphere
     vec3 sphereCenter = tipPos + direction * (range * 0.5);
-    float sphereRadius = length(sphereCenter - tipPos) + coneRadius;
+    float sinAngle = sqrt(max(0.0, 1.0 - cosAngle * cosAngle));
+    float coneRadius = range * sinAngle;
+    float sphereRadius = sqrt((range * 0.5) * (range * 0.5) + coneRadius * coneRadius);
 
-    // If bounding sphere doesn't intersect, cone definitely doesn't
-    if (!SphereIntersectsAABB(sphereCenter, sphereRadius, expandedMin, expandedMax))
+    if (!SphereIntersectsAABB(sphereCenter, sphereRadius, minPoint, maxPoint))
         return false;
 
-    // Test all 8 corners of the AABB
-    vec3 corners[8];
-    corners[0] = expandedMin;
-    corners[1] = vec3(expandedMax.x, expandedMin.y, expandedMin.z);
-    corners[2] = vec3(expandedMin.x, expandedMax.y, expandedMin.z);
-    corners[3] = vec3(expandedMax.x, expandedMax.y, expandedMin.z);
-    corners[4] = vec3(expandedMin.x, expandedMin.y, expandedMax.z);
-    corners[5] = vec3(expandedMax.x, expandedMin.y, expandedMax.z);
-    corners[6] = vec3(expandedMin.x, expandedMax.y, expandedMax.z);
-    corners[7] = expandedMax;
+    // If bounding sphere intersects, assume the cone does too
+    // More precise tests are too expensive and the fragment shader handles the real work
+    return true;
+}
 
-    // Check if any corner is inside the cone
-    bool anyCornerInside = false;
-    for (int i = 0; i < 8; i++)
+// Rect light (oriented rectangular area) AABB intersection
+bool RectIntersectsAABB(vec3 center, vec3 direction, vec3 up, float sizeX, float sizeY, float range, vec3 minPoint, vec3 maxPoint)
+{
+    vec3 forward = normalize(direction);
+
+    // Make 'up' orthogonal to forward; if degenerate, pick a fallback
+    vec3 upProj = up - forward * dot(up, forward);
+    if (length(upProj) < 1e-5)
     {
-        vec3 toCorner = corners[i] - tipPos;
-        float dist = length(toCorner);
+        // Choose a different arbitrary up vector if original is parallel to forward
+        upProj = abs(forward.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+        upProj = upProj - forward * dot(upProj, forward);
+    }
+    vec3 upN = normalize(upProj);
+    vec3 right = normalize(cross(forward, upN));
 
-        if (dist <= range)
+    // Center of the volume (middle along the depth)
+    float halfRange = range * 0.5;
+    vec3 volumeCenter = center + forward * halfRange;
+
+    // Half extents
+    float halfX = sizeX * 0.5;
+    float halfY = sizeY * 0.5;
+
+    // Compute 8 corners of the oriented box and find max distance to volumeCenter
+    float maxDistSq = 0.0;
+    for (int sx = -1; sx <= 1; sx += 2)
+    {
+        for (int sy = -1; sy <= 1; sy += 2)
         {
-            if (dist < 0.001) // Point is at the cone tip
+            for (int sz = -1; sz <= 1; sz += 2)
             {
-                anyCornerInside = true;
-                break;
-            }
-
-            float angle = dot(toCorner / dist, direction);
-            // Use a slightly wider angle for more conservative culling
-            if (angle >= cosAngle * 0.95)
-            {
-                anyCornerInside = true;
-                break;
+                vec3 corner = volumeCenter
+                + right * (float(sx) * halfX)
+                + upN   * (float(sy) * halfY)
+                + forward * (float(sz) * halfRange);
+                float d2 = dot(corner - volumeCenter, corner - volumeCenter);
+                maxDistSq = max(maxDistSq, d2);
             }
         }
     }
 
-    if (anyCornerInside)
-        return true;
+    float sphereRadius = sqrt(maxDistSq);
 
-    // Check if AABB center is in cone
-    vec3 center = (expandedMin + expandedMax) * 0.5;
-    vec3 toCenter = center - tipPos;
-    float centerDist = length(toCenter);
-
-    if (centerDist <= range && centerDist > 0.001)
-    {
-        float centerAngle = dot(toCenter / centerDist, direction);
-        if (centerAngle >= cosAngle * 0.95)
-            return true;
-    }
-
-    // Check if cone axis passes through the AABB
-    // Find closest point on cone axis to AABB
-    float t = clamp(dot(center - tipPos, direction), 0.0, range);
-    vec3 closestOnAxis = tipPos + direction * t;
-
-    // Check if this point is inside the AABB
-    if (all(greaterThanEqual(closestOnAxis, expandedMin)) && all(lessThanEqual(closestOnAxis, expandedMax)))
-        return true;
-
-    return false;
+    // Use the cheaper sphere-vs-AABB test (conservative)
+    return SphereIntersectsAABB(volumeCenter, sphereRadius, minPoint, maxPoint);
 }
 
 void main()
 {
-    // Each workgroup processes ONE cluster, so use WorkGroupID not GlobalInvocationID
-    uvec3 clusterID = gl_WorkGroupID;
+    // One thread per cluster (linear indexing)
+    uint clusterIndex = gl_GlobalInvocationID.x;
+    uint totalClusters = uGridDimX * uGridDimY * uGridDimZ;
 
-    if (clusterID.x >= uGridDimX || clusterID.y >= uGridDimY || clusterID.z >= uGridDimZ)
+    if (clusterIndex >= totalClusters)
         return;
-
-    uint clusterIndex = clusterID.z * uGridDimX * uGridDimY + clusterID.y * uGridDimX + clusterID.x;
-    uint localThreadIndex = gl_LocalInvocationIndex;
-
-    // Initialize shared memory
-    if (localThreadIndex == 0)
-    {
-        sharedLightCount = 0;
-    }
-    barrier();
 
     ClusterAABB clusterAABB = clusters[clusterIndex];
 
-    // Each thread tests a subset of lights
-    for (uint i = localThreadIndex; i < uLightCount; i += gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z)
-    {
-        LightData light = lights[i];
+    // Local array to store light indices for this cluster
+    uint localLightIndices[MAX_LIGHTS_PER_CLUSTER];
+    uint localLightCount = 0;
 
-        // Transform light position to view space
-        vec3 viewSpacePos = (uViewMatrix * vec4(light.position, 1.0)).xyz;
+    // Test all lights against this cluster
+    for (int i = 0; i < uLightCount && localLightCount < MAX_LIGHTS_PER_CLUSTER; i++)
+    {
+        PerLightData light = lights[i];
+
+        // Transform light to view space
+        vec3 viewPos = (uViewMatrix * vec4(light.position, 1.0)).xyz;
 
         bool intersects = false;
 
         if (light.type == 0) // Point light
         {
-            intersects = SphereIntersectsAABB(viewSpacePos, light.range, clusterAABB.minPoint, clusterAABB.maxPoint);
+            intersects = SphereIntersectsAABB(viewPos, light.range, clusterAABB.minPoint, clusterAABB.maxPoint);
         }
         else if (light.type == 1) // Spot light
         {
-            vec3 viewSpaceDir = mat3(uViewMatrix) * light.direction;
-            intersects = ConeIntersectsAABB(viewSpacePos, viewSpaceDir, light.range, light.spotOuterAngle, clusterAABB.minPoint, clusterAABB.maxPoint);
+            vec3 viewDir = mat3(uViewMatrix) * light.direction;
+            intersects = ConeIntersectsAABB(viewPos, viewDir, light.range, light.spotOuterAngle, clusterAABB.minPoint, clusterAABB.maxPoint);
+        }
+        else if (light.type == 2) // Rect light
+        {
+            vec3 viewDir = mat3(uViewMatrix) * light.direction;
+            intersects = RectIntersectsAABB(viewPos, viewDir, light.upVector, light.sizeX, light.sizeY, light.range, clusterAABB.minPoint, clusterAABB.maxPoint);
         }
 
         if (intersects)
         {
-            uint index = atomicAdd(sharedLightCount, 1);
-            if (index < MAX_LIGHTS_PER_CLUSTER)
-            {
-                sharedLightIndices[index] = i;
-            }
+            localLightIndices[localLightCount] = i;
+            localLightCount++;
         }
     }
 
-    barrier();
-
-    // Write results to global memory (only first thread)
-    if (localThreadIndex == 0)
+    // Allocate space in global light index list
+    uint globalOffset = 0;
+    if (localLightCount > 0)
     {
-        uint lightCount = min(sharedLightCount, MAX_LIGHTS_PER_CLUSTER);
-
-        if (lightCount > 0)
-        {
-            sharedGlobalOffset = atomicAdd(globalIndexCount, lightCount);
-        }
-        else
-        {
-            sharedGlobalOffset = 0;
-        }
-
-        clusterData[clusterIndex].offset = sharedGlobalOffset;
-        clusterData[clusterIndex].count = lightCount;
+        globalOffset = atomicAdd(globalIndexCount, localLightCount);
     }
 
-    barrier();
+    // Write cluster data
+    clusterData[clusterIndex].offset = globalOffset;
+    clusterData[clusterIndex].count = localLightCount;
 
-    // Write light indices
-    uint lightCount = min(sharedLightCount, MAX_LIGHTS_PER_CLUSTER);
-    for (uint i = localThreadIndex; i < lightCount; i += gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z)
+    // Write light indices to global buffer
+    for (uint i = 0; i < localLightCount; i++)
     {
-        lightIndices[sharedGlobalOffset + i] = sharedLightIndices[i];
+        lightIndices[globalOffset + i] = localLightIndices[i];
     }
 }

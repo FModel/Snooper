@@ -95,7 +95,9 @@ var grid = new Actor("Grid");
 grid.Components.Add(new GridComponent());
 scene.Children.Add(grid);
 
-scene.Children.Add(new DirectionalLightActor("Sun Light", new Vector3(0.1f, -0.35f, 0.0f), MathF.PI, new Vector3(1.0f, 0.87f, 0.72f)));
+var sun = new Actor("Sun Light");
+sun.Components.Add(new DirectionalLightComponent(MathF.PI, new Vector3(1.0f, 0.87f, 0.72f), new Transform(new Quaternion(new Vector3(1.0f, -0.5f, 0.0f), 1.0f)), "Directional Light"));
+scene.Children.Add(sun);
 
 scene.Children.Add(new SkyboxActor());
 

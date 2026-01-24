@@ -27,15 +27,15 @@ void main()
 {
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
     PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
-    
+
     vec3 color = fs_in.vDebugColor;
     vec3 spec = vec3(1.0);
     vec3 normal = vec3(0.0, 0.0, 1.0);
-    
+
     if (uDebugColorMode == 0 && materialData.IsReady)
     {
         LayerData layerData = SampleLayer(materialData, vTexLayer, fs_in.vTexCoords);
-        
+
         color = layerData.diffuse.rgb;
         spec = layerData.specular;
         normal = layerData.normal;

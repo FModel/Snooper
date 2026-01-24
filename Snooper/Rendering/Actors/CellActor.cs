@@ -63,7 +63,7 @@ public class CellActor : Actor
             }
 
             Components.Add(new SpatialComponent(new Transform(new Vector3(center.X, center.Z, center.Y)), "CellRoot"));
-            Components.Add(new DebugComponent(Vector3.Zero, new Vector3(extents.X, extents.Z, extents.Y), color, 5, "CellBounds"));
+            Components.Add(new BoxComponent(new Vector3(extents.X, extents.Z, extents.Y), color.Value, 5.0f, name: "CellBounds"));
 
             var spanX = extents.X * 2;
             var spanY = extents.Y * 2;

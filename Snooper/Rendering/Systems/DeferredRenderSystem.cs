@@ -24,7 +24,7 @@ public class DeferredRenderSystem : RenderSystem, IShadowSupportedSystem
 
     protected override bool CanEnqueueActorComponent(MeshComponent component)
     {
-        return component is { IsOpaque: true, IsVisible: true };
+        return component is { IsOpaque: true };
     }
 
     public void RenderShadows(CameraComponent light)

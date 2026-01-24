@@ -1,24 +1,31 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+using CUE4Parse.UE4.Objects.Engine;
+using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Light;
 
 [DefaultActorSystem(typeof(ClusteredLightSystem))]
-public class LightComponent : SpatialComponent
+public abstract class LightComponent : SpatialComponent
 {
     public readonly float Intensity;
+    public readonly ELightUnits IntensityUnits;
+    public readonly float IntensityNits;
     public readonly Vector3 Color;
 
     internal BufferAllocation? _lightDataAllocation;
 
-    public LightComponent(ULightComponentBase component) : base(component)
+    public LightComponent(ULightComponent component) : base(component)
     {
-        // Intensity = component.Intensity;
-        Intensity = MathF.PI; // because games use weird values sometimes, for consistency the intensity will never change
+        Intensity = component.Intensity;
+        IntensityUnits = component.GetLightUnits();
+        IntensityNits = component.GetNitIntensity();
+
         Color = component.GetLightColor();
     }
 
@@ -39,8 +46,27 @@ public class LightComponent : SpatialComponent
     {
         lightData.Position = WorldMatrix.Translation;
         lightData.Color = Color;
-        lightData.Intensity = Intensity;
+        lightData.Intensity = IntensityNits;
     }
 
     internal override string Icon => "bulb";
+
+    public sealed override void DrawControls()
+    {
+        base.DrawControls();
+
+        EditorUI.CollapsingTable("Light", ImGuiTreeNodeFlags.DefaultOpen, () =>
+        {
+            EditorUI.Text("Intensity", $"{Intensity:F} {IntensityUnits}");
+            EditorUI.Text("Intensity (nits)", $"{IntensityNits:F} nits");
+            EditorUI.Property("Color");
+            ImGui.ColorButton("##Color", new Vector4(Color, 1.0f), ImGuiColorEditFlags.NoAlpha | ImGuiColorEditFlags.NoTooltip);
+
+            DrawLightControls();
+        });
+    }
+
+    protected virtual void DrawLightControls()
+    {
+    }
 }
