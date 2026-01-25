@@ -9,6 +9,7 @@ public class PointLightComponent : LocalLightComponent
     public readonly float SourceRadius;
     public readonly float SoftSourceRadius;
     public readonly float SourceLength;
+    public readonly bool UseInverseSquaredFalloff;
 
     public PointLightComponent(UPointLightComponent component) : base(component)
     {
@@ -16,6 +17,7 @@ public class PointLightComponent : LocalLightComponent
         SourceRadius = component.SourceRadius * Settings.GlobalScale;
         SoftSourceRadius = component.SoftSourceRadius * Settings.GlobalScale;
         SourceLength = component.SourceLength * Settings.GlobalScale;
+        UseInverseSquaredFalloff = component.bUseInverseSquaredFalloff;
     }
 
     protected override void SetLightData(ref LightData lightData)
@@ -23,5 +25,6 @@ public class PointLightComponent : LocalLightComponent
         base.SetLightData(ref lightData);
 
         lightData.Type = 0;
+        lightData.UseInverseSquaredFalloff = UseInverseSquaredFalloff ? 1u : 0u;
     }
 }

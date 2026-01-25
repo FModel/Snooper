@@ -24,7 +24,7 @@ public struct LightData
     public float SizeX;           // Rect light width
     public float SizeY;           // Rect light height
     public Vector3 UpVector;
-    public float Padding;
+    public uint UseInverseSquaredFalloff;
 }
 
 [StructLayout(LayoutKind.Sequential)]

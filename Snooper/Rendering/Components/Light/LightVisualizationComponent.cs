@@ -136,7 +136,7 @@ public class LightVisualizationComponent : DebugComponent
         {
             var vertices = new List<Vector3>();
 
-            var radius = pointLight.AttenuationRadius;
+            var range = pointLight.AttenuationRadius;
             var center = Vector3.Zero;
 
             const int segments = 32; // More segments for smoother circles
@@ -148,14 +148,14 @@ public class LightVisualizationComponent : DebugComponent
                 var angle2 = 2.0f * MathF.PI * (i + 1) / segments;
 
                 var p1 = new Vector3(
-                    center.X + radius * MathF.Cos(angle1),
-                    center.Y + radius * MathF.Sin(angle1),
+                    center.X + range * MathF.Cos(angle1),
+                    center.Y + range * MathF.Sin(angle1),
                     center.Z
                 );
 
                 var p2 = new Vector3(
-                    center.X + radius * MathF.Cos(angle2),
-                    center.Y + radius * MathF.Sin(angle2),
+                    center.X + range * MathF.Cos(angle2),
+                    center.Y + range * MathF.Sin(angle2),
                     center.Z
                 );
 
@@ -171,14 +171,14 @@ public class LightVisualizationComponent : DebugComponent
 
                 var p1 = new Vector3(
                     center.X,
-                    center.Y + radius * MathF.Cos(angle1),
-                    center.Z + radius * MathF.Sin(angle1)
+                    center.Y + range * MathF.Cos(angle1),
+                    center.Z + range * MathF.Sin(angle1)
                 );
 
                 var p2 = new Vector3(
                     center.X,
-                    center.Y + radius * MathF.Cos(angle2),
-                    center.Z + radius * MathF.Sin(angle2)
+                    center.Y + range * MathF.Cos(angle2),
+                    center.Z + range * MathF.Sin(angle2)
                 );
 
                 vertices.Add(p1);
@@ -192,15 +192,15 @@ public class LightVisualizationComponent : DebugComponent
                 var angle2 = 2.0f * MathF.PI * (i + 1) / segments;
 
                 var p1 = new Vector3(
-                    center.X + radius * MathF.Cos(angle1),
+                    center.X + range * MathF.Cos(angle1),
                     center.Y,
-                    center.Z + radius * MathF.Sin(angle1)
+                    center.Z + range * MathF.Sin(angle1)
                 );
 
                 var p2 = new Vector3(
-                    center.X + radius * MathF.Cos(angle2),
+                    center.X + range * MathF.Cos(angle2),
                     center.Y,
-                    center.Z + radius * MathF.Sin(angle2)
+                    center.Z + range * MathF.Sin(angle2)
                 );
 
                 vertices.Add(p1);
@@ -222,7 +222,7 @@ public class LightVisualizationComponent : DebugComponent
 
             var halfWidth = rectLight.Width / 2.0f;
             var halfHeight = rectLight.Height / 2.0f;
-            var range = rectLight.AttenuationRadius / 3.0f; // visualize only first third of attenuation radius
+            var range = rectLight.AttenuationRadius;
 
             // X = forward (direction), Y = height (vertical), Z = width (horizontal)
             var topLeft = new Vector3(0, halfHeight, -halfWidth);

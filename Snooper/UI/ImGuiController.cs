@@ -36,7 +36,7 @@ public class ImGuiController : IResizable
         io.Fonts.Build();
 
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
-        io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
+        // io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         io.Fonts.Flags |= ImFontAtlasFlags.NoBakedLines;
         io.ConfigDockingWithShift = true;

@@ -165,7 +165,15 @@ vec3 CalculatePointLight(PerLightData light, vec3 worldPos, vec3 worldNormal, ve
 
     vec3 diffuse = kD * albedo / PI;
 
-    float attenuation = CalculateInverseSquareAttenuation(distance, light.range);
+    float attenuation = 1.0;
+    if (light.UseInverseSquaredFalloff == 1)
+    {
+        attenuation = CalculateInverseSquareAttenuation(distance, light.range);
+    }
+    else
+    {
+        attenuation = CalculateAttenuation(distance, light.range);
+    }
 
     return (diffuse + specular) * light.color * light.intensity * NdotL * attenuation;
 }
@@ -211,7 +219,15 @@ vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
     float epsilon = light.spotAngle - light.spotOuterAngle;
     float intensity = clamp((theta - light.spotOuterAngle) / epsilon, 0.0, 1.0);
 
-    float attenuation = CalculateAttenuation(distance, light.range);
+    float attenuation = 1.0;
+    if (light.UseInverseSquaredFalloff == 1)
+    {
+        attenuation = CalculateInverseSquareAttenuation(distance, light.range);
+    }
+    else
+    {
+        attenuation = CalculateAttenuation(distance, light.range);
+    }
 
     return (diffuse + specular) * light.color * light.intensity * NdotL * attenuation * intensity;
 }

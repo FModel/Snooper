@@ -11,5 +11,5 @@
     float sizeX;           // Rect light width
     float sizeY;           // Rect light height
     vec3 upVector;
-    float padding;
+    uint UseInverseSquaredFalloff;
 };

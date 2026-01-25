@@ -168,7 +168,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
         base.Load();
     }
 
-    public override void Update(float delta)
+    public sealed override void Update(float delta)
     {
         var pressed = wnd.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
@@ -189,6 +189,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
         if (ActiveCamera is null && Pairs.Count > 0)
             ActiveCamera = Pairs[0].Camera;
 
+        var io = ImGui.GetIO();
         if (Enabled)
         {
             _controller.Update(wnd, delta);
@@ -210,7 +211,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
             }
         }
 
-        ActiveCamera?.Update(wnd.KeyboardState, delta);
+        if (!io.WantCaptureKeyboard) ActiveCamera?.Update(wnd.KeyboardState, delta);
         if (wnd.CursorState == CursorState.Grabbed)
         {
             ActiveCamera?.Update(wnd.MouseState.Delta.X, wnd.MouseState.Delta.Y);

@@ -8,7 +8,8 @@ public class DirectionalLightComponent : LightComponent
 {
     public DirectionalLightComponent(UDirectionalLightComponent component) : base(component)
     {
-
+        // forward axis difference, don't ask why only here
+        LocalTransform.Rotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
     }
 
     public DirectionalLightComponent(float intensity, Vector3 color, Transform? transform = null, string? name = null) : base(intensity, color, transform, name)

@@ -1,5 +1,6 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
+using Newtonsoft.Json;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
@@ -16,6 +17,10 @@ public abstract partial class ActorComponent
     protected readonly string Header;
     private readonly string? _exportType;
     private readonly string? _internalType;
+
+#if DEBUG
+    private readonly string[]? _jsonProperties;
+#endif
 
     public bool IsSelected { get; internal set; }
 
@@ -35,7 +40,18 @@ public abstract partial class ActorComponent
 
     protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType, component.GetType().Name)
     {
+#if DEBUG
+        var jsonProperties = new List<string> { JsonConvert.SerializeObject(component, Formatting.Indented) };
 
+        var templatePtr = component.Template;
+        while (templatePtr?.TryLoad(out var template) == true)
+        {
+            jsonProperties.Add(JsonConvert.SerializeObject(template, Formatting.Indented));
+            templatePtr = template.Template;
+        }
+
+        _jsonProperties = jsonProperties.ToArray();
+#endif
     }
 
     public Actor? Actor
@@ -113,6 +129,26 @@ public abstract partial class ActorComponent
             ImGui.Spacing();
         }
 
+#if DEBUG
+        if (_jsonProperties != null)
+        {
+            if (ImGui.CollapsingHeader("JSON Properties"))
+            {
+                var avail = ImGui.GetContentRegionAvail();
+                for (int i = 0; i < _jsonProperties.Length; i++)
+                {
+                    var hasNode = i > 0 && ImGui.TreeNode($"Template Level {i}");
+                    if (i == 0 || hasNode)
+                    {
+                        if (ImGui.Button($"Copy JSON##jsonProperties{i}")) ImGui.SetClipboardText(_jsonProperties[i]);
+                        var height = MathF.Min(300, ImGui.CalcTextSize(_jsonProperties[i]).Y);
+                        ImGui.InputTextMultiline($"##jsonProperties{i}", ref _jsonProperties[i], ushort.MaxValue, avail with { Y = height }, ImGuiInputTextFlags.ReadOnly);
+                    }
+                    if (hasNode) ImGui.TreePop();
+                }
+            }
+        }
+#endif
         controllable.DrawControls();
 
         ImGui.PopID();
