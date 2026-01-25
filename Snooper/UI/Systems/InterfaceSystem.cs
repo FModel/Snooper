@@ -211,7 +211,7 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
             }
         }
 
-        if (!io.WantCaptureKeyboard) ActiveCamera?.Update(wnd.KeyboardState, delta);
+        if (!io.WantTextInput) ActiveCamera?.Update(wnd.KeyboardState, delta);
         if (wnd.CursorState == CursorState.Grabbed)
         {
             ActiveCamera?.Update(wnd.MouseState.Delta.X, wnd.MouseState.Delta.Y);

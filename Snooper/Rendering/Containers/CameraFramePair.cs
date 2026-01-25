@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
-using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
@@ -33,19 +32,9 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
     public void Generate(int pairIndex)
     {
         Camera.PairIndex = pairIndex;
-        Camera.OnRequestSystemUpdate += component =>
+        TransformSystem.OnTransformComponentUpdated += _ =>
         {
-            if (component is CameraComponent { bOrthographic: true })
-            {
-                _updateShadows = true;
-            }
-        };
-        TransformSystem.OnTransformComponentUpdated += component =>
-        {
-            if (component is not CameraComponent)
-            {
-                _updateShadows = true;
-            }
+            _updateShadows = true;
         };
 
         _geometry.Generate();
@@ -154,15 +143,79 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _shadow.Bind();
         GL.Clear(ClearBufferMask.DepthBufferBit);
 
-        // Create light view matrix from directional light
         Matrix4x4.Decompose(directionalLightComponent.WorldMatrix, out _, out var rotation, out _);
-        var lightDirection = Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation));
-        var lightPosition = lightDirection * 50.0f; // Position the light far away in the direction opposite to its direction
-        var viewMatrix = Matrix4x4.CreateLookAt(lightPosition, Vector3.Zero, Vector3.UnitZ);
+        var lightDir = Vector3.Transform(Vector3.UnitZ, rotation);
 
-        // Create orthographic projection matrix
-        float orthoSize = 25.0f; // TODO: keep track of the global scene bounds to adjust this size
-        var projectionMatrix = Matrix4x4.CreateOrthographic(orthoSize, orthoSize, 1.0f, 200.0f);
+        // we are trying to build a shadow view matrix that covers the near part of the camera frustum
+        // the near part is anywhere from the near plane to X units away
+        // our shadow view must encompass this area so use corners to find the center point
+        var near = Camera.NearPlaneDistance;
+        var far = MathF.Min(25.0f, Camera.FarPlaneDistance);
+        var aspect = Camera.AspectRatio;
+        var fov = Camera.FieldOfViewRadians;
+
+        var nearHeight = 2.0f * MathF.Tan(fov / 2.0f) * near;
+        var nearWidth = nearHeight * aspect;
+        var farHeight = 2.0f * MathF.Tan(fov / 2.0f) * far;
+        var farWidth = farHeight * aspect;
+
+        Vector3[] frustumCorners =
+        [
+            // near plane
+            new Vector3(-nearWidth / 2,  nearHeight / 2, -near), // top-left
+            new Vector3( nearWidth / 2,  nearHeight / 2, -near), // top-right
+            new Vector3( nearWidth / 2, -nearHeight / 2, -near), // bottom-right
+            new Vector3(-nearWidth / 2, -nearHeight / 2, -near), // bottom-left
+
+            // far plane
+            new Vector3(-farWidth / 2,  farHeight / 2, -far), // top-left
+            new Vector3( farWidth / 2,  farHeight / 2, -far), // top-right
+            new Vector3( farWidth / 2, -farHeight / 2, -far), // bottom-right
+            new Vector3(-farWidth / 2, -farHeight / 2, -far), // bottom-left
+        ];
+
+        // Transform frustum corners to world space
+        Matrix4x4.Invert(Camera.ViewMatrix, out var invView);
+        for (int i = 0; i < frustumCorners.Length; i++)
+        {
+            frustumCorners[i] = Vector3.Transform(frustumCorners[i], invView);
+        }
+
+        // Calculate the center of the frustum
+        Vector3 center = Vector3.Zero;
+        foreach (var corner in frustumCorners)
+        {
+            center += corner;
+        }
+        center /= frustumCorners.Length;
+
+        // now that we have the center, we need shadows to cover from a little before the near plane to the far plane
+        // so we move the light position back along its direction by half the distance from near to far
+        float shadowDistance = (far - near) / 2.0f + near;
+        var lightPos = center - lightDir * shadowDistance;
+        var viewMatrix = Matrix4x4.CreateLookAt(lightPos, center, Vector3.UnitY);
+
+        // Transform frustum corners to light space
+        Vector3[] lightSpaceCorners = new Vector3[frustumCorners.Length];
+        for (int i = 0; i < frustumCorners.Length; i++)
+        {
+            lightSpaceCorners[i] = Vector3.Transform(frustumCorners[i], viewMatrix);
+        }
+
+        // Find the AABB in light space
+        Vector3 min = lightSpaceCorners[0];
+        Vector3 max = lightSpaceCorners[0];
+        foreach (var corner in lightSpaceCorners)
+        {
+            min = Vector3.Min(min, corner);
+            max = Vector3.Max(max, corner);
+        }
+
+        // Create an orthographic projection matrix that encompasses the frustum slice
+        var projectionMatrix = Matrix4x4.CreateOrthographicOffCenter(
+            min.X, max.X,
+            min.Y, max.Y,
+            -max.Z, -min.Z);
 
         // Create a temporary camera component for shadow rendering
         var shadowCamera = new CameraComponent
