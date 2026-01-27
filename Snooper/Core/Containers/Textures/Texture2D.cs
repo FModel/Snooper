@@ -39,7 +39,7 @@ public class Texture2D(int width, int height,
         if (_owner.PlatformData is { FirstMipToSerialize: >= 0, VTData: { } vt } && vt.IsInitialized())
         {
             // TODO: decode somewhere else, Generate runs in the render thread
-            var textureData = _owner.DecodeMip(mipIndex, ETexturePlatform.DesktopMobile);
+            var textureData = _owner.DecodeMip(mipIndex, ETexturePlatform.DesktopMobile); // TODO: decode settings
             mipData = textureData.Data;
             width = textureData.Width;
             height = textureData.Height;
@@ -60,7 +60,7 @@ public class Texture2D(int width, int height,
             throw new InvalidOperationException("Mip data is null.");
 
         var terrain = _owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap;
-        Resize(width, height, mipData, !terrain);
+        Reset(width, height, mipData, !terrain);
         Log.Debug("Texture {Guid} of format {Format} uploaded to GPU with size {Width}x{Height}.", Guid, _owner.Format, Width, Height);
 
         if (terrain)
@@ -80,5 +80,25 @@ public class Texture2D(int width, int height,
 
         OnTextureReadyForBindless();
         _owner = null;
+    }
+
+    protected sealed override void SetStorage(int levels)
+    {
+        GL.TextureStorage2D(Handle, levels, FormatInfo.InternalFormat, Width, Height);
+    }
+
+    protected sealed override void SetPixels<T8>(T8[] pixels)
+    {
+        switch (FormatInfo)
+        {
+            case TextureFormatInfo info:
+                GL.TextureSubImage2D(Handle, 0, 0, 0, Width, Height, info.Format, info.Type, pixels);
+                break;
+            case CompressedTextureFormatInfo compressed:
+                GL.CompressedTextureSubImage2D(Handle, 0, 0, 0, Width, Height, (PixelFormat)compressed.InternalFormat, pixels.Length, pixels);
+                break;
+            default:
+                throw new NotSupportedException("Unknown texture format info.");
+        }
     }
 }

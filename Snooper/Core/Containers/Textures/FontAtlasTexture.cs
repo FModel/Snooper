@@ -10,7 +10,7 @@ public class FontAtlasTexture : Texture2D
 
     public readonly float FontSize;
     public readonly float LineHeight;
-    
+
     private readonly SKTypeface _typeface;
     private readonly List<(char c, SKRect bounds, float advance)> _charInfos;
     private readonly int _padding;
@@ -19,9 +19,9 @@ public class FontAtlasTexture : Texture2D
     private readonly int _cellHeight;
     private readonly int _atlasWidth;
     private readonly int _atlasHeight;
-    
+
     public Dictionary<char, CharacterInfo> Characters { get; } = new();
-    
+
     public struct CharacterInfo
     {
         public float U0, V0, U1, V1; // UV coordinates in atlas
@@ -36,7 +36,7 @@ public class FontAtlasTexture : Texture2D
     private FontAtlasTexture(string fontFamily = "Segoe UI", float fontSize = 48, bool bold = true) : base(1, 1, name: $"FontAtlas_{fontFamily}_{fontSize}")
     {
         const string chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-        
+
         _typeface = SKTypeface.FromFamilyName(fontFamily, bold ? SKFontStyle.Bold : SKFontStyle.Normal);
 
         using var paint = new SKPaint();
@@ -56,32 +56,32 @@ public class FontAtlasTexture : Texture2D
             _charInfos.Add((c, bounds, advance));
             maxHeight = Math.Max(maxHeight, bounds.Height);
         }
-        
+
         // Calculate atlas dimensions
         _padding = 2;
         _charsPerRow = 16;
         var rows = (int)Math.Ceiling(_charInfos.Count / (float)_charsPerRow);
-        
+
         _cellWidth = (int)Math.Ceiling(_charInfos.Max(info => info.bounds.Width)) + _padding * 2;
         _cellHeight = (int)Math.Ceiling(maxHeight) + _padding * 2;
-        
+
         _atlasWidth = _cellWidth * _charsPerRow;
         _atlasHeight = _cellHeight * rows;
-        
+
         // Build Characters dictionary with UV coordinates
         for (var i = 0; i < _charInfos.Count; i++)
         {
             var (c, bounds, advance) = _charInfos[i];
-            
+
             var col = i % _charsPerRow;
             var row = i / _charsPerRow;
-            
+
             // UV coordinates cover the character bounds
             var u0 = (col * _cellWidth + _padding) / (float)_atlasWidth;
             var v0 = (row * _cellHeight + _padding) / (float)_atlasHeight;
             var u1 = (col * _cellWidth + _padding + bounds.Width) / _atlasWidth;
             var v1 = (row * _cellHeight + _padding + bounds.Height) / _atlasHeight;
-            
+
             Characters[c] = new CharacterInfo
             {
                 U0 = u0,
@@ -97,11 +97,11 @@ public class FontAtlasTexture : Texture2D
                 AdvanceX = advance
             };
         }
-        
+
         FontSize = paint.TextSize;
         LineHeight = maxHeight;
     }
-    
+
     public override void Generate()
     {
         using var paint = new SKPaint();
@@ -114,25 +114,25 @@ public class FontAtlasTexture : Texture2D
         using var bitmap = new SKBitmap(_atlasWidth, _atlasHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var canvas = new SKCanvas(bitmap);
         canvas.Clear(SKColors.Transparent);
-        
+
         for (var i = 0; i < _charInfos.Count; i++)
         {
             var (c, bounds, _) = _charInfos[i];
-            
+
             var col = i % _charsPerRow;
             var row = i / _charsPerRow;
-            
+
             var x = col * _cellWidth + _padding - bounds.Left;
             var y = row * _cellHeight + _padding - bounds.Top;
-            
+
             canvas.DrawText(c.ToString(), x, y, paint);
         }
-        
+
         canvas.Flush();
-        
+
         base.Generate();
-        Resize(_atlasWidth, _atlasHeight, bitmap.GetPixelSpan().ToArray());
-        
+        Reset(_atlasWidth, _atlasHeight, bitmap.GetPixelSpan().ToArray());
+
         GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.LinearMipmapLinear);
         GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
