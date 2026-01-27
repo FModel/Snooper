@@ -5,7 +5,7 @@ uniform sampler2D gNormal; // view space normal
 uniform sampler2D gColor; // albedo color (RGB: albedo, A: unused atm)
 uniform sampler2D gSpecular; // specular color (R: unused atm, G: metallic, B: roughness, A: unused atm)
 uniform sampler2D ssao;
-uniform sampler2D shadowMap;
+uniform sampler2DArray shadowMap;
 
 uniform bool useSsao;
 uniform bool useShadows;
@@ -17,7 +17,6 @@ uniform vec3 uSunColor;
 uniform float uSunIntensity;
 
 uniform mat4 uInverseViewMatrix;
-uniform mat4 uLightViewProjectionMatrix;
 
 // Clustered lighting uniforms
 uniform int uGridDimX;
@@ -25,6 +24,10 @@ uniform int uGridDimY;
 uniform int uGridDimZ;
 uniform float uZNear;
 uniform float uZFar;
+
+uniform int uCascadeCount;
+uniform vec4 uCascadePlaneDistances;
+uniform mat4 uLightViewProjectionMatrices[4];
 
 out vec4 FragColor;
 
@@ -52,15 +55,13 @@ layout(std430, binding = 8) readonly buffer LightIndexList
     uint lightIndices[];
 };
 
-float CalculateShadow(vec3 worldPos, vec3 worldNormal, vec3 lightDir)
+float CalculateShadow(vec3 worldPos, vec3 worldNormal, vec3 lightDir, int layer)
 {
     // Transform world position to light space
-    vec4 fragPosLightSpace = uLightViewProjectionMatrix * vec4(worldPos, 1.0);
+    vec4 fragPosLightSpace = uLightViewProjectionMatrices[layer] * vec4(worldPos, 1.0);
 
     // Perform perspective divide
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-
-    // Transform to [0,1] range
     projCoords = projCoords * 0.5 + 0.5;
 
     // Check if we're outside the shadow map bounds - return 0 (no shadow)
@@ -74,15 +75,16 @@ float CalculateShadow(vec3 worldPos, vec3 worldNormal, vec3 lightDir)
     vec3 normal = normalize(worldNormal);
     float NdotL = max(dot(normal, lightDir), 0.0);
     float bias = 0.000001 + 0.000003 * (1.0 - NdotL);
+    bias *= 1 / (uCascadePlaneDistances[layer] * 0.5f);
 
     // PCF (Percentage Closer Filtering) for softer shadow edges
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0).xy;
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
         {
-            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+            float pcfDepth = texture(shadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
             shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -334,7 +336,21 @@ void main()
 
     // Calculate shadow (1.0 = fully in shadow, 0.0 = not in shadow)
     vec3 sunDir = normalize(uSunDirection);
-    float shadow = useShadows ? CalculateShadow(worldPos, worldNormal, sunDir) : 0.0;
+    float shadow = 0.0;
+    if (useShadows)
+    {
+        // Get the view space depth (positive value)
+        float depthValue = -viewPos.z;
+
+        // Find which cascade this fragment belongs to
+        // Compare depth against each cascade plane distance
+        int layer = 0;
+        if (depthValue > uCascadePlaneDistances.x) layer = 1;
+        if (depthValue > uCascadePlaneDistances.y) layer = 2;
+        if (depthValue > uCascadePlaneDistances.z) layer = 3;
+
+        shadow = CalculateShadow(worldPos, worldNormal, sunDir, layer);
+    }
 
     // Ambient lighting
     vec3 skyColor = vec3(0.6, 0.7, 0.8);

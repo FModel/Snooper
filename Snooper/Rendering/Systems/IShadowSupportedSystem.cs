@@ -4,5 +4,5 @@ namespace Snooper.Rendering.Systems;
 
 public interface IShadowSupportedSystem
 {
-    public void RenderShadows(CameraComponent light);
+    public void RenderShadows(CameraComponent[] cascades);
 }

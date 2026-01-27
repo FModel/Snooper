@@ -4,17 +4,18 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class ShadowFramebuffer(int originalWidth, int originalHeight) : Framebuffer
+public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer
 {
     public override int Width => _depth.Width;
     public override int Height => _depth.Height;
+    public int CascadeCount => _depth.Depth;
 
-    private readonly ResizableTexture2D _depth = new(originalWidth, originalHeight, SizedInternalFormat.DepthComponent32f, PixelFormat.DepthComponent, PixelType.Float);
+    private readonly Texture3D _depth = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent32f, PixelFormat.DepthComponent, PixelType.Float);
 
     public override void Generate()
     {
         _depth.Generate();
-        _depth.Resize(Width, Height);
+        _depth.Reset<int>(Width, Height, []);
         GL.TextureParameter(_depth, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
         GL.TextureParameter(_depth, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
         GL.TextureParameter(_depth, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToBorder);
@@ -33,13 +34,10 @@ public class ShadowFramebuffer(int originalWidth, int originalHeight) : Framebuf
 
     public override void Resize(int newWidth, int newHeight)
     {
-
+        // shadow map size is fixed
     }
 
-    public override Texture[] GetTextures() =>
-    [
-        _depth,
-    ];
+    public override Texture[] GetTextures() => [];
 
     public override long Allocated
     {

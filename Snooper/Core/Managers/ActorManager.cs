@@ -1,4 +1,5 @@
 ﻿using System.Collections.Specialized;
+using System.Numerics;
 using System.Reflection;
 using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
@@ -58,11 +59,11 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         }
     }
 
-    protected void RenderShadows(CameraComponent camera)
+    protected void RenderShadows(CameraComponent[] cameras)
     {
         foreach (var system in Systems.Values.OfType<IShadowSupportedSystem>())
         {
-            system.RenderShadows(camera);
+            system.RenderShadows(cameras);
         }
     }
 

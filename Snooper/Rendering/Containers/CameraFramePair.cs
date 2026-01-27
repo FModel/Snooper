@@ -24,10 +24,13 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
     private readonly CombinedFramebuffer _combined = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly FxaaFramebuffer _fxaa = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly PickingFramebuffer _picking = new(DefaultWidthHeight, DefaultWidthHeight);
-    private readonly ShadowFramebuffer _shadow = new(2048, 2048);
+    private readonly ShadowFramebuffer _shadow = new(2048, 4);
 
     private bool _updateShadows = true;
-    private Matrix4x4 _lastOrthoViewProjectionMatrix = Matrix4x4.Identity;
+    private Vector4 _cascadePlaneDistances = Vector4.One;
+    private Matrix4x4[] _lightViewProjectionMatrices = [];
+
+    private readonly float[] _cascadeDistances = [10f, 25f, 50f, 100f];
 
     public void Generate(int pairIndex)
     {
@@ -73,6 +76,8 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         {
             Matrix4x4.Invert(Camera.ViewMatrix, out var inverseViewMatrix);
             shader.SetUniform("uInverseViewMatrix", inverseViewMatrix);
+            shader.SetUniform("uZNear", Camera.NearPlaneDistance);
+            shader.SetUniform("uZFar", Camera.FarPlaneDistance);
 
             if (directionalLightComponent is { Actor.IsVisible: true })
             {
@@ -86,7 +91,10 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
                 shader.SetUniform("useShadows", Camera.bShadows);
                 if (Camera.bShadows)
                 {
-                    shader.SetUniform("uLightViewProjectionMatrix", _lastOrthoViewProjectionMatrix);
+                    shader.SetUniform("uCascadeCount", _shadow.CascadeCount);
+                    shader.SetUniform("uCascadePlaneDistances", _cascadePlaneDistances);
+                    shader.SetUniform("uLightViewProjectionMatrices", _lightViewProjectionMatrices);
+
                     _shadow.Bind(5);
                     shader.SetUniform("shadowMap", 5);
                 }
@@ -108,8 +116,6 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
                 shader.SetUniform("uGridDimX", lightSystem.GridDimensionX);
                 shader.SetUniform("uGridDimY", lightSystem.GridDimensionY);
                 shader.SetUniform("uGridDimZ", lightSystem.GridDimensionZ);
-                shader.SetUniform("uZNear", Camera.NearPlaneDistance);
-                shader.SetUniform("uZFar", Camera.FarPlaneDistance);
             }
             else shader.SetUniform("useLighting", false);
         });
@@ -136,7 +142,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _picking.Render();
     }
 
-    public void ShadowRendering(Action<CameraComponent> render, DirectionalLightComponent? directionalLightComponent = null)
+    public void ShadowRendering(Action<CameraComponent[]> render, DirectionalLightComponent? directionalLightComponent = null)
     {
         if (!Camera.bShadows || !_updateShadows || directionalLightComponent is not { Actor.IsVisible: true }) return;
 
@@ -146,90 +152,149 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         Matrix4x4.Decompose(directionalLightComponent.WorldMatrix, out _, out var rotation, out _);
         var lightDir = Vector3.Transform(Vector3.UnitZ, rotation);
 
-        // we are trying to build a shadow view matrix that covers the near part of the camera frustum
-        // the near part is anywhere from the near plane to X units away
-        // our shadow view must encompass this area so use corners to find the center point
         var near = Camera.NearPlaneDistance;
-        var far = MathF.Min(25.0f, Camera.FarPlaneDistance);
+        var far = MathF.Min(1000.0f, Camera.FarPlaneDistance); // Cap at 1000 units
         var aspect = Camera.AspectRatio;
         var fov = Camera.FieldOfViewRadians;
 
-        var nearHeight = 2.0f * MathF.Tan(fov / 2.0f) * near;
-        var nearWidth = nearHeight * aspect;
-        var farHeight = 2.0f * MathF.Tan(fov / 2.0f) * far;
-        var farWidth = farHeight * aspect;
+        // Initialize arrays for cascades
+        var cascadeCount = _shadow.CascadeCount;
+        _lightViewProjectionMatrices = new Matrix4x4[cascadeCount];
+        var shadowCameras = new CameraComponent[cascadeCount];
 
-        Vector3[] frustumCorners =
-        [
-            // near plane
-            new Vector3(-nearWidth / 2,  nearHeight / 2, -near), // top-left
-            new Vector3( nearWidth / 2,  nearHeight / 2, -near), // top-right
-            new Vector3( nearWidth / 2, -nearHeight / 2, -near), // bottom-right
-            new Vector3(-nearWidth / 2, -nearHeight / 2, -near), // bottom-left
+        // Use frustum-based cascade splits with fixed distance ratios
+        // This adapts to the camera's frustum while maintaining good quality distribution
+        float clipRange = far - near;
+        for (int i = 0; i < cascadeCount; i++)
+        {
+            // Use the predefined distances as ratios if they fit within the frustum
+            float targetDistance = _cascadeDistances[i];
 
-            // far plane
-            new Vector3(-farWidth / 2,  farHeight / 2, -far), // top-left
-            new Vector3( farWidth / 2,  farHeight / 2, -far), // top-right
-            new Vector3( farWidth / 2, -farHeight / 2, -far), // bottom-right
-            new Vector3(-farWidth / 2, -farHeight / 2, -far), // bottom-left
-        ];
+            // If target distance exceeds frustum far plane, scale proportionally
+            if (targetDistance > far)
+            {
+                // Scale down to fit within frustum
+                float ratio = targetDistance / _cascadeDistances[^1];
+                _cascadePlaneDistances[i] = near + clipRange * ratio;
+            }
+            else
+            {
+                _cascadePlaneDistances[i] = targetDistance;
+            }
+        }
 
-        // Transform frustum corners to world space
         Matrix4x4.Invert(Camera.ViewMatrix, out var invView);
-        for (int i = 0; i < frustumCorners.Length; i++)
+
+        // Create shadow map for each cascade
+        for (int cascadeIndex = 0; cascadeIndex < cascadeCount; cascadeIndex++)
         {
-            frustumCorners[i] = Vector3.Transform(frustumCorners[i], invView);
+            var cascadeNear = cascadeIndex == 0 ? near : _cascadePlaneDistances[cascadeIndex - 1];
+            var cascadeFar = _cascadePlaneDistances[cascadeIndex];
+
+            // Calculate frustum corners for this cascade
+            var nearHeight = 2.0f * MathF.Tan(fov / 2.0f) * cascadeNear;
+            var nearWidth = nearHeight * aspect;
+            var farHeight = 2.0f * MathF.Tan(fov / 2.0f) * cascadeFar;
+            var farWidth = farHeight * aspect;
+
+            Vector3[] frustumCorners =
+            [
+                // near plane
+                new Vector3(-nearWidth / 2,  nearHeight / 2, -cascadeNear),
+                new Vector3( nearWidth / 2,  nearHeight / 2, -cascadeNear),
+                new Vector3( nearWidth / 2, -nearHeight / 2, -cascadeNear),
+                new Vector3(-nearWidth / 2, -nearHeight / 2, -cascadeNear),
+                // far plane
+                new Vector3(-farWidth / 2,  farHeight / 2, -cascadeFar),
+                new Vector3( farWidth / 2,  farHeight / 2, -cascadeFar),
+                new Vector3( farWidth / 2, -farHeight / 2, -cascadeFar),
+                new Vector3(-farWidth / 2, -farHeight / 2, -cascadeFar),
+            ];
+
+            // Transform frustum corners to world space
+            for (int i = 0; i < frustumCorners.Length; i++)
+            {
+                frustumCorners[i] = Vector3.Transform(frustumCorners[i], invView);
+            }
+
+            // Calculate the center of the frustum slice
+            Vector3 center = Vector3.Zero;
+            foreach (var corner in frustumCorners)
+            {
+                center += corner;
+            }
+            center /= frustumCorners.Length;
+
+            // Position light to cover this cascade
+            float shadowDistance = (cascadeFar - cascadeNear) / 2.0f + cascadeNear;
+            var lightPos = center - lightDir * shadowDistance;
+            var viewMatrix = Matrix4x4.CreateLookAt(lightPos, center, Vector3.UnitY);
+
+            // Transform frustum corners to light space
+            Vector3[] lightSpaceCorners = new Vector3[frustumCorners.Length];
+            for (int i = 0; i < frustumCorners.Length; i++)
+            {
+                lightSpaceCorners[i] = Vector3.Transform(frustumCorners[i], viewMatrix);
+            }
+
+            // Find the AABB in light space
+            Vector3 min = lightSpaceCorners[0];
+            Vector3 max = lightSpaceCorners[0];
+            foreach (var corner in lightSpaceCorners)
+            {
+                min = Vector3.Min(min, corner);
+                max = Vector3.Max(max, corner);
+            }
+
+            // Extend the depth range to include objects behind and in front of the frustum
+            // This prevents shadow casters outside the frustum from being clipped
+            float zExtension = (max.Z - min.Z) * 0.5f;
+            min.Z -= zExtension;
+            max.Z += zExtension;
+
+            // Reduce padding for near cascades to maximize resolution where it matters most
+            float paddingScale = cascadeIndex switch
+            {
+                0 => 0.02f,
+                1 => 0.05f,
+                _ => 0.1f
+            };
+            var padding = (max - min) * paddingScale;
+            min.X -= padding.X;
+            max.X += padding.X;
+            min.Y -= padding.Y;
+            max.Y += padding.Y;
+
+            // Stabilize shadow map to prevent shimmering/swimming artifacts when camera moves
+            // Round the extents to texel-sized increments
+            float worldUnitsPerTexel = (max.X - min.X) / _shadow.Width;
+            min.X = MathF.Floor(min.X / worldUnitsPerTexel) * worldUnitsPerTexel;
+            min.Y = MathF.Floor(min.Y / worldUnitsPerTexel) * worldUnitsPerTexel;
+            max.X = MathF.Floor(max.X / worldUnitsPerTexel) * worldUnitsPerTexel;
+            max.Y = MathF.Floor(max.Y / worldUnitsPerTexel) * worldUnitsPerTexel;
+
+            // Create orthographic projection for this cascade
+            var projectionMatrix = Matrix4x4.CreateOrthographicOffCenter(
+                min.X, max.X,
+                min.Y, max.Y,
+                -max.Z, -min.Z);  // Note: negated because we're looking down -Z in view space
+
+            // Store the light view projection matrix for this cascade
+            _lightViewProjectionMatrices[cascadeIndex] = viewMatrix * projectionMatrix;
+
+            // Create shadow camera for rendering
+            shadowCameras[cascadeIndex] = new CameraComponent
+            {
+                ViewMatrix = viewMatrix,
+                ProjectionMatrix = projectionMatrix,
+                ViewProjectionMatrix = _lightViewProjectionMatrices[cascadeIndex],
+            };
         }
-
-        // Calculate the center of the frustum
-        Vector3 center = Vector3.Zero;
-        foreach (var corner in frustumCorners)
-        {
-            center += corner;
-        }
-        center /= frustumCorners.Length;
-
-        // now that we have the center, we need shadows to cover from a little before the near plane to the far plane
-        // so we move the light position back along its direction by half the distance from near to far
-        float shadowDistance = (far - near) / 2.0f + near;
-        var lightPos = center - lightDir * shadowDistance;
-        var viewMatrix = Matrix4x4.CreateLookAt(lightPos, center, Vector3.UnitY);
-
-        // Transform frustum corners to light space
-        Vector3[] lightSpaceCorners = new Vector3[frustumCorners.Length];
-        for (int i = 0; i < frustumCorners.Length; i++)
-        {
-            lightSpaceCorners[i] = Vector3.Transform(frustumCorners[i], viewMatrix);
-        }
-
-        // Find the AABB in light space
-        Vector3 min = lightSpaceCorners[0];
-        Vector3 max = lightSpaceCorners[0];
-        foreach (var corner in lightSpaceCorners)
-        {
-            min = Vector3.Min(min, corner);
-            max = Vector3.Max(max, corner);
-        }
-
-        // Create an orthographic projection matrix that encompasses the frustum slice
-        var projectionMatrix = Matrix4x4.CreateOrthographicOffCenter(
-            min.X, max.X,
-            min.Y, max.Y,
-            -max.Z, -min.Z);
-
-        // Create a temporary camera component for shadow rendering
-        var shadowCamera = new CameraComponent
-        {
-            ViewMatrix = viewMatrix,
-            ProjectionMatrix = projectionMatrix,
-            ViewProjectionMatrix = viewMatrix * projectionMatrix
-        };
-        _lastOrthoViewProjectionMatrix = shadowCamera.ViewProjectionMatrix;
 
         GL.Enable(EnableCap.CullFace);
         GL.CullFace(TriangleFace.Front);
 
-        render(shadowCamera);
+        render(shadowCameras);
 
         GL.CullFace(TriangleFace.Back);
         GL.Disable(EnableCap.CullFace);

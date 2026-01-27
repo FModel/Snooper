@@ -10,7 +10,10 @@ public class DeferredRenderSystem : RenderSystem, IShadowSupportedSystem
     public override uint Order => 23;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;
 
-    private readonly ShaderProgram _shadowShader = new EmbeddedShader("default.vert", "empty.frag");
+    private readonly ShaderProgram _shadowShader = new EmbeddedShader("Shadows/shadow_cascade.vert", "empty.frag")
+    {
+        Geometry = "Shadows/shadow_cascade.geom"
+    };
 
     protected override void OnLoad()
     {
@@ -27,10 +30,18 @@ public class DeferredRenderSystem : RenderSystem, IShadowSupportedSystem
         return component is { IsOpaque: true };
     }
 
-    public void RenderShadows(CameraComponent light)
+    public void RenderShadows(CameraComponent[] cascades)
     {
-        PreRender(light, _shadowShader);
-        OnRender(light);
-        PostRender(light, _shadowShader);
+        if (IsCulled)
+            Resources.Cull(cascades[^1]); // use the farthest cascade camera for culling
+
+        _shadowShader.Use();
+        for (int i = 0; i < cascades.Length; i++)
+        {
+            _shadowShader.SetUniform($"uViewMatrices[{i}]", cascades[i].ViewMatrix);
+            _shadowShader.SetUniform($"uProjectionMatrices[{i}]", cascades[i].ProjectionMatrix);
+        }
+
+        Resources.Render();
     }
 }
