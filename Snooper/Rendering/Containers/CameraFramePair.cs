@@ -153,7 +153,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         var lightDir = Vector3.Transform(Vector3.UnitZ, rotation);
 
         var near = Camera.NearPlaneDistance;
-        var far = MathF.Min(1000.0f, Camera.FarPlaneDistance); // Cap at 1000 units
+        var far = MathF.Min(100.0f, Camera.FarPlaneDistance); // Cap at 100 units
         var aspect = Camera.AspectRatio;
         var fov = Camera.FieldOfViewRadians;
 
@@ -162,30 +162,18 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _lightViewProjectionMatrices = new Matrix4x4[cascadeCount];
         var shadowCameras = new CameraComponent[cascadeCount];
 
-        // Use frustum-based cascade splits with fixed distance ratios
-        // This adapts to the camera's frustum while maintaining good quality distribution
-        float clipRange = far - near;
+        const float lambda = 0.8f; // 0 = linear, 1 = logarithmic (0.6–0.8 is ideal)
         for (int i = 0; i < cascadeCount; i++)
         {
-            // Use the predefined distances as ratios if they fit within the frustum
-            float targetDistance = _cascadeDistances[i];
+            float p = (i + 1) / (float)cascadeCount;
+            float log = near * MathF.Pow(far / near, p);
+            float lin = near + (far - near) * p;
 
-            // If target distance exceeds frustum far plane, scale proportionally
-            if (targetDistance > far)
-            {
-                // Scale down to fit within frustum
-                float ratio = targetDistance / _cascadeDistances[^1];
-                _cascadePlaneDistances[i] = near + clipRange * ratio;
-            }
-            else
-            {
-                _cascadePlaneDistances[i] = targetDistance;
-            }
+            _cascadePlaneDistances[i] = float.Lerp(lin, log, lambda);
         }
 
         Matrix4x4.Invert(Camera.ViewMatrix, out var invView);
 
-        // Create shadow map for each cascade
         for (int cascadeIndex = 0; cascadeIndex < cascadeCount; cascadeIndex++)
         {
             var cascadeNear = cascadeIndex == 0 ? near : _cascadePlaneDistances[cascadeIndex - 1];
@@ -246,38 +234,32 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
                 max = Vector3.Max(max, corner);
             }
 
-            // Extend the depth range to include objects behind and in front of the frustum
-            // This prevents shadow casters outside the frustum from being clipped
-            float zExtension = (max.Z - min.Z) * 0.5f;
-            min.Z -= zExtension;
-            max.Z += zExtension;
+            float casterExtension = (max.X - min.X) * 1.5f;
+            min.Z -= casterExtension;
+            max.Z += casterExtension;
 
-            // Reduce padding for near cascades to maximize resolution where it matters most
-            float paddingScale = cascadeIndex switch
-            {
-                0 => 0.02f,
-                1 => 0.05f,
-                _ => 0.1f
-            };
-            var padding = (max - min) * paddingScale;
-            min.X -= padding.X;
-            max.X += padding.X;
-            min.Y -= padding.Y;
-            max.Y += padding.Y;
+            // Find center in light space
+            Vector3 centerLs = (min + max) * 0.5f;
 
-            // Stabilize shadow map to prevent shimmering/swimming artifacts when camera moves
-            // Round the extents to texel-sized increments
-            float worldUnitsPerTexel = (max.X - min.X) / _shadow.Width;
-            min.X = MathF.Floor(min.X / worldUnitsPerTexel) * worldUnitsPerTexel;
-            min.Y = MathF.Floor(min.Y / worldUnitsPerTexel) * worldUnitsPerTexel;
-            max.X = MathF.Floor(max.X / worldUnitsPerTexel) * worldUnitsPerTexel;
-            max.Y = MathF.Floor(max.Y / worldUnitsPerTexel) * worldUnitsPerTexel;
+            float extent = MathF.Max(max.X - min.X, max.Y - min.Y) * 0.5f;
+            extent = MathF.Ceiling(extent * 16f) / 16f; // snap to 1/16 units
 
-            // Create orthographic projection for this cascade
+            float worldUnitsPerTexel = (extent * 2f) / _shadow.Width;
+            centerLs.X = MathF.Floor(centerLs.X / worldUnitsPerTexel) * worldUnitsPerTexel;
+            centerLs.Y = MathF.Floor(centerLs.Y / worldUnitsPerTexel) * worldUnitsPerTexel;
+
+            float left   = centerLs.X - extent;
+            float right  = centerLs.X + extent;
+            float bottom = centerLs.Y - extent;
+            float top    = centerLs.Y + extent;
+            float nearZ = -max.Z;
+            float farZ  = -min.Z;
+
             var projectionMatrix = Matrix4x4.CreateOrthographicOffCenter(
-                min.X, max.X,
-                min.Y, max.Y,
-                -max.Z, -min.Z);  // Note: negated because we're looking down -Z in view space
+                left, right,
+                bottom, top,
+                nearZ, farZ
+            );
 
             // Store the light view projection matrix for this cascade
             _lightViewProjectionMatrices[cascadeIndex] = viewMatrix * projectionMatrix;

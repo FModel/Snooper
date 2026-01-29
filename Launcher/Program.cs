@@ -96,7 +96,7 @@ grid.Components.Add(new GridComponent());
 scene.Children.Add(grid);
 
 var sun = new Actor("Sun Light");
-sun.Components.Add(new DirectionalLightComponent(MathF.PI, new Vector3(1.0f, 0.87f, 0.72f), new Transform(new Quaternion(new Vector3(1.0f, -0.5f, 0.0f), 1.0f)), "Directional Light"));
+sun.Components.Add(new DirectionalLightComponent(MathF.PI, new Vector3(1.0f, 0.87f, 0.72f), new Transform(new Quaternion(new Vector3(0.5f, -0.5f, 0.0f), 1.0f)), "Directional Light"));
 scene.Children.Add(sun);
 
 scene.Children.Add(new SkyboxActor());
@@ -114,9 +114,9 @@ switch (provider.ProjectName)
         // Juliett
         // Pitt
         // Port
-        // Poveglia
-        // PovegliaV2
-        // Rook
+        // Poveglia TODO: GPU Crash when something is in view
+        // PovegliaV2 TODO: GPU Crash when something is in view
+        // Rook TODO: GPU Crash at launch
         // Triad
 
         // camera.CameraComponent.FarPlaneDistance = 1000f;
