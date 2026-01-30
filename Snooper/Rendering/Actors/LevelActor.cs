@@ -116,6 +116,7 @@ public class LevelActor : Actor
                     USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
                     UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
+                    UArrowComponent arrowComponent => new ArrowComponent(arrowComponent),
                     UBrushComponent brushComponent when brushComponent.GetBrush() is { } brush => new BrushComponent(brushComponent, brush),
                     UShapeComponent { Outer: not ALevelBounds } shape => shape switch // exclude level bounds because their scale looks weird and overall they provide little value
                     {

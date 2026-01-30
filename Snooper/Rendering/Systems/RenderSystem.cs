@@ -34,7 +34,7 @@ public class RenderSystem : PrimitiveSystem<Vertex, MeshComponent, PerInstanceDa
     {
         base.PreRender(camera, shader);
 
-        // shader.SetUniform("uDebugColorMode", (int)DebugColorMode);
+        shader.SetUniform("uDebugColorMode", (int)DebugColorMode);
     }
 
     public override bool Accepts(Type type) => type != typeof(SplineMeshComponent) && base.Accepts(type); // TODO: improve this

@@ -10,90 +10,57 @@ public class ArrowComponent : DebugComponent
     public ArrowComponent(UArrowComponent component) : base(component)
     {
         // TODO:
+        Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(), () => new Geometry(Vector3.Zero, component.ArrowLength * Settings.GlobalScale));
+
+        var color = new Vector3(component.ArrowColor.R / 255.0f, component.ArrowColor.G / 255.0f, component.ArrowColor.B / 255.0f);
+        Materials[0].MaterialDataContainer = new MaterialDataContainer(color, 3.0f);
     }
 
-    public ArrowComponent(Transform? transform = null, string? name = null) : base(new Vector3(1.0f, 0.0f, 0.0f), 1, transform, name)
+    public ArrowComponent(Transform? transform = null, string? name = null) : base(new Vector3(1.0f, 0.0f, 0.0f), 2, transform, name)
     {
-        Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(), () => new Geometry(Vector3.Zero, 0.1f, 3f, 1f, 0.25f));
+        Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(), () => new Geometry(Vector3.Zero, 1.5f));
     }
 
     private class Geometry : DebugGeometry
     {
-        public Geometry(Vector3 center, float shaftRadius, float length, float coneHeight, float coneRadius)
+        public Geometry(Vector3 center, float length)
         {
-            const int segments = 12; // Number of segments around the cylinder and cone
-
-            var vertices = new List<Vector3>();
-
-            // Calculate positions (arrow points along Z axis - forward, matching mesh facing direction)
+            var axisLength = length * 0.3f;
+            var coneHeight = length * 0.25f;
+            var coneRadius = length * 0.1f;
             var shaftLength = length - coneHeight;
-            var shaftStart = center with { Z = center.Z - length / 2 };
-            var shaftEnd = shaftStart with { Z = shaftStart.Z + shaftLength };
-            var coneBase = shaftEnd;
-            var coneTip = coneBase with { Z = coneBase.Z + coneHeight };
+            var shaftEnd = center + new Vector3(0, 0, shaftLength);
+            var arrowTip = center + new Vector3(0, 0, length);
 
-            // Generate cylinder (shaft) rings
-            var cylinderRings = new Vector3[2, segments];
-
-            // Bottom ring of cylinder (XY plane perpendicular to Z)
-            for (var i = 0; i < segments; i++)
+            var vertices = new List<Vector3>
             {
-                var angle = 2.0f * MathF.PI * i / segments;
-                var x = MathF.Cos(angle) * shaftRadius;
-                var y = MathF.Sin(angle) * shaftRadius;
-                cylinderRings[0, i] = new Vector3(shaftStart.X + x, shaftStart.Y + y, shaftStart.Z);
+                center,
+                center + new Vector3(axisLength, 0, 0),
+                center,
+                center + new Vector3(0, axisLength, 0),
+                center,
+                shaftEnd
+            };
+
+            var coneBasePoints = new[]
+            {
+                shaftEnd + new Vector3(coneRadius, 0, 0),
+                shaftEnd + new Vector3(0, coneRadius, 0),
+                shaftEnd + new Vector3(-coneRadius, 0, 0),
+                shaftEnd + new Vector3(0, -coneRadius, 0)
+            };
+
+            foreach (var point in coneBasePoints)
+            {
+                vertices.Add(point);
+                vertices.Add(arrowTip);
             }
 
-            // Top ring of cylinder (at cone base)
-            for (var i = 0; i < segments; i++)
+            for (var i = 0; i < coneBasePoints.Length; i++)
             {
-                var angle = 2.0f * MathF.PI * i / segments;
-                var x = MathF.Cos(angle) * shaftRadius;
-                var y = MathF.Sin(angle) * shaftRadius;
-                cylinderRings[1, i] = new Vector3(shaftEnd.X + x, shaftEnd.Y + y, shaftEnd.Z);
-            }
-
-            // Draw vertical lines for cylinder shaft
-            for (var i = 0; i < segments; i++)
-            {
-                vertices.Add(cylinderRings[0, i]);
-                vertices.Add(cylinderRings[1, i]);
-            }
-
-            // Draw circumference rings for cylinder
-            for (var i = 0; i < segments; i++)
-            {
-                var next = (i + 1) % segments;
-                vertices.Add(cylinderRings[0, i]);
-                vertices.Add(cylinderRings[0, next]);
-
-                vertices.Add(cylinderRings[1, i]);
-                vertices.Add(cylinderRings[1, next]);
-            }
-
-            // Generate cone base ring
-            var coneBaseRing = new Vector3[segments];
-            for (var i = 0; i < segments; i++)
-            {
-                var angle = 2.0f * MathF.PI * i / segments;
-                var x = MathF.Cos(angle) * coneRadius;
-                var y = MathF.Sin(angle) * coneRadius;
-                coneBaseRing[i] = new Vector3(coneBase.X + x, coneBase.Y + y, coneBase.Z);
-            }
-
-            // Draw cone base circumference
-            for (var i = 0; i < segments; i++)
-            {
-                var next = (i + 1) % segments;
-                vertices.Add(coneBaseRing[i]);
-                vertices.Add(coneBaseRing[next]);
-            }
-
-            // Draw lines from cone base to tip
-            for (var i = 0; i < segments; i++)
-            {
-                vertices.Add(coneBaseRing[i]);
-                vertices.Add(coneTip);
+                var next = (i + 1) % coneBasePoints.Length;
+                vertices.Add(coneBasePoints[i]);
+                vertices.Add(coneBasePoints[next]);
             }
 
             Vertices = vertices.ToArray();
