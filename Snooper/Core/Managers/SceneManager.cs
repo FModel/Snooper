@@ -1,5 +1,4 @@
-﻿using OpenTK.Windowing.Desktop;
-using Snooper.Core.Containers;
+﻿using Snooper.Core.Containers;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
@@ -14,7 +13,7 @@ public class SceneManager : ActorManager, IResizable
 {
     protected List<CameraFramePair> Pairs { get; } = [];
 
-    protected CameraComponent? ActiveCamera
+    protected SceneCameraComponent? ActiveCamera
     {
         get;
         set
@@ -89,6 +88,7 @@ public class SceneManager : ActorManager, IResizable
         foreach (var pair in Pairs)
         {
             pair.ShadowRendering(RenderShadows, directionalLight);
+
             pair.DeferredRendering(Render, lightSystem, directionalLight);
             pair.ForwardRendering(Render);
             pair.PickingRendering();
@@ -107,7 +107,7 @@ public class SceneManager : ActorManager, IResizable
     {
         base.AddComponent(component, actor);
 
-        if (component is CameraComponent cameraComponent)
+        if (component is SceneCameraComponent cameraComponent)
         {
             _pairsToLoad.Enqueue(new CameraFramePair(cameraComponent));
         }
@@ -117,7 +117,7 @@ public class SceneManager : ActorManager, IResizable
     {
         base.RemoveComponent(component, actor);
 
-        if (component is CameraComponent cameraComponent)
+        if (component is SceneCameraComponent cameraComponent)
         {
             Pairs.Remove(Pairs[cameraComponent.PairIndex]);
         }

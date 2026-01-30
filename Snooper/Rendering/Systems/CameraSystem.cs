@@ -9,7 +9,7 @@ public sealed class CameraSystem : ActorSystem<CameraComponent>
 
     protected override void OnComponentUpdate(CameraComponent component, float delta)
     {
-        component.Update();
+        component.UpdateMatrices();
     }
 
     protected override void OnRender(CameraComponent camera)

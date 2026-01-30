@@ -194,7 +194,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _materialData.Remove(metadata.MaterialAllocation);
     }
 
-    public void Cull(CameraComponent camera) => _geometry.Cull(camera, _instanceData, _commands.Current);
+    public void Cull(IViewProjectionProvider camera) => _geometry.Cull(camera, _instanceData, _commands.Current);
 
     public void Render()
     {

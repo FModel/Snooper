@@ -112,8 +112,8 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         _clusterBuildProgram.SetUniform("uGridDimX", GridDimensionX);
         _clusterBuildProgram.SetUniform("uGridDimY", GridDimensionY);
         _clusterBuildProgram.SetUniform("uGridDimZ", GridDimensionZ);
-        _clusterBuildProgram.SetUniform("uZNear", camera.NearPlaneDistance);
-        _clusterBuildProgram.SetUniform("uZFar", camera.FarPlaneDistance);
+        _clusterBuildProgram.SetUniform("uZNear", camera.NearClipPlane);
+        _clusterBuildProgram.SetUniform("uZFar", camera.FarClipPlane);
 
         Matrix4x4.Invert(camera.ProjectionMatrix, out var invProj);
         _clusterBuildProgram.SetUniform("uInverseProjectionMatrix", invProj);

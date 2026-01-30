@@ -14,6 +14,7 @@ using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Audio;
+using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
@@ -133,6 +134,7 @@ public class LevelActor : Actor
                     },
                     UAudioComponent audioComponent => new AudioComponent(audioComponent),
                     UTextRenderComponent textComponent => new TextRenderComponent(textComponent),
+                    UCameraComponent cameraComponent => new CameraComponent(cameraComponent),
                     _ => new SpatialComponent(sceneComponent)
                 };
 

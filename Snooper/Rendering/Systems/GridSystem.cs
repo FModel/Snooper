@@ -25,8 +25,8 @@ public class GridSystem : PrimitiveSystem<GridComponent>, IControllable
     {
         base.PreRender(camera, shader);
 
-        shader.SetUniform("uNear", camera.NearPlaneDistance);
-        shader.SetUniform("uFar", camera.FarPlaneDistance);
+        shader.SetUniform("uNear", camera.NearClipPlane);
+        shader.SetUniform("uFar", camera.FarClipPlane);
         shader.SetUniform("uIsOpaque", IsOpaque);
 
         _texture?.Bind(0);

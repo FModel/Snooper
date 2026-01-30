@@ -10,13 +10,13 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Containers;
 
-public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetailsProvider
+public class CameraFramePair(SceneCameraComponent camera) : IResizable, IMemoryDetailsProvider
 {
     private const int DefaultWidthHeight = 1;
 
     public bool IsOpen = true;
 
-    public CameraComponent Camera { get; } = camera;
+    public SceneCameraComponent Camera { get; } = camera;
 
     private readonly GeometryBuffer _geometry = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly SsaoFramebuffer _ssao = new(DefaultWidthHeight, DefaultWidthHeight);
@@ -29,8 +29,6 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
     private bool _updateShadows = true;
     private Vector4 _cascadePlaneDistances = Vector4.One;
     private Matrix4x4[] _lightViewProjectionMatrices = [];
-
-    private readonly float[] _cascadeDistances = [10f, 25f, 50f, 100f];
 
     public void Generate(int pairIndex)
     {
@@ -76,8 +74,8 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         {
             Matrix4x4.Invert(Camera.ViewMatrix, out var inverseViewMatrix);
             shader.SetUniform("uInverseViewMatrix", inverseViewMatrix);
-            shader.SetUniform("uZNear", Camera.NearPlaneDistance);
-            shader.SetUniform("uZFar", Camera.FarPlaneDistance);
+            shader.SetUniform("uZNear", Camera.NearClipPlane);
+            shader.SetUniform("uZFar", Camera.FarClipPlane);
 
             if (directionalLightComponent is { Actor.IsVisible: true })
             {
@@ -142,7 +140,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         _picking.Render();
     }
 
-    public void ShadowRendering(Action<CameraComponent[]> render, DirectionalLightComponent? directionalLightComponent = null)
+    public void ShadowRendering(Action<IViewProjectionProvider[]> render, DirectionalLightComponent? directionalLightComponent = null)
     {
         if (!Camera.bShadows || !_updateShadows || directionalLightComponent is not { Actor.IsVisible: true }) return;
 
@@ -152,15 +150,15 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         Matrix4x4.Decompose(directionalLightComponent.WorldMatrix, out _, out var rotation, out _);
         var lightDir = Vector3.Transform(Vector3.UnitZ, rotation);
 
-        var near = Camera.NearPlaneDistance;
-        var far = MathF.Min(100.0f, Camera.FarPlaneDistance); // Cap at 100 units
+        var near = Camera.NearClipPlane;
+        var far = MathF.Min(100.0f, Camera.FarClipPlane); // Cap at 100 units
         var aspect = Camera.AspectRatio;
         var fov = Camera.FieldOfViewRadians;
 
         // Initialize arrays for cascades
         var cascadeCount = _shadow.CascadeCount;
         _lightViewProjectionMatrices = new Matrix4x4[cascadeCount];
-        var shadowCameras = new CameraComponent[cascadeCount];
+        var shadowCameras = new IViewProjectionProvider[cascadeCount];
 
         const float lambda = 0.8f; // 0 = linear, 1 = logarithmic (0.6–0.8 is ideal)
         for (int i = 0; i < cascadeCount; i++)
@@ -265,12 +263,7 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
             _lightViewProjectionMatrices[cascadeIndex] = viewMatrix * projectionMatrix;
 
             // Create shadow camera for rendering
-            shadowCameras[cascadeIndex] = new CameraComponent
-            {
-                ViewMatrix = viewMatrix,
-                ProjectionMatrix = projectionMatrix,
-                ViewProjectionMatrix = _lightViewProjectionMatrices[cascadeIndex],
-            };
+            shadowCameras[cascadeIndex] = new ShadowViewProjectionProvider(viewMatrix, projectionMatrix);
         }
 
         GL.Enable(EnableCap.CullFace);
@@ -315,11 +308,13 @@ public class CameraFramePair(CameraComponent camera) : IResizable, IMemoryDetail
         GL.BlitNamedFramebuffer(framebuffer, 0, 0, 0, framebuffer.Width, framebuffer.Height, 0, 0, width, height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
     }
 
-    public uint ReadPickingPixel(Vector2 mousePos, Vector2 windowPos) => _picking.ReadPixel(mousePos, windowPos, Camera.ViewportSize);
+    public uint ReadPickingPixel(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => _picking.ReadPixel(mousePos, windowPos, windowSize);
     public void SetPickedIds(IEnumerable<uint> ids) => _picking.SetPickedIds(ids);
 
     public void Resize(int newWidth, int newHeight)
     {
+        Camera.Resize(newWidth, newHeight);
+
         _geometry.Resize(newWidth, newHeight);
         _ssao.Resize(newWidth, newHeight);
         _forward.Resize(newWidth, newHeight);

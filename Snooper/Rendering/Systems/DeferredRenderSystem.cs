@@ -30,7 +30,7 @@ public class DeferredRenderSystem : RenderSystem, IShadowSupportedSystem
         return component is { IsOpaque: true };
     }
 
-    public void RenderShadows(CameraComponent[] cascades)
+    public void RenderShadows(IViewProjectionProvider[] cascades)
     {
         if (IsCulled)
             Resources.Cull(cascades[^1]); // use the farthest cascade camera for culling

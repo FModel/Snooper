@@ -201,11 +201,11 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
 
             if (ActiveCamera is not null)
             {
-                ActiveCamera.ViewportSize = new Vector2(wnd.ClientSize.X, wnd.ClientSize.Y);
                 if (wnd.IsMouseButtonPressed(MouseButton.Left) && ActiveCamera.PairIndex < Pairs.Count)
                 {
                     var mousePos = new Vector2(wnd.MousePosition.X, wnd.MousePosition.Y);
-                    var componentId = Pairs[ActiveCamera.PairIndex].ReadPickingPixel(mousePos, Vector2.Zero);
+                    var viewportSize = new Vector2(wnd.ClientSize.X, wnd.ClientSize.Y);
+                    var componentId = Pairs[ActiveCamera.PairIndex].ReadPickingPixel(mousePos, Vector2.Zero, viewportSize);
                     SelectedComponent = FindComponentById(componentId);
                 }
             }

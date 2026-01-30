@@ -107,7 +107,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         }
     }
 
-    public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands)
+    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands)
         where TInstanceData : unmanaged, IPerInstanceData => _culling.Cull(camera, instances, commands);
 
     public void Render(Action mdi)

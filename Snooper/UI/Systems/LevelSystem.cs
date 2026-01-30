@@ -48,10 +48,9 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 largest.Y -= ImGui.GetScrollY();
 
                 var framebuffers = pair.GetTextures();
-                var size = new Vector2(largest.X, largest.Y);
-                pair.Camera.ViewportSize = size;
-                ImGui.Image(framebuffers[^1].GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
-                DrawAtOrigin(pair.Camera, ImGui.GetWindowDrawList(), 8f, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
+                var viewportSize = new Vector2(largest.X, largest.Y);
+                pair.Camera.Resize((int)viewportSize.X, (int)viewportSize.Y);
+                ImGui.Image(framebuffers[^1].GetPointer(), viewportSize, Vector2.UnitY, Vector2.UnitX);
 
                 if (ImGui.IsItemHovered())
                 {
@@ -70,7 +69,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                     {
-                        var componentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos());
+                        var componentId = pair.ReadPickingPixel(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), viewportSize);
                         SelectedActor = null;
                         SelectedComponent = FindComponentById(componentId);
                         _scrollToSelected = true;
@@ -80,7 +79,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                     if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && ActiveCamera != null && SelectedComponent is SpatialComponent spatial)
                     {
                         var (center, distance) = spatial.GetTeleportPosition(ActiveCamera);
-                        ActiveCamera.TeleportTo(center - ActiveCamera.Forward * distance);
+                        ActiveCamera.TeleportTo(center + ActiveCamera.Forward * distance);
                     }
                 }
 
@@ -95,17 +94,17 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 if (ShowFramebuffers)
                 {
                     var remainingPointers = framebuffers.Length - 1;
-                    var miniSize = size;
-                    miniSize.Y = MathF.Min(miniSize.Y, (size.Y - margin) / remainingPointers) - frameHeight;
-                    miniSize.X = miniSize.Y * (size.X / size.Y);
+                    var miniSize = viewportSize;
+                    miniSize.Y = MathF.Min(miniSize.Y, (viewportSize.Y - margin) / remainingPointers) - frameHeight;
+                    miniSize.X = miniSize.Y * (viewportSize.X / viewportSize.Y);
                     // if the size is greater than 1/3 of the viewport, we will clamp it to 1/3
-                    if (miniSize.X > size.X / 3.0f)
+                    if (miniSize.X > viewportSize.X / 3.0f)
                     {
-                        miniSize.X = size.X / 3.0f;
-                        miniSize.Y = miniSize.X * (size.Y / size.X);
+                        miniSize.X = viewportSize.X / 3.0f;
+                        miniSize.Y = miniSize.X * (viewportSize.Y / viewportSize.X);
                     }
 
-                    var topRight = new Vector2(pos.X + size.X - miniSize.X - margin, pos.Y + margin);
+                    var topRight = new Vector2(pos.X + viewportSize.X - miniSize.X - margin, pos.Y + margin);
                     for (var i = 0; i < remainingPointers; i++)
                     {
                         var pMin = topRight with { Y = topRight.Y + i * (miniSize.Y + margin) };
@@ -120,14 +119,14 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
                 var framerate = ImGui.GetIO().Framerate;
                 drawList.AddText(
-                    new Vector2(pos.X + margin, pos.Y + size.Y - frameHeight),
+                    new Vector2(pos.X + margin, pos.Y + viewportSize.Y - frameHeight),
                     ImGui.GetColorU32(ImGuiCol.Text),
                     $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms)"
                 );
 
                 const string label = "Previewed content may differ from final version saved or used in-game.";
                 drawList.AddText(
-                    new Vector2(pos.X + size.X - ImGui.CalcTextSize(label).X - margin, pos.Y + size.Y - frameHeight),
+                    new Vector2(pos.X + viewportSize.X - ImGui.CalcTextSize(label).X - margin, pos.Y + viewportSize.Y - frameHeight),
                     ImGui.GetColorU32(new Vector4(1.00f, 1.00f, 1.00f, 0.50f)),
                     label
                 );
@@ -316,38 +315,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         TexturePreviewWindow.DrawAll();
     }
 
-    private void DrawAtOrigin(CameraComponent? camera, ImDrawListPtr drawList, float rectSize = 16f, Vector4? color = null)
-    {
-        if (camera == null) return;
-
-        if (SelectedComponent is not SpatialComponent spatial)
-        {
-            if (SelectedActor?.RootComponent is not null)
-            {
-                spatial = SelectedActor.RootComponent;
-            }
-            else
-            {
-                return;
-            }
-        }
-
-        var frameHeight = ImGui.GetFrameHeight();
-        foreach (var matrix in spatial.GetInstanceMatrices())
-        {
-            var clip = Vector4.Transform(new Vector4(matrix.Translation, 1f), camera.ViewProjectionMatrix);
-            if (clip.W <= 0) continue;
-
-            clip /= clip.W;
-            var ndc = new Vector2(clip.X, clip.Y);
-            var screenPos = new Vector2((ndc.X + 1f) * 0.5f * camera.ViewportSize.X, (1f - ndc.Y) * 0.5f * camera.ViewportSize.Y + frameHeight);
-            var pMin = screenPos - new Vector2(rectSize / 2f);
-            var pMax = screenPos + new Vector2(rectSize / 2f);
-
-            drawList.AddRect(pMin, pMax, ImGui.GetColorU32(color ?? new Vector4(1f, 1f, 0f, 1f)), 0f, ImDrawFlags.None, 2f);
-        }
-    }
-
     private void NotifyOnFirstRender()
     {
         var systems = Systems.Values.OfType<ITexturedSystem>().Where(s => s.TextureManager.IsLoading).ToArray();
@@ -391,7 +358,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && ActiveCamera != null && actor.RootComponent is not null)
         {
             var (center, distance) = actor.RootComponent.GetTeleportPosition(ActiveCamera);
-            ActiveCamera.TeleportTo(center - ActiveCamera.Forward * distance);
+            ActiveCamera.TeleportTo(center + ActiveCamera.Forward * distance);
         }
 
         ImGui.SameLine();
@@ -487,7 +454,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
         switch (actor.RootComponent)
         {
-            case CameraComponent { IsActive: true }:
+            case SceneCameraComponent { IsActive: true }:
                 actionButtons.RemoveRange(0, 2);
                 break;
         }
@@ -602,7 +569,7 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
         component.DrawInterface();
     }
 
-    private void DrawCameraControls(CameraComponent camera, Vector2 viewportPos, float margin)
+    private void DrawCameraControls(SceneCameraComponent camera, Vector2 viewportPos, float margin)
     {
         var controlsPos = new Vector2(viewportPos.X + margin, viewportPos.Y + margin);
 

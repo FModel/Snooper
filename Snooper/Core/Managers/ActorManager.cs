@@ -59,7 +59,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         }
     }
 
-    protected void RenderShadows(CameraComponent[] cameras)
+    protected void RenderShadows(IViewProjectionProvider[] cameras)
     {
         foreach (var system in Systems.Values.OfType<IShadowSupportedSystem>())
         {

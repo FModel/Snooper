@@ -23,6 +23,6 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
         base.PreRender(camera, shader);
 
         // Pass viewport size for line thickness calculations in geometry shader
-        shader.SetUniform("uViewportSize", new Vector2(camera.ViewportSize.X, camera.ViewportSize.Y));
+        shader.SetUniform("uViewportSize", new Vector2(camera.Width, camera.Height));
     }
 }
