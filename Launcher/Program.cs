@@ -45,7 +45,7 @@ const string key = "0x8E95784F8ECC94113349AE1678C62EBB50ABBA8C10422E7C5D8399B13D
 var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\503_Valorant_11_11.usmap";
+const string mapping = "D:\\FModel\\.data\\VALORANT_12.01_zs.usmap";
 const string key = "0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6";
 var version = new VersionContainer(EGame.GAME_Valorant);
 #elif GTA

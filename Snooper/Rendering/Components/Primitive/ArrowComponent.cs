@@ -9,7 +9,6 @@ public class ArrowComponent : DebugComponent
 {
     public ArrowComponent(UArrowComponent component) : base(component)
     {
-        // TODO:
         Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(), () => new Geometry(Vector3.Zero, component.ArrowLength * Settings.GlobalScale));
 
         var color = new Vector3(component.ArrowColor.R / 255.0f, component.ArrowColor.G / 255.0f, component.ArrowColor.B / 255.0f);

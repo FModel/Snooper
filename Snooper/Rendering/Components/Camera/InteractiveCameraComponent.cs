@@ -68,8 +68,8 @@ public class InteractiveCameraComponent : CameraComponent
     {
         const float sensitivity = 0.001f;
 
-        var yawRotation = Quaternion.CreateFromAxisAngle(UpVector, -deltaX * sensitivity);
-        var pitchRotation = Quaternion.CreateFromAxisAngle(RightVector, deltaY * sensitivity);
+        var yawRotation = Quaternion.CreateFromAxisAngle(Settings.UpVector, -deltaX * sensitivity);
+        var pitchRotation = Quaternion.CreateFromAxisAngle(Settings.RightVector, deltaY * sensitivity);
 
         LocalTransform.Rotation = Quaternion.Normalize(yawRotation * LocalTransform.Rotation * pitchRotation);
         MarkDirty(DirtyFlags.Transform);

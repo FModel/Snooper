@@ -1,7 +1,14 @@
-﻿namespace Snooper;
+﻿using System.Numerics;
+
+namespace Snooper;
 
 public static class Settings
 {
+    // OpenGL is a right-handed coordinate system
+    public static readonly Vector3 ForwardVector = -Vector3.UnitZ;
+    public static readonly Vector3 UpVector = Vector3.UnitY;
+    public static readonly Vector3 RightVector = Vector3.UnitX;
+
     public const string NoName = "Unnamed";
     public const int MaxTextureMipSize = 1024;
     public const int MaxNumberOfLods = 8;

@@ -14,6 +14,8 @@ public class SkeletalMeshComponent : MeshComponent
 
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh, USkeletalMeshComponent component) : base(skeletalMesh.Materials, component)
     {
+        ObjectPath = skeletalMesh.GetPathName();
+
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 

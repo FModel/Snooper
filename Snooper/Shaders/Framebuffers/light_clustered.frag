@@ -25,8 +25,9 @@ uniform int uGridDimZ;
 uniform float uZNear;
 uniform float uZFar;
 
+uniform vec2 uShadowMapSize;
 uniform int uCascadeCount;
-uniform vec4 uCascadePlaneDistances;
+uniform float uCascadePlaneDistances[4];
 uniform mat4 uLightViewProjectionMatrices[4];
 
 out vec4 FragColor;
@@ -55,38 +56,47 @@ layout(std430, binding = 8) readonly buffer LightIndexList
     uint lightIndices[];
 };
 
-float CalculateShadow(vec3 worldPos, vec3 worldNormal, vec3 lightDir, int layer)
+float CalculateShadow(vec3 worldPos, float NdotL, int layer)
 {
-    // Transform world position to light space
+    // Transform to light space
     vec4 fragPosLightSpace = uLightViewProjectionMatrices[layer] * vec4(worldPos, 1.0);
-
-    // Perform perspective divide
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
 
-    // Check if we're outside the shadow map bounds - return 0 (no shadow)
-    if(projCoords.z > 1.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
-        return 0.0;
-
-    // Get depth of current fragment from light's perspective
-    float currentDepth = projCoords.z;
-
-    // Angle-dependent bias to prevent both acne and peter panning
-    vec3 normal = normalize(worldNormal);
-    float NdotL = max(dot(normal, lightDir), 0.0);
-    float bias = 0.000001 + 0.000003 * (1.0 - NdotL);
-    bias *= 1 / (uCascadePlaneDistances[layer] * 0.5f);
-
-    // PCF (Percentage Closer Filtering) for softer shadow edges
-    float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(shadowMap, 0).xy;
-    for(int x = -1; x <= 1; ++x)
+    // Outside shadow-map -> not shadowed
+    if (projCoords.z > 1.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
     {
-        for(int y = -1; y <= 1; ++y)
-        {
-            float pcfDepth = texture(shadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
-            shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
-        }
+        return 0.0;
+    }
+
+    float bias = 0.000001 + 0.000003 * (1.0 - NdotL);
+    bias *= 1.0 / (uCascadePlaneDistances[layer] * 0.5);
+
+    float currentDepth = projCoords.z;
+    vec2 texelSize = 1.0 / uShadowMapSize;
+
+//    vec2 offs[4];
+//    offs[0] = vec2(-0.5, -0.5);
+//    offs[1] = vec2( 0.5, -0.5);
+//    offs[2] = vec2(-0.5,  0.5);
+//    offs[3] = vec2( 0.5,  0.5);
+
+//    float shadow = 0.0;
+//    for (int i = 0; i < 4; ++i)
+//    {
+//        vec2 uv = projCoords.xy + offs[i] * texelSize;
+//        float pcfDepth = texture(shadowMap, vec3(uv, layer)).r;
+//        shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
+//    }
+//    shadow *= 0.25;
+
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; ++x)
+    for (int y = -1; y <= 1; ++y)
+    {
+        vec2 uv = projCoords.xy + vec2(float(x), float(y)) * texelSize;
+        float pcfDepth = texture(shadowMap, vec3(uv, layer)).r;
+        shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
     }
     shadow /= 9.0;
 
@@ -334,22 +344,26 @@ void main()
     vec3 worldPos = (uInverseViewMatrix * vec4(viewPos, 1.0)).xyz;
     vec3 worldNormal = normalize((uInverseViewMatrix * vec4(normal, 0.0)).xyz);
 
-    // Calculate shadow (1.0 = fully in shadow, 0.0 = not in shadow)
-    vec3 sunDir = normalize(uSunDirection);
+    vec3 L = normalize(uSunDirection);
+    float NdotL = max(dot(worldNormal, L), 0.0);
+
     float shadow = 0.0;
-    if (useShadows)
+    if (useShadows && NdotL > 0.0)
     {
-        // Get the view space depth (positive value)
+        // view space depth (positive)
         float depthValue = -viewPos.z;
 
-        // Find which cascade this fragment belongs to
-        // Compare depth against each cascade plane distance
         int layer = 0;
-        if (depthValue > uCascadePlaneDistances.x) layer = 1;
-        if (depthValue > uCascadePlaneDistances.y) layer = 2;
-        if (depthValue > uCascadePlaneDistances.z) layer = 3;
+        for (int i = 0; i < uCascadeCount; i++)
+        {
+            if (depthValue < uCascadePlaneDistances[i])
+            {
+                layer = i;
+                break;
+            }
+        }
 
-        shadow = CalculateShadow(worldPos, worldNormal, sunDir, layer);
+        shadow = CalculateShadow(worldPos, NdotL, layer);
     }
 
     // Ambient lighting
@@ -369,8 +383,13 @@ void main()
     // For non-PBR materials (specs == 0), use simple lighting
     if (specs == vec3(0.0))
     {
-        float diffuse = max(dot(worldNormal, sunDir), 0.0);
-        vec3 lighting = ambient + albedo * uSunColor * diffuse * uSunIntensity * (1.0 - shadow * 0.8) * (useSunLight ? 1.0 : 0.0);
+        vec3 sunContrib = vec3(0.0);
+        if (useSunLight && NdotL > 0.0)
+        {
+            sunContrib = albedo * uSunColor * NdotL * uSunIntensity * (1.0 - shadow * 0.8);
+        }
+
+        vec3 lighting = ambient + sunContrib;
         FragColor = vec4(pow(lighting, vec3(1.0 / 2.2)), 1.0);
         return;
     }
@@ -386,9 +405,7 @@ void main()
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
     // Calculate sun light contribution using PBR
-    vec3 L = sunDir;
     vec3 H = normalize(worldV + L);
-    float NdotL = max(dot(worldNormal, L), 0.0);
     float NdotV = max(dot(worldNormal, worldV), 0.001);
 
     // Sun light

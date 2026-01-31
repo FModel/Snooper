@@ -1,9 +1,11 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Camera;
 
@@ -25,12 +27,7 @@ public enum CameraType : byte
 [DefaultActorSystem(typeof(CameraSystem))]
 public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResizable
 {
-    // OpenGL is a right-handed coordinate system
-    public static readonly Vector3 ForwardVector = -Vector3.UnitZ;
-    public static readonly Vector3 UpVector = Vector3.UnitY;
-    public static readonly Vector3 RightVector = Vector3.UnitX;
-
-    public float FieldOfView { get; set; } = 90.0f;
+    public float FieldOfView = 90.0f;
 
     public float Width { get; private set; } = 16.0f;
     public float Height { get; private set; } = 9.0f;
@@ -96,8 +93,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         }
     }
 
-    public Vector3 Forward => Vector3.Transform(ForwardVector, LocalTransform.Rotation);
-    public Vector3 Up => Vector3.Transform(UpVector, LocalTransform.Rotation);
+    public Vector3 Forward => Vector3.Transform(Settings.ForwardVector, LocalTransform.Rotation);
+    public Vector3 Up => Vector3.Transform(Settings.UpVector, LocalTransform.Rotation);
     public Vector3 Right => Vector3.Cross(Up, Forward);
 
     public CameraComponent(UCameraComponent component) : base(component)
@@ -124,7 +121,7 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     {
         Matrix4x4.Decompose(WorldMatrix, out _, out var rotation, out var position);
 
-        ViewMatrix = Matrix4x4.CreateLookAt(position, position - Vector3.Transform(ForwardVector, rotation), Vector3.Transform(UpVector, rotation));
+        ViewMatrix = Matrix4x4.CreateLookAt(position, position - Vector3.Transform(Settings.ForwardVector, rotation), Vector3.Transform(Settings.UpVector, rotation));
         ProjectionMatrix = ProjectionMode switch
         {
             CameraMode.Orthographic => Matrix4x4.CreateOrthographic(OrthoWidth * AspectRatio, OrthoWidth, OrthoNearClipPlane, OrthoFarClipPlane),
@@ -134,6 +131,26 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     }
 
     internal override string Icon => "camera";
+
+    public sealed override void DrawControls()
+    {
+        base.DrawControls();
+
+        EditorUI.CollapsingTable("Camera", ImGuiTreeNodeFlags.DefaultOpen, () =>
+        {
+            var nearClip = NearClipPlane;
+            var farClip = FarClipPlane;
+
+            var edited = EditorUI.DragFloat("Near Clip Plane", ref nearClip, 0.1f, 0.01f, farClip - 0.1f);
+            edited |= EditorUI.DragFloat("Far Clip Plane", ref farClip, 1.0f, nearClip + 0.1f, 100000.0f);
+
+            if (edited)
+            {
+                NearClipPlane = nearClip;
+                FarClipPlane = farClip;
+            }
+        });
+    }
 
     public void Resize(int newWidth, int newHeight)
     {

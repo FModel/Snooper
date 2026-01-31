@@ -14,6 +14,8 @@ public class StaticMeshComponent : MeshComponent
 
     public StaticMeshComponent(UStaticMesh staticMesh, UStaticMeshComponent component) : base(staticMesh.Materials, component)
     {
+        ObjectPath = staticMesh.GetPathName();
+
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
 
         // TODO: use component.LODData to override some stuff (eg vertex colors)

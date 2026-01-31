@@ -38,7 +38,7 @@ void CommonMeshMain()
 {
     int id = gl_BaseInstance + gl_InstanceID;
     mat4 matrix = uInstanceDataBuffer[id].Matrix;
-    
+
 #ifdef SPLINE_VERTEX
     vec3 uePos = aPos.xzy;
     SplineMeshParams params = uSplineParameters[gl_DrawID];
@@ -60,7 +60,7 @@ void CommonMeshMain()
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gl_DrawID];
-    
+
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
     vTexLayer = aTexLayer;

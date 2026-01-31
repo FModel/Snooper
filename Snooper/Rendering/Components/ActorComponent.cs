@@ -22,6 +22,7 @@ public abstract partial class ActorComponent
     private readonly string[]? _jsonProperties;
 #endif
 
+    public string? ObjectPath { get; protected init; }
     public bool IsSelected { get; internal set; }
 
     public bool IsOutlined => IsSelected || Actor is { IsOutlined: true };
@@ -40,6 +41,8 @@ public abstract partial class ActorComponent
 
     protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType, component.GetType().Name)
     {
+        ObjectPath = component.GetPathName();
+
 #if DEBUG
         var jsonProperties = new List<string> { JsonConvert.SerializeObject(component, Formatting.Indented) };
 
@@ -122,6 +125,15 @@ public abstract partial class ActorComponent
         if (_internalType != null)
         {
             ImGui.Text($"Internal Type: {_internalType}");
+            condition = true;
+        }
+        if (ObjectPath != null)
+        {
+            if (ImGui.SmallButton("Copy Path: "))
+                ImGui.SetClipboardText(ObjectPath);
+
+            ImGui.SameLine();
+            ImGui.TextWrapped(ObjectPath);
             condition = true;
         }
         if (condition)
