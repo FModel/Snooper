@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using ImGuiNET;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -54,14 +54,6 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
                 if (ImGui.IsItemHovered())
                 {
-                    if (wnd.MouseState.ScrollDelta.Y != 0)
-                    {
-                        var multiplier = wnd.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
-                        pair.Camera.MovementSpeed += wnd.MouseState.ScrollDelta.Y * multiplier;
-                        pair.Camera.MovementSpeed = MathF.Max(1f, pair.Camera.MovementSpeed);
-                        Notifications.PushNotification("Camera", () => $"Movement speed set to {pair.Camera.MovementSpeed}.");
-                    }
-
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
                     {
                         wnd.CursorState = CursorState.Grabbed;
@@ -160,11 +152,11 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
                 if (ImGui.BeginTabItem("Overview"))
                 {
                     ImGui.Columns(2, "SysInfo", false);
-                    ImGui.Text($"API: {Context.Name}");
-                    ImGui.Text($"GPU: {Context.DeviceInfo.Name}");
+                    ImGui.Text($"API: {Renderer.Name}");
+                    ImGui.Text($"GPU: {Renderer.DeviceInfo.Name}");
                     ImGui.NextColumn();
-                    ImGui.Text($"OpenGL: {Context.Version}");
-                    ImGui.Text($"Vendor: {Context.DeviceInfo.Vendor}");
+                    ImGui.Text($"OpenGL: {Renderer.Version}");
+                    ImGui.Text($"Vendor: {Renderer.DeviceInfo.Vendor}");
                     ImGui.Columns(1);
 
                     ImGui.Spacing();
@@ -644,17 +636,17 @@ public class LevelSystem(GameWindow wnd) : InterfaceSystem(wnd)
 
         ImGui.BeginGroup();
         {
-            var vertexColors = DebugColorMode == ActorDebugColorMode.VertexColors;
+            var vertexColors = DebugColorMode == DebugVisualizationMode.VertexColors;
             if (vertexColors) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
-            if (ImGui.Button("VC", toggleSize)) DebugColorMode = vertexColors ? ActorDebugColorMode.None : ActorDebugColorMode.VertexColors;
+            if (ImGui.Button("VC", toggleSize)) DebugColorMode = vertexColors ? DebugVisualizationMode.None : DebugVisualizationMode.VertexColors;
             if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Vertex Colors: {(vertexColors ? "ON" : "OFF")}");
             if (vertexColors) ImGui.PopStyleColor(1);
 
             ImGui.SameLine(0, 0);
 
-            var primitiveColors = DebugColorMode == ActorDebugColorMode.PerPrimitive;
+            var primitiveColors = DebugColorMode == DebugVisualizationMode.PerPrimitive;
             if (primitiveColors) ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.ButtonHovered));
-            if (ImGui.Button("PC", toggleSize)) DebugColorMode = primitiveColors ? ActorDebugColorMode.None : ActorDebugColorMode.PerPrimitive;
+            if (ImGui.Button("PC", toggleSize)) DebugColorMode = primitiveColors ? DebugVisualizationMode.None : DebugVisualizationMode.PerPrimitive;
             if (ImGui.IsItemHovered()) ImGui.SetTooltip($"Primitive Colors: {(primitiveColors ? "ON" : "OFF")}");
             if (primitiveColors) ImGui.PopStyleColor(1);
         }

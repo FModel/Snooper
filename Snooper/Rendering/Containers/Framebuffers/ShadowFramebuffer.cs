@@ -1,25 +1,29 @@
-﻿using System.Numerics;
+using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer
+public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IControllable
 {
     public override int Width => _depth.Width;
     public override int Height => _depth.Height;
     public int CascadeCount => _depth.Depth;
+    public float Bias = 0.001f;
 
     public readonly float[] CascadePlaneDistances = new float[cascadeCount];
     public readonly Matrix4x4[] CascadeMatrices = new Matrix4x4[cascadeCount];
 
-    private readonly Texture3D _depth = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent32f, PixelFormat.DepthComponent, PixelType.Float);
+    private readonly Texture2DArray _depth = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent16, PixelFormat.DepthComponent, PixelType.Float);
+    private float _lambda = 0.85f;
 
-    // camera cache for dirty checks
+    // cache for dirty checks
+    private float _lastLambda;
     private float _lastNearClipPlane;
     private float _lastFarClipPlane;
 
@@ -49,26 +53,27 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer
 
     private void UpdatePlaneDistances(SceneCameraComponent camera)
     {
-        if (MathF.Abs(_lastNearClipPlane - camera.NearClipPlane) < float.Epsilon &&
+        if (MathF.Abs(_lastLambda - _lambda) < float.Epsilon &&
+            MathF.Abs(_lastNearClipPlane - camera.NearClipPlane) < float.Epsilon &&
             MathF.Abs(_lastFarClipPlane - camera.FarClipPlane) < float.Epsilon)
         {
             return;
         }
 
+        _lastLambda = _lambda;
         _lastNearClipPlane = camera.NearClipPlane;
         _lastFarClipPlane = camera.FarClipPlane;
 
         var near = _lastNearClipPlane;
         var far = MathF.Min(150.0f, _lastFarClipPlane);
 
-        const float lambda = 0.8f; // 0 = linear, 1 = logarithmic (0.6–0.8 is ideal)
         for (int i = 0; i < CascadeCount; i++)
         {
             var p = (i + 1) / (float)CascadeCount;
             var log = near * MathF.Pow(far / near, p);
             var lin = near + (far - near) * p;
 
-            CascadePlaneDistances[i] = float.Lerp(lin, log, lambda);
+            CascadePlaneDistances[i] = float.Lerp(lin, log, _lastLambda);
         }
 
         Log.Debug("Updated shadow cascade plane distances: {Distances}", CascadePlaneDistances);
@@ -186,6 +191,18 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer
     }
 
     public override Texture[] GetTextures() => [];
+
+    public void DrawControls()
+    {
+        EditorUI.PropertyValueTable("Shadows", () =>
+        {
+            EditorUI.Text("Resolution", $"{Width} px");
+            EditorUI.DragFloat("Lambda", ref _lambda, 0.01f, 0.0f, 1.0f, "%.2f");
+            EditorUI.DragFloat("Bias", ref Bias, 0.000001f, 0.000005f, 0.05f, "%.6f");
+            EditorUI.Text("Cascade Count", $"{CascadeCount}");
+            EditorUI.Text("Cascade Planes", $"{string.Join(", ", CascadePlaneDistances)} units");
+        });
+    }
 
     public override long Allocated
     {

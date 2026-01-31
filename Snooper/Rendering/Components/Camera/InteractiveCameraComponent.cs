@@ -9,7 +9,7 @@ namespace Snooper.Rendering.Components.Camera;
 public class InteractiveCameraComponent : CameraComponent
 {
     public CameraType ViewType { get; set; } = CameraType.Free;
-    public float MovementSpeed { get; set; } = 10f;
+    public float MovementSpeed = 10f;
 
     private Vector3 _velocity = Vector3.Zero;
     private Vector3? _teleportTarget = null;
@@ -60,8 +60,8 @@ public class InteractiveCameraComponent : CameraComponent
         LocalTransform.Position += _velocity * time;
         MarkDirty(DirtyFlags.Transform);
 
-        if (keyboard.IsKeyDown(Keys.X)) FieldOfView = Math.Clamp(FieldOfView + 0.5f, 1.0f, 90.0f);
-        if (keyboard.IsKeyDown(Keys.C)) FieldOfView = Math.Clamp(FieldOfView - 0.5f, 1.0f, 90.0f);
+        if (keyboard.IsKeyDown(Keys.X)) FieldOfView = Math.Clamp(FieldOfView + 0.5f, FieldOfViewMin, FieldOfViewMax);
+        if (keyboard.IsKeyDown(Keys.C)) FieldOfView = Math.Clamp(FieldOfView - 0.5f, FieldOfViewMin, FieldOfViewMax);
     }
 
     public void Update(float deltaX, float deltaY)

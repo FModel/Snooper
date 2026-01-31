@@ -5,7 +5,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class DeferredRenderSystem : RenderSystem, IShadowSupportedSystem
+public class DeferredRenderSystem : RenderSystem, IShadowSystem
 {
     public override uint Order => 23;
     public override ActorSystemType SystemType => ActorSystemType.Deferred;

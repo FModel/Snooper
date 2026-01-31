@@ -56,6 +56,10 @@ void CommonMeshMain()
 
     mat3 nMatrix = transpose(inverse(mat3(matrix)));
     vec3 T = normalize(vec3(vec4(nMatrix * aTangent, 0.0)));
+    if (determinant(nMatrix) < 0.0) // flipped normals
+    {
+        T = -T;
+    }
     vec3 N = normalize(vec3(vec4(nMatrix * aNormal, 0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 

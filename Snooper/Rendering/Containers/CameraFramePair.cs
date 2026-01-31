@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+using System.Numerics;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
@@ -7,10 +8,11 @@ using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Containers.Framebuffers;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Containers;
 
-public class CameraFramePair(SceneCameraComponent camera) : IResizable, IMemoryDetailsProvider
+public class CameraFramePair(SceneCameraComponent camera) : IResizable, IMemoryDetailsProvider, IControllable
 {
     private const int DefaultWidthHeight = 1;
 
@@ -26,6 +28,7 @@ public class CameraFramePair(SceneCameraComponent camera) : IResizable, IMemoryD
     private readonly PickingFramebuffer _picking = new(DefaultWidthHeight, DefaultWidthHeight);
     private readonly ShadowFramebuffer _shadow = new(2048, 4);
 
+    private bool _lighting = false;
     private bool _updateShadows = true;
 
     public void Generate(int pairIndex)
@@ -88,6 +91,7 @@ public class CameraFramePair(SceneCameraComponent camera) : IResizable, IMemoryD
                 if (Camera.bShadows)
                 {
                     shader.SetUniform("uShadowMapSize", new Vector2(_shadow.Width, _shadow.Height));
+                    shader.SetUniform("uShadowBias", _shadow.Bias);
                     shader.SetUniform("uCascadeCount", _shadow.CascadeCount);
                     shader.SetUniform("uCascadePlaneDistances", _shadow.CascadePlaneDistances);
                     shader.SetUniform("uLightViewProjectionMatrices", _shadow.CascadeMatrices);
@@ -212,6 +216,54 @@ public class CameraFramePair(SceneCameraComponent camera) : IResizable, IMemoryD
         .._shadow.GetTextures(),
         ..Camera.bFXAA ? _fxaa.GetTextures() : _combined.GetTextures(),
     ];
+
+    public void DrawControls()
+    {
+        EditorUI.TogglableTreeNode("Anti-Aliasing", ref Camera.bFXAA, ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.Bullet, () => { });
+
+        EditorUI.TogglableTreeNode("Ambient Occlusion", ref Camera.bAmbientOcclusion, ImGuiTreeNodeFlags.SpanAvailWidth, () =>
+        {
+            _ssao.DrawControls();
+        });
+
+        EditorUI.TogglableTreeNode("Shadows", ref Camera.bShadows, ImGuiTreeNodeFlags.SpanAvailWidth, () =>
+        {
+            _shadow.DrawControls();
+        });
+
+        EditorUI.TogglableTreeNode("Lighting", ref _lighting, ImGuiTreeNodeFlags.SpanAvailWidth, () =>
+        {
+            // TODO: refactor CameraFramePair, we need access to systems here
+        });
+
+        if (ImGui.TreeNodeEx("Camera", ImGuiTreeNodeFlags.SpanAvailWidth))
+        {
+            EditorUI.PropertyValueTable("Camera", () =>
+            {
+                EditorUI.DragFloat("Speed", ref Camera.MovementSpeed, 0.1f, 1.0f, 1000.0f, "%.2f units/s");
+                EditorUI.DragFloat("FOV", ref Camera.FieldOfView, 0.1f, 30.0f, 120.0f, "%.2f deg");
+
+                var nearClip = Camera.NearClipPlane;
+                var farClip = Camera.FarClipPlane;
+
+                var edited = EditorUI.DragFloat("Near Clip Plane", ref nearClip, 0.1f, 0.01f, farClip - 0.1f);
+                edited |= EditorUI.DragFloat("Far Clip Plane", ref farClip, 1.0f, nearClip + 0.1f, 100000.0f);
+
+                if (edited)
+                {
+                    Camera.NearClipPlane = nearClip;
+                    Camera.FarClipPlane = farClip;
+                }
+            });
+
+            ImGui.TreePop();
+        }
+
+        if (ImGui.TreeNodeEx("Debug Options", ImGuiTreeNodeFlags.SpanAvailWidth))
+        {
+            ImGui.TreePop();
+        }
+    }
 
     public long Allocated
     {

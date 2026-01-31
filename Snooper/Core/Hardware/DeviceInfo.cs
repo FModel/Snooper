@@ -2,9 +2,16 @@
 
 namespace Snooper.Core.Hardware;
 
-public readonly struct DeviceInfo()
+public class DeviceInfo()
 {
-    public readonly string Name = GL.GetString(StringName.Renderer);
-    public readonly string Vendor = GL.GetString(StringName.Vendor);
-    public readonly ExtensionSupport ExtensionSupport = new();
+    public string Name { get; private set; } = string.Empty;
+    public string Vendor { get; private set; } = string.Empty;
+    public ExtensionSupport ExtensionSupport { get; private set; } = new();
+
+    public void Initialize()
+    {
+        Name = GL.GetString(StringName.Renderer);
+        Vendor = GL.GetString(StringName.Vendor);
+        ExtensionSupport.Initialize();
+    }
 }

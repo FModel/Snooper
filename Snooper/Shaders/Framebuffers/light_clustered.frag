@@ -26,6 +26,7 @@ uniform float uZNear;
 uniform float uZFar;
 
 uniform vec2 uShadowMapSize;
+uniform float uShadowBias;
 uniform int uCascadeCount;
 uniform float uCascadePlaneDistances[4];
 uniform mat4 uLightViewProjectionMatrices[4];
@@ -58,37 +59,20 @@ layout(std430, binding = 8) readonly buffer LightIndexList
 
 float CalculateShadow(vec3 worldPos, float NdotL, int layer)
 {
-    // Transform to light space
     vec4 fragPosLightSpace = uLightViewProjectionMatrices[layer] * vec4(worldPos, 1.0);
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
 
-    // Outside shadow-map -> not shadowed
     if (projCoords.z > 1.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
     {
         return 0.0;
     }
 
-    float bias = 0.000001 + 0.000003 * (1.0 - NdotL);
-    bias *= 1.0 / (uCascadePlaneDistances[layer] * 0.5);
+    float bias = max(uShadowBias * (1.0 - NdotL), 0.000005);
+    bias /= uCascadePlaneDistances[layer];
 
     float currentDepth = projCoords.z;
     vec2 texelSize = 1.0 / uShadowMapSize;
-
-//    vec2 offs[4];
-//    offs[0] = vec2(-0.5, -0.5);
-//    offs[1] = vec2( 0.5, -0.5);
-//    offs[2] = vec2(-0.5,  0.5);
-//    offs[3] = vec2( 0.5,  0.5);
-
-//    float shadow = 0.0;
-//    for (int i = 0; i < 4; ++i)
-//    {
-//        vec2 uv = projCoords.xy + offs[i] * texelSize;
-//        float pcfDepth = texture(shadowMap, vec3(uv, layer)).r;
-//        shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
-//    }
-//    shadow *= 0.25;
 
     float shadow = 0.0;
     for (int x = -1; x <= 1; ++x)

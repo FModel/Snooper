@@ -27,6 +27,9 @@ public enum CameraType : byte
 [DefaultActorSystem(typeof(CameraSystem))]
 public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResizable
 {
+    protected const float FieldOfViewMin = 30.0f;
+    protected const float FieldOfViewMax = 120.0f;
+
     public float FieldOfView = 90.0f;
 
     public float Width { get; private set; } = 16.0f;
@@ -138,6 +141,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
 
         EditorUI.CollapsingTable("Camera", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
+            EditorUI.DragFloat("FOV", ref FieldOfView, 0.1f, FieldOfViewMin, FieldOfViewMax, "%.2f deg");
+
             var nearClip = NearClipPlane;
             var farClip = FarClipPlane;
 

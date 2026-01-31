@@ -21,7 +21,8 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
     private readonly HashSet<int> _actors = [];
 
     public bool ShowFramebuffers = false;
-    public ActorDebugColorMode DebugColorMode = ActorDebugColorMode.None;
+    public DebugVisualizationMode DebugColorMode = DebugVisualizationMode.None;
+    public float DebugVerticalSplit = 0.5f;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new() => RegisterSystemFactory(() => new T());
     public static void RegisterSystemFactory<T>(Func<T> factory) where T : ActorSystem
@@ -29,14 +30,13 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         _registeredFactories.Add(typeof(T), factory);
     }
 
-    protected ContextInfo Context { get; private set; }
+    public RendererInfo Renderer { get; } = new RendererInfo();
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
-        Context = new ContextInfo();
-
+        Renderer.Initialize();
         DequeueSystems();
     }
 
@@ -61,7 +61,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
 
     protected void RenderShadows(IViewProjectionProvider[] cameras)
     {
-        foreach (var system in Systems.Values.OfType<IShadowSupportedSystem>())
+        foreach (var system in Systems.Values.OfType<IShadowSystem>())
         {
             system.RenderShadows(cameras);
         }

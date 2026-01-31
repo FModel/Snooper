@@ -35,7 +35,7 @@ public partial class SnooperWindow : GameWindow
             APIVersion = new Version(4, 6),
             StartVisible = startVisible,
             StartFocused = startVisible,
-            Title = "Snooper"
+            Title = $"Snooper ({Settings.APP_SHORT_COMMIT_ID} - {Settings.APP_BUILD_DATE:MMM d, yyyy})"
         })
     {
         ActorManager.RegisterSystemFactory<SkyboxSystem>();

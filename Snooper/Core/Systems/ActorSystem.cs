@@ -87,7 +87,7 @@ public abstract class ActorSystem : IGameSystem
         return ComponentType.IsAssignableFrom(type);
     }
 
-    protected ActorDebugColorMode DebugColorMode => ActorManager?.DebugColorMode ?? ActorDebugColorMode.None;
+    protected DebugVisualizationMode DebugColorMode => ActorManager?.DebugColorMode ?? DebugVisualizationMode.None;
 
     public virtual void Dispose()
     {

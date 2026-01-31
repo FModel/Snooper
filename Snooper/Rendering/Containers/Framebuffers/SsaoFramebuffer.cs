@@ -1,15 +1,15 @@
-﻿using OpenTK.Graphics.OpenGL4;
+using ImGuiNET;
+using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, PixelType.Float)
+public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, PixelType.Float), IControllable
 {
     private const int ScaleRatio = 2;
-    private const int DirectionCount = 6;
-    private const int StepsPerDirection = 6;
 
     private readonly FullQuadFramebuffer _blur = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, PixelType.Float);
 
@@ -17,6 +17,8 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
     private readonly EmbeddedShader _blurShader = new("Framebuffers/combine.vert", "Framebuffers/ssao_blur.frag");
 
     private int _frameCount;
+    private int _directionCount = 6;
+    private int _stepsPerDirection = 6;
 
     public override void Generate()
     {
@@ -39,8 +41,8 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
         {
             _shader.Use();
             callback?.Invoke(_shader);
-            _shader.SetUniform("uDirectionCount", DirectionCount);
-            _shader.SetUniform("uStepsPerDirection", StepsPerDirection);
+            _shader.SetUniform("uDirectionCount", _directionCount);
+            _shader.SetUniform("uStepsPerDirection", _stepsPerDirection);
             _shader.SetUniform("uFrameCount", ++_frameCount);
             _shader.SetUniform("gPosition", 0);
             _shader.SetUniform("gNormal", 1);
@@ -68,6 +70,18 @@ public class SsaoFramebuffer(int originalWidth, int originalHeight) : FullQuadFr
     }
 
     public override Texture[] GetTextures() => [.._blur.GetTextures()];
+
+    public void DrawControls()
+    {
+        EditorUI.PropertyValueTable("Ambient Occlusion", () =>
+        {
+            EditorUI.Property("Direction Count");
+            ImGui.DragInt("##Direction Count", ref _directionCount, 0.05f, 1, 6);
+
+            EditorUI.Property("Steps Per Direction");
+            ImGui.DragInt("##Steps Per Direction", ref _stepsPerDirection, 0.05f, 1, 6);
+        });
+    }
 
     public override long Allocated
     {

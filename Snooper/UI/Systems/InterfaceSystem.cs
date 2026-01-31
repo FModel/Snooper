@@ -1,5 +1,6 @@
-﻿using System.Numerics;
+using System.Numerics;
 using System.Reflection;
+using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
@@ -214,6 +215,14 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
         if (!io.WantTextInput) ActiveCamera?.Update(wnd.KeyboardState, delta);
         if (wnd.CursorState == CursorState.Grabbed)
         {
+            if (ActiveCamera != null && wnd.MouseState.ScrollDelta.Y != 0)
+            {
+                var multiplier = wnd.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+                ActiveCamera.MovementSpeed += wnd.MouseState.ScrollDelta.Y * multiplier;
+                ActiveCamera.MovementSpeed = MathF.Max(1f, ActiveCamera.MovementSpeed);
+                Notifications.PushNotification("Camera", () => $"Movement speed set to {ActiveCamera.MovementSpeed}.");
+            }
+
             ActiveCamera?.Update(wnd.MouseState.Delta.X, wnd.MouseState.Delta.Y);
             if (wnd.IsMouseButtonReleased(MouseButton.Right)) wnd.CursorState = CursorState.Normal;
         }

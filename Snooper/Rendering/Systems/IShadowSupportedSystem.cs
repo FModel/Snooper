@@ -2,7 +2,7 @@
 
 namespace Snooper.Rendering.Systems;
 
-public interface IShadowSupportedSystem
+public interface IShadowSystem
 {
     public void RenderShadows(IViewProjectionProvider[] cascades);
 }

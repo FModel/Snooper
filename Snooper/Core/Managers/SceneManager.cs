@@ -11,6 +11,9 @@ namespace Snooper.Core.Managers;
 
 public class SceneManager : ActorManager, IResizable
 {
+    protected event Action<CameraFramePair>? OnSceneCameraAdded;
+    protected event Action<CameraFramePair>? OnSceneCameraRemoved;
+
     protected List<CameraFramePair> Pairs { get; } = [];
 
     protected SceneCameraComponent? ActiveCamera
@@ -119,7 +122,9 @@ public class SceneManager : ActorManager, IResizable
 
         if (component is SceneCameraComponent cameraComponent)
         {
-            Pairs.Remove(Pairs[cameraComponent.PairIndex]);
+            var pair = Pairs[cameraComponent.PairIndex];
+            Pairs.Remove(pair);
+            OnSceneCameraRemoved?.Invoke(pair);
         }
     }
 
@@ -134,6 +139,8 @@ public class SceneManager : ActorManager, IResizable
             // TODO: camera size will be 1x1 until a resize
 
             Pairs.Add(pair);
+            OnSceneCameraAdded?.Invoke(pair);
+
             count++;
         }
     }

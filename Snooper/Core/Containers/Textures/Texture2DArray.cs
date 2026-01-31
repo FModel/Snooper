@@ -1,8 +1,8 @@
-﻿using OpenTK.Graphics.OpenGL4;
+using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Textures;
 
-public class Texture3D(int width, int height, int depth,
+public class Texture2DArray(int width, int height, int depth,
     SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
@@ -30,4 +30,6 @@ public class Texture3D(int width, int height, int depth,
                 throw new NotSupportedException("Unknown texture format info.");
         }
     }
+
+    public override long Allocated => FormatInfo.GetMemorySize(Width, Height, Depth);
 }
