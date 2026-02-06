@@ -23,7 +23,7 @@ public class FullQuadFramebuffer(
     public override void Generate()
     {
         _color.Generate();
-        _color.Resize(originalWidth, originalHeight);
+        _color.Resize(Width, Height);
         GL.TextureParameter(_color, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
         GL.TextureParameter(_color, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
 
@@ -55,6 +55,7 @@ public class FullQuadFramebuffer(
         GL.VertexArrayAttribBinding(_vao, 1, 0);
     }
 
+    public override void Bind(uint texture, uint unit) => Bind(unit);
     public override void Bind(uint unit) => _color.Bind(unit);
 
     public void Render(Action? beginDraw = null)

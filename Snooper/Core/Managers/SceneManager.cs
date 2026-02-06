@@ -1,108 +1,76 @@
-﻿using Snooper.Core.Containers;
+﻿using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using OpenTK.Windowing.Desktop;
+using Snooper.Core.Containers;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Containers;
-using System.Numerics;
-using Snooper.Core.Systems;
+using Snooper.Rendering.Managers;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Core.Managers;
 
-public class SceneManager : ActorManager, IResizable
+public class SceneManager : ActorManager
 {
-    protected event Action<CameraFramePair>? OnSceneCameraAdded;
-    protected event Action<CameraFramePair>? OnSceneCameraRemoved;
+    protected GameWindow Window { get; }
 
-    protected List<CameraFramePair> Pairs { get; } = [];
+    public InteractiveCameraComponent? MainCamera { get; private set; }
 
-    protected SceneCameraComponent? ActiveCamera
+    public Actor? RootActor
     {
         get;
         set
         {
             if (field == value) return;
 
-            field?.IsActive = false;
+            if (field != null) RemoveRoot(field);
             field = value;
-            field?.IsActive = true;
+            if (field != null) AddRoot(field);
         }
     }
 
-    private Actor? _rootActor;
-    public Actor? RootActor
-    {
-        get => _rootActor;
-        set
-        {
-            if (_rootActor == value) return;
+    protected readonly ObservableCollection<Viewport> Viewports = [];
 
-            if (_rootActor != null) RemoveRoot(_rootActor);
-            _rootActor = value;
-            if (_rootActor != null) AddRoot(_rootActor);
-        }
+    private readonly ObservableCollection<CameraComponent> _cameras = [];
+    private readonly RenderPipeline _pipeline = new();
+
+    public SceneManager(GameWindow wnd)
+    {
+        Window = wnd;
+
+        _cameras.CollectionChanged += OnCamerasCollectionChanged;
     }
 
     public override void Load()
     {
-        DequeuePairs();
+        DequeueViewports();
+        _pipeline.Generate();
+
         base.Load();
     }
 
     public override void Update(float delta)
     {
-        // removed closed cameras from the scene
-        for (var i = 0; i < Pairs.Count; i++)
-        {
-            if (Pairs[i] is { IsOpen: false, Camera.Actor: not null } pair)
-            {
-                _rootActor?.Children.Remove(pair.Camera.Actor);
-            }
-        }
-
-        DequeuePairs(1);
-
-        if (ActiveCamera != null && ActiveCamera.IsDirty(DirtyFlags.Transform) && _rootActor != null)
-        {
-            var cameraPosition = ActiveCamera.LocalTransform.Position;
-            UpdatePartitionActorsRecursive(_rootActor, cameraPosition);
-        }
-
+        DequeueViewports(1);
         base.Update(delta);
     }
 
-    private void UpdatePartitionActorsRecursive(Actor actor, Vector3 cameraPosition)
+    public override void Render()
     {
-        if (actor is PartitionActor partition)
-        {
-            partition.SetVisibilityByDistance(cameraPosition);
-        }
-        else foreach (var child in actor.Children)
-        {
-            UpdatePartitionActorsRecursive(child, cameraPosition);
-        }
-    }
-
-    public virtual void Render()
-    {
+        var shadowSystems = Systems.Values.OfType<IShadowSystem>().ToArray();
         var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
         var directionalLight = lightSystem?.GetDirectionalLight();
 
-        foreach (var pair in Pairs)
+        var deferredSystems = Systems.Values.Where(x => x.SystemType == ActorSystemType.Deferred).ToArray();
+        var forwardSystems = Systems.Values.Where(x => x.SystemType == ActorSystemType.Forward).ToArray();
+
+        foreach (var viewport in Viewports)
         {
-            pair.ShadowRendering(RenderShadows, directionalLight);
-
-            pair.DeferredRendering(Render, lightSystem, directionalLight);
-            pair.ForwardRendering(Render);
-            pair.PickingRendering();
-
-            pair.CombineRendering();
-            pair.ApplyFxaa();
-        }
-
-        if (ActiveCamera != null)
-        {
-            Render(ActiveCamera, ActorSystemType.Audio);
+            var camera = viewport.Camera;
+            _pipeline.RenderScene(camera, shadowSystems, deferredSystems, forwardSystems, directionalLight);
+            _pipeline.PostProcessScene(camera, lightSystem);
+            // TODO: freeze the image and send it to the viewport before processing the next viewport
         }
     }
 
@@ -110,9 +78,9 @@ public class SceneManager : ActorManager, IResizable
     {
         base.AddComponent(component, actor);
 
-        if (component is SceneCameraComponent cameraComponent)
+        if (component is CameraComponent camera)
         {
-            _pairsToLoad.Enqueue(new CameraFramePair(cameraComponent));
+            _cameras.Add(camera);
         }
     }
 
@@ -120,56 +88,106 @@ public class SceneManager : ActorManager, IResizable
     {
         base.RemoveComponent(component, actor);
 
-        if (component is SceneCameraComponent cameraComponent)
+        if (component is CameraComponent camera)
         {
-            var pair = Pairs[cameraComponent.PairIndex];
-            Pairs.Remove(pair);
-            OnSceneCameraRemoved?.Invoke(pair);
+            _cameras.Remove(camera);
         }
     }
 
-    private readonly Queue<CameraFramePair> _pairsToLoad = [];
-    private void DequeuePairs(int limit = 0)
+    private void OnCamerasCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        switch (e.Action)
+        {
+            case NotifyCollectionChangedAction.Add:
+                foreach (var component in e.NewItems!.Cast<CameraComponent>())
+                {
+                    if (component is InteractiveCameraComponent camera)
+                    {
+                        _viewportsToLoad.Enqueue(new Viewport(camera, _pipeline, Window));
+                        MainCamera ??= camera;
+                    }
+                }
+                break;
+            case NotifyCollectionChangedAction.Remove:
+                foreach (var component in e.OldItems!.Cast<CameraComponent>())
+                {
+                    var viewport = Viewports.FirstOrDefault(v => v.Camera == component);
+                    if (viewport != null)
+                    {
+                        Viewports.Remove(viewport);
+                    }
+
+                    if (component == MainCamera)
+                    {
+                        MainCamera = Viewports.Select(v => v.Camera).FirstOrDefault();
+                    }
+                }
+                break;
+        }
+    }
+
+    private readonly Queue<Viewport> _viewportsToLoad = [];
+    private void DequeueViewports(int limit = 0)
     {
         var count = 0;
-        while (_pairsToLoad.Count > 0 && (limit == 0 || count < limit))
+        while (_viewportsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
-            var pair = _pairsToLoad.Dequeue();
-            pair.Generate(Pairs.Count);
-            // TODO: camera size will be 1x1 until a resize
+            var viewport = _viewportsToLoad.Dequeue();
+            viewport.Generate();
+            viewport.Resize(Window.ClientSize.X, Window.ClientSize.Y);
 
-            Pairs.Add(pair);
-            OnSceneCameraAdded?.Invoke(pair);
+            Viewports.Add(viewport);
 
             count++;
         }
     }
 
-    public virtual void Resize(int newWidth, int newHeight)
+    public override void Resize(int newWidth, int newHeight)
     {
-        foreach (var pair in Pairs)
-            pair.Resize(newWidth, newHeight);
+        base.Resize(newWidth, newHeight);
 
-        foreach (var system in Systems.Values.OfType<IResizable>())
-            system.Resize(newWidth, newHeight);
+        foreach (var viewport in Viewports)
+            viewport.Resize(newWidth, newHeight);
+
+        _pipeline.Resize(newWidth, newHeight);
     }
 
-    public override long Allocated => base.Allocated + Pairs.Sum(p => p.Allocated);
-    public override long Used => base.Used + Pairs.Sum(p => p.Used);
+    public override long Allocated
+    {
+        get
+        {
+            var total = base.Allocated;
+            total += _pipeline.Allocated;
+            return total;
+        }
+    }
+
+    public override long Used
+    {
+        get
+        {
+            var total = base.Used;
+            total += _pipeline.Used;
+            return total;
+        }
+    }
+
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
 
-        foreach (var pair in Pairs)
-        {
-            yield return new MemoryDetail(pair.Camera.Actor?.Name ?? $"Camera {pair.Camera.PairIndex}", pair);
-        }
+        yield return new MemoryDetail("Render Pipeline", _pipeline);
     }
 
     public override void Dispose()
     {
-        RootActor = null;
         base.Dispose();
+        _pipeline.Dispose();
+
+        _cameras.CollectionChanged -= OnCamerasCollectionChanged;
+        _cameras.Clear();
+        Viewports.Clear();
+        RootActor = null;
     }
 }

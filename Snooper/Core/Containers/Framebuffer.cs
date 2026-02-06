@@ -29,6 +29,7 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable, IMemoryDet
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, PreviousHandle);
     }
 
+    public abstract void Bind(uint texture, uint unit);
     public abstract void Bind(uint unit);
     public abstract void Resize(int newWidth, int newHeight);
     public abstract Texture[] GetTextures();

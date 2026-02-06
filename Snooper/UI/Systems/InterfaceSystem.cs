@@ -1,6 +1,5 @@
 using System.Numerics;
 using System.Reflection;
-using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
@@ -15,12 +14,8 @@ using Snooper.Rendering.Components;
 
 namespace Snooper.UI.Systems;
 
-public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
+public abstract class InterfaceSystem : SceneManager
 {
-    private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
-
-    private WindowState _pWindowState;
-
     protected bool Enabled { get; private set; } = true;
     protected Dictionary<string, Texture> Icons { get; } = new();
     protected NotificationManager Notifications { get; } = new();
@@ -75,6 +70,13 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
         }
     }
 
+    private readonly ImGuiController _controller;
+
+    protected InterfaceSystem(GameWindow wnd) : base(wnd)
+    {
+        _controller = new ImGuiController(Window.ClientSize.X, Window.ClientSize.Y);
+    }
+
     private void ClearSelection()
     {
         _selectedActor?.IsSelected = false;
@@ -116,10 +118,10 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
             CollectIds(_selectedActor);
         }
 
-        foreach (var pair in Pairs)
-        {
-            pair.SetPickedIds(pickedIds);
-        }
+        // foreach (var pair in Pairs)
+        // {
+        //     pair.SetPickedIds(pickedIds);
+        // }
     }
 
     protected ActorComponent? FindComponentById(uint componentId)
@@ -171,60 +173,43 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
 
     public sealed override void Update(float delta)
     {
-        var pressed = wnd.IsKeyPressed(Keys.F10);
+        var pressed = Window.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
 
-        if (wnd.IsKeyPressed(Keys.F))
-        {
-            if (wnd.WindowState == WindowState.Fullscreen)
-            {
-                wnd.WindowState = _pWindowState;
-            }
-            else
-            {
-                _pWindowState = wnd.WindowState;
-                wnd.WindowState = WindowState.Fullscreen;
-            }
-        }
-
-        if (ActiveCamera is null && Pairs.Count > 0)
-            ActiveCamera = Pairs[0].Camera;
-
-        var io = ImGui.GetIO();
         if (Enabled)
         {
-            _controller.Update(wnd, delta);
+            _controller.Update(Window, delta);
         }
         else
         {
-            if (wnd.IsMouseButtonPressed(MouseButton.Right))
-                wnd.CursorState = CursorState.Grabbed;
+            if (Window.IsMouseButtonPressed(MouseButton.Right))
+                Window.CursorState = CursorState.Grabbed;
 
-            if (ActiveCamera is not null)
-            {
-                if (wnd.IsMouseButtonPressed(MouseButton.Left) && ActiveCamera.PairIndex < Pairs.Count)
-                {
-                    var mousePos = new Vector2(wnd.MousePosition.X, wnd.MousePosition.Y);
-                    var viewportSize = new Vector2(wnd.ClientSize.X, wnd.ClientSize.Y);
-                    var componentId = Pairs[ActiveCamera.PairIndex].ReadPickingPixel(mousePos, Vector2.Zero, viewportSize);
-                    SelectedComponent = FindComponentById(componentId);
-                }
-            }
+            // if (MainCamera is not null)
+            // {
+            //     if (wnd.IsMouseButtonPressed(MouseButton.Left) && ActiveCamera.PairIndex < Pairs.Count)
+            //     {
+            //         var mousePos = new Vector2(wnd.MousePosition.X, wnd.MousePosition.Y);
+            //         var viewportSize = new Vector2(wnd.ClientSize.X, wnd.ClientSize.Y);
+            //         var componentId = Pairs[ActiveCamera.PairIndex].ReadPickingPixel(mousePos, Vector2.Zero, viewportSize);
+            //         SelectedComponent = FindComponentById(componentId);
+            //     }
+            // }
         }
 
-        if (!io.WantTextInput) ActiveCamera?.Update(wnd.KeyboardState, delta);
-        if (wnd.CursorState == CursorState.Grabbed)
+        if (!ImGui.GetIO().WantTextInput) MainCamera?.Update(Window.KeyboardState, delta);
+        if (Window.CursorState == CursorState.Grabbed)
         {
-            if (ActiveCamera != null && wnd.MouseState.ScrollDelta.Y != 0)
-            {
-                var multiplier = wnd.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
-                ActiveCamera.MovementSpeed += wnd.MouseState.ScrollDelta.Y * multiplier;
-                ActiveCamera.MovementSpeed = MathF.Max(1f, ActiveCamera.MovementSpeed);
-                Notifications.PushNotification("Camera", () => $"Movement speed set to {ActiveCamera.MovementSpeed}.");
-            }
+            // if (ActiveCamera != null && wnd.MouseState.ScrollDelta.Y != 0)
+            // {
+            //     var multiplier = wnd.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+            //     ActiveCamera.MovementSpeed += wnd.MouseState.ScrollDelta.Y * multiplier;
+            //     ActiveCamera.MovementSpeed = MathF.Max(1f, ActiveCamera.MovementSpeed);
+            //     Notifications.PushNotification("Camera", () => $"Movement speed set to {ActiveCamera.MovementSpeed}.");
+            // }
 
-            ActiveCamera?.Update(wnd.MouseState.Delta.X, wnd.MouseState.Delta.Y);
-            if (wnd.IsMouseButtonReleased(MouseButton.Right)) wnd.CursorState = CursorState.Normal;
+            MainCamera?.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
+            if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
         }
 
         base.Update(delta);
@@ -243,10 +228,10 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
             RenderInterface();
             _controller.Render();
         }
-        else if (ActiveCamera is not null && ActiveCamera.PairIndex < Pairs.Count)
-        {
-            Pairs[ActiveCamera.PairIndex].RenderToScreen(wnd.ClientSize.X, wnd.ClientSize.Y);
-        }
+        // else if (ActiveCamera is not null && ActiveCamera.PairIndex < Pairs.Count)
+        // {
+        //     Pairs[ActiveCamera.PairIndex].RenderToScreen(wnd.ClientSize.X, wnd.ClientSize.Y);
+        // }
     }
 
     protected abstract void RenderInterface();

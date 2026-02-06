@@ -1,5 +1,4 @@
 ﻿using System.Collections.Specialized;
-using System.Numerics;
 using System.Reflection;
 using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
@@ -12,7 +11,7 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Core.Managers;
 
-public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
+public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IResizable
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
@@ -22,7 +21,6 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
 
     public bool ShowFramebuffers = false;
     public DebugVisualizationMode DebugColorMode = DebugVisualizationMode.None;
-    public float DebugVerticalSplit = 0.5f;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new() => RegisterSystemFactory(() => new T());
     public static void RegisterSystemFactory<T>(Func<T> factory) where T : ActorSystem
@@ -30,13 +28,13 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         _registeredFactories.Add(typeof(T), factory);
     }
 
-    public RendererInfo Renderer { get; } = new RendererInfo();
+    public RendererInfo Renderer { get; } = new();
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
-        Renderer.Initialize();
+        Renderer.Load();
         DequeueSystems();
     }
 
@@ -49,8 +47,9 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         }
     }
 
-    [Obsolete("Use Render(CameraComponent camera, ActorSystemType systemType) instead.")]
-    public void Render(CameraComponent camera) => Render(camera, ActorSystemType.Forward);
+    public abstract void Render();
+    public void Render(CameraComponent camera) => throw new NotImplementedException();
+
     protected void Render(CameraComponent camera, ActorSystemType systemType)
     {
         foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
@@ -58,7 +57,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
             system.Render(camera);
         }
     }
-
+    [Obsolete]
     protected void RenderShadows(IViewProjectionProvider[] cameras)
     {
         foreach (var system in Systems.Values.OfType<IShadowSystem>())
@@ -245,6 +244,12 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
             Systems.Add(system.Order, system);
             count++;
         }
+    }
+
+    public virtual void Resize(int newWidth, int newHeight)
+    {
+        foreach (var system in Systems.Values.OfType<IResizable>())
+            system.Resize(newWidth, newHeight);
     }
 
     public virtual void Dispose()

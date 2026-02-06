@@ -1,6 +1,7 @@
 using System.Numerics;
 using ImGuiNET;
 using Snooper.Core.Hardware;
+using Snooper.Rendering.Managers;
 
 namespace Snooper.UI.Widgets;
 
@@ -22,15 +23,11 @@ internal class ViewportSettings(RendererInfo renderer) : IWidget<Viewport>
             }
             else
             {
-                ImGui.SeparatorText("Renderer");
-                EditorUI.PropertyValueTable("Renderer", () =>
-                {
-                    EditorUI.Text("API", renderer.Name);
-                    EditorUI.Text("GPU", renderer.DeviceInfo.Name);
-                });
+                ImGui.SetWindowFontScale(0.85f);
+                ImGui.TextDisabled($"API: {renderer.Name} | GPU: {renderer.DeviceInfo.Name}");
+                ImGui.SetWindowFontScale(1.0f);
 
-                ImGui.SeparatorText("Settings");
-                context._frame.DrawControls();
+                context.DrawControls();
 
                 ImGui.SeparatorText("Advanced");
             }

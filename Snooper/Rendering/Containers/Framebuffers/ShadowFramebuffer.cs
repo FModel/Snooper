@@ -11,15 +11,15 @@ namespace Snooper.Rendering.Containers.Framebuffers;
 
 public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IControllable
 {
-    public override int Width => _depth.Width;
-    public override int Height => _depth.Height;
-    public int CascadeCount => _depth.Depth;
+    public override int Width => _cascades.Width;
+    public override int Height => _cascades.Height;
+    public int CascadeCount => _cascades.Depth;
     public float Bias = 0.001f;
 
     public readonly float[] CascadePlaneDistances = new float[cascadeCount];
     public readonly Matrix4x4[] CascadeMatrices = new Matrix4x4[cascadeCount];
 
-    private readonly Texture2DArray _depth = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent16, PixelFormat.DepthComponent, PixelType.Float);
+    private readonly Texture2DArray _cascades = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent16, PixelFormat.DepthComponent, PixelType.Float);
     private float _lambda = 0.85f;
 
     // cache for dirty checks
@@ -29,29 +29,29 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
 
     public override void Generate()
     {
-        _depth.Generate();
-        _depth.Reset<int>(Width, Height, []);
-        GL.TextureParameter(_depth, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TextureParameter(_depth, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        GL.TextureParameter(_depth, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToBorder);
-        GL.TextureParameter(_depth, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToBorder);
-        GL.TextureParameter(_depth, TextureParameterName.TextureBorderColor, [1.0f, 1.0f, 1.0f, 1.0f]);
+        _cascades.Generate();
+        _cascades.Reset<int>(Width, Height, []);
+        GL.TextureParameter(_cascades, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
+        GL.TextureParameter(_cascades, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        GL.TextureParameter(_cascades, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToBorder);
+        GL.TextureParameter(_cascades, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToBorder);
+        GL.TextureParameter(_cascades, TextureParameterName.TextureBorderColor, [1.0f, 1.0f, 1.0f, 1.0f]);
 
         base.Generate();
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.DepthAttachment, _depth, 0);
+        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.DepthAttachment, _cascades, 0);
         GL.NamedFramebufferDrawBuffer(Handle, DrawBufferMode.None);
         GL.NamedFramebufferReadBuffer(Handle, ReadBufferMode.None);
 
         CheckStatus();
     }
 
-    public IViewProjectionProvider[] UpdateCascades(SceneCameraComponent camera, DirectionalLightComponent light)
+    public IViewProjectionProvider[] UpdateCascades(CameraComponent camera, DirectionalLightComponent light)
     {
         UpdatePlaneDistances(camera);
         return UpdateViewProjectionProvider(camera, light);
     }
 
-    private void UpdatePlaneDistances(SceneCameraComponent camera)
+    private void UpdatePlaneDistances(CameraComponent camera)
     {
         if (MathF.Abs(_lastLambda - _lambda) < float.Epsilon &&
             MathF.Abs(_lastNearClipPlane - camera.NearClipPlane) < float.Epsilon &&
@@ -79,7 +79,7 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
         Log.Debug("Updated shadow cascade plane distances: {Distances}", CascadePlaneDistances);
     }
 
-    private IViewProjectionProvider[] UpdateViewProjectionProvider(SceneCameraComponent camera, DirectionalLightComponent light)
+    private IViewProjectionProvider[] UpdateViewProjectionProvider(CameraComponent camera, DirectionalLightComponent light)
     {
         Matrix4x4.Decompose(light.WorldMatrix, out _, out var rotation, out _);
         var lightDir = Vector3.Transform(Settings.ForwardVector, rotation);
@@ -183,7 +183,8 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
         return cascadeCameras;
     }
 
-    public override void Bind(uint unit) => _depth.Bind(unit);
+    public override void Bind(uint texture, uint unit) => Bind(unit);
+    public override void Bind(uint unit) => _cascades.Bind(unit);
 
     public override void Resize(int newWidth, int newHeight)
     {
@@ -209,7 +210,7 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
         get
         {
             long total = 0;
-            total += _depth.Allocated;
+            total += _cascades.Allocated;
             return total;
         }
     }
@@ -219,20 +220,20 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
         get
         {
             long total = 0;
-            total += _depth.Used;
+            total += _cascades.Used;
             return total;
         }
     }
 
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail("Depth Texture", _depth);
+        yield return new MemoryDetail("Cascade Textures", _cascades);
     }
 
     public override void Dispose()
     {
         base.Dispose();
 
-        _depth.Dispose();
+        _cascades.Dispose();
     }
 }

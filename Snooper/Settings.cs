@@ -17,6 +17,7 @@ public static class Settings
     public static readonly string APP_SHORT_COMMIT_ID = APP_COMMIT_ID[..7];
     public static readonly DateTime APP_BUILD_DATE = File.GetLastWriteTime(APP_PATH);
 
+    public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";
     public const int MaxTextureMipSize = 1024;
     public const int MaxNumberOfLods = 8;

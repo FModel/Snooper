@@ -1,16 +1,13 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
-using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
+public class DeferredFramebuffer(int originalWidth, int originalHeight) : Framebuffer
 {
-    public override int Width => _fullQuad.Width;
-    public override int Height => _fullQuad.Height;
-
-    private readonly FullQuadFramebuffer _fullQuad = new(originalWidth, originalHeight);
+    public override int Width => _color.Width;
+    public override int Height => _color.Height;
 
     private readonly ResizableTexture2D _position = new(originalWidth, originalHeight, SizedInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float);
     private readonly ResizableTexture2D _normal = new(originalWidth, originalHeight, SizedInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float);
@@ -18,11 +15,6 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
     private readonly ResizableTexture2D _specular = new(originalWidth, originalHeight);
     private readonly PickingTexture _picking = new(originalWidth, originalHeight);
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
-
-    private readonly EmbeddedShader _shader = new("Framebuffers/combine.vert", "Framebuffers/light_clustered.frag")
-    {
-        // Defines = ["DEBUG_CLUSTER_GRID_OVERLAY"]
-    };
 
     public override void Generate()
     {
@@ -70,14 +62,22 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         GL.NamedFramebufferRenderbuffer(Handle, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, _depth);
 
         CheckStatus();
-
-        _fullQuad.Generate();
-
-        _shader.Generate();
-        _shader.Link();
     }
 
-    public override void Bind(uint unit) => _fullQuad.Bind(unit);
+    public override void Bind(uint texture, uint unit)
+    {
+        var t = texture switch
+        {
+            0 => _position,
+            1 => _normal,
+            2 => _color,
+            3 => _specular,
+            _ => throw new ArgumentOutOfRangeException(nameof(texture), $"Texture index {texture} is out of range for {nameof(DeferredFramebuffer)}.")
+        };
+
+        t.Bind(unit);
+    }
+    public override void Bind(uint unit) => _color.Bind(unit);
     public void BindPicking(uint unit) => _picking.Bind(unit);
 
     public void BindTextures(bool position = false, bool normal = false, bool color = false, bool specular = false)
@@ -88,25 +88,6 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         if (specular) _specular.Bind(3);
     }
 
-    public void Render(Action<ShaderProgram> callback)
-    {
-        _fullQuad.Bind();
-        GL.ClearColor(0, 0, 0, 1);
-        GL.Clear(ClearBufferMask.ColorBufferBit);
-
-        _fullQuad.Render(() =>
-        {
-            BindTextures(true, true, true, true);
-
-            _shader.Use();
-            _shader.SetUniform("gPosition", 0);
-            _shader.SetUniform("gNormal", 1);
-            _shader.SetUniform("gColor", 2);
-            _shader.SetUniform("gSpecular", 3);
-            callback.Invoke(_shader);
-        });
-    }
-
     public override void Resize(int newWidth, int newHeight)
     {
         _position.Resize(newWidth, newHeight);
@@ -115,7 +96,6 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         _specular.Resize(newWidth, newHeight);
         _picking.Resize(newWidth, newHeight);
         _depth.Resize(newWidth, newHeight);
-        _fullQuad.Resize(newWidth, newHeight);
     }
 
     public override Texture[] GetTextures() =>
@@ -131,14 +111,12 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         get
         {
             long total = 0;
-            total += _fullQuad.Allocated;
             total += _position.Allocated;
             total += _normal.Allocated;
             total += _color.Allocated;
             total += _specular.Allocated;
             total += _picking.Allocated;
             total += _depth.Allocated;
-            total += _shader.Allocated;
             return total;
         }
     }
@@ -148,41 +126,35 @@ public class GeometryBuffer(int originalWidth, int originalHeight) : Framebuffer
         get
         {
             long total = 0;
-            total += _fullQuad.Used;
             total += _position.Used;
             total += _normal.Used;
             total += _color.Used;
             total += _specular.Used;
             total += _picking.Used;
             total += _depth.Used;
-            total += _shader.Used;
             return total;
         }
     }
 
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail("Full Quad Framebuffer", _fullQuad);
         yield return new MemoryDetail("Position Texture", _position);
         yield return new MemoryDetail("Normal Texture", _normal);
         yield return new MemoryDetail("Color Texture", _color);
         yield return new MemoryDetail("Specular Texture", _specular);
         yield return new MemoryDetail("Picking Texture", _picking);
         yield return new MemoryDetail("Depth Renderbuffer", _depth);
-        yield return new MemoryDetail("Main Shader", _shader);
     }
 
     public override void Dispose()
     {
         base.Dispose();
 
-        _fullQuad.Dispose();
         _position.Dispose();
         _normal.Dispose();
         _color.Dispose();
         _specular.Dispose();
         _picking.Dispose();
         _depth.Dispose();
-        _shader.Dispose();
     }
 }

@@ -1,5 +1,7 @@
+using System.Collections.Specialized;
 using ImGuiNET;
 using OpenTK.Windowing.Desktop;
+using Snooper.Rendering.Managers;
 using Snooper.UI.Widgets;
 
 namespace Snooper.UI.Systems;
@@ -13,27 +15,9 @@ public class EditorSystem : InterfaceSystem
 
     public EditorSystem(GameWindow wnd) : base(wnd)
     {
+        Viewports.CollectionChanged += OnViewportsCollectionChanged;
+
         _viewportSettings = new ViewportSettings(Renderer);
-
-        OnSceneCameraAdded += pair =>
-        {
-            var viewport = new Viewport(wnd, $"Viewport##{pair.Camera.PairIndex}", pair);
-            _mainViewport ??= viewport;
-            _widgets.Add(viewport);
-        };
-
-        OnSceneCameraRemoved += pair =>
-        {
-            var viewport = _widgets.OfType<Viewport>().FirstOrDefault(v => v.Equals(pair));
-            if (viewport != null)
-            {
-                _widgets.Remove(viewport);
-                if (_mainViewport == viewport)
-                {
-                    _mainViewport = _widgets.OfType<Viewport>().FirstOrDefault();
-                }
-            }
-        };
 
 #if DEBUG
         _widgets.Add(new ImGuiDemo());
@@ -49,6 +33,30 @@ public class EditorSystem : InterfaceSystem
         foreach (var widget in _widgets)
         {
             widget.Render();
+        }
+    }
+
+    private void OnViewportsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        switch (e.Action)
+        {
+            case NotifyCollectionChangedAction.Add:
+                foreach (var viewport in e.NewItems!.Cast<Viewport>())
+                {
+                    _widgets.Add(viewport);
+                    _mainViewport ??= viewport;
+                }
+                break;
+            case NotifyCollectionChangedAction.Remove:
+                foreach (var viewport in e.OldItems!.Cast<Viewport>())
+                {
+                    _widgets.Remove(viewport);
+                    if (_mainViewport == viewport)
+                    {
+                        _mainViewport = Viewports.FirstOrDefault();
+                    }
+                }
+                break;
         }
     }
 }

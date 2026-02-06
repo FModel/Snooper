@@ -168,4 +168,12 @@ public abstract partial class ActorComponent
 
     [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]
     private partial System.Text.RegularExpressions.Regex UpperCaseToSpace();
+
+    public static bool operator ==(ActorComponent? left, ActorComponent? right)
+    {
+        if (left is null && right is null) return true;
+        if (left is null || right is null) return false;
+        return left.Id == right.Id;
+    }
+    public static bool operator !=(ActorComponent? left, ActorComponent? right) => !(left == right);
 }
