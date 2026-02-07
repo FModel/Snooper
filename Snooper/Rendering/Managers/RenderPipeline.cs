@@ -11,8 +11,8 @@ namespace Snooper.Rendering.Managers;
 
 public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable, IDisposable
 {
-    public GeometryRenderer Geometry { get; } = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
-    public PostProcessor PostProcess { get; } = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
+    private readonly GeometryRenderer _geometry = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
+    private readonly PostProcessor _postProcess = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
 
     private bool _antiAliasing = true;
     private bool _shadows = true;
@@ -22,43 +22,63 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     private bool _ambientOcclusion = true;
     private int _directionCount = 6;
     private int _stepsPerDirection = 6;
+    private int _blurRadius = 2;
+
+    private bool _debug = false;
+    private int _index = 0;
+    private float _split = 0.5f;
 
     public void Generate()
     {
-        Geometry.Generate();
-        PostProcess.Generate();
+        _geometry.Generate();
+        _postProcess.Generate();
     }
 
     public void RenderScene(CameraComponent camera, IShadowSystem[] shadowSystems, ActorSystem[] deferredSystems, ActorSystem[] forwardSystems, DirectionalLightComponent? directionalLight)
     {
-        if (_shadows)
+        if (_shadows && directionalLight is { Actor.IsVisible: true })
         {
-            Geometry.DoRenderPass("Shadow Pass", new ShadowRenderContext(camera, directionalLight, shadowSystems));
+            _geometry.DoRenderPass("Shadow Pass", new ShadowRenderContext(camera, directionalLight, shadowSystems));
         }
 
-        Geometry.DoRenderPass("Deferred Pass", new SystemRenderContext(camera, deferredSystems));
-        Geometry.DoRenderPass("Forward Pass", new SystemRenderContext(camera, forwardSystems));
+        _geometry.DoRenderPass("Deferred Pass", new SystemRenderContext(camera, deferredSystems));
+        _geometry.DoRenderPass("Forward Pass", new SystemRenderContext(camera, forwardSystems));
     }
 
     public void PostProcessScene(CameraComponent camera, ClusteredLightSystem? lightSystem)
     {
         if (_ambientOcclusion)
         {
-            PostProcess.DoStagePass("SSAO Pass", new AmbientOcclusionStageContext(camera, Geometry, _directionCount, _stepsPerDirection));
+            _postProcess.DoStagePass("AO Pass", new AmbientOcclusionStageContext(camera, _geometry, _directionCount, _stepsPerDirection));
+            _postProcess.DoStagePass("AO Blur Pass", new BlurStageContext(_blurRadius));
         }
 
-        PostProcess.DoStagePass("Lighting Pass", new LitStageContext(camera, Geometry, lightSystem, _ambientOcclusion, _shadows ? Geometry.GetShadowContext() : null));
-        PostProcess.DoStagePass("Combine Pass", new GeometryStageContext(Geometry));
+        var context = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, _shadows ? _geometry.GetShadowContext() : null);
+        _postProcess.DoStagePass("Lighting Pass", context);
+        _postProcess.DoStagePass("Combine Pass", new GeometryStageContext(_geometry));
+
+        if (_antiAliasing)
+        {
+            _postProcess.DoStagePass("AA Pass");
+        }
+
+        if (_debug && _index == 5)
+        {
+            _postProcess.DoStagePass("Shadow Viz Pass", context);
+        }
+
+        _postProcess.DoStagePass("Final Pass", new FinalStageContext(_antiAliasing, _debug ? GetAllTextures()[_index] : null, _split));
     }
 
-    public Texture[] GetFinalTextures() => PostProcess.GetTextures();
-    public Texture[] GetGeometryTextures() => Geometry.GetTextures();
-    public Texture[] GetAllTextures() => [..PostProcess.GetTextures(), ..Geometry.GetTextures()];
+    public Texture[] GetFinalTextures() => _postProcess.GetTextures();
+    public Texture[] GetGeometryTextures() => _geometry.GetTextures();
+    public Texture[] GetAllTextures() => [..GetFinalTextures(), ..GetGeometryTextures()];
+    public Texture GetFinalTexture() => GetFinalTextures()[^1];
 
     public void Resize(int newWidth, int newHeight)
     {
-        Geometry.Resize(newWidth, newHeight);
-        PostProcess.Resize(newWidth, newHeight);
+        _geometry.Resize(newWidth, newHeight);
+        _postProcess.Resize(newWidth, newHeight);
     }
 
     public void DrawControls()
@@ -78,30 +98,47 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 
                 EditorUI.Property("Steps Per Direction");
                 ImGui.DragInt("##Steps Per Direction", ref _stepsPerDirection, 0.05f, 1, 6);
+
+                EditorUI.Property("Blur Radius");
+                ImGui.DragInt("##Blur Radius", ref _blurRadius, 0.05f, 0, 10);
             });
         });
         EditorUI.TogglableTreeNode("Shadows", ref _shadows, ImGuiTreeNodeFlags.SpanAvailWidth, () =>
         {
-            // _shadow.DrawControls();
+            _geometry.DrawControls();
         });
         EditorUI.TogglableTreeNode("Lighting", ref _lighting, ImGuiTreeNodeFlags.SpanAvailWidth, () =>
         {
             // TODO: refactor CameraFramePair, we need access to systems here
         });
+
+        _debug = ImGui.TreeNodeEx("Debug Options", ImGuiTreeNodeFlags.SpanAvailWidth);
+        if (_debug)
+        {
+            EditorUI.PropertyValueTable("Debug Options", () =>
+            {
+                EditorUI.Property("Texture Index");
+                ImGui.DragInt("##Texture Index", ref _index, 0.01f, 0, GetAllTextures().Length - 1);
+
+                EditorUI.Property("Vertical Split");
+                ImGui.SliderFloat("##Vertical Split", ref _split, 0.0f, 1.0f);
+            });
+            ImGui.TreePop();
+        }
     }
 
-    public long Allocated => Geometry.Allocated + PostProcess.Allocated;
-    public long Used => Geometry.Used + PostProcess.Used;
+    public long Allocated => _geometry.Allocated + _postProcess.Allocated;
+    public long Used => _geometry.Used + _postProcess.Used;
 
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail("Geometry Renderer", Geometry);
-        yield return new MemoryDetail("Post Processor", PostProcess);
+        yield return new MemoryDetail("Geometry Renderer", _geometry);
+        yield return new MemoryDetail("Post Processor", _postProcess);
     }
 
     public void Dispose()
     {
-        Geometry.Dispose();
-        PostProcess.Dispose();
+        _geometry.Dispose();
+        _postProcess.Dispose();
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Systems;
 
@@ -19,6 +20,10 @@ public sealed record AmbientOcclusionStageContext(
     int StepsPerDirection = 6
 ) : IStageContext;
 
+public sealed record BlurStageContext(
+    int Radius
+) : IStageContext;
+
 public sealed record LitStageContext(
     CameraComponent Camera,
     GeometryRenderer Geometry,
@@ -34,4 +39,10 @@ public sealed record ShadowStageContext(
     float Bias,
     float[] PlaneDistances,
     Matrix4x4[] Matrices
+) : IStageContext;
+
+public sealed record FinalStageContext(
+    bool AntiAliasing,
+    Texture? Texture = null,
+    float? Split = null
 ) : IStageContext;

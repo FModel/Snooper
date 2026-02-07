@@ -21,9 +21,11 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
 
     private readonly Texture2DArray _cascades = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent16, PixelFormat.DepthComponent, PixelType.Float);
     private float _lambda = 0.85f;
+    private float _maxFarPlane = 150.0f;
 
     // cache for dirty checks
     private float _lastLambda;
+    private float _lastMaxFarPlane;
     private float _lastNearClipPlane;
     private float _lastFarClipPlane;
 
@@ -54,6 +56,7 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
     private void UpdatePlaneDistances(CameraComponent camera)
     {
         if (MathF.Abs(_lastLambda - _lambda) < float.Epsilon &&
+            MathF.Abs(_lastMaxFarPlane - _maxFarPlane) < float.Epsilon &&
             MathF.Abs(_lastNearClipPlane - camera.NearClipPlane) < float.Epsilon &&
             MathF.Abs(_lastFarClipPlane - camera.FarClipPlane) < float.Epsilon)
         {
@@ -61,11 +64,12 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
         }
 
         _lastLambda = _lambda;
+        _lastMaxFarPlane = _maxFarPlane;
         _lastNearClipPlane = camera.NearClipPlane;
         _lastFarClipPlane = camera.FarClipPlane;
 
         var near = _lastNearClipPlane;
-        var far = MathF.Min(150.0f, _lastFarClipPlane);
+        var far = MathF.Min(_lastMaxFarPlane, _lastFarClipPlane);
 
         for (int i = 0; i < CascadeCount; i++)
         {
@@ -199,6 +203,7 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
         {
             EditorUI.Text("Resolution", $"{Width} px");
             EditorUI.DragFloat("Lambda", ref _lambda, 0.01f, 0.0f, 1.0f, "%.2f");
+            EditorUI.DragFloat("Max Far Plane", ref _maxFarPlane, 1.0f, 1.0f, 10000.0f, "%.1f units");
             EditorUI.DragFloat("Bias", ref Bias, 0.000001f, 0.000005f, 0.05f, "%.6f");
             EditorUI.Text("Cascade Count", $"{CascadeCount}");
             EditorUI.Text("Cascade Planes", $"{string.Join(", ", CascadePlaneDistances)} units");

@@ -16,6 +16,6 @@ public sealed record SystemRenderContext(
 
 public sealed record ShadowRenderContext(
     CameraComponent Camera,
-    DirectionalLightComponent? Light,
+    DirectionalLightComponent Light,
     IEnumerable<IShadowSystem> Systems
 ) : IRenderContext;

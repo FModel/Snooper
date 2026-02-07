@@ -28,8 +28,6 @@ internal class ViewportSettings(RendererInfo renderer) : IWidget<Viewport>
                 ImGui.SetWindowFontScale(1.0f);
 
                 context.DrawControls();
-
-                ImGui.SeparatorText("Advanced");
             }
         }
         ImGui.End();

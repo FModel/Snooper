@@ -17,9 +17,6 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
 
     // private readonly StagingFramebuffer _final = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
 
-    private int _textureIndex = 2;
-    private float _verticalSplit = 0.5f;
-
     public void Generate()
     {
         // _final.Generate();
@@ -35,9 +32,7 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
             size.Y -= ImGui.GetScrollY();
 
             Camera.Resize((int) size.X, (int) size.Y);
-            var textures = pipeline.GetAllTextures();
-
-            ImGui.Image(textures[_textureIndex].GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
+            ImGui.Image(pipeline.GetFinalTexture().GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
             var itemMin = ImGui.GetItemRectMin();
 
             if (ImGui.IsItemHovered())
@@ -96,19 +91,6 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
                 Camera.FarClipPlane = farClip;
             }
         });
-
-        if (ImGui.TreeNodeEx("Debug Options", ImGuiTreeNodeFlags.SpanAvailWidth))
-        {
-            EditorUI.PropertyValueTable("Debug Options", () =>
-            {
-                EditorUI.Property("Texture Index");
-                ImGui.DragInt("##Texture Index", ref _textureIndex, 0.01f, 0, pipeline.GetAllTextures().Length - 1);
-
-                EditorUI.Property("Vertical Split");
-                ImGui.SliderFloat("##Vertical Split", ref _verticalSplit, 0.0f, 1.0f);
-            });
-            ImGui.TreePop();
-        }
     }
 
     public void Resize(int newWidth, int newHeight)

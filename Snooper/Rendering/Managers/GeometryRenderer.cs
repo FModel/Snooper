@@ -2,6 +2,7 @@
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Containers.Framebuffers;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Managers;
 
@@ -13,7 +14,7 @@ public enum EFramebuffer : byte
     Outline  = 3,
 }
 
-public class GeometryRenderer(int originalWidth, int originalHeight) : IResizable, IMemoryDetailsProvider, IDisposable
+public class GeometryRenderer(int originalWidth, int originalHeight) : IResizable, IMemoryDetailsProvider, IControllable, IDisposable
 {
     private readonly ShadowFramebuffer _shadow = new(2048, 4);
     private readonly DeferredFramebuffer _deferred = new(originalWidth, originalHeight);
@@ -27,7 +28,6 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         _shadow.Generate();
         _passes.Add(new RenderPass<ShadowRenderContext>("Shadow Pass")
         {
-            CanRun = ctx => ctx.Light is { Actor.IsVisible: true },
             PrePass = _ =>
             {
                 _shadow.Bind();
@@ -155,6 +155,11 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         .._forward.GetTextures(),
         .._outline.GetTextures(),
     ];
+
+    public void DrawControls()
+    {
+        _shadow.DrawControls();
+    }
 
     public long Allocated
     {
