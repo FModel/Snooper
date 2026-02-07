@@ -197,18 +197,18 @@ public abstract class InterfaceSystem : SceneManager
             // }
         }
 
-        if (!ImGui.GetIO().WantTextInput) MainCamera?.Update(Window.KeyboardState, delta);
+        if (!ImGui.GetIO().WantTextInput) MainViewport?.Camera.Update(Window.KeyboardState, delta);
         if (Window.CursorState == CursorState.Grabbed)
         {
-            // if (ActiveCamera != null && wnd.MouseState.ScrollDelta.Y != 0)
-            // {
-            //     var multiplier = wnd.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
-            //     ActiveCamera.MovementSpeed += wnd.MouseState.ScrollDelta.Y * multiplier;
-            //     ActiveCamera.MovementSpeed = MathF.Max(1f, ActiveCamera.MovementSpeed);
-            //     Notifications.PushNotification("Camera", () => $"Movement speed set to {ActiveCamera.MovementSpeed}.");
-            // }
+            if (MainViewport != null && Window.MouseState.ScrollDelta.Y != 0)
+            {
+                var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+                MainViewport.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
+                MainViewport.Camera.MovementSpeed = MathF.Max(1f, MainViewport.Camera.MovementSpeed);
+                Notifications.PushNotification("Camera", () => $"Movement speed set to {MainViewport.Camera.MovementSpeed}.");
+            }
 
-            MainCamera?.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
+            MainViewport?.Camera.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
             if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
         }
 

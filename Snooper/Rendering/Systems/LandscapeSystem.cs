@@ -120,16 +120,21 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 
     public void DrawControls()
     {
-        var c = (int) _colorMode;
-        ImGui.Combo("Color Mode", ref c, "Heightmap\0Weightmap\0");
-        _colorMode = (ColorMode) c;
-
-        if (_colorMode == ColorMode.Weightmap)
+        EditorUI.PropertyValueTable("Landscape Table", () =>
         {
-            var before = _selectedLayer;
-            ImGui.Combo("Weightmap Layer", ref _selectedLayer, _layers.ToArray(), _layers.Count);
-            if (!_updateMapping) _updateMapping = before != _selectedLayer;
-        }
+            EditorUI.Property("Color Mode");
+            var c = (int) _colorMode;
+            ImGui.Combo("##Color Mode", ref c, "Heightmap\0Weightmap\0");
+            _colorMode = (ColorMode) c;
+
+            if (_colorMode == ColorMode.Weightmap)
+            {
+                var before = _selectedLayer;
+                EditorUI.Property("Weightmap Layer");
+                ImGui.Combo("##Weightmap Layer", ref _selectedLayer, _layers.ToArray(), _layers.Count);
+                if (!_updateMapping) _updateMapping = before != _selectedLayer;
+            }
+        });
     }
 
     private enum ColorMode : byte

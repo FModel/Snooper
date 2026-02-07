@@ -1,12 +1,15 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Systems;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Systems;
 
@@ -43,7 +46,7 @@ public struct ClusterData
     public uint Count;    // Number of lights in this cluster
 }
 
-public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsProvider, IResizable
+public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsProvider, IControllable, IResizable
 {
     private const int TileSize = 32;
     private const int WorkGroupSize = 64;
@@ -65,7 +68,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     public int GridDimensionY { get; private set; }
     public int GridDimensionZ => 16;
 
-    private int _clusterCount;
+    private int _numClusters;
     private int _numWorkGroups;
     private int _screenWidth = 1;
     private int _screenHeight = 1;
@@ -104,7 +107,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
     private void BuildClusters(CameraComponent camera)
     {
-        if (_clusterCount == 0) return;
+        if (_numClusters == 0) return;
 
         _clusterBuildProgram.Use();
         _clusterBuildProgram.SetUniform("uScreenWidth", _screenWidth);
@@ -126,7 +129,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
     private void CullLights(CameraComponent camera)
     {
-        if (_clusterCount == 0 || _lightDataBuffer.Count == 0)
+        if (_numClusters == 0 || _lightDataBuffer.Count == 0)
         {
             return;
         }
@@ -204,12 +207,12 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         // Calculate grid dimensions based on 32-pixel tiles
         GridDimensionX = (_screenWidth + TileSize - 1) / TileSize;
         GridDimensionY = (_screenHeight + TileSize - 1) / TileSize;
-        _clusterCount = GridDimensionX * GridDimensionY * GridDimensionZ;
-        _numWorkGroups = (_clusterCount + WorkGroupSize - 1) / WorkGroupSize;
+        _numClusters = GridDimensionX * GridDimensionY * GridDimensionZ;
+        _numWorkGroups = (_numClusters + WorkGroupSize - 1) / WorkGroupSize;
 
-        _clusterAABBBuffer.Reallocate(_clusterCount);
-        _clusterDataBuffer.Reallocate(_clusterCount);
-        _lightIndexListBuffer.Reallocate(_clusterCount * MaxLightsPerCluster);
+        _clusterAABBBuffer.Reallocate(_numClusters);
+        _clusterDataBuffer.Reallocate(_numClusters);
+        _lightIndexListBuffer.Reallocate(_numClusters * MaxLightsPerCluster);
     }
 
     public long Allocated => _lightDataBuffer.Allocated;
@@ -237,5 +240,21 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         _globalIndexCountBuffer.Dispose();
         _clusterBuildProgram.Dispose();
         _lightCullingProgram.Dispose();
+    }
+
+    public void DrawControls()
+    {
+        EditorUI.PropertyValueTable("Lighting Table", () =>
+        {
+            var sun = GetDirectionalLight();
+            ImGui.BeginDisabled(sun == null);
+            var check = sun?.Actor?.IsVisible ?? false;
+            if (EditorUI.Checkbox("Sun Light", ref check)) sun?.Actor?.IsVisible = check;
+            ImGui.EndDisabled();
+
+            EditorUI.Text("Lights", $"{ComponentsCount}/{Capacity}");
+            EditorUI.Text("Clusters", $"{_numClusters} ({GridDimensionX} x {GridDimensionY} x {GridDimensionZ}) split into {_numWorkGroups} work groups");
+            EditorUI.Text("Buffer", $"{_lightDataBuffer.Count} Element(s) ({_lightDataBuffer.Used.GetReadableSize()} / {_lightDataBuffer.Allocated.GetReadableSize()})");
+        });
     }
 }

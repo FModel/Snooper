@@ -16,7 +16,6 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 
     private bool _antiAliasing = true;
     private bool _shadows = true;
-    private bool _lighting = false;
 
     // ao
     private bool _ambientOcclusion = true;
@@ -83,13 +82,10 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 
     public void DrawControls()
     {
-        ImGui.SeparatorText("Geometry");
-        // TODO
-
         ImGui.SeparatorText("Post-Processing");
 
-        EditorUI.TogglableTreeNode("Anti-Aliasing", ref _antiAliasing, ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.Bullet, () => { });
-        EditorUI.TogglableTreeNode("Ambient Occlusion", ref _ambientOcclusion, ImGuiTreeNodeFlags.SpanAvailWidth, () =>
+        EditorUI.TogglableTreeNode("Anti-Aliasing", ref _antiAliasing);
+        EditorUI.TogglableTreeNode("Ambient Occlusion", ref _ambientOcclusion, () =>
         {
             EditorUI.PropertyValueTable("Ambient Occlusion", () =>
             {
@@ -103,13 +99,9 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
                 ImGui.DragInt("##Blur Radius", ref _blurRadius, 0.05f, 0, 10);
             });
         });
-        EditorUI.TogglableTreeNode("Shadows", ref _shadows, ImGuiTreeNodeFlags.SpanAvailWidth, () =>
+        EditorUI.TogglableTreeNode("Shadows", ref _shadows, () =>
         {
             _geometry.DrawControls();
-        });
-        EditorUI.TogglableTreeNode("Lighting", ref _lighting, ImGuiTreeNodeFlags.SpanAvailWidth, () =>
-        {
-            // TODO: refactor CameraFramePair, we need access to systems here
         });
 
         _debug = ImGui.TreeNodeEx("Debug Options", ImGuiTreeNodeFlags.SpanAvailWidth);

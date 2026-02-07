@@ -15,6 +15,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 {
     public override ActorSystemType SystemType => ActorSystemType.Audio;
     public override uint Order => 100;
+    public override int Capacity => 10000;
 
     private ALDevice _device;
     private ALContext _context;
@@ -186,6 +187,10 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
 
     public void DrawControls()
     {
-        _volumeChanged = ImGui.SliderFloat("Volume", ref _volume, 0f, 1f, $"{_volume * 100:F0}%%");
+        EditorUI.PropertyValueTable("Audio Table", () =>
+        {
+            EditorUI.Text("Audio Sources", $"{ComponentsCount}/{Capacity}");
+            _volumeChanged = EditorUI.DragFloat("Volume", ref _volume, 0.01f, 0.0f, 1.0f, $"{_volume * 100:F0}%%");
+        });
     }
 }

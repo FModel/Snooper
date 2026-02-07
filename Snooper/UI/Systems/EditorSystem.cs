@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.Numerics;
 using ImGuiNET;
 using OpenTK.Windowing.Desktop;
 using Snooper.Rendering.Managers;
@@ -11,13 +12,10 @@ public class EditorSystem : InterfaceSystem
     private readonly List<IWidget> _widgets = [];
 
     private Viewport? _mainViewport;
-    private readonly ViewportSettings _viewportSettings;
 
     public EditorSystem(GameWindow wnd) : base(wnd)
     {
         Viewports.CollectionChanged += OnViewportsCollectionChanged;
-
-        _viewportSettings = new ViewportSettings(Renderer);
 
 #if DEBUG
         _widgets.Add(new ImGuiDemo());
@@ -28,7 +26,18 @@ public class EditorSystem : InterfaceSystem
     {
         ImGui.DockSpaceOverViewport();
 
-        _viewportSettings.Render(_mainViewport);
+        if (ImGui.Begin("Render Settings"))
+        {
+            if (_mainViewport is null)
+            {
+                EditorUI.CenteredErrorText("No viewport selected");
+            }
+            else
+            {
+                DrawControls();
+            }
+        }
+        ImGui.End();
 
         foreach (var widget in _widgets)
         {

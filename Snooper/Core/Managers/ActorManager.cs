@@ -1,5 +1,7 @@
 ﻿using System.Collections.Specialized;
+using System.Numerics;
 using System.Reflection;
+using ImGuiNET;
 using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
 using Snooper.Core.Systems;
@@ -8,10 +10,11 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Core.Managers;
 
-public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IResizable
+public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IControllable, IResizable
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
@@ -250,6 +253,35 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IResiz
     {
         foreach (var system in Systems.Values.OfType<IResizable>())
             system.Resize(newWidth, newHeight);
+    }
+
+    public virtual void DrawControls()
+    {
+        ImGui.SetWindowFontScale(0.85f);
+        ImGui.TextDisabled($"API: {Renderer.Name} | GPU: {Renderer.DeviceInfo.Name}");
+        ImGui.SetWindowFontScale(1.0f);
+
+        ImGui.SeparatorText("General");
+
+        var light = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
+        ImGui.BeginDisabled(light == null);
+        EditorUI.TogglableTreeNode("Lighting", light?.IsEnabled ?? false, () => light?.DrawControls(), toggle => light?.IsEnabled = toggle);
+        ImGui.EndDisabled();
+
+        var audio = Systems.Values.OfType<AudioSystem>().FirstOrDefault();
+        ImGui.BeginDisabled(audio == null);
+        EditorUI.TogglableTreeNode("Audio", audio?.IsEnabled ?? false, () => audio?.DrawControls(), toggle => audio?.IsEnabled = toggle);
+        ImGui.EndDisabled();
+
+        var landscape = Systems.Values.OfType<LandscapeSystem>().FirstOrDefault();
+        ImGui.BeginDisabled(landscape == null);
+        EditorUI.TogglableTreeNode("Landscape", landscape?.IsEnabled ?? false, () => landscape?.DrawControls(), toggle => landscape?.IsEnabled = toggle);
+        ImGui.EndDisabled();
+
+        var debug = Systems.Values.OfType<DebugSystem>().FirstOrDefault();
+        ImGui.BeginDisabled(debug == null);
+        EditorUI.TogglableTreeNode("Wireframes", debug?.IsEnabled ?? false, () => debug?.DrawControls(), toggle => debug?.IsEnabled = toggle);
+        ImGui.EndDisabled();
     }
 
     public virtual void Dispose()

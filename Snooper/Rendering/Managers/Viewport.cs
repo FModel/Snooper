@@ -13,15 +13,6 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
 {
     public InteractiveCameraComponent Camera { get; } = camera;
 
-    public bool IsActive;
-
-    // private readonly StagingFramebuffer _final = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
-
-    public void Generate()
-    {
-        // _final.Generate();
-    }
-
     public void Render()
     {
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
@@ -71,8 +62,6 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
 
     public void DrawControls()
     {
-        pipeline.DrawControls();
-
         ImGui.SeparatorText("Camera");
         EditorUI.PropertyValueTable("Camera", () =>
         {

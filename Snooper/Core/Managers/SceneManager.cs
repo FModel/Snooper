@@ -1,5 +1,4 @@
 ﻿using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
@@ -14,8 +13,7 @@ namespace Snooper.Core.Managers;
 public class SceneManager : ActorManager
 {
     protected GameWindow Window { get; }
-
-    public InteractiveCameraComponent? MainCamera { get; private set; }
+    protected Viewport? MainViewport { get; private set; }
 
     public Actor? RootActor
     {
@@ -32,14 +30,12 @@ public class SceneManager : ActorManager
 
     protected readonly ObservableCollection<Viewport> Viewports = [];
 
-    private readonly ObservableCollection<CameraComponent> _cameras = [];
+    private readonly HashSet<CameraComponent> _cameras = [];
     private readonly RenderPipeline _pipeline = new();
 
-    public SceneManager(GameWindow wnd)
+    protected SceneManager(GameWindow wnd)
     {
         Window = wnd;
-
-        _cameras.CollectionChanged += OnCamerasCollectionChanged;
     }
 
     public override void Load()
@@ -65,12 +61,12 @@ public class SceneManager : ActorManager
         var deferredSystems = Systems.Values.Where(x => x.SystemType == ActorSystemType.Deferred).ToArray();
         var forwardSystems = Systems.Values.Where(x => x.SystemType == ActorSystemType.Forward).ToArray();
 
+        // TODO: we do not support multiple cameras yet
         foreach (var viewport in Viewports)
         {
             var camera = viewport.Camera;
             _pipeline.RenderScene(camera, shadowSystems, deferredSystems, forwardSystems, directionalLight);
             _pipeline.PostProcessScene(camera, lightSystem);
-            // TODO: freeze the image and send it to the viewport before processing the next viewport
         }
     }
 
@@ -81,6 +77,11 @@ public class SceneManager : ActorManager
         if (component is CameraComponent camera)
         {
             _cameras.Add(camera);
+
+            if (camera is InteractiveCameraComponent interactiveCamera)
+            {
+                _viewportsToLoad.Enqueue(new Viewport(interactiveCamera, _pipeline, Window));
+            }
         }
     }
 
@@ -91,38 +92,19 @@ public class SceneManager : ActorManager
         if (component is CameraComponent camera)
         {
             _cameras.Remove(camera);
-        }
-    }
 
-    private void OnCamerasCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        switch (e.Action)
-        {
-            case NotifyCollectionChangedAction.Add:
-                foreach (var component in e.NewItems!.Cast<CameraComponent>())
+            if (camera is InteractiveCameraComponent interactiveCamera)
+            {
+                var viewport = Viewports.FirstOrDefault(v => v.Camera == interactiveCamera);
+                if (viewport != null)
                 {
-                    if (component is InteractiveCameraComponent camera)
+                    Viewports.Remove(viewport);
+                    if (MainViewport == viewport)
                     {
-                        _viewportsToLoad.Enqueue(new Viewport(camera, _pipeline, Window));
-                        MainCamera ??= camera;
+                        MainViewport = Viewports.FirstOrDefault();
                     }
                 }
-                break;
-            case NotifyCollectionChangedAction.Remove:
-                foreach (var component in e.OldItems!.Cast<CameraComponent>())
-                {
-                    var viewport = Viewports.FirstOrDefault(v => v.Camera == component);
-                    if (viewport != null)
-                    {
-                        Viewports.Remove(viewport);
-                    }
-
-                    if (component == MainCamera)
-                    {
-                        MainCamera = Viewports.Select(v => v.Camera).FirstOrDefault();
-                    }
-                }
-                break;
+            }
         }
     }
 
@@ -133,10 +115,10 @@ public class SceneManager : ActorManager
         while (_viewportsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
             var viewport = _viewportsToLoad.Dequeue();
-            viewport.Generate();
             viewport.Resize(Window.ClientSize.X, Window.ClientSize.Y);
 
             Viewports.Add(viewport);
+            MainViewport ??= viewport;
 
             count++;
         }
@@ -150,6 +132,15 @@ public class SceneManager : ActorManager
             viewport.Resize(newWidth, newHeight);
 
         _pipeline.Resize(newWidth, newHeight);
+    }
+
+    public override void DrawControls()
+    {
+        base.DrawControls();
+
+        _pipeline.DrawControls();
+
+        MainViewport?.DrawControls();
     }
 
     public override long Allocated
@@ -185,7 +176,6 @@ public class SceneManager : ActorManager
         base.Dispose();
         _pipeline.Dispose();
 
-        _cameras.CollectionChanged -= OnCamerasCollectionChanged;
         _cameras.Clear();
         Viewports.Clear();
         RootActor = null;
