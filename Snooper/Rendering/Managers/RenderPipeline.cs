@@ -1,4 +1,5 @@
 ﻿using ImGuiNET;
+using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
@@ -23,8 +24,8 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     private int _stepsPerDirection = 6;
     private int _blurRadius = 2;
 
-    private bool _debug = false;
-    private int _index = 0;
+    private bool _debug;
+    private int _selectedTextureIndex = 0;
     private float _split = 0.5f;
 
     public void Generate()
@@ -52,27 +53,38 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
             _postProcess.DoStagePass("AO Blur Pass", new BlurStageContext(_blurRadius));
         }
 
-        var context = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, _shadows ? _geometry.GetShadowContext() : null);
-        _postProcess.DoStagePass("Lighting Pass", context);
-        _postProcess.DoStagePass("Combine Pass", new GeometryStageContext(_geometry));
+        var geometryContext = new GeometryStageContext(_geometry);
+        var litContext = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, _shadows ? _geometry.GetShadowContext() : null);
+        _postProcess.DoStagePass("Lighting Pass", litContext);
+        _postProcess.DoStagePass("Combine Pass", geometryContext);
+        _postProcess.DoStagePass("Picking Pass", geometryContext);
+        _postProcess.DoStagePass("Picking Viz Pass");
 
         if (_antiAliasing)
         {
             _postProcess.DoStagePass("AA Pass");
         }
 
-        if (_debug && _index == 5)
+        Texture? texture = null;
+        if (_debug)
         {
-            _postProcess.DoStagePass("Shadow Viz Pass", context);
+            texture = GetTextures()[_selectedTextureIndex];
+            if (texture.Name == "PostProcess - Shadow Viz")
+            {
+                _postProcess.DoStagePass("Shadow Viz Pass", litContext);
+            }
         }
 
-        _postProcess.DoStagePass("Final Pass", new FinalStageContext(_antiAliasing, _debug ? GetAllTextures()[_index] : null, _split));
+        _postProcess.DoStagePass("Final Pass", new FinalStageContext(_antiAliasing, texture, _split));
     }
 
-    public Texture[] GetFinalTextures() => _postProcess.GetTextures();
-    public Texture[] GetGeometryTextures() => _geometry.GetTextures();
-    public Texture[] GetAllTextures() => [..GetFinalTextures(), ..GetGeometryTextures()];
-    public Texture GetFinalTexture() => GetFinalTextures()[^1];
+    public void RenderToScreen(int width, int height)
+    {
+        GL.BlitNamedFramebuffer(_postProcess, 0, 0, 0, _postProcess.Width, _postProcess.Height, 0, 0, width, height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+    }
+
+    public Texture GetFinalTexture() => _postProcess.GetFinalTexture();
+    public Texture[] GetTextures() => [.._postProcess.GetTextures(), .._geometry.GetTextures()];
 
     public void Resize(int newWidth, int newHeight)
     {
@@ -101,22 +113,34 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         });
         EditorUI.TogglableTreeNode("Shadows", ref _shadows, () =>
         {
+            // TODO
             _geometry.DrawControls();
         });
 
-        _debug = ImGui.TreeNodeEx("Debug Options", ImGuiTreeNodeFlags.SpanAvailWidth);
-        if (_debug)
+        EditorUI.TogglableTreeNode("Debug Options", ref _debug, () =>
         {
             EditorUI.PropertyValueTable("Debug Options", () =>
             {
-                EditorUI.Property("Texture Index");
-                ImGui.DragInt("##Texture Index", ref _index, 0.01f, 0, GetAllTextures().Length - 1);
+                var textures = GetTextures();
+                EditorUI.Property("Texture");
+                if (ImGui.BeginCombo("##Texture Selector", textures[_selectedTextureIndex].Name))
+                {
+                    for (var i = 0; i < textures.Length; i++)
+                    {
+                        var isSelected = _selectedTextureIndex == i;
+                        if (ImGui.Selectable(textures[i].Name, isSelected))
+                        {
+                            _selectedTextureIndex = i;
+                        }
+                        if (isSelected) ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
 
                 EditorUI.Property("Vertical Split");
                 ImGui.SliderFloat("##Vertical Split", ref _split, 0.0f, 1.0f);
             });
-            ImGui.TreePop();
-        }
+        });
     }
 
     public long Allocated => _geometry.Allocated + _postProcess.Allocated;

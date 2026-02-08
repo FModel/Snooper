@@ -4,12 +4,12 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class OutlineFramebuffer(int originalWidth, int originalHeight) : Framebuffer
+public class OutlineFramebuffer(int originalWidth, int originalHeight) : Framebuffer<EOutlineTexture>
 {
     public override int Width => _color.Width;
     public override int Height => _color.Height;
 
-    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight);
+    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, name: "Outline - Color");
 
     public override void Generate()
     {
@@ -24,8 +24,13 @@ public class OutlineFramebuffer(int originalWidth, int originalHeight) : Framebu
         CheckStatus();
     }
 
-    public override void Bind(uint texture, uint unit) => Bind(unit);
-    public override void Bind(uint unit) => _color.Bind(unit);
+    public override void Bind(EOutlineTexture texture, uint unit)
+    {
+        if (texture != EOutlineTexture.Color)
+            throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid outline texture type");
+
+        _color.Bind(unit);
+    }
 
     public override void Resize(int newWidth, int newHeight)
     {

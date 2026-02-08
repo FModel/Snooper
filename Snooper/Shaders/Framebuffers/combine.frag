@@ -1,17 +1,17 @@
 ﻿in vec2 vTexCoords;
 
-uniform sampler2D deferredTexture;
-uniform sampler2D forwardTexture;
-uniform sampler2D outlineTexture;
+uniform sampler2D inputTextures[4];
+uniform int numInputTextures;
 
 out vec4 FragColor;
 
 void main()
 {
-    vec4 deferredColor = texture(deferredTexture, vTexCoords);
-    vec4 forwardColor = texture(forwardTexture, vTexCoords);
-    vec4 outlineColor = texture(outlineTexture, vTexCoords);
-
-    vec4 final = mix(deferredColor, forwardColor, forwardColor.a);
-    FragColor = mix(final, outlineColor, outlineColor.a);
+    vec4 color = texture(inputTextures[0], vTexCoords);
+    for (int i = 1; i < numInputTextures; ++i)
+    {
+        vec4 current = texture(inputTextures[i], vTexCoords);
+        color = mix(color, current, current.a);
+    }
+    FragColor = color;
 }

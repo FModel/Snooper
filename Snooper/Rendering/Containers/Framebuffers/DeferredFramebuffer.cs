@@ -4,16 +4,16 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class DeferredFramebuffer(int originalWidth, int originalHeight) : Framebuffer
+public class DeferredFramebuffer(int originalWidth, int originalHeight) : Framebuffer<EDeferredTexture>
 {
     public override int Width => _color.Width;
     public override int Height => _color.Height;
 
-    private readonly ResizableTexture2D _position = new(originalWidth, originalHeight, SizedInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float);
-    private readonly ResizableTexture2D _normal = new(originalWidth, originalHeight, SizedInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float);
-    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight);
-    private readonly ResizableTexture2D _specular = new(originalWidth, originalHeight);
-    private readonly PickingTexture _picking = new(originalWidth, originalHeight);
+    private readonly ResizableTexture2D _position = new(originalWidth, originalHeight, SizedInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float, "Deferred - Position");
+    private readonly ResizableTexture2D _normal = new(originalWidth, originalHeight, SizedInternalFormat.Rgb16f, PixelFormat.Rgb, PixelType.Float, "Deferred - Normal");
+    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, name: "Deferred - Color");
+    private readonly ResizableTexture2D _specular = new(originalWidth, originalHeight, name: "Deferred - Specular");
+    private readonly PickingTexture _picking = new(originalWidth, originalHeight, name: "Deferred - Picking");
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
     public override void Generate()
@@ -64,28 +64,19 @@ public class DeferredFramebuffer(int originalWidth, int originalHeight) : Frameb
         CheckStatus();
     }
 
-    public override void Bind(uint texture, uint unit)
+    public override void Bind(EDeferredTexture texture, uint unit)
     {
         var t = texture switch
         {
-            0 => _position,
-            1 => _normal,
-            2 => _color,
-            3 => _specular,
-            _ => throw new ArgumentOutOfRangeException(nameof(texture), $"Texture index {texture} is out of range for {nameof(DeferredFramebuffer)}.")
+            EDeferredTexture.Position => _position,
+            EDeferredTexture.Normal => _normal,
+            EDeferredTexture.Color => _color,
+            EDeferredTexture.Specular => _specular,
+            EDeferredTexture.Picking => _picking,
+            _ => throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid deferred texture type")
         };
 
         t.Bind(unit);
-    }
-    public override void Bind(uint unit) => _color.Bind(unit);
-    public void BindPicking(uint unit) => _picking.Bind(unit);
-
-    public void BindTextures(bool position = false, bool normal = false, bool color = false, bool specular = false)
-    {
-        if (position) _position.Bind(0);
-        if (normal) _normal.Bind(1);
-        if (color) _color.Bind(2);
-        if (specular) _specular.Bind(3);
     }
 
     public override void Resize(int newWidth, int newHeight)

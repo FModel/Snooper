@@ -29,9 +29,9 @@ public class SceneManager : ActorManager
     }
 
     protected readonly ObservableCollection<Viewport> Viewports = [];
+    protected readonly RenderPipeline Pipeline = new();
 
     private readonly HashSet<CameraComponent> _cameras = [];
-    private readonly RenderPipeline _pipeline = new();
 
     protected SceneManager(GameWindow wnd)
     {
@@ -41,7 +41,7 @@ public class SceneManager : ActorManager
     public override void Load()
     {
         DequeueViewports();
-        _pipeline.Generate();
+        Pipeline.Generate();
 
         base.Load();
     }
@@ -62,11 +62,11 @@ public class SceneManager : ActorManager
         var forwardSystems = Systems.Values.Where(x => x.SystemType == ActorSystemType.Forward).ToArray();
 
         // TODO: we do not support multiple cameras yet
-        foreach (var viewport in Viewports)
+        if (MainViewport != null)
         {
-            var camera = viewport.Camera;
-            _pipeline.RenderScene(camera, shadowSystems, deferredSystems, forwardSystems, directionalLight);
-            _pipeline.PostProcessScene(camera, lightSystem);
+            var camera = MainViewport.Camera;
+            Pipeline.RenderScene(camera, shadowSystems, deferredSystems, forwardSystems, directionalLight);
+            Pipeline.PostProcessScene(camera, lightSystem);
         }
     }
 
@@ -80,7 +80,7 @@ public class SceneManager : ActorManager
 
             if (camera is InteractiveCameraComponent interactiveCamera)
             {
-                _viewportsToLoad.Enqueue(new Viewport(interactiveCamera, _pipeline, Window));
+                _viewportsToLoad.Enqueue(new Viewport(interactiveCamera, Pipeline, Window));
             }
         }
     }
@@ -131,14 +131,14 @@ public class SceneManager : ActorManager
         foreach (var viewport in Viewports)
             viewport.Resize(newWidth, newHeight);
 
-        _pipeline.Resize(newWidth, newHeight);
+        Pipeline.Resize(newWidth, newHeight);
     }
 
     public override void DrawControls()
     {
         base.DrawControls();
 
-        _pipeline.DrawControls();
+        Pipeline.DrawControls();
 
         MainViewport?.DrawControls();
     }
@@ -148,7 +148,7 @@ public class SceneManager : ActorManager
         get
         {
             var total = base.Allocated;
-            total += _pipeline.Allocated;
+            total += Pipeline.Allocated;
             return total;
         }
     }
@@ -158,7 +158,7 @@ public class SceneManager : ActorManager
         get
         {
             var total = base.Used;
-            total += _pipeline.Used;
+            total += Pipeline.Used;
             return total;
         }
     }
@@ -168,13 +168,13 @@ public class SceneManager : ActorManager
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
 
-        yield return new MemoryDetail("Render Pipeline", _pipeline);
+        yield return new MemoryDetail("Render Pipeline", Pipeline);
     }
 
     public override void Dispose()
     {
         base.Dispose();
-        _pipeline.Dispose();
+        Pipeline.Dispose();
 
         _cameras.Clear();
         Viewports.Clear();

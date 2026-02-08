@@ -159,7 +159,6 @@ public partial class SnooperWindow : GameWindow
     {
         base.OnFramebufferResize(e);
 
-        GL.Viewport(0, 0, e.Width, e.Height);
         _interface.Resize(e.Width, e.Height);
     }
 }

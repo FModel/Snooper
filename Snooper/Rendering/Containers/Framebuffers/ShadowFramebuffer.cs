@@ -9,7 +9,7 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IControllable
+public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadowTexture>, IControllable
 {
     public override int Width => _cascades.Width;
     public override int Height => _cascades.Height;
@@ -19,7 +19,7 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
     public readonly float[] CascadePlaneDistances = new float[cascadeCount];
     public readonly Matrix4x4[] CascadeMatrices = new Matrix4x4[cascadeCount];
 
-    private readonly Texture2DArray _cascades = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent16, PixelFormat.DepthComponent, PixelType.Float);
+    private readonly Texture2DArray _cascades = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent16, PixelFormat.DepthComponent, PixelType.Float, "Shadow - Depth");
     private float _lambda = 0.85f;
     private float _maxFarPlane = 150.0f;
 
@@ -187,8 +187,13 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer, IContr
         return cascadeCameras;
     }
 
-    public override void Bind(uint texture, uint unit) => Bind(unit);
-    public override void Bind(uint unit) => _cascades.Bind(unit);
+    public override void Bind(EShadowTexture texture, uint unit)
+    {
+        if (texture != EShadowTexture.Depth)
+            throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid shadow texture type");
+
+        _cascades.Bind(unit);
+    }
 
     public override void Resize(int newWidth, int newHeight)
     {

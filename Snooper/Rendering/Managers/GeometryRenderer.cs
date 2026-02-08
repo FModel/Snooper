@@ -6,14 +6,6 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Managers;
 
-public enum EFramebuffer : byte
-{
-    Shadow   = 0,
-    Deferred = 1,
-    Forward  = 2,
-    Outline  = 3,
-}
-
 public class GeometryRenderer(int originalWidth, int originalHeight) : IResizable, IMemoryDetailsProvider, IControllable, IDisposable
 {
     private readonly ShadowFramebuffer _shadow = new(2048, 4);
@@ -117,24 +109,10 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         _passes.Find(p => p.Name == name)?.Run(context ?? new NoRenderContext());
     }
 
-    public void Bind(EFramebuffer framebuffer, uint texture, uint unit)
-    {
-        switch (framebuffer)
-        {
-            case EFramebuffer.Shadow:
-                _shadow.Bind(texture, unit);
-                break;
-            case EFramebuffer.Deferred:
-                _deferred.Bind(texture, unit);
-                break;
-            case EFramebuffer.Forward:
-                _forward.Bind(texture, unit);
-                break;
-            case EFramebuffer.Outline:
-                _outline.Bind(texture, unit);
-                break;
-        }
-    }
+    public void Bind(EDeferredTexture texture, uint unit) => _deferred.Bind(texture, unit);
+    public void Bind(EForwardTexture texture, uint unit) => _forward.Bind(texture, unit);
+    public void Bind(EShadowTexture texture, uint unit) => _shadow.Bind(texture, unit);
+    public void Bind(EOutlineTexture texture, uint unit) => _outline.Bind(texture, unit);
 
     // TODO: improve, this is ugly
     public ShadowStageContext GetShadowContext() => new(_shadow.Width, _shadow.Height, _shadow.CascadeCount,

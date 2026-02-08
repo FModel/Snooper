@@ -6,14 +6,16 @@ using Snooper.Rendering.Containers.Framebuffers;
 
 namespace Snooper.Rendering.Managers;
 
-public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFramebuffer(originalWidth, originalHeight)
+public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFramebuffer<EPostProcessTexture>(originalWidth, originalHeight)
 {
-    private readonly ResizableTexture2D _ssao = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red);
-    private readonly ResizableTexture2D _ssaoBlur = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red);
-    private readonly ResizableTexture2D _lit = new(originalWidth, originalHeight); // deferred pass with lighting, shadows, and SSAO applied
-    private readonly ResizableTexture2D _combined = new(originalWidth, originalHeight);
-    private readonly ResizableTexture2D _fxaa = new(originalWidth, originalHeight);
-    private readonly ResizableTexture2D _shadow = new(originalWidth, originalHeight, SizedInternalFormat.Rgb8, PixelFormat.Rgb);
+    private readonly ResizableTexture2D _ssao = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, name: "PostProcess - SSAO");
+    private readonly ResizableTexture2D _ssaoBlur = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, name: "PostProcess - SSAO Blur");
+    private readonly ResizableTexture2D _lit = new(originalWidth, originalHeight, name: "PostProcess - Lit"); // deferred pass with lighting, shadows, and SSAO applied
+    private readonly ResizableTexture2D _combined = new(originalWidth, originalHeight, name: "PostProcess - Combined");
+    private readonly ResizableTexture2D _fxaa = new(originalWidth, originalHeight, name: "PostProcess - FXAA");
+    private readonly ResizableTexture2D _shadowViz = new(originalWidth, originalHeight, SizedInternalFormat.Rgb8, PixelFormat.Rgb, name: "PostProcess - Shadow Viz");
+    private readonly PickingTexture _picking = new(originalWidth, originalHeight);
+    private readonly ResizableTexture2D _pickingViz = new(originalWidth, originalHeight, SizedInternalFormat.Rgb8, PixelFormat.Rgb, name: "PostProcess - Picking Viz");
 
     private readonly List<StagePass> _passes = [];
 
@@ -46,20 +48,22 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         GL.TextureParameter(_fxaa, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
         GL.TextureParameter(_fxaa, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
 
-        _shadow.Generate();
-        _shadow.Resize(Width, Height);
-        GL.TextureParameter(_shadow, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_shadow, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+        _shadowViz.Generate();
+        _shadowViz.Resize(Width, Height);
+        GL.TextureParameter(_shadowViz, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+        GL.TextureParameter(_shadowViz, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+
+        _picking.Generate();
+        _picking.Resize(Width, Height);
+
+        _pickingViz.Generate();
+        _pickingViz.Resize(Width, Height);
+        GL.TextureParameter(_pickingViz, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+        GL.TextureParameter(_pickingViz, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
 
         base.Generate();
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment1, _ssao, 0);
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment2, _lit, 0);
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment3, _combined, 0);
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment4, _ssaoBlur, 0);
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment5, _fxaa, 0);
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment6, _shadow, 0);
-
-        CheckStatus();
+        // ColorAttachment0 = final output (outputted to screen)
+        // other attachments are for intermediate steps and may be ping-ponged as needed
 
         var ssao = new EmbeddedShader("Framebuffers/combine.vert", "Framebuffers/ssao.frag");
         var lit = new EmbeddedShader("Framebuffers/combine.vert", "Framebuffers/light_clustered.frag")
@@ -71,6 +75,8 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         var fxaa = new EmbeddedShader("Framebuffers/combine.vert", "Framebuffers/fxaa.frag");
         var shadow = new EmbeddedShader("Framebuffers/combine.vert", "Framebuffers/shadow.frag");
         var final = new EmbeddedShader("Framebuffers/combine.vert", "Framebuffers/final.frag");
+        var picking = new EmbeddedShader("Framebuffers/combine.vert", "Picking/combine.frag");
+        var pickingViz = new EmbeddedShader("Framebuffers/combine.vert", "Picking/visualize.frag");
 
         ssao.Generate();
         lit.Generate();
@@ -79,6 +85,8 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         fxaa.Generate();
         shadow.Generate();
         final.Generate();
+        picking.Generate();
+        pickingViz.Generate();
 
         ssao.Link();
         lit.Link();
@@ -87,9 +95,12 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         fxaa.Link();
         shadow.Link();
         final.Link();
+        picking.Link();
+        pickingViz.Link();
 
-        _passes.Add(new StagePass<AmbientOcclusionStageContext>("AO Pass", ssao, new Vector4(1.0f, 0.0f, 0.0f, 0.0f), ClearBufferMask.ColorBufferBit, DrawBufferMode.ColorAttachment1)
+        _passes.Add(new StagePass<AmbientOcclusionStageContext>("AO Pass", ssao)
         {
+            OutputTexture = _ssao,
             SetupBindings = (ctx, shader) =>
             {
                 shader.SetUniform("gPosition", 0);
@@ -100,25 +111,27 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("uStepsPerDirection", ctx.StepsPerDirection);
                 shader.SetUniform("uFrameCount", ++_frameCount);
 
-                ctx.Geometry.Bind(EFramebuffer.Deferred, 0, 0);
-                ctx.Geometry.Bind(EFramebuffer.Deferred, 1, 1);
+                ctx.Geometry.Bind(EDeferredTexture.Position, 0);
+                ctx.Geometry.Bind(EDeferredTexture.Normal, 1);
             }
         });
 
-        _passes.Add(new StagePass<BlurStageContext>("AO Blur Pass", blur, Vector4.Zero, ClearBufferMask.ColorBufferBit, DrawBufferMode.ColorAttachment4)
+        _passes.Add(new StagePass<BlurStageContext>("AO Blur Pass", blur)
         {
+            OutputTexture = _ssaoBlur,
             SetupBindings = (ctx, shader) =>
             {
                 shader.SetUniform("inputTexture", 0);
                 shader.SetUniform("texelSize", Vector2.One / new Vector2(_ssao.Width, _ssao.Height));
                 shader.SetUniform("blurRadius", ctx.Radius);
 
-                _ssao.Bind(0);
+                _ssao.Bind(0);  // Read from attachment 1, write to attachment 2
             }
         });
 
-        _passes.Add(new StagePass<LitStageContext>("Lighting Pass", lit, new Vector4(0, 0, 0, 1), ClearBufferMask.ColorBufferBit, DrawBufferMode.ColorAttachment2)
+        _passes.Add(new StagePass<LitStageContext>("Lighting Pass", lit)
         {
+            OutputTexture = _lit,
             SetupBindings = (ctx, shader) =>
             {
                 shader.SetUniform("gPosition", 0);
@@ -126,10 +139,10 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("gColor", 2);
                 shader.SetUniform("gSpecular", 3);
 
-                ctx.Geometry.Bind(EFramebuffer.Deferred, 0, 0);
-                ctx.Geometry.Bind(EFramebuffer.Deferred, 1, 1);
-                ctx.Geometry.Bind(EFramebuffer.Deferred, 2, 2);
-                ctx.Geometry.Bind(EFramebuffer.Deferred, 3, 3);
+                ctx.Geometry.Bind(EDeferredTexture.Position, 0);
+                ctx.Geometry.Bind(EDeferredTexture.Normal, 1);
+                ctx.Geometry.Bind(EDeferredTexture.Color, 2);
+                ctx.Geometry.Bind(EDeferredTexture.Specular, 3);
 
                 Matrix4x4.Invert(ctx.Camera.ViewMatrix, out var inverseViewMatrix);
                 shader.SetUniform("uInverseViewMatrix", inverseViewMatrix);
@@ -170,7 +183,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                         shader.SetUniform("uCascadePlaneDistances", shadows.PlaneDistances);
                         shader.SetUniform("uLightViewProjectionMatrices", shadows.Matrices);
 
-                        ctx.Geometry.Bind(EFramebuffer.Shadow, 0, 5);
+                        ctx.Geometry.Bind(EShadowTexture.Depth, 5);
                         shader.SetUniform("shadowMap", 5);
                     }
                     else shader.SetUniform("useShadows", false);
@@ -179,33 +192,37 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<GeometryStageContext>("Combine Pass", combine, new Vector4(0.2f, 0.2f, 0.2f, 1), ClearBufferMask.ColorBufferBit, DrawBufferMode.ColorAttachment3)
+        _passes.Add(new StagePass<GeometryStageContext>("Combine Pass", combine)
         {
+            OutputTexture = _combined,
             SetupBindings = (ctx, shader) =>
             {
-                shader.SetUniform("deferredTexture", 0);
-                shader.SetUniform("forwardTexture", 1);
-                shader.SetUniform("outlineTexture", 2);
+                shader.SetUniform("inputTextures[0]", 0);
+                shader.SetUniform("inputTextures[1]", 1);
+                shader.SetUniform("inputTextures[2]", 2);
+                shader.SetUniform("numInputTextures", 3);
 
                 _lit.Bind(0);
-                ctx.Geometry.Bind(EFramebuffer.Forward, 0, 1);
-                ctx.Geometry.Bind(EFramebuffer.Outline, 0, 2);
+                ctx.Geometry.Bind(EForwardTexture.Color, 1);
+                ctx.Geometry.Bind(EOutlineTexture.Color, 2);
             }
         });
 
-        _passes.Add(new StagePass<NoStageContext>("AA Pass", fxaa, Vector4.Zero, ClearBufferMask.ColorBufferBit, DrawBufferMode.ColorAttachment5)
+        _passes.Add(new StagePass<NoStageContext>("AA Pass", fxaa)
         {
+            OutputTexture = _fxaa,
             SetupBindings = (_, shader) =>
             {
                 shader.SetUniform("inputTexture", 0);
                 shader.SetUniform("inverseScreenSize", Vector2.One / new Vector2(Width, Height));
 
-                _combined.Bind(0);
+                _combined.Bind(0);  // Read from attachment 2, write to attachment 1
             }
         });
 
-        _passes.Add(new StagePass<LitStageContext>("Shadow Viz Pass", shadow, Vector4.Zero, ClearBufferMask.ColorBufferBit, DrawBufferMode.ColorAttachment6)
+        _passes.Add(new StagePass<LitStageContext>("Shadow Viz Pass", shadow)
         {
+            OutputTexture = _shadowViz,
             SetupBindings = (ctx, shader) =>
             {
                 var cascadeCount = ctx.ShadowContext?.Depth ?? 4;
@@ -220,12 +237,12 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("gridRows", gridRows);
                 shader.SetUniform("cellSize", cellSize);
 
-                ctx.Geometry.Bind(EFramebuffer.Shadow, 0, 0);
+                ctx.Geometry.Bind(EShadowTexture.Depth, 0);
                 _fxaa.Bind(1);
             }
         });
 
-        _passes.Add(new StagePass<FinalStageContext>("Final Pass", final, Vector4.Zero, ClearBufferMask.ColorBufferBit, DrawBufferMode.ColorAttachment0)
+        _passes.Add(new StagePass<FinalStageContext>("Final Pass", final, DrawBufferMode.ColorAttachment0)
         {
             SetupBindings = (ctx, shader) =>
             {
@@ -238,6 +255,29 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 ctx.Texture?.Bind(1);
             }
         });
+
+        _passes.Add(new StagePass<GeometryStageContext>("Picking Pass", picking)
+        {
+            OutputTexture = _picking,
+            SetupBindings = (ctx, shader) =>
+            {
+                shader.SetUniform("deferredPicking", 0);
+                shader.SetUniform("forwardPicking", 1);
+
+                ctx.Geometry.Bind(EDeferredTexture.Picking, 0);
+                ctx.Geometry.Bind(EForwardTexture.Picking, 1);
+            }
+        });
+
+        _passes.Add(new StagePass<NoStageContext>("Picking Viz Pass", pickingViz)
+        {
+            OutputTexture = _pickingViz,
+            SetupBindings = (_, shader) =>
+            {
+                shader.SetUniform("inputTexture", 0);
+                _picking.Bind(0);  // Read from attachment 1, write to attachment 2
+            }
+        });
     }
 
     public void DoStagePass(string name, IStageContext? context = null)
@@ -246,11 +286,26 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         if (stage == null) return;
 
         Bind();
-        stage.Run(context ?? new NoStageContext(), Render);
+        stage.Run(context ?? new NoStageContext(), Handle, Render);
         Unbind();
     }
 
-    public override Texture[] GetTextures() => [ _ssao, _ssaoBlur, _lit, _combined, _fxaa, _shadow, ..base.GetTextures() ];
+    public override void Bind(EPostProcessTexture texture, uint unit)
+    {
+        var t = texture switch
+        {
+            EPostProcessTexture.Ao => _ssao,
+            EPostProcessTexture.AoBlur => _ssaoBlur,
+            EPostProcessTexture.Lit => _lit,
+            EPostProcessTexture.Combined => _combined,
+            EPostProcessTexture.PickingViz => _pickingViz,
+            EPostProcessTexture.Aa => _fxaa,
+            EPostProcessTexture.ShadowViz => _shadowViz,
+            _ => throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid post-process texture type")
+        };
+
+        t.Bind(unit);
+    }
 
     public override void Resize(int newWidth, int newHeight)
     {
@@ -261,6 +316,20 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         _lit.Resize(newWidth, newHeight);
         _combined.Resize(newWidth, newHeight);
         _fxaa.Resize(newWidth, newHeight);
-        _shadow.Resize(newWidth, newHeight);
+        _shadowViz.Resize(newWidth, newHeight);
+        _picking.Resize(newWidth, newHeight);
+        _pickingViz.Resize(newWidth, newHeight);
     }
+
+    public Texture GetFinalTexture() => base.GetTextures()[^1];
+    public override Texture[] GetTextures() =>
+    [
+        _ssao,
+        _ssaoBlur,
+        _lit,
+        _combined,
+        _fxaa,
+        _pickingViz,
+        _shadowViz
+    ];
 }

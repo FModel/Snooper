@@ -219,19 +219,19 @@ public abstract class InterfaceSystem : SceneManager
     {
         base.Render();
 
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        GL.ClearColor(0, 0, 0, 1);
+        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+
         if (Enabled)
         {
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            GL.ClearColor(0, 0, 0, 1);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-
             RenderInterface();
             _controller.Render();
         }
-        // else if (ActiveCamera is not null && ActiveCamera.PairIndex < Pairs.Count)
-        // {
-        //     Pairs[ActiveCamera.PairIndex].RenderToScreen(wnd.ClientSize.X, wnd.ClientSize.Y);
-        // }
+        else
+        {
+            Pipeline.RenderToScreen(Window.ClientSize.X, Window.ClientSize.Y);
+        }
     }
 
     protected abstract void RenderInterface();

@@ -4,13 +4,13 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class ForwardFramebuffer(int originalWidth, int originalHeight) : Framebuffer
+public class ForwardFramebuffer(int originalWidth, int originalHeight) : Framebuffer<EForwardTexture>
 {
     public override int Width => _color.Width;
     public override int Height => _color.Height;
 
-    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight);
-    private readonly PickingTexture _picking = new(originalWidth, originalHeight);
+    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, name: "Forward - Color");
+    private readonly PickingTexture _picking = new(originalWidth, originalHeight, name: "Forward - Picking");
     private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
 
     public override void Generate()
@@ -35,9 +35,17 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : Framebu
         CheckStatus();
     }
 
-    public override void Bind(uint texture, uint unit) => Bind(unit);
-    public override void Bind(uint unit) => _color.Bind(unit);
-    public void BindPicking(uint unit) => _picking.Bind(unit);
+    public override void Bind(EForwardTexture texture, uint unit)
+    {
+        var t = texture switch
+        {
+            EForwardTexture.Color => _color,
+            EForwardTexture.Picking => _picking,
+            _ => throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid forward texture type")
+        };
+
+        t.Bind(unit);
+    }
 
     public override void Resize(int newWidth, int newHeight)
     {
