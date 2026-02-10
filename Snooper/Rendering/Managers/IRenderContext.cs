@@ -11,7 +11,7 @@ public sealed record NoRenderContext : IRenderContext;
 
 public sealed record SystemRenderContext(
     CameraComponent Camera,
-    IEnumerable<ActorSystem> Systems
+    IEnumerable<IRenderSystem> Systems
 ) : IRenderContext;
 
 public sealed record ShadowRenderContext(

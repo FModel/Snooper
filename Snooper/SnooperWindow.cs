@@ -44,8 +44,7 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<CameraSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
         ActorManager.RegisterSystemFactory<LandscapeSystem>();
-        ActorManager.RegisterSystemFactory<RenderSystem>();
-        ActorManager.RegisterSystemFactory<DeferredRenderSystem>();
+        ActorManager.RegisterSystemFactory<MeshRenderSystem>();
         ActorManager.RegisterSystemFactory<SplineRenderSystem>();
         ActorManager.RegisterSystemFactory<BillboardSystem>();
         ActorManager.RegisterSystemFactory<TextRenderSystem>();

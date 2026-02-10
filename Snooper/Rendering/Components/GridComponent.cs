@@ -22,7 +22,7 @@ public class GridComponent() : PrimitiveComponent(new Geometry())
                 new Vector3(-1.0f, -1.0f, 0.0f),
                 new Vector3(-1.0f, 1.0f, 0.0f)
             ];
-            
+
             Indices =
             [
                 0, 1, 3,

@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Containers.Framebuffers;
 using Snooper.UI;
@@ -60,7 +61,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             {
                 foreach (var system in ctx.Systems)
                 {
-                    system.Render(ctx.Camera);
+                    system.Render(ctx.Camera, CommandBufferType.Opaque);
                 }
             },
             PostPass = _ =>
@@ -89,7 +90,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             {
                 foreach (var system in ctx.Systems)
                 {
-                    system.Render(ctx.Camera);
+                    system.Render(ctx.Camera, CommandBufferType.Transparent);
                 }
             },
             PostPass = _ =>

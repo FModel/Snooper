@@ -37,6 +37,8 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
     public readonly Vector2[] Scales;
     public readonly Dictionary<string, LayerMapping> Layers;
 
+    protected override bool SupportsOpaquePass => true;
+
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
         var sizeQuads = (uint)component.ComponentSizeQuads;

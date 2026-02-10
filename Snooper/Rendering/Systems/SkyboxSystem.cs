@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
@@ -10,7 +11,10 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
 {
     public override uint Order => 1;
     protected override bool AllowDerivation => true;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShader("Skybox/skybox");
+    protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
+    {
+        [CommandBufferType.Transparent] = new EmbeddedShader("Skybox/skybox")
+    };
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {

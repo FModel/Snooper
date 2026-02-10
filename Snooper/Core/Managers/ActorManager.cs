@@ -1,5 +1,4 @@
 ﻿using System.Collections.Specialized;
-using System.Numerics;
 using System.Reflection;
 using ImGuiNET;
 using Snooper.Core.Containers;
@@ -8,7 +7,6 @@ using Snooper.Core.Systems;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
@@ -51,23 +49,6 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     }
 
     public abstract void Render();
-    public void Render(CameraComponent camera) => throw new NotImplementedException();
-
-    protected void Render(CameraComponent camera, ActorSystemType systemType)
-    {
-        foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
-        {
-            system.Render(camera);
-        }
-    }
-    [Obsolete]
-    protected void RenderShadows(IViewProjectionProvider[] cameras)
-    {
-        foreach (var system in Systems.Values.OfType<IShadowSystem>())
-        {
-            system.RenderShadows(cameras);
-        }
-    }
 
     protected void AddRoot(Actor actor)
     {

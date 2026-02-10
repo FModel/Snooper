@@ -4,12 +4,13 @@ using Snooper.UI;
 
 namespace Snooper.Core.Containers.Resources;
 
-public readonly struct ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation instanceAllocation, BufferAllocation materialAllocation, BufferAllocation[] drawAllocations) : IControllable
+public readonly struct ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation instanceAllocation, BufferAllocation materialAllocation, BufferAllocation[] drawAllocations, CommandBufferType bufferType) : IControllable
 {
     public readonly GeometryHandle GeometryHandle = geometryHandle;
     public readonly BufferAllocation InstanceAllocation = instanceAllocation;
     public readonly BufferAllocation MaterialAllocation = materialAllocation;
     public readonly BufferAllocation[] DrawAllocations = drawAllocations; // we create one draw per section in lod 0
+    public readonly CommandBufferType BufferType = bufferType; // TODO: support per draw buffer types
 
     public void DrawControls()
     {

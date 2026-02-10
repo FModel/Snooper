@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
-using ImGuiNET;
 using OpenTK.Audio.OpenAL;
 using Serilog;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components;
@@ -93,7 +93,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         }
     }
 
-    protected override void OnRender(CameraComponent camera)
+    protected override void OnRender(CameraComponent camera, CommandBufferType type)
     {
         if (_context == ALContext.Null) return;
 

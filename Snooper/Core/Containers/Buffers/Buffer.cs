@@ -49,6 +49,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     }));
     private int _nextOffset;
     private int _allocationIdCounter;
+    private int _deferMergeDepth;
 
     public override void Generate()
     {
@@ -214,7 +215,11 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, metadata.Length * Stride, new T[metadata.Length]);
 
         _freeBlocks.Add(new FreeBlock(metadata.StartIndex, metadata.Length));
-        MergeAdjacentFreeBlocks();
+
+        if (_deferMergeDepth == 0)
+        {
+            MergeAdjacentFreeBlocks();
+        }
 
         _allocations.Remove(allocationId);
         Count -= metadata.Length;
@@ -235,6 +240,42 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         {
             RemoveInternal(allocationId);
         }
+    }
+
+    public readonly struct DeferMergeScope(Buffer<T> buffer) : IDisposable
+    {
+        public void Dispose() => buffer.EndDeferMerge();
+    }
+
+    public DeferMergeScope DeferMerge()
+    {
+        BeginDeferMerge();
+        return new(this);
+    }
+
+    private void BeginDeferMerge() => _deferMergeDepth++;
+    private void EndDeferMerge()
+    {
+        if (_deferMergeDepth > 0)
+        {
+            _deferMergeDepth--;
+            if (_deferMergeDepth == 0 && _freeBlocks.Count > 1)
+            {
+                MergeAdjacentFreeBlocks();
+            }
+        }
+    }
+
+    public void CopyFrom(Buffer<T> sourceBuffer, BufferAllocation sourceAllocation, BufferAllocation targetAllocation)
+    {
+        if (sourceAllocation.Length != targetAllocation.Length)
+            throw new ArgumentException("Source and target allocations must have the same length.");
+
+        var sourceOffset = sourceAllocation.StartIndex * Stride;
+        var targetOffset = targetAllocation.StartIndex * Stride;
+        var size = sourceAllocation.Length * Stride;
+
+        GL.CopyNamedBufferSubData(sourceBuffer.Handle, Handle, sourceOffset, targetOffset, size);
     }
 
     public override void Dispose()

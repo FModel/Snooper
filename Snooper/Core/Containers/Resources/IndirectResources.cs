@@ -21,13 +21,13 @@ public struct AllocationCounts
     public uint ColoredVertices; // total number of vertices with color data across all LODs of all unique components
 }
 
-public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(PrimitiveType type) : IMemoryDetailsProvider, IDisposable
+public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(PrimitiveType mode) : IMemoryDetailsProvider, IDisposable
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
     private readonly GeometryPool<TVertex> _geometry = new();
-    private readonly DoubleBuffer<DrawIndirectBuffer> _commands = new(() => new DrawIndirectBuffer());
+    private readonly CommandBufferSet _commands = new();
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new();
     private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new();
 
@@ -43,14 +43,15 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
     public void SetVertexLayout(Action<uint> setter) => _geometry.SetVertexLayout(setter);
 
-    public void Allocate(AllocationCounts counts)
+    public void Allocate(AllocationCounts counts, string systemName)
     {
         _geometry.Allocate(counts);
-        _commands.Current.Allocate(counts.Draws);
+        _commands.Allocate(counts.Draws);
         _instanceData.Allocate(counts.Instances);
         _materialData.Allocate(counts.Materials);
 
-        Log.Debug("Allocated IndirectResources<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
+        Log.Debug("Allocated {SystemName}<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
+            systemName,
             typeof(TVertex).Name,
             typeof(TInstanceData).Name,
             typeof(TPerMaterialData).Name,
@@ -86,10 +87,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         const uint currentLod = 0u;
         var drawAllocations = new BufferAllocation[primitive.Lods[currentLod].Sections.Length];
+
+        var bufferType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
+        var buffer = _commands.GetBuffer(bufferType);
         for (var i = 0u; i < drawAllocations.Length; i++)
         {
             var section = primitive.Lods[currentLod].Sections[i];
-            drawAllocations[i] = _commands.Current.Add(new DrawElementsIndirectCommand
+            drawAllocations[i] = buffer.Add(new DrawElementsIndirectCommand
             {
                 IndexCount = section.IndexCount,
                 InstanceCount = instanceCount,
@@ -108,12 +112,29 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         }
 
         component.MarkClean(DirtyFlags.All);
-        return new ResourcesMetadata(geometryHandle, instanceAllocation, component.Materials[0].Allocation!.Value, drawAllocations);
+        return new ResourcesMetadata(geometryHandle, instanceAllocation, component.Materials[0].Allocation!.Value, drawAllocations, bufferType);
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
         if (component.Metadata is not { } metadata) return;
+
+        if (component.IsDirty(DirtyFlags.Opacity))
+        {
+            var targetType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
+            if (metadata.BufferType != targetType)
+            {
+                foreach (var drawAllocation in metadata.DrawAllocations)
+                {
+                    _commands.QueueTransfer(drawAllocation, metadata.BufferType, targetType);
+                }
+
+                // metadata.BufferType = targetType;
+                // TODO: Update component metadata with new draw allocations, they are currently lost during transfer
+            }
+
+            component.MarkClean(DirtyFlags.Opacity);
+        }
 
         if (component.IsDirty(DirtyFlags.ManualLodSwap))
         {
@@ -130,19 +151,21 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (component.IsDirty(DirtyFlags.Visibility))
         {
             const int offset = 40; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
+            var buffer = _commands.GetBuffer(metadata.BufferType);
+
             if (component.IsVisible)
             {
                 var originalInstanceCount = (uint)metadata.InstanceAllocation.Length;
                 foreach (var drawAllocation in metadata.DrawAllocations)
                 {
-                    _commands.Current.UpdateCustom(drawAllocation, originalInstanceCount, offset);
-                    _commands.Current.UpdateCustom(drawAllocation, originalInstanceCount, 4);
+                    buffer.UpdateCustom(drawAllocation, originalInstanceCount, offset);
+                    buffer.UpdateCustom(drawAllocation, originalInstanceCount, 4);
                 }
             }
             else foreach (var drawAllocation in metadata.DrawAllocations)
             {
-                _commands.Current.UpdateCustom(drawAllocation, 0u, offset);
-                _commands.Current.UpdateCustom(drawAllocation, 0u, 4);
+                buffer.UpdateCustom(drawAllocation, 0u, offset);
+                buffer.UpdateCustom(drawAllocation, 0u, 4);
             }
             component.MarkClean(DirtyFlags.Visibility);
         }
@@ -165,7 +188,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _materialData.QueueUpdate(allocation, raw);
     }
 
-    public void FlushUpdates()
+    public void Flush()
     {
         if (_geometryUpdates.Count > 0)
         {
@@ -174,6 +197,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             _geometryUpdates.Clear();
         }
 
+        _commands.FlushTransfers(20);
         _instanceData.FlushUpdates();
         _materialData.FlushUpdates();
     }
@@ -189,24 +213,33 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             metadata.MaterialAllocation.Length);
 
         _geometry.Remove(metadata.GeometryHandle);
-        _commands.Current.RemoveRange(metadata.DrawAllocations);
+        _commands.GetBuffer(metadata.BufferType).RemoveRange(metadata.DrawAllocations);
         _instanceData.Remove(metadata.InstanceAllocation);
         _materialData.Remove(metadata.MaterialAllocation);
     }
 
-    public void Cull(IViewProjectionProvider camera) => _geometry.Cull(camera, _instanceData, _commands.Current);
+    public void Cull(IViewProjectionProvider camera, CommandBufferType type) => _geometry.Cull(camera, _instanceData, _commands.GetBuffer(type));
 
-    public void Render()
+    public void Render(CommandBufferType type)
     {
-        _commands.Current.Bind();
-        _commands.Current.Bind(0);
+        var buffer = _commands.GetBuffer(type);
+        buffer.Bind();
+        buffer.Bind(0);
         _instanceData.Bind(1);
         _materialData.Bind(2);
 
-        _geometry.Render(() => GL.MultiDrawElementsIndirect(type, DrawElementsType.UnsignedInt, 0, _commands.Current.Capacity, _commands.Current.Stride));
+        _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, 0, buffer.Capacity, buffer.Stride));
 
-        _commands.Current.Unbind();
-        // _commands.Swap();
+        buffer.Unbind();
+    }
+
+    /// <summary>
+    /// Sort transparent commands from farthest to nearest based on camera position.
+    /// TODO: Implement actual sorting logic (compute shader or CPU-side)
+    /// </summary>
+    public void SortTransparentCommands(IViewProjectionProvider camera)
+    {
+
     }
 
     public void Dispose()
@@ -246,7 +279,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("Geometry Pool", _geometry);
-        yield return new MemoryDetail("Draw Commands", _commands.Current);
+        yield return new MemoryDetail("Draw Commands", _commands);
         yield return new MemoryDetail("Instance Data", _instanceData);
         yield return new MemoryDetail("Material Data", _materialData);
     }

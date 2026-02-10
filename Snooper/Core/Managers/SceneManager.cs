@@ -54,18 +54,16 @@ public class SceneManager : ActorManager
 
     public override void Render()
     {
+        var renderSystems = Systems.Values.OfType<IRenderSystem>().ToArray();
         var shadowSystems = Systems.Values.OfType<IShadowSystem>().ToArray();
         var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
         var directionalLight = lightSystem?.GetDirectionalLight();
-
-        var deferredSystems = Systems.Values.Where(x => x.SystemType == ActorSystemType.Deferred).ToArray();
-        var forwardSystems = Systems.Values.Where(x => x.SystemType == ActorSystemType.Forward).ToArray();
 
         // TODO: we do not support multiple cameras yet
         if (MainViewport != null)
         {
             var camera = MainViewport.Camera;
-            Pipeline.RenderScene(camera, shadowSystems, deferredSystems, forwardSystems, directionalLight);
+            Pipeline.RenderScene(camera, shadowSystems, renderSystems, directionalLight);
             Pipeline.PostProcessScene(camera, lightSystem);
         }
     }

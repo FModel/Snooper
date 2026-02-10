@@ -52,6 +52,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     private const int WorkGroupSize = 64;
     private const int MaxLightsPerCluster = 256;
 
+    public override ActorSystemType SystemType => ActorSystemType.Custom;
     public override uint Order => 99; // at least after TransformSystem
     public override int Capacity => 10000;
 
@@ -99,7 +100,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         IsEnabled = false;
     }
 
-    protected override void OnRender(CameraComponent camera)
+    protected override void OnRender(CameraComponent camera, CommandBufferType type)
     {
         BuildClusters(camera);
         CullLights(camera); // TODO: improve, especially for rect lights
@@ -176,7 +177,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     {
         base.OnActorComponentAdded(component);
 
-        if (component is DirectionalLightComponent dirLight)
+        if (component is DirectionalLightComponent { CastShadows: true } dirLight)
         {
             _cachedDirectionalLight = dirLight;
         }
