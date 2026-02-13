@@ -20,9 +20,9 @@ public enum EShadowTexture : byte
     Depth = 0
 }
 
-public enum EOutlineTexture : byte
+public enum EMaskTexture : byte
 {
-    Color = 0
+    Depth = 0
 }
 
 public enum EPostProcessTexture : byte
@@ -34,4 +34,5 @@ public enum EPostProcessTexture : byte
     PickingViz = 4,
     Aa = 5,
     ShadowViz = 6,
+    Outline = 7,
 }

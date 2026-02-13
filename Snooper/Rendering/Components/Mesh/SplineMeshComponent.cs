@@ -69,6 +69,9 @@ public class SplineMeshComponent : StaticMeshComponent
 {
     public SplineMeshParams SplineParams;
 
+    // TODO: buffer transfer breaks our shitty shader that relies on gl_DrawID, so just disable it for now
+    protected override bool SupportsOpaquePass => false;
+
     public SplineMeshComponent(UStaticMesh staticMesh, USplineMeshComponent component) : base(staticMesh, component)
     {
         SplineParams = new SplineMeshParams(component, Descriptor.Bounds);

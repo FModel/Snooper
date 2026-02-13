@@ -38,8 +38,6 @@ public abstract class InterfaceSystem : SceneManager
                 Log.Debug("Selected Actor: {ActorName}", _selectedActor.Name);
                 _selectedActor.IsSelected = true;
             }
-
-            UpdatePickedIds();
         }
     }
 
@@ -65,8 +63,6 @@ public abstract class InterfaceSystem : SceneManager
                 if (_selectedComponent.Actor is not null)
                     _selectedComponent.Actor._isSelected = true;
             }
-
-            UpdatePickedIds();
         }
     }
 
@@ -85,70 +81,6 @@ public abstract class InterfaceSystem : SceneManager
         {
             _selectedComponent.IsSelected = false;
             _selectedComponent.Actor?._isSelected = false;
-        }
-    }
-
-    private void UpdatePickedIds()
-    {
-        var pickedIds = new HashSet<uint>();
-        if (_selectedComponent is not null)
-        {
-            // only outline this specific component
-            pickedIds.Add(_selectedComponent.Id);
-        }
-        else if (_selectedActor is not null)
-        {
-            // outline all components of actor and children
-            void CollectIds(Actor? actor)
-            {
-                if (actor is null) return;
-
-                foreach (var component in actor.Components)
-                {
-                    if (!component.IsOutlined) continue;
-                    pickedIds.Add(component.Id);
-                }
-
-                foreach (var child in actor.Children)
-                {
-                    CollectIds(child);
-                }
-            }
-
-            CollectIds(_selectedActor);
-        }
-
-        // foreach (var pair in Pairs)
-        // {
-        //     pair.SetPickedIds(pickedIds);
-        // }
-    }
-
-    protected ActorComponent? FindComponentById(uint componentId)
-    {
-        if (componentId == 0 || RootActor == null)
-            return null;
-
-        return FindRecursive(RootActor);
-
-        ActorComponent? FindRecursive(Actor actor)
-        {
-            foreach (var component in actor.Components)
-            {
-                if (component.Id == componentId)
-                {
-                    return component;
-                }
-            }
-
-            foreach (var child in actor.Children)
-            {
-                var found = FindRecursive(child);
-                if (found != null)
-                    return found;
-            }
-
-            return null;
         }
     }
 
@@ -235,6 +167,11 @@ public abstract class InterfaceSystem : SceneManager
     }
 
     protected abstract void RenderInterface();
+
+    protected void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
+    {
+        SelectedComponent = GetComponentById(GetComponentId(mousePos, windowPos, windowSize));
+    }
 
     public override void Resize(int newWidth, int newHeight)
     {

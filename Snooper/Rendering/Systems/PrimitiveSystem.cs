@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
-using Serilog;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -28,6 +27,19 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     protected override void OnLoad()
     {
         base.OnLoad();
+
+        if (Shaders.ContainsKey(CommandBufferType.Mask))
+            throw new InvalidOperationException("Mask shader is auto generated and cannot be set manually.");
+
+        if (!Shaders.TryGetValue(CommandBufferType.Transparent, out var mainShader) &&
+            !Shaders.TryGetValue(CommandBufferType.Opaque, out mainShader))
+        {
+            throw new InvalidOperationException("At least one shader (opaque or transparent) must be provided.");
+        }
+
+        var maskShader = (ShaderProgram) mainShader.Clone();
+        maskShader.Fragment = "empty.frag";
+        Shaders.Add(CommandBufferType.Mask, maskShader);
 
         foreach (var shader in Shaders.Values)
         {

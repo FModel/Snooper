@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using System.Numerics;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
@@ -44,17 +45,20 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         var context = new SystemRenderContext(camera, renderSystems);
         _geometry.DoRenderPass("Deferred Pass", context);
         _geometry.DoRenderPass("Forward Pass", context);
+        _geometry.DoRenderPass("Mask Pass", context);
     }
 
     public void PostProcessScene(CameraComponent camera, ClusteredLightSystem? lightSystem)
     {
+        var geometryContext = new GeometryStageContext(_geometry);
+        _postProcess.DoStagePass("Outline Pass", geometryContext);
+
         if (_ambientOcclusion)
         {
             _postProcess.DoStagePass("AO Pass", new AmbientOcclusionStageContext(camera, _geometry, _directionCount, _stepsPerDirection));
             _postProcess.DoStagePass("AO Blur Pass", new BlurStageContext(_blurRadius));
         }
 
-        var geometryContext = new GeometryStageContext(_geometry);
         var litContext = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, _shadows ? _geometry.GetShadowContext() : null);
         _postProcess.DoStagePass("Lighting Pass", litContext);
         _postProcess.DoStagePass("Combine Pass", geometryContext);
@@ -83,6 +87,8 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     {
         GL.BlitNamedFramebuffer(_postProcess, 0, 0, 0, _postProcess.Width, _postProcess.Height, 0, 0, width, height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
     }
+
+    public uint GetComponentId(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => _postProcess.GetComponentId(mousePos, windowPos, windowSize);
 
     public Texture GetFinalTexture() => _postProcess.GetFinalTexture();
     public Texture[] GetTextures() => [.._postProcess.GetTextures(), .._geometry.GetTextures()];

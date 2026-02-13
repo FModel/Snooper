@@ -50,6 +50,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     private int _nextOffset;
     private int _allocationIdCounter;
     private int _deferMergeDepth;
+    private bool _mergeNeeded;
 
     public override void Generate()
     {
@@ -220,6 +221,10 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         {
             MergeAdjacentFreeBlocks();
         }
+        else
+        {
+            _mergeNeeded = true;
+        }
 
         _allocations.Remove(allocationId);
         Count -= metadata.Length;
@@ -259,9 +264,10 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         if (_deferMergeDepth > 0)
         {
             _deferMergeDepth--;
-            if (_deferMergeDepth == 0 && _freeBlocks.Count > 1)
+            if (_deferMergeDepth == 0 && _mergeNeeded && _freeBlocks.Count > 1)
             {
                 MergeAdjacentFreeBlocks();
+                _mergeNeeded = false;
             }
         }
     }
@@ -276,6 +282,19 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         var size = sourceAllocation.Length * Stride;
 
         GL.CopyNamedBufferSubData(sourceBuffer.Handle, Handle, sourceOffset, targetOffset, size);
+    }
+
+    public void Clear()
+    {
+        if (!_bInitialized)
+            throw new InvalidOperationException("Cannot clear a buffer that is not initialized.");
+
+        GL.NamedBufferData(Handle, Capacity * Stride, new T[Capacity], usageHint);
+        Count = 0;
+        _nextOffset = 0;
+        _allocationIdCounter = 0;
+        _allocations.Clear();
+        _freeBlocks.Clear();
     }
 
     public override void Dispose()
@@ -341,9 +360,12 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
     private void MergeAdjacentFreeBlocks()
     {
-        var sortedBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
-        _freeBlocks.Clear();
+        if (_freeBlocks.Count == 0) return;
 
+        var sortedBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
+        Log.Debug("Merging {Count} free blocks in buffer {Handle} ({PName})", sortedBlocks.Count, Handle, PName);
+
+        _freeBlocks.Clear();
         for (var i = 0; i < sortedBlocks.Count; i++)
         {
             var current = sortedBlocks[i];

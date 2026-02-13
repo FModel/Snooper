@@ -9,6 +9,7 @@ public enum DirtyFlags
     Visibility = 1 << 2,
     ManualLodSwap = 1 << 3,
     Opacity = 1 << 4,
+    Selection = 1 << 5,
     // X = 1 << Y,
 
     All = ~0

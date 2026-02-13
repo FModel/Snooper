@@ -12,7 +12,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
     private readonly ShadowFramebuffer _shadow = new(2048, 4);
     private readonly DeferredFramebuffer _deferred = new(originalWidth, originalHeight);
     private readonly ForwardFramebuffer _forward = new(originalWidth, originalHeight);
-    private readonly OutlineFramebuffer _outline = new(originalWidth, originalHeight);
+    private readonly MaskFramebuffer _mask = new(originalWidth, originalHeight);
 
     private readonly List<RenderPass> _passes = [];
 
@@ -101,8 +101,27 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             }
         });
 
-        _outline.Generate();
-        // TODO:
+        _mask.Generate();
+        _passes.Add(new RenderPass<SystemRenderContext>("Mask Pass")
+        {
+            PrePass = _ =>
+            {
+                _mask.Bind();
+                GL.ClearColor(0, 0, 0, 0);
+                GL.Clear(ClearBufferMask.DepthBufferBit);
+            },
+            Execute = ctx =>
+            {
+                foreach (var system in ctx.Systems)
+                {
+                    system.Render(ctx.Camera, CommandBufferType.Mask);
+                }
+            },
+            PostPass = _ =>
+            {
+                _mask.Unbind();
+            }
+        });
     }
 
     public void DoRenderPass(string name, IRenderContext? context = null)
@@ -113,7 +132,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
     public void Bind(EDeferredTexture texture, uint unit) => _deferred.Bind(texture, unit);
     public void Bind(EForwardTexture texture, uint unit) => _forward.Bind(texture, unit);
     public void Bind(EShadowTexture texture, uint unit) => _shadow.Bind(texture, unit);
-    public void Bind(EOutlineTexture texture, uint unit) => _outline.Bind(texture, unit);
+    public void Bind(EMaskTexture texture, uint unit) => _mask.Bind(texture, unit);
 
     // TODO: improve, this is ugly
     public ShadowStageContext GetShadowContext() => new(_shadow.Width, _shadow.Height, _shadow.CascadeCount,
@@ -124,7 +143,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         _shadow.Resize(newWidth, newHeight); // won't do anything
         _deferred.Resize(newWidth, newHeight);
         _forward.Resize(newWidth, newHeight);
-        _outline.Resize(newWidth, newHeight);
+        _mask.Resize(newWidth, newHeight);
     }
 
     public Texture[] GetTextures() =>
@@ -132,7 +151,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         .._shadow.GetTextures(),
         .._deferred.GetTextures(),
         .._forward.GetTextures(),
-        .._outline.GetTextures(),
+        .._mask.GetTextures(),
     ];
 
     public void DrawControls()
@@ -148,7 +167,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             total += _shadow.Allocated;
             total += _deferred.Allocated;
             total += _forward.Allocated;
-            total += _outline.Allocated;
+            total += _mask.Allocated;
             return total;
         }
     }
@@ -161,7 +180,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             total += _shadow.Used;
             total += _deferred.Used;
             total += _forward.Used;
-            total += _outline.Used;
+            total += _mask.Used;
             return total;
         }
     }
@@ -171,7 +190,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         yield return new MemoryDetail("Shadow", _shadow);
         yield return new MemoryDetail("GBuffer", _deferred);
         yield return new MemoryDetail("Forward", _forward);
-        yield return new MemoryDetail("Outline", _outline);
+        yield return new MemoryDetail("Mask", _mask);
     }
 
     public void Dispose()
@@ -179,6 +198,6 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         _shadow.Dispose();
         _deferred.Dispose();
         _forward.Dispose();
-        _outline.Dispose();
+        _mask.Dispose();
     }
 }

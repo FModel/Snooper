@@ -15,7 +15,8 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
     private readonly DrawIndirectBuffer _transparent = new();
     private readonly DrawIndirectBuffer _mask = new();
 
-    private readonly Queue<(BufferAllocation source, CommandBufferType from, CommandBufferType to)> _pendingTransfers = new();
+    private Buffer<DrawElementsIndirectCommand>.DeferMergeScope? _opaqueScope;
+    private Buffer<DrawElementsIndirectCommand>.DeferMergeScope? _transparentScope;
 
     public void Generate()
     {
@@ -26,10 +27,9 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
 
     public void Allocate(uint totalDraws)
     {
-        // 70% opaque, 25% transparent, 100% mask
         _opaque.Allocate((uint)Math.Ceiling(totalDraws * 0.7));
         _transparent.Allocate((uint)Math.Ceiling(totalDraws * 0.25));
-        _mask.Allocate(totalDraws);
+        _mask.Allocate(10);
 
         Log.Debug("Allocated CommandBufferSet: {OpaqueCapacity} opaque, {TransparentCapacity} transparent, {MaskCapacity} mask", _opaque.Capacity, _transparent.Capacity, _mask.Capacity);
     }
@@ -42,65 +42,60 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
         _ => throw new ArgumentOutOfRangeException(nameof(type))
     };
 
-    public void QueueTransfer(BufferAllocation sourceAllocation, CommandBufferType from, CommandBufferType to)
+    public void BeginDeferMerge()
     {
-        if (from == to) return;
-        _pendingTransfers.Enqueue((sourceAllocation, from, to));
+        _opaqueScope = _opaque.DeferMerge();
+        _transparentScope = _transparent.DeferMerge();
     }
 
-    public void FlushTransfers(int limit = 0)
+    public void EndDeferMerge()
     {
-        if (_pendingTransfers.Count == 0) return;
+        _opaqueScope?.Dispose();
+        _opaqueScope = null;
+        _transparentScope?.Dispose();
+        _transparentScope = null;
+    }
 
-        using var o = _opaque.DeferMerge();
-        using var t = _transparent.DeferMerge();
+    public BufferAllocation[] Transfer(BufferAllocation[] sourceAllocations, CommandBufferType from, CommandBufferType to)
+    {
+        if (from == to) return sourceAllocations;
 
-        var count = 0;
-        while (_pendingTransfers.Count > 0 && (limit == 0 || count < limit))
+        var sourceBuffer = GetBuffer(from);
+        var targetBuffer = GetBuffer(to);
+
+        // we allocate space for all commands at once to avoid multiple resizes
+        // that batch allocation will then be split into individual allocations for each command, which are returned to the caller
+        // it works because each allocation has length 1 (commands are added one by one)
+        var totalCommands = sourceAllocations.Length;
+        var batchAllocation = targetBuffer.AddRange(new DrawElementsIndirectCommand[totalCommands]);
+
+        var targetAllocations = new BufferAllocation[totalCommands];
+        for (var i = 0; i < totalCommands; i++)
         {
-            var (sourceAlloc, fromType, toType) = _pendingTransfers.Dequeue();
-            var sourceBuffer = GetBuffer(fromType);
-            var targetBuffer = GetBuffer(toType);
+            var sourceAllocation = sourceAllocations[i];
+            targetAllocations[i] = new BufferAllocation(batchAllocation.AllocationId + i, batchAllocation.StartIndex + i, sourceAllocation.Length);
 
-            var targetAlloc = targetBuffer.AddRange(new DrawElementsIndirectCommand[sourceAlloc.Length]);
-            targetBuffer.CopyFrom(sourceBuffer, sourceAlloc, targetAlloc);
+            targetBuffer.CopyFrom(sourceBuffer, sourceAllocation, targetAllocations[i]);
 
             // only remove from source if transferring between opaque/transparent (not copying to mask)
-            if ((fromType == CommandBufferType.Opaque && toType == CommandBufferType.Transparent) ||
-                (fromType == CommandBufferType.Transparent && toType == CommandBufferType.Opaque))
+            if ((from == CommandBufferType.Opaque && to == CommandBufferType.Transparent) ||
+                (from == CommandBufferType.Transparent && to == CommandBufferType.Opaque))
             {
-                sourceBuffer.Remove(sourceAlloc);
+                sourceBuffer.Remove(sourceAllocation);
             }
-
-            count++;
         }
 
-        Log.Debug("Flushed {Count} command transfers ({Remaining} remaining)", count, _pendingTransfers.Count);
+        // TODO: if totalCommands > 1, what we return here is unusable for any operation
+        // this is because our buffer has its own private list of allocations
+        // and by manually splitting the batch allocation into individual allocations, those individual allocations are not registered in the buffer's list of allocations
+        // for now this is fine but it might become a problem later on (eg on removal)
+        return targetAllocations;
     }
 
-    public BufferAllocation CopyToMask(DrawIndirectBuffer sourceBuffer, BufferAllocation sourceAllocation)
+    public void ClearMask()
     {
-        var maskAllocation = _mask.AddRange(new DrawElementsIndirectCommand[sourceAllocation.Length]);
-        _mask.CopyFrom(sourceBuffer, sourceAllocation, maskAllocation);
-
-        return maskAllocation;
+        _mask.Clear();
     }
-
-    public BufferAllocation[] CopyToMask(DrawIndirectBuffer sourceBuffer, BufferAllocation[] sourceAllocations)
-    {
-        var maskAllocations = new BufferAllocation[sourceAllocations.Length];
-        for (int i = 0; i < sourceAllocations.Length; i++)
-        {
-            maskAllocations[i] = CopyToMask(sourceBuffer, sourceAllocations[i]);
-        }
-        return maskAllocations;
-    }
-
-    public void RemoveFromMask(BufferAllocation[] maskAllocations)
-    {
-        _mask.RemoveRange(maskAllocations);
-    }
-
 
     public void Dispose()
     {

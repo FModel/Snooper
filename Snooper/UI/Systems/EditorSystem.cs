@@ -1,5 +1,4 @@
 using System.Collections.Specialized;
-using System.Numerics;
 using ImGuiNET;
 using OpenTK.Windowing.Desktop;
 using Snooper.Rendering.Managers;
@@ -17,6 +16,7 @@ public class EditorSystem : InterfaceSystem
     {
         Viewports.CollectionChanged += OnViewportsCollectionChanged;
 
+        _widgets.Add(new LogsViewer());
 #if DEBUG
         _widgets.Add(new ImGuiDemo());
 #endif
@@ -52,6 +52,8 @@ public class EditorSystem : InterfaceSystem
             case NotifyCollectionChangedAction.Add:
                 foreach (var viewport in e.NewItems!.Cast<Viewport>())
                 {
+                    viewport.OnLeftClick += OnViewportLeftClick;
+
                     _widgets.Add(viewport);
                     _mainViewport ??= viewport;
                 }
@@ -59,6 +61,8 @@ public class EditorSystem : InterfaceSystem
             case NotifyCollectionChangedAction.Remove:
                 foreach (var viewport in e.OldItems!.Cast<Viewport>())
                 {
+                    viewport.OnLeftClick -= OnViewportLeftClick;
+
                     _widgets.Remove(viewport);
                     if (_mainViewport == viewport)
                     {

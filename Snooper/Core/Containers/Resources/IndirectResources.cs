@@ -124,16 +124,17 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             var targetType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
             if (metadata.BufferType != targetType)
             {
-                foreach (var drawAllocation in metadata.DrawAllocations)
-                {
-                    _commands.QueueTransfer(drawAllocation, metadata.BufferType, targetType);
-                }
-
-                // metadata.BufferType = targetType;
-                // TODO: Update component metadata with new draw allocations, they are currently lost during transfer
+                metadata.DrawAllocations = _commands.Transfer(metadata.DrawAllocations, metadata.BufferType, targetType);
+                metadata.BufferType = targetType;
             }
 
             component.MarkClean(DirtyFlags.Opacity);
+        }
+
+        if (component.IsDirty(DirtyFlags.Selection) && component.IsSelected)
+        {
+            _commands.Transfer(metadata.DrawAllocations, metadata.BufferType, CommandBufferType.Mask);
+            component.MarkClean(DirtyFlags.Selection);
         }
 
         if (component.IsDirty(DirtyFlags.ManualLodSwap))
@@ -188,6 +189,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _materialData.QueueUpdate(allocation, raw);
     }
 
+    public void ClearMaskBuffer() => _commands.ClearMask();
+    public void BeginDeferMerge() => _commands.BeginDeferMerge();
+    public void EndDeferMerge() => _commands.EndDeferMerge();
+
     public void Flush()
     {
         if (_geometryUpdates.Count > 0)
@@ -197,7 +202,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             _geometryUpdates.Clear();
         }
 
-        _commands.FlushTransfers(20);
         _instanceData.FlushUpdates();
         _materialData.FlushUpdates();
     }

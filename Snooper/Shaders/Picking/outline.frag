@@ -1,38 +1,44 @@
 ﻿in vec2 vTexCoords;
 
-uniform sampler2D selectionMask;
-uniform vec2 texelSize;       // 1.0 / screen size
-uniform int outlineThickness; // e.g. 1..3 pixels
+uniform sampler2D inputTexture;
+uniform vec2 texelSize; // 1.0 / screen size
+uniform int outlineThickness; // pixels
+uniform vec3 outlineColor;
 
 out vec4 FragColor;
 
 void main()
 {
-    float mask = texture(selectionMask, vTexCoords).r;
-
-    if (mask == 0.0)
+    float depth = texture(inputTexture, vTexCoords).r;
+    if (depth > 0.0 && depth < 1.0)
     {
-        // Not inside selection → check if near selected pixel
-        bool isEdge = false;
+        discard;
+    }
 
-        for (int y = -outlineThickness; y <= outlineThickness && !isEdge; ++y)
+    bool nearMesh = false;
+    for (int y = -outlineThickness; y <= outlineThickness && !nearMesh; ++y)
+    {
+        for (int x = -outlineThickness; x <= outlineThickness; ++x)
         {
-            for (int x = -outlineThickness; x <= outlineThickness; ++x)
+            if (x == 0 && y == 0) continue;
+
+            vec2 offset = vec2(float(x), float(y)) * texelSize;
+            float neighbor = texture(inputTexture, vTexCoords + offset).r;
+
+            if (neighbor > 0.0 && neighbor < 1.0)
             {
-                float neighbor = texture(selectionMask, vTexCoords + texelSize * vec2(x,y)).r;
-                if (neighbor == 1.0)
-                {
-                    isEdge = true;
-                    break;
-                }
+                nearMesh = true;
+                break;
             }
         }
+    }
 
-        FragColor = isEdge ? vec4(1.0) : vec4(0.0);
+    if (nearMesh)
+    {
+        FragColor = vec4(outlineColor, 1.0);
     }
     else
     {
-        // Interior of selection: no outline
-        FragColor = vec4(0.0);
+        discard;
     }
 }

@@ -165,7 +165,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
                     var maxLod = Descriptor.Lods.Length - 1;
                     var minLod = maxLod == 0 ? 0 : -1;
-                    var value = Metadata == null ? minLod : Metadata.Value.GeometryHandle.OverrideLod;
+                    var value = Metadata == null ? minLod : Metadata.GeometryHandle.OverrideLod;
 
                     ImGui.BeginDisabled(minLod == maxLod);
                     var slided1 = ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod);
@@ -175,7 +175,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                         _sectionIndex = 0;
                         if (Metadata != null && IsVisible && maxLod > 0)
                         {
-                            Metadata.Value.GeometryHandle.OverrideLod = value;
+                            Metadata.GeometryHandle.OverrideLod = value;
                             MarkDirty(DirtyFlags.ManualLodSwap);
                         }
                     }

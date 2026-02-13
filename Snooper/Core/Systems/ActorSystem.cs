@@ -85,6 +85,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
 
     protected DebugVisualizationMode DebugColorMode => ActorManager?.DebugColorMode ?? DebugVisualizationMode.None;
+    protected bool ClearMaskBuffer { get; private set; } = false;
 
     protected HashSet<TComponent> Components { get; } = [];
     protected HashSet<TComponent> DirtyComponents { get; } = [];
@@ -93,14 +94,17 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     protected override void OnUpdate(float delta)
     {
         DequeueComponents(5);
+        if (DirtyComponents.Count == 0) return;
 
         var components = DirtyComponents.ToArray();
         DirtyComponents.Clear();
 
+        PreOnUpdate();
         foreach (var component in components)
         {
             OnComponentUpdate(component, delta);
         }
+        PostOnUpdate();
     }
 
     public void Render(CameraComponent camera, CommandBufferType type)
@@ -160,9 +164,19 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         DirtyComponents.Remove(component);
     }
 
+    protected virtual void PreOnUpdate()
+    {
+
+    }
+
     protected virtual void OnComponentUpdate(TComponent component, float delta)
     {
 
+    }
+
+    protected virtual void PostOnUpdate()
+    {
+        ClearMaskBuffer = false;
     }
 
     private void OnComponentRequestUpdate(ActorComponent component)
@@ -173,6 +187,11 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         if (Components.Contains(actorComponent))
         {
             DirtyComponents.Add(actorComponent);
+
+            if (actorComponent.IsDirty(DirtyFlags.Selection))
+            {
+                ClearMaskBuffer = true;
+            }
         }
     }
 

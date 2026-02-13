@@ -56,9 +56,26 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Flush();
     }
 
+    protected override void PreOnUpdate()
+    {
+        base.PreOnUpdate();
+
+        if (ClearMaskBuffer)
+            Resources.ClearMaskBuffer();
+
+        Resources.BeginDeferMerge();
+    }
+
     protected override void OnComponentUpdate(TComponent component, float delta)
     {
         component.Update(Resources, TextureManager);
+    }
+
+    protected override void PostOnUpdate()
+    {
+        base.PostOnUpdate();
+
+        Resources.EndDeferMerge();
     }
 
     protected override void OnRender(CameraComponent camera, CommandBufferType type)

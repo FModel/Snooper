@@ -54,4 +54,15 @@ public class EmbeddedShader(string vertex, string fragment) : ShaderProgram(vert
             }
         }
     }
+
+    protected override ShaderProgram CloneShader()
+    {
+        return new EmbeddedShader(Vertex, Fragment)
+        {
+            Geometry = Geometry,
+            TessellationControl = TessellationControl,
+            TessellationEvaluation = TessellationEvaluation,
+            Defines = Defines
+        };
+    }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.Numerics;
 using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
@@ -65,6 +66,36 @@ public class SceneManager : ActorManager
             var camera = MainViewport.Camera;
             Pipeline.RenderScene(camera, shadowSystems, renderSystems, directionalLight);
             Pipeline.PostProcessScene(camera, lightSystem);
+        }
+    }
+
+    protected uint GetComponentId(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => Pipeline.GetComponentId(mousePos, windowPos, windowSize);
+
+    protected ActorComponent? GetComponentById(uint id)
+    {
+        if (id == 0 || RootActor == null)
+            return null;
+
+        return FindRecursive(RootActor);
+
+        ActorComponent? FindRecursive(Actor actor)
+        {
+            foreach (var component in actor.Components)
+            {
+                if (component.Id == id)
+                {
+                    return component;
+                }
+            }
+
+            foreach (var child in actor.Children)
+            {
+                var found = FindRecursive(child);
+                if (found != null)
+                    return found;
+            }
+
+            return null;
         }
     }
 

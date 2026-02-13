@@ -23,7 +23,18 @@ public abstract partial class ActorComponent
 #endif
 
     public string? ObjectPath { get; protected init; }
-    public bool IsSelected { get; internal set; }
+
+    public bool IsSelected
+    {
+        get;
+        internal set
+        {
+            if (field == value) return;
+
+            field = value;
+            MarkDirty(DirtyFlags.Selection);
+        }
+    }
 
     public bool IsOutlined => IsSelected || Actor is { IsOutlined: true };
     internal virtual string Icon => "component";

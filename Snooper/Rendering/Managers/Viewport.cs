@@ -13,6 +13,8 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
 {
     public InteractiveCameraComponent Camera { get; } = camera;
 
+    public event Action<Vector2, Vector2, Vector2>? OnLeftClick;
+
     public void Render()
     {
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
@@ -31,6 +33,11 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
                 if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
                 {
                     wnd.CursorState = CursorState.Grabbed;
+                }
+
+                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    OnLeftClick?.Invoke(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
                 }
             }
 
