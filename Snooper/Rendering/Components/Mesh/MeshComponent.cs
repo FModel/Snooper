@@ -47,14 +47,15 @@ public unsafe struct PerMaterialMeshData : IPerMaterialData
     public fixed float DiffuseColor[12]; // 3 floats per layer (RGB) * 4 layers
 }
 
-[DefaultActorSystem(typeof(RenderSystem))]
-[DefaultActorSystem(typeof(DeferredRenderSystem))]
+[DefaultActorSystem(typeof(MeshRenderSystem))]
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>
 {
     private readonly ResolvedObject?[] _materials;
     private readonly List<UBuildingTextureData?> _textureData = [];
 
     public sealed override MaterialSection[] Materials { get; }
+
+    protected override bool SupportsOpaquePass => true;
 
     protected MeshComponent(ResolvedObject?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -110,14 +111,17 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
             Actor?.ActorManager?.ThreadManager.Enqueue(() =>
             {
+                IMaterialDataContainer? container;
                 if (index == 0 && textureData.Length > 0)
                 {
-                    Materials[index].MaterialDataContainer = MaterialCache.CreateFromTextureData(textureData, _materials[index], Descriptor.Lods[0].LayerCount);
+                    container = MaterialCache.CreateFromTextureData(textureData, _materials[index], Descriptor.Lods[0].LayerCount);
                 }
                 else
                 {
-                    Materials[index].MaterialDataContainer = MaterialCache.GetOrCreate(_materials[index], Descriptor.Lods[0].LayerCount);
+                    container = MaterialCache.GetOrCreate(_materials[index], Descriptor.Lods[0].LayerCount);
                 }
+
+                Materials[index].MaterialDataContainer = container;
             });
         }
     }

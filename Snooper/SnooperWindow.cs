@@ -44,8 +44,7 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<CameraSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
         ActorManager.RegisterSystemFactory<LandscapeSystem>();
-        ActorManager.RegisterSystemFactory<RenderSystem>();
-        ActorManager.RegisterSystemFactory<DeferredRenderSystem>();
+        ActorManager.RegisterSystemFactory<MeshRenderSystem>();
         ActorManager.RegisterSystemFactory<SplineRenderSystem>();
         ActorManager.RegisterSystemFactory<BillboardSystem>();
         ActorManager.RegisterSystemFactory<TextRenderSystem>();
@@ -56,7 +55,7 @@ public partial class SnooperWindow : GameWindow
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
 
         // TODO: move this into its own Editor project
-        _interface = new LevelSystem(this);
+        _interface = new EditorSystem(this);
 
         Closing += _ =>
         {
@@ -159,7 +158,6 @@ public partial class SnooperWindow : GameWindow
     {
         base.OnFramebufferResize(e);
 
-        GL.Viewport(0, 0, e.Width, e.Height);
         _interface.Resize(e.Width, e.Height);
     }
 }

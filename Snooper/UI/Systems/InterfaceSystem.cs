@@ -1,6 +1,5 @@
 using System.Numerics;
 using System.Reflection;
-using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
@@ -15,12 +14,8 @@ using Snooper.Rendering.Components;
 
 namespace Snooper.UI.Systems;
 
-public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
+public abstract class InterfaceSystem : SceneManager
 {
-    private readonly ImGuiController _controller = new(wnd.ClientSize.X, wnd.ClientSize.Y);
-
-    private WindowState _pWindowState;
-
     protected bool Enabled { get; private set; } = true;
     protected Dictionary<string, Texture> Icons { get; } = new();
     protected NotificationManager Notifications { get; } = new();
@@ -43,8 +38,6 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
                 Log.Debug("Selected Actor: {ActorName}", _selectedActor.Name);
                 _selectedActor.IsSelected = true;
             }
-
-            UpdatePickedIds();
         }
     }
 
@@ -65,14 +58,16 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
             {
                 Log.Debug("Selected Component ID: {ComponentId}", _selectedComponent.Id);
                 _selectedComponent.IsSelected = true;
-
-                // mark actor as selected but don't outline all its components
-                if (_selectedComponent.Actor is not null)
-                    _selectedComponent.Actor._isSelected = true;
+                _selectedComponent.Actor?._isSelected = true; // mark actor as selected but don't outline all its components
             }
-
-            UpdatePickedIds();
         }
+    }
+
+    private readonly ImGuiController _controller;
+
+    protected InterfaceSystem(GameWindow wnd) : base(wnd)
+    {
+        _controller = new ImGuiController(Window.ClientSize.X, Window.ClientSize.Y);
     }
 
     private void ClearSelection()
@@ -83,70 +78,6 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
         {
             _selectedComponent.IsSelected = false;
             _selectedComponent.Actor?._isSelected = false;
-        }
-    }
-
-    private void UpdatePickedIds()
-    {
-        var pickedIds = new HashSet<uint>();
-        if (_selectedComponent is not null)
-        {
-            // only outline this specific component
-            pickedIds.Add(_selectedComponent.Id);
-        }
-        else if (_selectedActor is not null)
-        {
-            // outline all components of actor and children
-            void CollectIds(Actor? actor)
-            {
-                if (actor is null) return;
-
-                foreach (var component in actor.Components)
-                {
-                    if (!component.IsOutlined) continue;
-                    pickedIds.Add(component.Id);
-                }
-
-                foreach (var child in actor.Children)
-                {
-                    CollectIds(child);
-                }
-            }
-
-            CollectIds(_selectedActor);
-        }
-
-        foreach (var pair in Pairs)
-        {
-            pair.SetPickedIds(pickedIds);
-        }
-    }
-
-    protected ActorComponent? FindComponentById(uint componentId)
-    {
-        if (componentId == 0 || RootActor == null)
-            return null;
-
-        return FindRecursive(RootActor);
-
-        ActorComponent? FindRecursive(Actor actor)
-        {
-            foreach (var component in actor.Components)
-            {
-                if (component.Id == componentId)
-                {
-                    return component;
-                }
-            }
-
-            foreach (var child in actor.Children)
-            {
-                var found = FindRecursive(child);
-                if (found != null)
-                    return found;
-            }
-
-            return null;
         }
     }
 
@@ -171,60 +102,39 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
 
     public sealed override void Update(float delta)
     {
-        var pressed = wnd.IsKeyPressed(Keys.F10);
+        var pressed = Window.IsKeyPressed(Keys.F10);
         if (pressed) Enabled = !Enabled;
 
-        if (wnd.IsKeyPressed(Keys.F))
-        {
-            if (wnd.WindowState == WindowState.Fullscreen)
-            {
-                wnd.WindowState = _pWindowState;
-            }
-            else
-            {
-                _pWindowState = wnd.WindowState;
-                wnd.WindowState = WindowState.Fullscreen;
-            }
-        }
-
-        if (ActiveCamera is null && Pairs.Count > 0)
-            ActiveCamera = Pairs[0].Camera;
-
-        var io = ImGui.GetIO();
         if (Enabled)
         {
-            _controller.Update(wnd, delta);
+            _controller.Update(Window, delta);
         }
         else
         {
-            if (wnd.IsMouseButtonPressed(MouseButton.Right))
-                wnd.CursorState = CursorState.Grabbed;
+            if (Window.IsMouseButtonPressed(MouseButton.Right))
+                Window.CursorState = CursorState.Grabbed;
 
-            if (ActiveCamera is not null)
+            if (Window.IsMouseButtonPressed(MouseButton.Left))
             {
-                if (wnd.IsMouseButtonPressed(MouseButton.Left) && ActiveCamera.PairIndex < Pairs.Count)
-                {
-                    var mousePos = new Vector2(wnd.MousePosition.X, wnd.MousePosition.Y);
-                    var viewportSize = new Vector2(wnd.ClientSize.X, wnd.ClientSize.Y);
-                    var componentId = Pairs[ActiveCamera.PairIndex].ReadPickingPixel(mousePos, Vector2.Zero, viewportSize);
-                    SelectedComponent = FindComponentById(componentId);
-                }
+                var mousePos = new Vector2(Window.MousePosition.X, Window.MousePosition.Y);
+                var viewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+                OnViewportLeftClick(mousePos, Vector2.Zero, viewportSize);
             }
         }
 
-        if (!io.WantTextInput) ActiveCamera?.Update(wnd.KeyboardState, delta);
-        if (wnd.CursorState == CursorState.Grabbed)
+        if (!ImGui.GetIO().WantTextInput) MainViewport?.Camera.Update(Window.KeyboardState, delta);
+        if (Window.CursorState == CursorState.Grabbed)
         {
-            if (ActiveCamera != null && wnd.MouseState.ScrollDelta.Y != 0)
+            if (MainViewport != null && Window.MouseState.ScrollDelta.Y != 0)
             {
-                var multiplier = wnd.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
-                ActiveCamera.MovementSpeed += wnd.MouseState.ScrollDelta.Y * multiplier;
-                ActiveCamera.MovementSpeed = MathF.Max(1f, ActiveCamera.MovementSpeed);
-                Notifications.PushNotification("Camera", () => $"Movement speed set to {ActiveCamera.MovementSpeed}.");
+                var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+                MainViewport.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
+                MainViewport.Camera.MovementSpeed = MathF.Max(1f, MainViewport.Camera.MovementSpeed);
+                Notifications.PushNotification("Camera", () => $"Movement speed set to {MainViewport.Camera.MovementSpeed}.");
             }
 
-            ActiveCamera?.Update(wnd.MouseState.Delta.X, wnd.MouseState.Delta.Y);
-            if (wnd.IsMouseButtonReleased(MouseButton.Right)) wnd.CursorState = CursorState.Normal;
+            MainViewport?.Camera.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
+            if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
         }
 
         base.Update(delta);
@@ -234,22 +144,28 @@ public abstract class InterfaceSystem(GameWindow wnd) : SceneManager
     {
         base.Render();
 
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        GL.ClearColor(0, 0, 0, 1);
+        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+
         if (Enabled)
         {
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            GL.ClearColor(0, 0, 0, 1);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-
             RenderInterface();
             _controller.Render();
         }
-        else if (ActiveCamera is not null && ActiveCamera.PairIndex < Pairs.Count)
+        else
         {
-            Pairs[ActiveCamera.PairIndex].RenderToScreen(wnd.ClientSize.X, wnd.ClientSize.Y);
+            Pipeline.RenderToScreen(Window.ClientSize.X, Window.ClientSize.Y);
         }
     }
 
     protected abstract void RenderInterface();
+
+    protected virtual void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
+    {
+        SelectedActor = null;
+        SelectedComponent = GetComponentById(GetComponentId(mousePos, windowPos, windowSize));
+    }
 
     public override void Resize(int newWidth, int newHeight)
     {

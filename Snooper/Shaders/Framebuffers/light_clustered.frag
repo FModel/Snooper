@@ -25,9 +25,8 @@ uniform int uGridDimZ;
 uniform float uZNear;
 uniform float uZFar;
 
-uniform vec2 uShadowMapSize;
+uniform vec3 uShadowMapSize;
 uniform float uShadowBias;
-uniform int uCascadeCount;
 uniform float uCascadePlaneDistances[4];
 uniform mat4 uLightViewProjectionMatrices[4];
 
@@ -72,7 +71,7 @@ float CalculateShadow(vec3 worldPos, float NdotL, int layer)
     bias /= uCascadePlaneDistances[layer];
 
     float currentDepth = projCoords.z;
-    vec2 texelSize = 1.0 / uShadowMapSize;
+    vec2 texelSize = 1.0 / uShadowMapSize.xy;
 
     float shadow = 0.0;
     for (int x = -1; x <= 1; ++x)
@@ -338,7 +337,7 @@ void main()
         float depthValue = -viewPos.z;
 
         int layer = 0;
-        for (int i = 0; i < uCascadeCount; i++)
+        for (int i = 0; i < int(uShadowMapSize.z); i++)
         {
             if (depthValue < uCascadePlaneDistances[i])
             {

@@ -1,18 +1,18 @@
 ﻿using System.Collections.Specialized;
-using System.Numerics;
 using System.Reflection;
+using ImGuiNET;
 using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
 using Snooper.Core.Systems;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Core.Managers;
 
-public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
+public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IControllable, IResizable
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
@@ -22,7 +22,6 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
 
     public bool ShowFramebuffers = false;
     public DebugVisualizationMode DebugColorMode = DebugVisualizationMode.None;
-    public float DebugVerticalSplit = 0.5f;
 
     public static void RegisterSystemFactory<T>() where T : ActorSystem, new() => RegisterSystemFactory(() => new T());
     public static void RegisterSystemFactory<T>(Func<T> factory) where T : ActorSystem
@@ -30,13 +29,13 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         _registeredFactories.Add(typeof(T), factory);
     }
 
-    public RendererInfo Renderer { get; } = new RendererInfo();
+    public RendererInfo Renderer { get; } = new();
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public virtual void Load()
     {
-        Renderer.Initialize();
+        Renderer.Load();
         DequeueSystems();
     }
 
@@ -49,23 +48,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
         }
     }
 
-    [Obsolete("Use Render(CameraComponent camera, ActorSystemType systemType) instead.")]
-    public void Render(CameraComponent camera) => Render(camera, ActorSystemType.Forward);
-    protected void Render(CameraComponent camera, ActorSystemType systemType)
-    {
-        foreach (var system in Systems.Values.Where(x => x.SystemType == systemType))
-        {
-            system.Render(camera);
-        }
-    }
-
-    protected void RenderShadows(IViewProjectionProvider[] cameras)
-    {
-        foreach (var system in Systems.Values.OfType<IShadowSystem>())
-        {
-            system.RenderShadows(cameras);
-        }
-    }
+    public abstract void Render();
 
     protected void AddRoot(Actor actor)
     {
@@ -245,6 +228,45 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider
             Systems.Add(system.Order, system);
             count++;
         }
+    }
+
+    public virtual void Resize(int newWidth, int newHeight)
+    {
+        foreach (var system in Systems.Values.OfType<IResizable>())
+            system.Resize(newWidth, newHeight);
+    }
+
+    public virtual void DrawControls()
+    {
+        ImGui.SetWindowFontScale(0.85f);
+        ImGui.TextDisabled($"API: {Renderer.Name} | GPU: {Renderer.DeviceInfo.Name}");
+        ImGui.SetWindowFontScale(1.0f);
+
+        ImGui.SeparatorText("General");
+
+        var light = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
+        ImGui.BeginDisabled(light == null);
+        EditorUI.TogglableTreeNode("Lighting", light?.IsEnabled ?? false, () => light?.DrawControls(), toggle =>
+        {
+            light?.IsEnabled = toggle;
+            light?.GetDirectionalLight()?.Actor?.IsVisible = !toggle;
+        });
+        ImGui.EndDisabled();
+
+        var audio = Systems.Values.OfType<AudioSystem>().FirstOrDefault();
+        ImGui.BeginDisabled(audio == null);
+        EditorUI.TogglableTreeNode("Audio", audio?.IsEnabled ?? false, () => audio?.DrawControls(), toggle => audio?.IsEnabled = toggle);
+        ImGui.EndDisabled();
+
+        var landscape = Systems.Values.OfType<LandscapeSystem>().FirstOrDefault();
+        ImGui.BeginDisabled(landscape == null);
+        EditorUI.TogglableTreeNode("Landscape", landscape?.IsEnabled ?? false, () => landscape?.DrawControls(), toggle => landscape?.IsEnabled = toggle);
+        ImGui.EndDisabled();
+
+        var debug = Systems.Values.OfType<DebugSystem>().FirstOrDefault();
+        ImGui.BeginDisabled(debug == null);
+        EditorUI.TogglableTreeNode("Wireframes", debug?.IsEnabled ?? false, () => debug?.DrawControls(), toggle => debug?.IsEnabled = toggle);
+        ImGui.EndDisabled();
     }
 
     public virtual void Dispose()

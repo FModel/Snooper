@@ -4,7 +4,7 @@
 
 in vec2 vTexCoords;
 
-uniform sampler2D combinedTexture;
+uniform sampler2D inputTexture;
 uniform vec2 inverseScreenSize;
 
 out vec4 FragColor;
@@ -51,5 +51,5 @@ vec3 fxaa(sampler2D tex, vec2 uv, vec2 invRes)
 
 void main()
 {
-    FragColor = vec4(fxaa(combinedTexture, vTexCoords, inverseScreenSize), 1.0);
+    FragColor = vec4(fxaa(inputTexture, vTexCoords, inverseScreenSize), 1.0);
 }

@@ -6,7 +6,6 @@ using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
-using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.UI;
@@ -16,11 +15,13 @@ namespace Snooper.Rendering.Systems;
 public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerMaterialLandscapeData>(PrimitiveType.Patches), IControllable
 {
     public override uint Order => 21;
-    public override ActorSystemType SystemType => ActorSystemType.Deferred;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShader("Landscape/landscape")
+    protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {
-        TessellationControl = "Landscape/landscape.tesc",
-        TessellationEvaluation = "Landscape/landscape.tese"
+        [CommandBufferType.Opaque] = new EmbeddedShader("Landscape/landscape")
+        {
+            TessellationControl = "Landscape/landscape.tesc",
+            TessellationEvaluation = "Landscape/landscape.tese"
+        }
     };
     protected override Action<uint> VertexLayout { get; } = vao =>
     {
@@ -120,16 +121,21 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 
     public void DrawControls()
     {
-        var c = (int) _colorMode;
-        ImGui.Combo("Color Mode", ref c, "Heightmap\0Weightmap\0");
-        _colorMode = (ColorMode) c;
-
-        if (_colorMode == ColorMode.Weightmap)
+        EditorUI.PropertyValueTable("Landscape Table", () =>
         {
-            var before = _selectedLayer;
-            ImGui.Combo("Weightmap Layer", ref _selectedLayer, _layers.ToArray(), _layers.Count);
-            if (!_updateMapping) _updateMapping = before != _selectedLayer;
-        }
+            EditorUI.Property("Color Mode");
+            var c = (int) _colorMode;
+            ImGui.Combo("##Color Mode", ref c, "Heightmap\0Weightmap\0");
+            _colorMode = (ColorMode) c;
+
+            if (_colorMode == ColorMode.Weightmap)
+            {
+                var before = _selectedLayer;
+                EditorUI.Property("Weightmap Layer");
+                ImGui.Combo("##Weightmap Layer", ref _selectedLayer, _layers.ToArray(), _layers.Count);
+                if (!_updateMapping) _updateMapping = before != _selectedLayer;
+            }
+        });
     }
 
     private enum ColorMode : byte

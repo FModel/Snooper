@@ -50,7 +50,9 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
 
     public TextRenderComponent(UTextRenderComponent component) : base(component)
     {
-        _text = component.GetOrDefault<FText?>("Text")?.Text ?? "DefaultText";
+        _text = component.GetOrDefault<FText?>("Text")?.Text ?? string.Empty;
+        if (string.IsNullOrEmpty(_text)) _text = "DefaultText";
+
         _horizontalAlignment = component.GetOrDefault("HorizontalAlignment", EHorizTextAligment.EHTA_Left);
         _verticalAlignment = component.GetOrDefault("VerticalAlignment", EVerticalTextAligment.EVRTA_TextCenter);
 

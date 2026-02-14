@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
@@ -65,6 +66,24 @@ public abstract class Texture(
     public void Swizzle()
     {
         GL.TextureParameter(Handle, TextureParameterName.TextureSwizzleRgba, SwizzleMask);
+    }
+
+    public T GetPixel<T>(int x, int y) where T : unmanaged
+    {
+        var pixel = default(T);
+        var stride = Marshal.SizeOf<T>();
+        switch (FormatInfo)
+        {
+            case TextureFormatInfo info:
+                GL.GetTextureSubImage(Handle, 0, x, y, 0, 1, 1, 1, info.Format, info.Type, stride, ref pixel);
+                break;
+            case CompressedTextureFormatInfo:
+                GL.GetCompressedTextureSubImage(Handle, 0, x, y, 0, 1, 1, 1, stride, ref pixel);
+                break;
+            default:
+                throw new NotSupportedException("Unknown texture format info.");
+        }
+        return pixel;
     }
 
     public event Action? TextureReadyForBindless;

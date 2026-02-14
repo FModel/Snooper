@@ -17,6 +17,7 @@ public abstract class LightComponent : SpatialComponent
     public readonly ELightUnits IntensityUnits;
     public readonly float IntensityNits;
     public readonly Vector3 Color;
+    public readonly bool CastShadows;
 
     internal BufferAllocation? _lightDataAllocation;
 
@@ -27,12 +28,14 @@ public abstract class LightComponent : SpatialComponent
         IntensityNits = component.GetNitIntensity();
 
         Color = component.GetLightColor();
+        CastShadows = component.CastShadows != 0;
     }
 
     public LightComponent(float intensity, Vector3 color, Transform? transform = null, string? name = null) : base(transform, name)
     {
         Intensity = intensity;
         Color = color;
+        CastShadows = true;
     }
 
     public LightData GetLightData()

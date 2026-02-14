@@ -5,6 +5,27 @@ namespace Snooper.UI;
 
 public static class EditorUI
 {
+    public static void CenteredText(string text, Vector4? color = null)
+    {
+        var textSize = ImGui.CalcTextSize(text);
+        var windowSize = ImGui.GetWindowSize();
+
+        ImGui.SetCursorPos(new Vector2((windowSize.X - textSize.X) * 0.5f, (windowSize.Y - textSize.Y) * 0.5f));
+        if (color == null)
+        {
+            ImGui.TextUnformatted(text);
+        }
+        else
+        {
+            ImGui.TextColored(color.Value, text);
+        }
+    }
+
+    public static void CenteredErrorText(string text)
+    {
+        CenteredText(text, new Vector4(1.0f, 0.0f, 0.0f, 1.0f));
+    }
+
     public static bool DragFloat3(string label, ref Vector3 value, float speed = 0.01f, float min = float.MinValue, float max = float.MaxValue, string? format = null)
     {
         Property(label);
@@ -99,9 +120,17 @@ public static class EditorUI
         return isOpen;
     }
 
-    public static void TogglableTreeNode(string label, ref bool enabled, ImGuiTreeNodeFlags flags, Action content)
+    public static void TogglableTreeNode(string label, ref bool enabled, Action? content = null, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth)
+    {
+        var local = enabled;
+        TogglableTreeNode(label, local, content, toggle => local = toggle, flags);
+        enabled = local;
+    }
+
+    public static void TogglableTreeNode(string label, bool enabled = false, Action? content = null, Action<bool>? onToggle = null, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth)
     {
         flags |= ImGuiTreeNodeFlags.AllowOverlap;
+        if (content is null) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.Bullet;
         var nodeOpen = ImGui.TreeNodeEx("##Tree_" + label, flags);
         ImGui.SameLine();
 
@@ -115,7 +144,10 @@ public static class EditorUI
             ImGui.SetCursorPosY(cursorY + yAdjust);
 
         if (ImGui.InvisibleButton("##Toggle_" + label, new Vector2(checkboxSize, checkboxSize)))
+        {
             enabled = !enabled;
+            onToggle?.Invoke(enabled);
+        }
 
         var hovered = ImGui.IsItemHovered();
         var bbMin = ImGui.GetItemRectMin();
@@ -160,7 +192,7 @@ public static class EditorUI
 
         if (nodeOpen)
         {
-            content.Invoke();
+            content?.Invoke();
             ImGui.TreePop();
         }
     }

@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Serilog;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Managers;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
@@ -10,8 +11,7 @@ namespace Snooper.Core.Systems;
 
 public enum ActorSystemType
 {
-    Deferred,
-    Forward,
+    Rendering,
     Physics,
     Animation,
     Input,
@@ -59,24 +59,8 @@ public abstract class ActorSystem : IGameSystem
         });
     }
 
-    public void Render(CameraComponent camera)
-    {
-        if (!IsEnabled) return;
-        Profiler.Time(ProfilerMetric.CpuRender, () =>
-        {
-            Profiler.BeginQuery(QueryTarget.TimeElapsed, QueryTarget.PrimitivesGenerated);
-
-            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
-            OnRender(camera);
-            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
-
-            Profiler.EndQuery();
-        });
-    }
-
     protected abstract void OnLoad();
     protected abstract void OnUpdate(float delta);
-    protected abstract void OnRender(CameraComponent camera);
 
     public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
 
@@ -87,8 +71,6 @@ public abstract class ActorSystem : IGameSystem
         return ComponentType.IsAssignableFrom(type);
     }
 
-    protected DebugVisualizationMode DebugColorMode => ActorManager?.DebugColorMode ?? DebugVisualizationMode.None;
-
     public virtual void Dispose()
     {
         Profiler.Dispose();
@@ -96,12 +78,14 @@ public abstract class ActorSystem : IGameSystem
     }
 }
 
-public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)) where TComponent : ActorComponent
+public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)), IRenderSystem where TComponent : ActorComponent
 {
-    public override ActorSystemType SystemType => ActorSystemType.Forward;
     public override int Capacity => -1; // unlimited
     public override int ComponentsCount => Components.Count;
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
+
+    protected DebugVisualizationMode DebugColorMode => ActorManager?.DebugColorMode ?? DebugVisualizationMode.None;
+    protected bool ClearMaskBuffer { get; private set; } = false;
 
     protected HashSet<TComponent> Components { get; } = [];
     protected HashSet<TComponent> DirtyComponents { get; } = [];
@@ -110,13 +94,34 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     protected override void OnUpdate(float delta)
     {
         DequeueComponents(5);
+        if (DirtyComponents.Count == 0) return;
 
-        foreach (var component in DirtyComponents)
+        var components = DirtyComponents.ToArray();
+        DirtyComponents.Clear();
+
+        PreOnUpdate();
+        foreach (var component in components)
         {
             OnComponentUpdate(component, delta);
         }
-        DirtyComponents.Clear();
+        PostOnUpdate();
     }
+
+    public void Render(CameraComponent camera, CommandBufferType type)
+    {
+        if (!IsEnabled) return;
+        Profiler.Time(ProfilerMetric.CpuRender, () =>
+        {
+            Profiler.BeginQuery(QueryTarget.TimeElapsed, QueryTarget.PrimitivesGenerated);
+
+            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
+            OnRender(camera, type);
+            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
+
+            Profiler.EndQuery();
+        });
+    }
+    protected abstract void OnRender(CameraComponent camera, CommandBufferType type);
 
     public sealed override void ProcessActorComponent(ActorComponent component, Actor actor)
     {
@@ -159,9 +164,19 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         DirtyComponents.Remove(component);
     }
 
+    protected virtual void PreOnUpdate()
+    {
+
+    }
+
     protected virtual void OnComponentUpdate(TComponent component, float delta)
     {
 
+    }
+
+    protected virtual void PostOnUpdate()
+    {
+        ClearMaskBuffer = false;
     }
 
     private void OnComponentRequestUpdate(ActorComponent component)
@@ -172,6 +187,11 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         if (Components.Contains(actorComponent))
         {
             DirtyComponents.Add(actorComponent);
+
+            if (actorComponent.IsDirty(DirtyFlags.Outline))
+            {
+                ClearMaskBuffer = true;
+            }
         }
     }
 
@@ -182,7 +202,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         while (_componentsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
             var component = _componentsToLoad.Dequeue();
-            if (component == null) continue;
+            if (component == null) continue; // TODO: sometimes components just disappear from the queue
 
             if (Components.Add(component))
             {

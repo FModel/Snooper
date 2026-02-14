@@ -67,7 +67,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _primitives.Bind(2);
         _sections.Bind(3);
 
-        GL.DispatchCompute(commands.Count, 1, 1);
+        GL.DispatchCompute(commands.Capacity, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
     }
 

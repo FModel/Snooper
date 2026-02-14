@@ -11,7 +11,7 @@ public class ExtensionSupport
 
     public string[] Extensions { get; private set; } = [];
 
-    public void Initialize()
+    public void Load()
     {
         Extensions = new string[GL.GetInteger(GetPName.NumExtensions)];
         for (var i = 0; i < Extensions.Length; i++)

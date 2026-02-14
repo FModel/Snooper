@@ -30,30 +30,35 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public abstract MaterialSection[] Materials { get; }
 
-    /// <summary>
-    /// Materials are all opaque by default
-    /// If by the time we check this property, none of the materials have data assigned (because it can be delayed, see MeshComponent)
-    /// We assume they are opaque and will be processed by the deferred renderer.
-    /// TODO: revisit this, maybe preload some of the material data earlier, or support changing renderers on the fly when material data is assigned
-    /// materials starts to be parsed as soon as the actor is added to the scene
-    /// right after that, all its components are checked against systems, this is where this property is used
-    /// so there's a small window of time where materials can be assigned but not yet have their data container set
-    /// this result in translucent friendly renderer to never be used for such components
-    /// </summary>
-    public bool IsOpaque => !Materials.Any(m => m.IsTranslucent);
-
-    private bool _isVisible = true;
-    public bool IsVisible
+    private bool? _isOpaque;
+    public bool IsOpaque
     {
-        get => _isVisible;
-        set
+        get => _isOpaque ??= SupportsOpaquePass;
+        private set
         {
-            if (_isVisible == value) return;
+            if (!SupportsOpaquePass || _isOpaque == value) return;
 
-            _isVisible = value;
-            MarkDirty(DirtyFlags.Visibility);
+            _isOpaque = value;
+            MarkDirty(DirtyFlags.Opacity);
         }
     }
+
+    public bool IsVisible
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+
+            field = value;
+            MarkDirty(DirtyFlags.Visibility);
+        }
+    } = true;
+
+    /// <summary>
+    /// opaque pass requires shader support for writing to multiple render targets, so by default it's disabled and primitives are rendered in the translucent pass
+    /// </summary>
+    protected virtual bool SupportsOpaquePass => false;
 
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
@@ -62,7 +67,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        _isVisible = component.GetOrDefault("bVisible", _isVisible);
+        IsVisible = component.GetOrDefault("bVisible", IsVisible);
     }
 
     public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
@@ -73,7 +78,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
             // register textures for all materials either now or later, when their data container is set
             foreach (var material in Materials)
-                material.OnMaterialDataContainerSet += textureManager.Add;
+            {
+                material.OnMaterialDataContainerSet += section =>
+                {
+                    textureManager.Add(section);
+                    IsOpaque &= !section.IsTranslucent;
+                };
+            }
         }
         else
         {
@@ -157,7 +168,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
                     var maxLod = Descriptor.Lods.Length - 1;
                     var minLod = maxLod == 0 ? 0 : -1;
-                    var value = Metadata == null ? minLod : Metadata.Value.GeometryHandle.OverrideLod;
+                    var value = Metadata == null ? minLod : Metadata.GeometryHandle.OverrideLod;
 
                     ImGui.BeginDisabled(minLod == maxLod);
                     var slided1 = ImGui.SliderInt("##LODSlider", ref value, minLod, maxLod);
@@ -167,7 +178,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                         _sectionIndex = 0;
                         if (Metadata != null && IsVisible && maxLod > 0)
                         {
-                            Metadata.Value.GeometryHandle.OverrideLod = value;
+                            Metadata.GeometryHandle.OverrideLod = value;
                             MarkDirty(DirtyFlags.ManualLodSwap);
                         }
                     }

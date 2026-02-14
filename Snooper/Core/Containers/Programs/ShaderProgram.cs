@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 
 namespace Snooper.Core.Containers.Programs;
 
@@ -10,7 +11,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
     public string? Geometry { get; init; }
     public string? TessellationControl { get; init; }
     public string? TessellationEvaluation { get; init; }
-    public string? Compute { get; init; }
+    protected string? Compute { get; init; }
 
     private readonly List<uint> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
@@ -186,9 +187,23 @@ public class ShaderProgram(string vertex, string fragment) : Program
             _uniformsLocation.Add(name, location);
             if (location == -1)
             {
-                // throw new Exception($"{name} uniform not found on shader.");
+                Log.Warning("{Name} uniform not found in shader.", name);
+                // throw new Exception($"{name} uniform not found in shader.");
             }
         }
         return location;
     }
+
+    protected virtual ShaderProgram CloneShader()
+    {
+        return new ShaderProgram(Vertex, Fragment)
+        {
+            Geometry = Geometry,
+            TessellationControl = TessellationControl,
+            TessellationEvaluation = TessellationEvaluation,
+            Compute = Compute
+        };
+    }
+
+    public sealed override object Clone() => CloneShader();
 }

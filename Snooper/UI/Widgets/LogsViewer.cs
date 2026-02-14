@@ -3,9 +3,9 @@ using System.Numerics;
 using ImGuiNET;
 using Serilog.Events;
 
-namespace Snooper.UI;
+namespace Snooper.UI.Widgets;
 
-public static class LogWindow
+public class LogsViewer : IWidget
 {
     private const int MaxLogEntries = 10000;
 
@@ -19,7 +19,40 @@ public static class LogWindow
     private static bool _scrollToBottom;
     private static bool _needsRefilter;
 
-    public static void AddLog(LogEvent logEvent)
+    public void Render()
+    {
+        if (ImGui.Begin("Logs"))
+        {
+            while (_logEntries.TryDequeue(out var entry))
+            {
+                _displayEntries.Add(entry);
+                if (_autoScroll)
+                {
+                    _scrollToBottom = true;
+                }
+                _needsRefilter = true;
+            }
+
+            while (_displayEntries.Count > MaxLogEntries)
+            {
+                _displayEntries.RemoveAt(0);
+                _needsRefilter = true;
+            }
+
+            if (_needsRefilter)
+            {
+                RebuildFilteredEntries();
+                _needsRefilter = false;
+            }
+
+            DrawControls();
+            ImGui.Separator();
+            DrawLogEntries();
+        }
+        ImGui.End();
+    }
+
+    internal static void AddLog(LogEvent logEvent)
     {
         _logEntries.Enqueue(logEvent);
 
@@ -29,49 +62,12 @@ public static class LogWindow
         }
     }
 
-    public static void Draw()
-    {
-        if (!ImGui.Begin("Log"))
-        {
-            ImGui.End();
-            return;
-        }
-
-        while (_logEntries.TryDequeue(out var entry))
-        {
-            _displayEntries.Add(entry);
-            if (_autoScroll)
-            {
-                _scrollToBottom = true;
-            }
-            _needsRefilter = true;
-        }
-
-        while (_displayEntries.Count > MaxLogEntries)
-        {
-            _displayEntries.RemoveAt(0);
-            _needsRefilter = true;
-        }
-
-        if (_needsRefilter)
-        {
-            RebuildFilteredEntries();
-            _needsRefilter = false;
-        }
-
-        DrawControls();
-        ImGui.Separator();
-        DrawLogEntries();
-
-        ImGui.End();
-    }
-
-    private static bool NeedsFiltering()
+    private bool NeedsFiltering()
     {
         return _minLevel != LogEventLevel.Verbose || !string.IsNullOrWhiteSpace(_filterText);
     }
 
-    private static void RebuildFilteredEntries()
+    private void RebuildFilteredEntries()
     {
         _filteredEntries.Clear();
 
@@ -95,7 +91,7 @@ public static class LogWindow
         }
     }
 
-    private static void DrawControls()
+    private void DrawControls()
     {
         ImGui.SetNextItemWidth(200);
         _needsRefilter = ImGui.InputTextWithHint("##filter", "Filter...", ref _filterText, 256);
@@ -134,7 +130,7 @@ public static class LogWindow
         ImGui.Text($"({(NeedsFiltering() ? _filteredEntries : _displayEntries).Count} entries)");
     }
 
-    private static void DrawLogEntries()
+    private void DrawLogEntries()
     {
         ImGui.PushStyleColor(ImGuiCol.ChildBg, ImGui.GetColorU32(ImGuiCol.WindowBg));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 2));
@@ -171,7 +167,7 @@ public static class LogWindow
         ImGui.PopStyleColor();
     }
 
-    private static void DrawLogEntry(LogEvent entry)
+    private void DrawLogEntry(LogEvent entry)
     {
         ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1.0f), $"[{entry.Timestamp:T}] ");
         ImGui.SameLine();
@@ -189,7 +185,7 @@ public static class LogWindow
         // }
     }
 
-    private static Vector4 GetLevelColor(LogEventLevel level)
+    private Vector4 GetLevelColor(LogEventLevel level)
     {
         return level switch
         {
@@ -203,7 +199,7 @@ public static class LogWindow
         };
     }
 
-    private static string GetLevelShortName(LogEventLevel level)
+    private string GetLevelShortName(LogEventLevel level)
     {
         return level switch
         {

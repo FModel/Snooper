@@ -2,6 +2,7 @@
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -15,7 +16,10 @@ namespace Snooper.Rendering.Systems;
 public class TextRenderSystem : PrimitiveSystem<Vector4, TextRenderComponent, PerInstanceData, PerMaterialTextData>, IControllable
 {
     public override uint Order => 51;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShader("text");
+    protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
+    {
+        [CommandBufferType.Transparent] = new EmbeddedShader("text")
+    };
     protected override Action<uint> VertexLayout { get; } = vao =>
     {
         GL.VertexArrayAttribFormat(vao, 0, 2, VertexAttribType.Float, false, 0);

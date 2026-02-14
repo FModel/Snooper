@@ -23,9 +23,31 @@ public abstract partial class ActorComponent
 #endif
 
     public string? ObjectPath { get; protected init; }
-    public bool IsSelected { get; internal set; }
 
-    public bool IsOutlined => IsSelected || Actor is { IsOutlined: true };
+    public bool IsSelected
+    {
+        get;
+        internal set
+        {
+            if (field == value) return;
+
+            field = value;
+            UpdateIsOutlined();
+        }
+    }
+
+    public bool IsOutlined
+    {
+        get;
+        private set
+        {
+            if (field == value) return;
+
+            field = value;
+            MarkDirty(DirtyFlags.Outline);
+        }
+    }
+
     internal virtual string Icon => "component";
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;
@@ -94,11 +116,13 @@ public abstract partial class ActorComponent
     {
         actor.OnAttachedToScene += OnActorAttachedToScene;
         actor.OnDetachedFromScene += OnActorDetachedFromScene;
+        actor.OnOutlinedChanged += UpdateIsOutlined;
     }
     protected virtual void OnActorDetached(Actor actor)
     {
         actor.OnAttachedToScene -= OnActorAttachedToScene;
         actor.OnDetachedFromScene -= OnActorDetachedFromScene;
+        actor.OnOutlinedChanged -= UpdateIsOutlined;
     }
 
     protected virtual void OnActorAttachedToScene(IGameSystem scene)
@@ -108,6 +132,11 @@ public abstract partial class ActorComponent
     protected virtual void OnActorDetachedFromScene(IGameSystem scene)
     {
 
+    }
+
+    private void UpdateIsOutlined()
+    {
+        IsOutlined = IsSelected || Actor is { IsOutlined: true };
     }
 
     internal void DrawInterface()
@@ -168,4 +197,12 @@ public abstract partial class ActorComponent
 
     [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]
     private partial System.Text.RegularExpressions.Regex UpperCaseToSpace();
+
+    public static bool operator ==(ActorComponent? left, ActorComponent? right)
+    {
+        if (left is null && right is null) return true;
+        if (left is null || right is null) return false;
+        return left.Id == right.Id;
+    }
+    public static bool operator !=(ActorComponent? left, ActorComponent? right) => !(left == right);
 }

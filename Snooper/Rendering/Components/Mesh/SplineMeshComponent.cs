@@ -17,7 +17,7 @@ public struct SplineMeshParams
     public float Padding1;
     public Vector2 StartScale;
     public Vector2 StartOffset;
-    
+
     public Vector3 EndPos;
     public float EndRoll;
     public Vector3 EndTangent;
@@ -40,25 +40,25 @@ public struct SplineMeshParams
     public SplineMeshParams(USplineMeshComponent component, CullingBounds bounds)
     {
         var p = component.SplineParams;
-        
+
         StartPos = p.StartPos * Settings.GlobalScale;
         StartRoll = p.StartRoll;
         StartTangent = p.StartTangent * Settings.GlobalScale;
         StartScale = p.StartScale;
         StartOffset = p.StartOffset;
-        
+
         EndPos = p.EndPos * Settings.GlobalScale;
         EndRoll = p.EndRoll;
         EndTangent = p.EndTangent * Settings.GlobalScale;
         EndScale = p.EndScale;
         EndOffset = p.EndOffset;
-        
+
         SplineUpDir = component.SplineUpDir;
         SplineBoundaryMin = component.SplineBoundaryMin;
         SplineBoundaryMax = component.SplineBoundaryMax;
         ForwardAxis = (uint)component.ForwardAxis;
         bSmoothInterpRollScale = component.bSmoothInterpRollScale ? 1u : 0u;
-        
+
         MeshOrigin = bounds.Center;
         MeshExtent = bounds.Extents;
     }
@@ -68,11 +68,14 @@ public struct SplineMeshParams
 public class SplineMeshComponent : StaticMeshComponent
 {
     public SplineMeshParams SplineParams;
-    
+
+    // TODO: buffer transfer breaks our shitty shader that relies on gl_DrawID, so just disable it for now
+    protected override bool SupportsOpaquePass => false;
+
     public SplineMeshComponent(UStaticMesh staticMesh, USplineMeshComponent component) : base(staticMesh, component)
     {
         SplineParams = new SplineMeshParams(component, Descriptor.Bounds);
     }
-    
+
     internal override string Icon => "spline";
 }
