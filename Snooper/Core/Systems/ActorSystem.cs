@@ -188,7 +188,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         {
             DirtyComponents.Add(actorComponent);
 
-            if (actorComponent.IsDirty(DirtyFlags.Selection))
+            if (actorComponent.IsDirty(DirtyFlags.Outline))
             {
                 ClearMaskBuffer = true;
             }

@@ -50,15 +50,13 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 
     public void PostProcessScene(CameraComponent camera, ClusteredLightSystem? lightSystem)
     {
-        var geometryContext = new GeometryStageContext(_geometry);
-        _postProcess.DoStagePass("Outline Pass", geometryContext);
-
         if (_ambientOcclusion)
         {
             _postProcess.DoStagePass("AO Pass", new AmbientOcclusionStageContext(camera, _geometry, _directionCount, _stepsPerDirection));
             _postProcess.DoStagePass("AO Blur Pass", new BlurStageContext(_blurRadius));
         }
 
+        var geometryContext = new GeometryStageContext(_geometry);
         var litContext = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, _shadows ? _geometry.GetShadowContext() : null);
         _postProcess.DoStagePass("Lighting Pass", litContext);
         _postProcess.DoStagePass("Combine Pass", geometryContext);

@@ -32,11 +32,22 @@ public abstract partial class ActorComponent
             if (field == value) return;
 
             field = value;
-            MarkDirty(DirtyFlags.Selection);
+            UpdateIsOutlined();
         }
     }
 
-    public bool IsOutlined => IsSelected || Actor is { IsOutlined: true };
+    public bool IsOutlined
+    {
+        get;
+        private set
+        {
+            if (field == value) return;
+
+            field = value;
+            MarkDirty(DirtyFlags.Outline);
+        }
+    }
+
     internal virtual string Icon => "component";
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;
@@ -105,11 +116,13 @@ public abstract partial class ActorComponent
     {
         actor.OnAttachedToScene += OnActorAttachedToScene;
         actor.OnDetachedFromScene += OnActorDetachedFromScene;
+        actor.OnOutlinedChanged += UpdateIsOutlined;
     }
     protected virtual void OnActorDetached(Actor actor)
     {
         actor.OnAttachedToScene -= OnActorAttachedToScene;
         actor.OnDetachedFromScene -= OnActorDetachedFromScene;
+        actor.OnOutlinedChanged -= UpdateIsOutlined;
     }
 
     protected virtual void OnActorAttachedToScene(IGameSystem scene)
@@ -119,6 +132,11 @@ public abstract partial class ActorComponent
     protected virtual void OnActorDetachedFromScene(IGameSystem scene)
     {
 
+    }
+
+    private void UpdateIsOutlined()
+    {
+        IsOutlined = IsSelected || Actor is { IsOutlined: true };
     }
 
     internal void DrawInterface()

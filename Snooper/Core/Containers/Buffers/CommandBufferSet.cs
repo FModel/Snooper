@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using OpenTK.Graphics.OpenGL4;
+using Serilog;
 
 namespace Snooper.Core.Containers.Buffers;
 
@@ -13,7 +14,7 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
 {
     private readonly DrawIndirectBuffer _opaque = new();
     private readonly DrawIndirectBuffer _transparent = new();
-    private readonly DrawIndirectBuffer _mask = new();
+    private readonly DrawIndirectBuffer _mask = new(BufferUsageHint.StaticDraw);
 
     private Buffer<DrawElementsIndirectCommand>.DeferMergeScope? _opaqueScope;
     private Buffer<DrawElementsIndirectCommand>.DeferMergeScope? _transparentScope;
@@ -29,7 +30,7 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
     {
         _opaque.Allocate((uint)Math.Ceiling(totalDraws * 0.7));
         _transparent.Allocate((uint)Math.Ceiling(totalDraws * 0.25));
-        _mask.Allocate(10);
+        _mask.Allocate(totalDraws);
 
         Log.Debug("Allocated CommandBufferSet: {OpaqueCapacity} opaque, {TransparentCapacity} transparent, {MaskCapacity} mask", _opaque.Capacity, _transparent.Capacity, _mask.Capacity);
     }

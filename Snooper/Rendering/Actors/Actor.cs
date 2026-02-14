@@ -61,6 +61,7 @@ public class Actor
             if (field == value) return;
 
             field = value;
+            OnOutlinedChanged?.Invoke();
 
             foreach (var child in Children)
             {
@@ -68,6 +69,8 @@ public class Actor
             }
         }
     }
+
+    internal event Action? OnOutlinedChanged;
 
     public Actor(string name)
     {

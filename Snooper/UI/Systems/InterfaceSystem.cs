@@ -58,10 +58,7 @@ public abstract class InterfaceSystem : SceneManager
             {
                 Log.Debug("Selected Component ID: {ComponentId}", _selectedComponent.Id);
                 _selectedComponent.IsSelected = true;
-
-                // mark actor as selected but don't outline all its components
-                if (_selectedComponent.Actor is not null)
-                    _selectedComponent.Actor._isSelected = true;
+                _selectedComponent.Actor?._isSelected = true; // mark actor as selected but don't outline all its components
             }
         }
     }
@@ -117,16 +114,12 @@ public abstract class InterfaceSystem : SceneManager
             if (Window.IsMouseButtonPressed(MouseButton.Right))
                 Window.CursorState = CursorState.Grabbed;
 
-            // if (MainCamera is not null)
-            // {
-            //     if (wnd.IsMouseButtonPressed(MouseButton.Left) && ActiveCamera.PairIndex < Pairs.Count)
-            //     {
-            //         var mousePos = new Vector2(wnd.MousePosition.X, wnd.MousePosition.Y);
-            //         var viewportSize = new Vector2(wnd.ClientSize.X, wnd.ClientSize.Y);
-            //         var componentId = Pairs[ActiveCamera.PairIndex].ReadPickingPixel(mousePos, Vector2.Zero, viewportSize);
-            //         SelectedComponent = FindComponentById(componentId);
-            //     }
-            // }
+            if (Window.IsMouseButtonPressed(MouseButton.Left))
+            {
+                var mousePos = new Vector2(Window.MousePosition.X, Window.MousePosition.Y);
+                var viewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+                OnViewportLeftClick(mousePos, Vector2.Zero, viewportSize);
+            }
         }
 
         if (!ImGui.GetIO().WantTextInput) MainViewport?.Camera.Update(Window.KeyboardState, delta);
@@ -168,8 +161,9 @@ public abstract class InterfaceSystem : SceneManager
 
     protected abstract void RenderInterface();
 
-    protected void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
+    protected virtual void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
     {
+        SelectedActor = null;
         SelectedComponent = GetComponentById(GetComponentId(mousePos, windowPos, windowSize));
     }
 

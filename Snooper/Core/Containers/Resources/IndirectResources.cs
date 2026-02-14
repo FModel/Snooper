@@ -131,10 +131,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             component.MarkClean(DirtyFlags.Opacity);
         }
 
-        if (component.IsDirty(DirtyFlags.Selection) && component.IsSelected)
+        if (component.IsDirty(DirtyFlags.Outline) && component.IsOutlined)
         {
             _commands.Transfer(metadata.DrawAllocations, metadata.BufferType, CommandBufferType.Mask);
-            component.MarkClean(DirtyFlags.Selection);
+            component.MarkClean(DirtyFlags.Outline);
         }
 
         if (component.IsDirty(DirtyFlags.ManualLodSwap))

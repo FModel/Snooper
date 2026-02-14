@@ -79,8 +79,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             // register textures for all materials either now or later, when their data container is set
             foreach (var material in Materials)
             {
-                material.OnMaterialDataContainerSet += textureManager.Add;
-                material.OnMaterialDataContainerSet += section => IsOpaque &= !section.IsTranslucent;
+                material.OnMaterialDataContainerSet += section =>
+                {
+                    textureManager.Add(section);
+                    IsOpaque &= !section.IsTranslucent;
+                };
             }
         }
         else

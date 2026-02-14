@@ -246,7 +246,11 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
 
         var light = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
         ImGui.BeginDisabled(light == null);
-        EditorUI.TogglableTreeNode("Lighting", light?.IsEnabled ?? false, () => light?.DrawControls(), toggle => light?.IsEnabled = toggle);
+        EditorUI.TogglableTreeNode("Lighting", light?.IsEnabled ?? false, () => light?.DrawControls(), toggle =>
+        {
+            light?.IsEnabled = toggle;
+            light?.GetDirectionalLight()?.Actor?.IsVisible = !toggle;
+        });
         ImGui.EndDisabled();
 
         var audio = Systems.Values.OfType<AudioSystem>().FirstOrDefault();
