@@ -35,7 +35,7 @@ public class EmbeddedTexture2D(string file,
             throw new FileNotFoundException($"Embedded texture file '{file}' not found in assembly '{assemblyName}'.");
 
         using var img = Image.Load<Rgba32>(stream);
-        Resize<nint>(img.Width, img.Height, [], mipmapped);
+        Reset<nint>(img.Width, img.Height, [], mipmapped); // this is simply gonna allocate the storage
 
         img.ProcessPixelRows(accessor =>
         {

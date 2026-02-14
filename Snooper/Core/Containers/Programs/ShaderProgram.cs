@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 
 namespace Snooper.Core.Containers.Programs;
 
@@ -10,7 +11,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
     public string? Geometry { get; init; }
     public string? TessellationControl { get; init; }
     public string? TessellationEvaluation { get; init; }
-    public string? Compute { get; init; }
+    protected string? Compute { get; init; }
 
     private readonly List<uint> _shaderHandles = [];
     private readonly Dictionary<string, int> _uniformsLocation = [];
@@ -80,6 +81,36 @@ public class ShaderProgram(string vertex, string fragment) : Program
     private unsafe void UniformMatrix4(string name, float* value)
     {
         GL.UniformMatrix4(GetUniformLocation(name), 1, false, value);
+    }
+
+    public unsafe void SetUniform(string name, Matrix4x4[] values)
+    {
+        var length = values.Length;
+        var matrices = stackalloc float[16 * length];
+        for (var i = 0; i < length; i++)
+        {
+            matrices[i * 16] = values[i].M11;
+            matrices[i * 16 + 1] = values[i].M12;
+            matrices[i * 16 + 2] = values[i].M13;
+            matrices[i * 16 + 3] = values[i].M14;
+
+            matrices[i * 16 + 4] = values[i].M21;
+            matrices[i * 16 + 5] = values[i].M22;
+            matrices[i * 16 + 6] = values[i].M23;
+            matrices[i * 16 + 7] = values[i].M24;
+
+            matrices[i * 16 + 8] = values[i].M31;
+            matrices[i * 16 + 9] = values[i].M32;
+            matrices[i * 16 + 10] = values[i].M33;
+            matrices[i * 16 + 11] = values[i].M34;
+
+            matrices[i * 16 + 12] = values[i].M41;
+            matrices[i * 16 + 13] = values[i].M42;
+            matrices[i * 16 + 14] = values[i].M43;
+            matrices[i * 16 + 15] = values[i].M44;
+        }
+
+        GL.UniformMatrix4(GetUniformLocation(name), length, false, matrices);
     }
 
     public void SetUniform(string name, bool value) => SetUniform(name, Convert.ToUInt32(value));
@@ -156,9 +187,23 @@ public class ShaderProgram(string vertex, string fragment) : Program
             _uniformsLocation.Add(name, location);
             if (location == -1)
             {
-                throw new Exception($"{name} uniform not found on shader.");
+                Log.Warning("{Name} uniform not found in shader.", name);
+                // throw new Exception($"{name} uniform not found in shader.");
             }
         }
         return location;
     }
+
+    protected virtual ShaderProgram CloneShader()
+    {
+        return new ShaderProgram(Vertex, Fragment)
+        {
+            Geometry = Geometry,
+            TessellationControl = TessellationControl,
+            TessellationEvaluation = TessellationEvaluation,
+            Compute = Compute
+        };
+    }
+
+    public sealed override object Clone() => CloneShader();
 }

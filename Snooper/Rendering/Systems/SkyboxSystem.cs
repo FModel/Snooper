@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
@@ -10,7 +11,10 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
 {
     public override uint Order => 1;
     protected override bool AllowDerivation => true;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("Skybox/skybox");
+    protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
+    {
+        [CommandBufferType.Transparent] = new EmbeddedShader("Skybox/skybox")
+    };
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
@@ -18,7 +22,7 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
         view.M41 = 0;
         view.M42 = 0;
         view.M43 = 0;
-        
+
         shader.Use();
         shader.SetUniform("uViewMatrix", view);
         shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
@@ -34,11 +38,11 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
                 break;
             }
         }
-        
+
         GL.DepthFunc(DepthFunction.Lequal);
         GL.DepthMask(false);
     }
-    
+
     protected override void PostRender(CameraComponent camera, ShaderProgram shader)
     {
         GL.DepthMask(true);
@@ -48,22 +52,22 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
     protected override void OnActorComponentAdded(CubeComponent component)
     {
         base.OnActorComponentAdded(component);
-        
+
         if (_component is not null)
             throw new InvalidOperationException("Only one SkyboxComponent can be added to the system at a time.");
-        
+
         _component = component;
     }
 
     protected override void OnActorComponentRemoved(CubeComponent component)
     {
         base.OnActorComponentRemoved(component);
-        
+
         if (_component == component)
         {
             _component = null;
         }
     }
-    
+
     private CubeComponent? _component;
 }

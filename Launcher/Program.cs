@@ -20,6 +20,7 @@ using Snooper;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
@@ -44,7 +45,7 @@ const string key = "0x8E95784F8ECC94113349AE1678C62EBB50ABBA8C10422E7C5D8399B13D
 var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\503_Valorant_11_11.usmap";
+const string mapping = "D:\\FModel\\.data\\VALORANT_12.01_zs.usmap";
 const string key = "0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6";
 var version = new VersionContainer(EGame.GAME_Valorant);
 #elif GTA
@@ -72,6 +73,11 @@ const string dir = "D:\\Games\\Clair Obscur - Expedition 33\\Sandfall\\Content\\
 const string mapping = "D:\\FModel\\.data\\5.4.4-61339+++streams+ProjectW-release-Sandfall.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_4);
+#elif CARS
+const string dir = "D:\\Games\\Cars_Overdrive\\Cars_Overdrive\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\5.4.4-35576357+++UE5+Release-5.4-Cars_Overdrive.usmap";
+const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
+var version = new VersionContainer(EGame.GAME_UE5_4);
 #endif
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
@@ -94,6 +100,10 @@ var grid = new Actor("Grid");
 grid.Components.Add(new GridComponent());
 scene.Children.Add(grid);
 
+var sun = new Actor("Sun Light");
+sun.Components.Add(new DirectionalLightComponent(MathF.PI, new Vector3(1.0f, 0.87f, 0.72f), new Transform(new Quaternion(new Vector3(0.5f, -0.5f, 0.0f), 1.0f)), "Directional Light"));
+scene.Children.Add(sun);
+
 scene.Children.Add(new SkyboxActor());
 
 switch (provider.ProjectName)
@@ -114,13 +124,14 @@ switch (provider.ProjectName)
         // Rook
         // Triad
 
-        // camera.CameraComponent.FarPlaneDistance = 1000f;
+        // camera.CameraComponent.FarClipPlane = 100f;
         // grid.Components.Clear();
         // grid.Components.Add(new OpaqueGridComponent());
         //
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0))));
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0))));
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/Sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new FTransform(new FVector(200, 100, 100))));
         // break;
 
         var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
@@ -153,6 +164,12 @@ switch (provider.ProjectName)
         var world = new WorldActor(provider.LoadPackageObject<UWorld>("Gameface/Content/ViceCity/Maps/VCWorld/VCWorld.VCWorld"), WorldActorType.LevelStreaming);
 
         scene.Children.Add(world);
+        break;
+    }
+    case "Cars_Overdrive":
+    {
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Cars_Overdrive/Content/LV_Demo.LV_Demo")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Cars_Overdrive/Content/LV_Final_World.LV_Final_World")));
         break;
     }
     case "CosmicShake":
@@ -230,11 +247,17 @@ switch (provider.ProjectName)
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_Terrain.Hera_Terrain")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/SaveTheWorld/Content/Maps/Test_Maps/QA/TestMap_AccessEnemies.TestMap_AccessEnemies"))); // TODO: GPU crash
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Maps/Frontend.Frontend")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/DelMarGame/Content/Environments/Desert/Levels/Level_DM_NeonCity_SmallBuilding_A.Level_DM_NeonCity_SmallBuilding_A")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Figment/Figment_S06_Map/Content/Athena_Terrain_S06.Athena_Terrain_S06")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/1x1/Artemis_1x1_BusStation_a.Artemis_1x1_BusStation_a")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/3x3/Artemis_3x3_Generic_House_a.Artemis_3x3_Generic_House_a")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/3x3/Artemis_3x3_Generic_House_c.Artemis_3x3_Generic_House_c")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/3x3/Artemis_3x3_IOBorderTower_PTY_02.Artemis_3x3_IOBorderTower_PTY_02")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/5x5/Artemis_SUB_5x5_House_m3.Artemis_SUB_5x5_House_m3")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/5x5/Artemis_Sub_5x5_Retail_a_opt.Artemis_Sub_5x5_Retail_a_opt")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/5x9/Artemis_5x9_SUB_CoastMotel_01_AB.Artemis_5x9_SUB_CoastMotel_01_AB")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/5x9/Artemis_SUB_5x9_IceCream_a.Artemis_SUB_5x9_IceCream_a")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Figment/Figment_S06_Map/Content/Athena_Terrain_S06.Athena_Terrain_S06")));
         break;
     }
 }

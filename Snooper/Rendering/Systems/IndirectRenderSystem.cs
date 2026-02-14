@@ -1,6 +1,8 @@
-﻿using CUE4Parse.UE4.Objects.Core.Misc;
+﻿using System.Collections.Concurrent;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Managers;
 using Snooper.Core.Systems;
@@ -16,6 +18,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
+    public override ActorSystemType SystemType => ActorSystemType.Rendering;
     public override uint Order => 19;
     protected override bool AllowDerivation => false;
 
@@ -37,7 +40,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.OnLoad();
 
         Resources.Generate();
-        Resources.Allocate(_counts);
+        Resources.Allocate(_counts, DisplayName);
 
         TextureManager.Load();
         Resources.SetVertexLayout(VertexLayout);
@@ -50,7 +53,17 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
         base.OnUpdate(delta);
 
-        Resources.FlushUpdates();
+        Resources.Flush();
+    }
+
+    protected override void PreOnUpdate()
+    {
+        base.PreOnUpdate();
+
+        if (ClearMaskBuffer)
+            Resources.ClearMaskBuffer();
+
+        Resources.BeginDeferMerge();
     }
 
     protected override void OnComponentUpdate(TComponent component, float delta)
@@ -58,13 +71,20 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         component.Update(Resources, TextureManager);
     }
 
-    protected override void OnRender(CameraComponent camera)
+    protected override void PostOnUpdate()
     {
-        Resources.Render();
+        base.PostOnUpdate();
+
+        Resources.EndDeferMerge();
+    }
+
+    protected override void OnRender(CameraComponent camera, CommandBufferType type)
+    {
+        Resources.Render(type);
     }
 
     private AllocationCounts _counts;
-    private readonly HashSet<FGuid> _guids = [];
+    private readonly ConcurrentDictionary<FGuid, byte> _guids = [];
 
     protected override void OnActorComponentEnqueued(TComponent component)
     {
@@ -74,7 +94,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         _counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
         _counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
         _counts.Materials += (uint)component.Materials.Length;
-        if (_guids.Add(component.Descriptor.Guid))
+        if (_guids.TryAdd(component.Descriptor.Guid, 0))
         {
             _counts.UniqueComponents++;
             foreach (var lod in component.Descriptor.Lods)
@@ -100,7 +120,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         _counts.Instances -= component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
         _counts.Draws -= (uint)component.Descriptor.Lods[0].Sections.Length;
         _counts.Materials -= (uint)component.Materials.Length;
-        if (_guids.Remove(component.Descriptor.Guid))
+        if (_guids.Remove(component.Descriptor.Guid, out _))
         {
             _counts.UniqueComponents--;
             foreach (var lod in component.Descriptor.Lods)

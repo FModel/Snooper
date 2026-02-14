@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using System.Numerics;
+using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components.Camera;
@@ -10,10 +11,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 {
     private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new();
     private readonly ShaderStorageBuffer<SectionOffsets> _sections = new();
-    private readonly ShaderProgram _compute = new EmbeddedShaderProgram(string.Empty, string.Empty)
-    {
-        Compute = "culling.comp"
-    };
+    private readonly ComputeShader _compute = new("culling.comp");
 
     public void Generate()
     {
@@ -48,25 +46,28 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _primitives.UpdateCustom(allocation, overrideLod, 32);
     }
 
-    public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
+    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
     {
-        var frustum = camera.GetWorldFrustumPlanes();
-        if (frustum.Length != 6)
-        {
-            throw new ArgumentException("Frustum must be defined by exactly six planes.");
-        }
+        var matrix = camera.ViewMatrix * camera.ProjectionMatrix;
+        var planes = new Plane[6];
+        planes[0] = new Plane(matrix.M14 + matrix.M11, matrix.M24 + matrix.M21, matrix.M34 + matrix.M31, matrix.M44 + matrix.M41); // Near
+        planes[1] = new Plane(matrix.M14 - matrix.M11, matrix.M24 - matrix.M21, matrix.M34 - matrix.M31, matrix.M44 - matrix.M41); // Far
+        planes[2] = new Plane(matrix.M14 + matrix.M12, matrix.M24 + matrix.M22, matrix.M34 + matrix.M32, matrix.M44 + matrix.M42); // Left
+        planes[3] = new Plane(matrix.M14 - matrix.M12, matrix.M24 - matrix.M22, matrix.M34 - matrix.M32, matrix.M44 - matrix.M42); // Right
+        planes[4] = new Plane(matrix.M14 + matrix.M13, matrix.M24 + matrix.M23, matrix.M34 + matrix.M33, matrix.M44 + matrix.M43); // Bottom
+        planes[5] = new Plane(matrix.M14 - matrix.M13, matrix.M24 - matrix.M23, matrix.M34 - matrix.M33, matrix.M44 - matrix.M43); // Top
 
         _compute.Use();
-        _compute.SetUniform("uFrustumPlanes", frustum);
+        _compute.SetUniform("uFrustumPlanes", planes);
         _compute.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
-        _compute.SetUniform("uCameraPosition", camera.LocalTransform.Position);
+        _compute.SetUniform("uCameraPosition", matrix.Translation);
 
         commands.Bind(0);
         instances.Bind(1);
         _primitives.Bind(2);
         _sections.Bind(3);
 
-        GL.DispatchCompute(commands.Count, 1, 1);
+        GL.DispatchCompute(commands.Capacity, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
     }
 

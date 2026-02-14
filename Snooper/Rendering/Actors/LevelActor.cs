@@ -1,7 +1,9 @@
-﻿using CUE4Parse.UE4.Assets.Exports;
+﻿using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+using CUE4Parse.UE4.Assets.Exports.Component.Lights;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
@@ -12,6 +14,8 @@ using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Audio;
+using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
@@ -20,6 +24,8 @@ namespace Snooper.Rendering.Actors;
 
 public class LevelActor : Actor
 {
+    private readonly FPackageIndex?[] _textureData;
+
     public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components, WorldActorType type) : base(actor)
     {
         var compoments = type.Includes(WorldActorType.Components);
@@ -31,6 +37,8 @@ public class LevelActor : Actor
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
             EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+
+            actor.TryGetAllValues(out _textureData, "TextureData");
         }
 
         if (landscape)
@@ -108,6 +116,7 @@ public class LevelActor : Actor
                     USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
                     UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
+                    UArrowComponent arrowComponent => new ArrowComponent(arrowComponent),
                     UBrushComponent brushComponent when brushComponent.GetBrush() is { } brush => new BrushComponent(brushComponent, brush),
                     UShapeComponent { Outer: not ALevelBounds } shape => shape switch // exclude level bounds because their scale looks weird and overall they provide little value
                     {
@@ -116,10 +125,31 @@ public class LevelActor : Actor
                         UCapsuleComponent capsuleComponent => new CapsuleComponent(capsuleComponent),
                         _ => new SpatialComponent(shape)
                     },
+                    ULightComponentBase light => light switch
+                    {
+                        USpotLightComponent spotLightComponent => new SpotLightComponent(spotLightComponent),
+                        UPointLightComponent pointLightComponent => new PointLightComponent(pointLightComponent),
+                        URectLightComponent rectLightComponent => new RectLightComponent(rectLightComponent),
+                        UDirectionalLightComponent directionalLightComponent => new DirectionalLightComponent(directionalLightComponent),
+                        _ => new SpatialComponent(light)
+                    },
                     UAudioComponent audioComponent => new AudioComponent(audioComponent),
                     UTextRenderComponent textComponent => new TextRenderComponent(textComponent),
+                    UCameraComponent cameraComponent => new CameraComponent(cameraComponent),
                     _ => new SpatialComponent(sceneComponent)
                 };
+
+                if (component is StaticMeshComponent staticMeshComponent)
+                {
+                    for (var i = 0; i < _textureData.Length; i++)
+                    {
+                        var dataPtr = _textureData[i];
+                        if (dataPtr == null || dataPtr.IsNull || !dataPtr.TryLoad<UBuildingTextureData>(out var textureData))
+                            continue;
+
+                        staticMeshComponent.RegisterTextureData(textureData, i);
+                    }
+                }
                 break;
             }
             case UActorComponent actorComponent:

@@ -36,21 +36,10 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
     public event Action<uint, uint>? OnHandleChanged;
 
-    public int Count
-    {
-        get;
-        private set
-        {
-            if (field == value) return;
-
-            field = value;
-            OnCountChanged(field);
-        }
-    }
-
     public int Stride { get; } = Marshal.SizeOf<T>();
+    public int Count { get; private set; }
+    public int Capacity { get; private set; }
 
-    private int _capacity;
     private bool _bInitialized;
     private readonly Dictionary<int, BufferAllocationMetadata> _allocations = new();
     private readonly SortedSet<FreeBlock> _freeBlocks = new(Comparer<FreeBlock>.Create((a, b) =>
@@ -60,6 +49,8 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     }));
     private int _nextOffset;
     private int _allocationIdCounter;
+    private int _deferMergeDepth;
+    private bool _mergeNeeded;
 
     public override void Generate()
     {
@@ -84,16 +75,16 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
     private void ResizeIfNeeded(int newSize, double factor = 1.5, bool copy = false)
     {
-        if (newSize <= _capacity) return;
+        if (newSize <= Capacity) return;
 
-        newSize = (int) Math.Max(_capacity * factor, newSize);
+        newSize = (int) Math.Max(Capacity * factor, newSize);
 
-        var oldCapacity = _capacity;
-        _capacity = newSize;
+        var oldCapacity = Capacity;
+        Capacity = newSize;
 
         if (_bInitialized)
         {
-            Log.Warning("Resizing buffer {0} ({1}) from {2} to {3} (initialized!!!!!!)", Handle, PName, oldCapacity, _capacity);
+            Log.Warning("Resizing buffer {0} ({1}) from {2} to {3} (initialized!!!!!!)", Handle, PName, oldCapacity, Capacity);
 
             _bInitialized = false;
             if (copy)
@@ -101,7 +92,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
                 var oldBuffer = Handle;
 
                 Generate();
-                Allocate(_capacity);
+                Allocate(Capacity);
 
                 GL.CopyNamedBufferSubData(oldBuffer, Handle, 0, 0, oldCapacity * Stride);
                 GL.DeleteBuffer(oldBuffer);
@@ -112,9 +103,15 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
             }
             else
             {
-                Allocate(_capacity);
+                Allocate(Capacity);
             }
         }
+    }
+
+    public void Reallocate(int size)
+    {
+        _bInitialized = false;
+        Allocate(size);
     }
 
     public void Allocate(uint size) => Allocate((int)size);
@@ -124,12 +121,12 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         if (_bInitialized)
             throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
 
-        if (size > _capacity)
+        if (size > Capacity)
             ResizeIfNeeded(size);
-        else if (size < _capacity)
-            _capacity = size;
+        else if (size < Capacity)
+            Capacity = size;
 
-        GL.NamedBufferData(Handle, _capacity * Stride, new T[_capacity], usageHint);
+        GL.NamedBufferData(Handle, Capacity * Stride, new T[Capacity], usageHint);
 
         // Count = 0;
         // _nextOffset = 0;
@@ -152,7 +149,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         }
 
         var (allocationId, startIndex) = AllocateSpace(length);
-        if (startIndex + length > _capacity)
+        if (startIndex + length > Capacity)
         {
             ResizeIfNeeded(startIndex + length, copy: true);
         }
@@ -219,7 +216,15 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, metadata.Length * Stride, new T[metadata.Length]);
 
         _freeBlocks.Add(new FreeBlock(metadata.StartIndex, metadata.Length));
-        MergeAdjacentFreeBlocks();
+
+        if (_deferMergeDepth == 0)
+        {
+            MergeAdjacentFreeBlocks();
+        }
+        else
+        {
+            _mergeNeeded = true;
+        }
 
         _allocations.Remove(allocationId);
         Count -= metadata.Length;
@@ -242,12 +247,62 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         }
     }
 
+    public readonly struct DeferMergeScope(Buffer<T> buffer) : IDisposable
+    {
+        public void Dispose() => buffer.EndDeferMerge();
+    }
+
+    public DeferMergeScope DeferMerge()
+    {
+        BeginDeferMerge();
+        return new(this);
+    }
+
+    private void BeginDeferMerge() => _deferMergeDepth++;
+    private void EndDeferMerge()
+    {
+        if (_deferMergeDepth > 0)
+        {
+            _deferMergeDepth--;
+            if (_deferMergeDepth == 0 && _mergeNeeded && _freeBlocks.Count > 1)
+            {
+                MergeAdjacentFreeBlocks();
+                _mergeNeeded = false;
+            }
+        }
+    }
+
+    public void CopyFrom(Buffer<T> sourceBuffer, BufferAllocation sourceAllocation, BufferAllocation targetAllocation)
+    {
+        if (sourceAllocation.Length != targetAllocation.Length)
+            throw new ArgumentException("Source and target allocations must have the same length.");
+
+        var sourceOffset = sourceAllocation.StartIndex * Stride;
+        var targetOffset = targetAllocation.StartIndex * Stride;
+        var size = sourceAllocation.Length * Stride;
+
+        GL.CopyNamedBufferSubData(sourceBuffer.Handle, Handle, sourceOffset, targetOffset, size);
+    }
+
+    public void Clear()
+    {
+        if (!_bInitialized)
+            throw new InvalidOperationException("Cannot clear a buffer that is not initialized.");
+
+        GL.NamedBufferData(Handle, Capacity * Stride, new T[Capacity], usageHint);
+        Count = 0;
+        _nextOffset = 0;
+        _allocationIdCounter = 0;
+        _allocations.Clear();
+        _freeBlocks.Clear();
+    }
+
     public override void Dispose()
     {
         GL.DeleteBuffer(Handle);
     }
 
-    public override long Allocated => _capacity * Stride;
+    public override long Allocated => Capacity * Stride;
     public override long Used => Count * Stride;
     public BufferStatistics GetBufferStatistics()
     {
@@ -255,9 +310,9 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         var freeBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
 
         return new BufferStatistics(
-            Capacity: _capacity,
+            Capacity: Capacity,
             UsedItems: Count,
-            FreeItems: _capacity - Count,
+            FreeItems: Capacity - Count,
             Allocations: allocations,
             FreeBlocks: freeBlocks,
             FragmentationPercentage: CalculateFragmentation()
@@ -305,9 +360,12 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
     private void MergeAdjacentFreeBlocks()
     {
-        var sortedBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
-        _freeBlocks.Clear();
+        if (_freeBlocks.Count == 0) return;
 
+        var sortedBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
+        Log.Debug("Merging {Count} free blocks in buffer {Handle} ({PName})", sortedBlocks.Count, Handle, PName);
+
+        _freeBlocks.Clear();
         for (var i = 0; i < sortedBlocks.Count; i++)
         {
             var current = sortedBlocks[i];
@@ -325,7 +383,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
     private double CalculateFragmentation()
     {
-        if (_capacity == 0 || _freeBlocks.Count == 0) return 0.0;
+        if (Capacity == 0 || _freeBlocks.Count == 0) return 0.0;
 
         var totalFreeSpace = _freeBlocks.Sum(fb => fb.Length);
         if (totalFreeSpace == 0) return 0.0;
@@ -336,6 +394,4 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         var largestFreeBlock = _freeBlocks.Max(fb => fb.Length);
         return (1.0 - (double)largestFreeBlock / totalFreeSpace) * 100.0;
     }
-
-    protected virtual void OnCountChanged(int newCount) { }
 }

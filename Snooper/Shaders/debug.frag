@@ -22,13 +22,13 @@ void main()
 {
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
     PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
-    
+
     vec3 color = vec3(0.75);
     if (materialData.IsReady)
     {
         color = materialData.LineColor;
     }
-    
+
     FragColor = vec4(color, 1.0);
 
     gPicking = cmd.PickingId;

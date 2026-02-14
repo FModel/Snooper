@@ -11,7 +11,7 @@ public class ResizableTexture2D(int width, int height,
 {
     public GetPName PName => GetPName.TextureBinding2D;
     public int PreviousHandle { get; private set; }
-    
+
     public void Bind()
     {
         PreviousHandle = GL.GetInteger(PName);
@@ -22,7 +22,7 @@ public class ResizableTexture2D(int width, int height,
     {
         GL.BindTexture(Target, PreviousHandle);
     }
-    
+
     public void Resize(int newWidth, int newHeight)
     {
         Width = newWidth;

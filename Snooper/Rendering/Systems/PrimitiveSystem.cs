@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components.Camera;
@@ -18,14 +19,33 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     public override uint Order => 20;
     protected override bool AllowDerivation => false;
     protected virtual bool IsCulled => true;
-    protected virtual ShaderProgram Shader { get; } = new EmbeddedShaderProgram("default");
+    protected virtual Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
+    {
+        [CommandBufferType.Transparent] = new EmbeddedShader("default")
+    };
 
     protected override void OnLoad()
     {
         base.OnLoad();
 
-        Shader.Generate();
-        Shader.Link();
+        if (Shaders.ContainsKey(CommandBufferType.Mask))
+            throw new InvalidOperationException("Mask shader is auto generated and cannot be set manually.");
+
+        if (!Shaders.TryGetValue(CommandBufferType.Transparent, out var mainShader) &&
+            !Shaders.TryGetValue(CommandBufferType.Opaque, out mainShader))
+        {
+            throw new InvalidOperationException("At least one shader (opaque or transparent) must be provided.");
+        }
+
+        var maskShader = (ShaderProgram) mainShader.Clone();
+        maskShader.Fragment = "empty.frag";
+        Shaders.Add(CommandBufferType.Mask, maskShader);
+
+        foreach (var shader in Shaders.Values)
+        {
+            shader.Generate();
+            shader.Link();
+        }
     }
 
     protected virtual void PreRender(CameraComponent camera, ShaderProgram shader)
@@ -35,15 +55,21 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
     }
 
-    protected sealed override void OnRender(CameraComponent camera)
+    protected sealed override void OnRender(CameraComponent camera, CommandBufferType type)
     {
+        if (!Shaders.TryGetValue(type, out var shader))
+        {
+            // Log.Warning("No shader found for command buffer type {Type} in {System}.", type, DisplayName);
+            return;
+        }
+
         // this trigger a shader use, do it before pre-rendering to avoid conflicts
         if (IsCulled)
-            Resources.Cull(camera);
+            Resources.Cull(camera, type);
 
-        PreRender(camera, Shader);
-        base.OnRender(camera);
-        PostRender(camera, Shader);
+        PreRender(camera, shader);
+        base.OnRender(camera, type);
+        PostRender(camera, shader);
     }
 
     protected virtual void PostRender(CameraComponent camera, ShaderProgram shader)
@@ -51,14 +77,35 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
 
     }
 
-    public override long Allocated => base.Allocated + Shader.Allocated;
-    public override long Used => base.Used + Shader.Used;
+    public override long Allocated
+    {
+        get
+        {
+            long total = base.Allocated;
+            foreach (var shader in Shaders.Values)
+                total += shader.Allocated;
+            return total;
+        }
+    }
+
+    public override long Used
+    {
+        get
+        {
+            long total = base.Used;
+            foreach (var shader in Shaders.Values)
+                total += shader.Used;
+            return total;
+        }
+    }
+
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         foreach (var detail in base.GetMemoryDetails())
             yield return detail;
 
-        yield return new MemoryDetail("Main Shader", Shader);
+        foreach (var (type, shader) in Shaders)
+            yield return new MemoryDetail($"{type} Shader", shader);
     }
 }
 

@@ -13,21 +13,7 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation c
     public readonly BufferAllocation CullingAllocation = cullingAllocation;
     public readonly uint BaseColor = baseColor;
 
-    public int OverrideLod
-    {
-        get;
-        internal set
-        {
-            if (field == value) return;
-
-            field = value;
-            IsDirty = true;
-        }
-    } = overrideLod;
-
-    public bool IsDirty { get; private set; }
-
-    public void MarkClean() => IsDirty = false;
+    public int OverrideLod { get; internal set; } = overrideLod;
 }
 
 public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where TVertex : unmanaged
@@ -121,7 +107,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         }
     }
 
-    public void Cull<TInstanceData>(CameraComponent camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands)
+    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands)
         where TInstanceData : unmanaged, IPerInstanceData => _culling.Cull(camera, instances, commands);
 
     public void Render(Action mdi)

@@ -2,6 +2,7 @@
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components;
@@ -14,7 +15,10 @@ public class GridSystem : PrimitiveSystem<GridComponent>, IControllable
 {
     public override uint Order => 2;
     protected override bool AllowDerivation => true;
-    protected override ShaderProgram Shader { get; } = new EmbeddedShaderProgram("grid");
+    protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
+    {
+        [CommandBufferType.Transparent] = new EmbeddedShader("grid")
+    };
 
     private Texture? _texture;
     private Vector3 _color = Vector3.One;
@@ -25,8 +29,8 @@ public class GridSystem : PrimitiveSystem<GridComponent>, IControllable
     {
         base.PreRender(camera, shader);
 
-        shader.SetUniform("uNear", camera.NearPlaneDistance);
-        shader.SetUniform("uFar", camera.FarPlaneDistance);
+        shader.SetUniform("uNear", camera.NearClipPlane);
+        shader.SetUniform("uFar", camera.FarClipPlane);
         shader.SetUniform("uIsOpaque", IsOpaque);
 
         _texture?.Bind(0);

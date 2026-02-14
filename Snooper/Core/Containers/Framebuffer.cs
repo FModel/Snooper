@@ -3,7 +3,7 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Core.Containers;
 
-public abstract class Framebuffer : HandledObject, IBind, IResizable, IMemoryDetailsProvider
+public abstract class Framebuffer<TTextureEnum> : HandledObject, IBind, IResizable, IMemoryDetailsProvider where TTextureEnum : struct, Enum
 {
     public abstract int Width { get; }
     public abstract int Height { get; }
@@ -29,9 +29,10 @@ public abstract class Framebuffer : HandledObject, IBind, IResizable, IMemoryDet
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, PreviousHandle);
     }
 
-    public abstract void Bind(uint unit);
+    public abstract void Bind(TTextureEnum texture, uint unit);
     public abstract void Resize(int newWidth, int newHeight);
     public abstract Texture[] GetTextures();
+
     public abstract IEnumerable<MemoryDetail> GetMemoryDetails();
 
     protected void CheckStatus()

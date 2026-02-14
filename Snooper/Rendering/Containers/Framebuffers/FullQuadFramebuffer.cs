@@ -6,16 +6,16 @@ using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class FullQuadFramebuffer(
+public abstract class FullQuadFramebuffer<TTextureEnum>(
     int originalWidth, int originalHeight,
     SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
-    PixelType type = PixelType.UnsignedByte) : Framebuffer
+    PixelType type = PixelType.UnsignedByte) : Framebuffer<TTextureEnum> where TTextureEnum : struct, Enum
 {
-    public override int Width => _color.Width;
-    public override int Height => _color.Height;
+    public sealed override int Width => _color.Width;
+    public sealed override int Height => _color.Height;
 
-    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, internalFormat, format, type);
+    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, internalFormat, format, type, "FullQuad - Final Color");
     private readonly VertexArray _vao = new();
     private readonly ArrayBuffer<Vector4> _vbo = new();
     private readonly ElementArrayBuffer<uint> _ebo = new();
@@ -23,7 +23,7 @@ public class FullQuadFramebuffer(
     public override void Generate()
     {
         _color.Generate();
-        _color.Resize(originalWidth, originalHeight);
+        _color.Resize(Width, Height);
         GL.TextureParameter(_color, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
         GL.TextureParameter(_color, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
 
@@ -55,9 +55,7 @@ public class FullQuadFramebuffer(
         GL.VertexArrayAttribBinding(_vao, 1, 0);
     }
 
-    public override void Bind(uint unit) => _color.Bind(unit);
-
-    public void Render(Action? beginDraw = null)
+    protected void Render(Action? beginDraw = null)
     {
         _vao.Bind();
         _ebo.Bind();

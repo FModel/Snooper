@@ -1,9 +1,8 @@
 ﻿using System.Numerics;
-using CUE4Parse.UE4.Assets.Exports.Texture;
+using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
-using Serilog;
 using Snooper.Extensions;
 using Snooper.UI;
 
@@ -22,7 +21,7 @@ public abstract class Texture(
 
     public int Width { get; protected set; } = width;
     public int Height { get; protected set; } = height;
-    public ITextureFormatInfo FormatInfo { get; protected set; } = new TextureFormatInfo(internalFormat, format, type);
+    protected ITextureFormatInfo FormatInfo { get; set; } = new TextureFormatInfo(internalFormat, format, type);
 
     public int[] SwizzleMask { get; internal set; } =
     [
@@ -43,16 +42,16 @@ public abstract class Texture(
         GL.BindTextureUnit(unit, Handle);
     }
 
-    protected void Resize<T8>(int newWidth, int newHeight, T8[] pixels, bool mipmapped = false) where T8 : unmanaged
-    {
-        if (Target != TextureTarget.Texture2D)
-            throw new NotSupportedException("Resizing the texture storage is only supported for Texture2D targets.");
+    protected abstract void SetStorage(int levels);
+    protected abstract void SetPixels<T8>(T8[] pixels) where T8 : unmanaged;
 
+    protected internal void Reset<T8>(int newWidth, int newHeight, T8[] pixels, bool mipmapped = false) where T8 : unmanaged
+    {
         Width = newWidth;
         Height = newHeight;
 
-        var mipCount = mipmapped ? (int)Math.Floor(Math.Log2(Math.Max(Width, Height))) + 1 : 1;
-        GL.TextureStorage2D(Handle, mipCount, FormatInfo.InternalFormat, Width, Height);
+        var mipCount = mipmapped ? (int) Math.Floor(Math.Log2(Math.Max(Width, Height))) + 1 : 1;
+        SetStorage(mipCount);
 
         if (mipCount > 1)
         {
@@ -61,22 +60,30 @@ public abstract class Texture(
         }
 
         if (pixels.Length == 0) return;
-        switch (FormatInfo)
-        {
-            case TextureFormatInfo info:
-                GL.TextureSubImage2D(Handle, 0, 0, 0, Width, Height, info.Format, info.Type, pixels);
-                break;
-            case CompressedTextureFormatInfo compressed:
-                GL.CompressedTextureSubImage2D(Handle, 0, 0, 0, Width, Height, (PixelFormat)compressed.InternalFormat, pixels.Length, pixels);
-                break;
-            default:
-                throw new NotSupportedException("Unknown texture format info.");
-        }
+        SetPixels(pixels);
     }
 
     public void Swizzle()
     {
         GL.TextureParameter(Handle, TextureParameterName.TextureSwizzleRgba, SwizzleMask);
+    }
+
+    public T GetPixel<T>(int x, int y) where T : unmanaged
+    {
+        var pixel = default(T);
+        var stride = Marshal.SizeOf<T>();
+        switch (FormatInfo)
+        {
+            case TextureFormatInfo info:
+                GL.GetTextureSubImage(Handle, 0, x, y, 0, 1, 1, 1, info.Format, info.Type, stride, ref pixel);
+                break;
+            case CompressedTextureFormatInfo:
+                GL.GetCompressedTextureSubImage(Handle, 0, x, y, 0, 1, 1, 1, stride, ref pixel);
+                break;
+            default:
+                throw new NotSupportedException("Unknown texture format info.");
+        }
+        return pixel;
     }
 
     public event Action? TextureReadyForBindless;

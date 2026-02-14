@@ -2,16 +2,16 @@
 
 namespace Snooper.Core.Hardware;
 
-public readonly struct ExtensionSupport
+public class ExtensionSupport
 {
     /// <summary>
     /// GL_ARB_bindless_texture
     /// </summary>
-    public readonly bool BindlessTextures;
-    
-    public readonly string[] Extensions;
+    public bool SupportBindlessTextures { get; private set; }
 
-    public ExtensionSupport()
+    public string[] Extensions { get; private set; } = [];
+
+    public void Load()
     {
         Extensions = new string[GL.GetInteger(GetPName.NumExtensions)];
         for (var i = 0; i < Extensions.Length; i++)
@@ -19,9 +19,9 @@ public readonly struct ExtensionSupport
             var ext = GL.GetString(StringNameIndexed.Extensions, i);
             if (ext == "GL_ARB_bindless_texture")
             {
-                BindlessTextures = true;
+                SupportBindlessTextures = true;
             }
-            
+
             Extensions[i] = ext;
         }
     }

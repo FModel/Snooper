@@ -1,5 +1,7 @@
 ﻿using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Material;
+using CUE4Parse.UE4.Assets.Exports.Texture;
+using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
@@ -35,13 +37,42 @@ public static class MaterialCache
         }
 
         Log.Debug("Cache miss for material {Path}, creating new data container", path);
-        var container = ParseMaterialParameters(material, layerCount, material.Owner.Provider.ProjectName.ToUpperInvariant());
+        var container = ParseMaterialParameters(material, layerCount, null);
         _cache.TryAdd(path, container);
 
         return container;
     }
 
-    private static MaterialDataContainer? ParseMaterialParameters(UUnrealMaterial material, uint layerCount, string projectName)
+    public static IMaterialDataContainer? CreateFromTextureData(UBuildingTextureData?[] textureDataLayers, ResolvedObject? baseMaterialObject, uint layerCount)
+    {
+        Log.Debug("Creating material from building texture data with {LayerCount} layers", textureDataLayers.Length);
+
+        UUnrealMaterial? baseMaterial = null;
+
+        foreach (var textureData in textureDataLayers)
+        {
+            if (textureData?.OverrideMaterial.TryLoad<UUnrealMaterial>(out var overrideMaterial) == true)
+            {
+                baseMaterial = overrideMaterial;
+                break;
+            }
+        }
+
+        if (baseMaterial == null && baseMaterialObject?.TryLoad(out var m) == true && m is UUnrealMaterial material)
+        {
+            baseMaterial = material;
+        }
+
+        if (baseMaterial == null)
+        {
+            Log.Warning("Building texture data has no override material and no base material");
+            return null;
+        }
+
+        return ParseMaterialParameters(baseMaterial, layerCount, textureDataLayers);
+    }
+
+    private static MaterialDataContainer? ParseMaterialParameters(UUnrealMaterial material, uint layerCount, UBuildingTextureData?[]? textureDataLayers)
     {
         var parameters = new CMaterialParams2();
         material.GetParams(parameters, EMaterialFormat.FirstLayer);
@@ -58,7 +89,10 @@ public static class MaterialCache
         var layers = new List<MaterialLayerData>();
         for (var layerIndex = 0; layerIndex < maxLayers && layerIndex < CMaterialParams2.Diffuse.Length; layerIndex++)
         {
-            if (!parameters.TryGetTexture2d(out var diffuse, CMaterialParams2.Diffuse[layerIndex]))
+            var layerTextureData = textureDataLayers != null && layerIndex < textureDataLayers.Length ? textureDataLayers[layerIndex] : null;
+
+            var diffuse = layerTextureData?.Diffuse.Load<UTexture>();
+            if (diffuse == null && !parameters.TryGetTexture2d(out diffuse, CMaterialParams2.Diffuse[layerIndex]))
             {
                 if (layerIndex == 0)
                 {
@@ -80,17 +114,27 @@ public static class MaterialCache
             }
 
             var diffuseColor = Vector3.One;
-            if (parameters.TryGetLinearColor(out var color, CMaterialParams2.DiffuseColors[layerIndex]))
+            if (layerTextureData?.TintColor is { } tintColor)
+            {
+                diffuseColor = new Vector3(tintColor.R / 255f, tintColor.G / 255f, tintColor.B / 255f);
+            }
+            else if (parameters.TryGetLinearColor(out var color, CMaterialParams2.DiffuseColors[layerIndex]))
             {
                 color = color.ToSRGB();
                 diffuseColor = new Vector3(color.R, color.G, color.B);
             }
 
-            // get normal map for this layer
-            parameters.TryGetTexture2d(out var normal, [..CMaterialParams2.Normals[layerIndex], CMaterialParams2.FallbackNormals]);
+            var normal = layerTextureData?.Normal.Load<UTexture>();
+            if (normal == null)
+            {
+                parameters.TryGetTexture2d(out normal, [..CMaterialParams2.Normals[layerIndex], CMaterialParams2.FallbackNormals]);
+            }
 
-            // get specular map for this layer
-            parameters.TryGetTexture2d(out var specular, [..CMaterialParams2.SpecularMasks[layerIndex], CMaterialParams2.FallbackSpecularMasks]);
+            var specular = layerTextureData?.Specular.Load<UTexture>();
+            if (specular == null)
+            {
+                parameters.TryGetTexture2d(out specular, [..CMaterialParams2.SpecularMasks[layerIndex], CMaterialParams2.FallbackSpecularMasks]);
+            }
 
             var roughness = Vector2.UnitY;
             if (parameters.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
@@ -104,24 +148,24 @@ public static class MaterialCache
                 specularTex = new Texture2D(specular);
                 if ((parameters.TryGetSwitch(out var srg, "SwizzleRoughnessToGreen") && srg) || parameters.Textures.ContainsKey("SRM"))
                 {
-                    specularTex.SwizzleMask =
-                    [
-                        (int) PixelFormat.Red,
-                        (int) PixelFormat.Blue,
-                        (int) PixelFormat.Green,
-                        (int) PixelFormat.Alpha
+                    specularTex.SwizzleMask = [
+                        (int)PixelFormat.Red,
+                        (int)PixelFormat.Blue,
+                        (int)PixelFormat.Green,
+                        (int)PixelFormat.Alpha
                     ];
                 }
                 else
                 {
-                    specularTex.SwizzlePerGame(projectName);
+                    specularTex.SwizzlePerGame(material.Owner.Provider.ProjectName.ToUpperInvariant());
                 }
             }
 
             layers.Add(new MaterialLayerData(new Texture2D(diffuse), normal != null ? new Texture2D(normal) : null, specularTex, roughness, diffuseColor));
         }
 
-        return layers.Count == 0 ? null : new MaterialDataContainer(material.Name, layers.ToArray(), parameters.BlendMode is EBlendMode.BLEND_Translucent or EBlendMode.BLEND_Masked);
+        var materialName = textureDataLayers != null ? $"BuildingTexture_{material.Name}" : material.Name;
+        return layers.Count == 0 ? null : new MaterialDataContainer(materialName, layers.ToArray(), parameters.BlendMode is EBlendMode.BLEND_Translucent or EBlendMode.BLEND_Masked);
     }
 
     public static void ClearAndDispose()

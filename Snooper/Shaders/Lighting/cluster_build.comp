@@ -1,0 +1,83 @@
+﻿layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct ClusterAABB
+{
+    vec3 minPoint;
+    vec3 maxPoint;
+};
+
+layout(std430, binding = 0) writeonly buffer ClusterAABBs
+{
+    ClusterAABB clusters[];
+};
+
+uniform int uScreenWidth;
+uniform int uScreenHeight;
+uniform int uGridDimX;
+uniform int uGridDimY;
+uniform int uGridDimZ;
+uniform float uZNear;
+uniform float uZFar;
+uniform mat4 uInverseProjectionMatrix;
+
+void main()
+{
+    uint clusterIndex = gl_GlobalInvocationID.x;
+    uint totalClusters = uGridDimX * uGridDimY * uGridDimZ;
+
+    if (clusterIndex >= totalClusters)
+        return;
+
+    // Convert linear index to 3D cluster coordinates
+    uint clusterZ = clusterIndex / (uGridDimX * uGridDimY);
+    uint temp = clusterIndex % (uGridDimX * uGridDimY);
+    uint clusterY = temp / uGridDimX;
+    uint clusterX = temp % uGridDimX;
+
+    // Calculate tile bounds in NDC space directly
+    const float tileSize = 32.0;
+    vec2 minPixel = vec2(clusterX, clusterY) * tileSize;
+    vec2 maxPixel = vec2(clusterX + 1, clusterY + 1) * tileSize;
+
+    vec2 minNDC = (minPixel / vec2(uScreenWidth, uScreenHeight)) * 2.0 - 1.0;
+    vec2 maxNDC = (maxPixel / vec2(uScreenWidth, uScreenHeight)) * 2.0 - 1.0;
+
+    // Exponential depth slicing for better near-camera precision
+    float depthRatio = uZFar / uZNear;
+    float nearDepth = uZNear * pow(depthRatio, float(clusterZ) / float(uGridDimZ));
+    float farDepth = uZNear * pow(depthRatio, float(clusterZ + 1) / float(uGridDimZ));
+
+    // View space Z is negative in OpenGL
+    float nearZ = -nearDepth;
+    float farZ = -farDepth;
+
+    // Unproject the 4 screen corners to view space
+    vec4 corners[4];
+    corners[0] = uInverseProjectionMatrix * vec4(minNDC.x, minNDC.y, 0.0, 1.0);
+    corners[1] = uInverseProjectionMatrix * vec4(maxNDC.x, minNDC.y, 0.0, 1.0);
+    corners[2] = uInverseProjectionMatrix * vec4(minNDC.x, maxNDC.y, 0.0, 1.0);
+    corners[3] = uInverseProjectionMatrix * vec4(maxNDC.x, maxNDC.y, 0.0, 1.0);
+
+    // Perspective divide and scale to near/far depths
+    vec3 minPoint = vec3(1e10);
+    vec3 maxPoint = vec3(-1e10);
+
+    for (int i = 0; i < 4; i++)
+    {
+        vec3 dir = corners[i].xyz / corners[i].w;
+        float scale = dir.z;
+
+        // Scale to near plane
+        vec3 nearCorner = dir * (nearZ / scale);
+        minPoint = min(minPoint, nearCorner);
+        maxPoint = max(maxPoint, nearCorner);
+
+        // Scale to far plane
+        vec3 farCorner = dir * (farZ / scale);
+        minPoint = min(minPoint, farCorner);
+        maxPoint = max(maxPoint, farCorner);
+    }
+
+    clusters[clusterIndex].minPoint = minPoint;
+    clusters[clusterIndex].maxPoint = maxPoint;
+}

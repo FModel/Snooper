@@ -1,5 +1,6 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
+using Newtonsoft.Json;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
@@ -17,9 +18,36 @@ public abstract partial class ActorComponent
     private readonly string? _exportType;
     private readonly string? _internalType;
 
-    public bool IsSelected { get; internal set; }
+#if DEBUG
+    private readonly string[]? _jsonProperties;
+#endif
 
-    public bool IsOutlined => IsSelected || Actor is { IsOutlined: true };
+    public string? ObjectPath { get; protected init; }
+
+    public bool IsSelected
+    {
+        get;
+        internal set
+        {
+            if (field == value) return;
+
+            field = value;
+            UpdateIsOutlined();
+        }
+    }
+
+    public bool IsOutlined
+    {
+        get;
+        private set
+        {
+            if (field == value) return;
+
+            field = value;
+            MarkDirty(DirtyFlags.Outline);
+        }
+    }
+
     internal virtual string Icon => "component";
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;
@@ -35,7 +63,20 @@ public abstract partial class ActorComponent
 
     protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType, component.GetType().Name)
     {
+        ObjectPath = component.GetPathName();
 
+#if DEBUG
+        var jsonProperties = new List<string> { JsonConvert.SerializeObject(component, Formatting.Indented) };
+
+        var templatePtr = component.Template;
+        while (templatePtr?.TryLoad(out var template) == true)
+        {
+            jsonProperties.Add(JsonConvert.SerializeObject(template, Formatting.Indented));
+            templatePtr = template.Template;
+        }
+
+        _jsonProperties = jsonProperties.ToArray();
+#endif
     }
 
     public Actor? Actor
@@ -75,11 +116,13 @@ public abstract partial class ActorComponent
     {
         actor.OnAttachedToScene += OnActorAttachedToScene;
         actor.OnDetachedFromScene += OnActorDetachedFromScene;
+        actor.OnOutlinedChanged += UpdateIsOutlined;
     }
     protected virtual void OnActorDetached(Actor actor)
     {
         actor.OnAttachedToScene -= OnActorAttachedToScene;
         actor.OnDetachedFromScene -= OnActorDetachedFromScene;
+        actor.OnOutlinedChanged -= UpdateIsOutlined;
     }
 
     protected virtual void OnActorAttachedToScene(IGameSystem scene)
@@ -89,6 +132,11 @@ public abstract partial class ActorComponent
     protected virtual void OnActorDetachedFromScene(IGameSystem scene)
     {
 
+    }
+
+    private void UpdateIsOutlined()
+    {
+        IsOutlined = IsSelected || Actor is { IsOutlined: true };
     }
 
     internal void DrawInterface()
@@ -108,11 +156,40 @@ public abstract partial class ActorComponent
             ImGui.Text($"Internal Type: {_internalType}");
             condition = true;
         }
+        if (ObjectPath != null)
+        {
+            if (ImGui.SmallButton("Copy Path: "))
+                ImGui.SetClipboardText(ObjectPath);
+
+            ImGui.SameLine();
+            ImGui.TextWrapped(ObjectPath);
+            condition = true;
+        }
         if (condition)
         {
             ImGui.Spacing();
         }
 
+#if DEBUG
+        if (_jsonProperties != null)
+        {
+            if (ImGui.CollapsingHeader("JSON Properties"))
+            {
+                var avail = ImGui.GetContentRegionAvail();
+                for (int i = 0; i < _jsonProperties.Length; i++)
+                {
+                    var hasNode = i > 0 && ImGui.TreeNode($"Template Level {i}");
+                    if (i == 0 || hasNode)
+                    {
+                        if (ImGui.Button($"Copy JSON##jsonProperties{i}")) ImGui.SetClipboardText(_jsonProperties[i]);
+                        var height = MathF.Min(300, ImGui.CalcTextSize(_jsonProperties[i]).Y);
+                        ImGui.InputTextMultiline($"##jsonProperties{i}", ref _jsonProperties[i], ushort.MaxValue, avail with { Y = height }, ImGuiInputTextFlags.ReadOnly);
+                    }
+                    if (hasNode) ImGui.TreePop();
+                }
+            }
+        }
+#endif
         controllable.DrawControls();
 
         ImGui.PopID();
@@ -120,4 +197,12 @@ public abstract partial class ActorComponent
 
     [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]
     private partial System.Text.RegularExpressions.Regex UpperCaseToSpace();
+
+    public static bool operator ==(ActorComponent? left, ActorComponent? right)
+    {
+        if (left is null && right is null) return true;
+        if (left is null || right is null) return false;
+        return left.Id == right.Id;
+    }
+    public static bool operator !=(ActorComponent? left, ActorComponent? right) => !(left == right);
 }

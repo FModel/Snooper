@@ -35,7 +35,7 @@ public partial class SnooperWindow : GameWindow
             APIVersion = new Version(4, 6),
             StartVisible = startVisible,
             StartFocused = startVisible,
-            Title = "Snooper"
+            Title = $"Snooper ({Settings.APP_SHORT_COMMIT_ID} - {Settings.APP_BUILD_DATE:MMM d, yyyy})"
         })
     {
         ActorManager.RegisterSystemFactory<SkyboxSystem>();
@@ -44,18 +44,18 @@ public partial class SnooperWindow : GameWindow
         ActorManager.RegisterSystemFactory<CameraSystem>();
         ActorManager.RegisterSystemFactory<PrimitiveSystem>();
         ActorManager.RegisterSystemFactory<LandscapeSystem>();
-        ActorManager.RegisterSystemFactory<RenderSystem>();
-        ActorManager.RegisterSystemFactory<DeferredRenderSystem>();
+        ActorManager.RegisterSystemFactory<MeshRenderSystem>();
         ActorManager.RegisterSystemFactory<SplineRenderSystem>();
         ActorManager.RegisterSystemFactory<BillboardSystem>();
         ActorManager.RegisterSystemFactory<TextRenderSystem>();
         ActorManager.RegisterSystemFactory<AudioSystem>();
+        ActorManager.RegisterSystemFactory<ClusteredLightSystem>();
         ActorManager.RegisterSystemFactory<DebugSystem>();
 
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
 
         // TODO: move this into its own Editor project
-        _interface = new LevelSystem(this);
+        _interface = new EditorSystem(this);
 
         Closing += _ =>
         {
@@ -121,6 +121,7 @@ public partial class SnooperWindow : GameWindow
 #endif
 
         _interface.Load();
+        OnFramebufferResize(new FramebufferResizeEventArgs(ClientSize)); // we initialize a bunch of stuff to 1x1 by default until we know the true size of the framebuffer
 
         CenterWindow();
         IsVisible = true;
@@ -157,7 +158,6 @@ public partial class SnooperWindow : GameWindow
     {
         base.OnFramebufferResize(e);
 
-        GL.Viewport(0, 0, e.Width, e.Height);
         _interface.Resize(e.Width, e.Height);
     }
 }

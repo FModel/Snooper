@@ -2,7 +2,6 @@
 using Serilog;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 using System.Collections.Concurrent;
 using Snooper.Core.Systems;
@@ -84,7 +83,6 @@ public class TextureManager : IGameSystem, IMemoryDetailsProvider
 
     public void Load() => _isLoaded = true;
     public void Update(float delta) => ProcessTextureQueue(1);
-    public void Render(CameraComponent camera) => throw new NotImplementedException();
 
     private void ProcessTextureQueue(int limit)
     {

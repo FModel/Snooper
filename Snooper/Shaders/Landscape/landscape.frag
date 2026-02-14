@@ -146,7 +146,7 @@ vec3 getColorFromHeight(float height)
 void main()
 {
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    
+
     vec3 color = vec3(1.0);
     if (uColorMode == 0)
     {
@@ -156,10 +156,10 @@ void main()
     {
         color = getColorFromWeightmap(uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex], uWeightMappingBuffer[gDrawID]);
     }
-    
+
     gPosition = fs_in.vViewPos;
     gNormal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
-    gColor.rgb = pow(color, vec3(2.2));
+    gColor.rgb = pow(color, vec3(3.2));
     gColor.a = 1.0; // free space
     gSpecular.rgb = vec3(0.0, 0.0, 0.0);
     gSpecular.a = 1.0; // free space

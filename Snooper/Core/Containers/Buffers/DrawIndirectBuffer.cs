@@ -2,23 +2,13 @@
 
 namespace Snooper.Core.Containers.Buffers;
 
-public sealed class DrawIndirectBuffer(BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<DrawElementsIndirectCommand>(BufferTarget.DrawIndirectBuffer, usageHint)
+public sealed class DrawIndirectBuffer(BufferUsageHint usageHint = BufferUsageHint.DynamicDraw) : Buffer<DrawElementsIndirectCommand>(BufferTarget.DrawIndirectBuffer, usageHint)
 {
     public override GetPName PName => GetPName.DrawIndirectBufferBinding;
-
-    public int MaxCountHeld { get; private set; }
 
     public void Bind(uint index)
     {
         GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, Handle);
-    }
-
-    protected override void OnCountChanged(int newCount)
-    {
-        if (newCount > MaxCountHeld)
-        {
-            MaxCountHeld = newCount;
-        }
     }
 }
 

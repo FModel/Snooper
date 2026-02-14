@@ -38,7 +38,7 @@ void CommonMeshMain()
 {
     int id = gl_BaseInstance + gl_InstanceID;
     mat4 matrix = uInstanceDataBuffer[id].Matrix;
-    
+
 #ifdef SPLINE_VERTEX
     vec3 uePos = aPos.xzy;
     SplineMeshParams params = uSplineParameters[gl_DrawID];
@@ -56,11 +56,15 @@ void CommonMeshMain()
 
     mat3 nMatrix = transpose(inverse(mat3(matrix)));
     vec3 T = normalize(vec3(vec4(nMatrix * aTangent, 0.0)));
+    if (determinant(nMatrix) < 0.0) // flipped normals
+    {
+        T = -T;
+    }
     vec3 N = normalize(vec3(vec4(nMatrix * aNormal, 0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gl_DrawID];
-    
+
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
     vTexLayer = aTexLayer;

@@ -29,18 +29,18 @@ void main()
     vec4 color = vec4(fs_in.vDebugColor, 1.0);
     vec3 spec = vec3(1.0);
     vec3 normal = vec3(0.0, 0.0, 1.0);
-    
+
     if (uDebugColorMode == 0 && materialData.IsReady)
     {
         // Sample material for the current layer
         LayerData layerData = SampleLayer(materialData, vTexLayer, fs_in.vTexCoords);
-        
+
         // Handle translucency
         if (IsTranslucent(materialData) && layerData.diffuse.a < 0.1)
         {
             discard;
         }
-        
+
         color = layerData.diffuse;
         spec = layerData.specular;
         normal = layerData.normal;
