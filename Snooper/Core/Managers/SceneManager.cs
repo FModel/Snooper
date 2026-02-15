@@ -50,6 +50,12 @@ public class SceneManager : ActorManager
     public override void Update(float delta)
     {
         DequeueViewports(1);
+
+        if (RootActor != null && MainViewport?.Camera is { } camera && camera.IsDirty(DirtyFlags.Transform))
+        {
+            UpdatePartitionActorsRecursive(RootActor, camera.LocalTransform.Position);
+        }
+
         base.Update(delta);
     }
 
@@ -96,6 +102,18 @@ public class SceneManager : ActorManager
             }
 
             return null;
+        }
+    }
+
+    private void UpdatePartitionActorsRecursive(Actor actor, Vector3 cameraPosition)
+    {
+        if (actor is PartitionActor partition)
+        {
+            partition.SetVisibilityByDistance(cameraPosition);
+        }
+        else foreach (var child in actor.Children)
+        {
+            UpdatePartitionActorsRecursive(child, cameraPosition);
         }
     }
 

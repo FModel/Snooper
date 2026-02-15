@@ -78,6 +78,11 @@ const string dir = "D:\\Games\\Cars_Overdrive\\Cars_Overdrive\\Content\\Paks";
 const string mapping = "D:\\FModel\\.data\\5.4.4-35576357+++UE5+Release-5.4-Cars_Overdrive.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_4);
+#elif R9W
+const string dir = "D:\\CSGO\\steamapps\\common\\Race of the Nine Worlds Demo\\WindowsNoEditor\\r9w\\Content\\Paks";
+const string mapping = "";
+const string key = "0x34FC366196D4535B12D4B0A67072B5F973CDA66D5BBAD30D26C39503544A6948";
+var version = new VersionContainer(EGame.GAME_UE4_27);
 #endif
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
@@ -170,6 +175,13 @@ switch (provider.ProjectName)
     {
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Cars_Overdrive/Content/LV_Demo.LV_Demo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Cars_Overdrive/Content/LV_Final_World.LV_Final_World")));
+        break;
+    }
+    case "r9w":
+    {
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("r9w/Content/Maps/Menu/00_MainMenu.00_MainMenu")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("r9w/Content/Maps/Rinky_World/Map_list/01_Prologue_sprint_pursuit.01_Prologue_sprint_pursuit")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("r9w/Content/Maps/Rinky_World/Map_list/Race_list/Circle_Rinky_Planet_01.Circle_Rinky_Planet_01")));
         break;
     }
     case "CosmicShake":

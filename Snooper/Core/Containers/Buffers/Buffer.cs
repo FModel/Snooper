@@ -163,6 +163,32 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         return new BufferAllocation(allocationId, startIndex, length);
     }
 
+    /// <summary>
+    /// TODO: we should never have to call this
+    /// find another way to upsert at a specific index
+    /// the index must be provided by _allocations metadata, not by the caller
+    /// </summary>
+    internal void Upsert(int index, T data) => UpsertInternal(index, [data]);
+    internal void UpsertRange(int index, T[] data) => UpsertInternal(index, data);
+    private void UpsertInternal(int index, T[] data)
+    {
+        var length = data.Length;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        if (!_bInitialized)
+        {
+            Allocate(index + length);
+        }
+
+        if (index + length > Capacity)
+        {
+            ResizeIfNeeded(index + length, copy: true);
+        }
+
+        GL.NamedBufferSubData(Handle, index * Stride, length * Stride, data);
+    }
+
     public void Update(BufferAllocation allocation, T data) => UpdateInternal(allocation.AllocationId, [data]);
     public void Update(BufferAllocation allocation, T[] data) => UpdateInternal(allocation.AllocationId, data);
     public void UpdateBatch(BufferAllocation startAllocation, T[] data) => UpdateInternal(startAllocation.AllocationId, data, true);

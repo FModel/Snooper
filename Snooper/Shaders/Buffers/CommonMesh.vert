@@ -38,10 +38,11 @@ void CommonMeshMain()
 {
     int id = gl_BaseInstance + gl_InstanceID;
     mat4 matrix = uInstanceDataBuffer[id].Matrix;
+    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gl_DrawID];
 
 #ifdef SPLINE_VERTEX
     vec3 uePos = aPos.xzy;
-    SplineMeshParams params = uSplineParameters[gl_DrawID];
+    SplineMeshParams params = uSplineParameters[uSplineIdToParameterIndex[cmd.PickingId]];
     float distanceAlong = GetAxisValueRef(params.ForwardAxis, uePos);
     vec3 computed = ComputeRatioAlongSpline(params, distanceAlong);
     mat4 sliceTransform = CalcSliceTransformAtSplineOffset(params, computed);
@@ -62,8 +63,6 @@ void CommonMeshMain()
     }
     vec3 N = normalize(vec3(vec4(nMatrix * aNormal, 0.0)));
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
-
-    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gl_DrawID];
 
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;

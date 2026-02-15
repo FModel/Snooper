@@ -163,13 +163,13 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         base.OnComponentUpdate(component, delta);
 
         var data = component.GetLightData();
-        if (component._lightDataAllocation is null)
+        if (component._allocation is null)
         {
-            component._lightDataAllocation = _lightDataBuffer.Add(data);
+            component._allocation = _lightDataBuffer.Add(data);
         }
         else
         {
-            _lightDataBuffer.Update(component._lightDataAllocation.Value, data);
+            _lightDataBuffer.Update(component._allocation.Value, data);
         }
     }
 
@@ -187,7 +187,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     {
         base.OnActorComponentRemoved(component);
 
-        if (component._lightDataAllocation is { } allocation)
+        if (component._allocation is { } allocation)
         {
             _lightDataBuffer.Remove(allocation);
         }

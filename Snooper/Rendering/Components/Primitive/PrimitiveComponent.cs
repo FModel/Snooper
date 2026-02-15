@@ -67,7 +67,14 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        IsVisible = component.GetOrDefault("bVisible", IsVisible);
+        if (component.TryGetValue(out bool visible, "bVisible"))
+        {
+            IsVisible = visible;
+        }
+        else if (component.TryGetValue(out bool hidden, "bHiddenInGame"))
+        {
+            IsVisible = !hidden;
+        }
     }
 
     public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)

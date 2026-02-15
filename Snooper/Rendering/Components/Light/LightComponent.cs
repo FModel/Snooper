@@ -19,7 +19,7 @@ public abstract class LightComponent : SpatialComponent
     public readonly Vector3 Color;
     public readonly bool CastShadows;
 
-    internal BufferAllocation? _lightDataAllocation;
+    internal BufferAllocation? _allocation;
 
     public LightComponent(ULightComponent component) : base(component)
     {
