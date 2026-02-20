@@ -26,25 +26,14 @@ public class LevelActor : Actor
 {
     private readonly FPackageIndex?[] _textureData;
 
-    public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components, WorldActorType type) : base(actor)
+    public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components) : base(actor)
     {
-        var compoments = type.Includes(WorldActorType.Components);
-        var landscape = type.Includes(WorldActorType.Landscape);
-        var additional = type.Includes(WorldActorType.AdditionalWorlds);
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
 
-        if (compoments)
-        {
-            EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
-            EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
-            EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
-
-            actor.TryGetAllValues(out _textureData, "TextureData");
-        }
-
-        if (landscape)
-        {
-            EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
-        }
+        actor.TryGetAllValues(out _textureData, "TextureData");
 
         // ProcessRootComponent
         foreach (var ptr in _ptrs)
@@ -54,12 +43,12 @@ public class LevelActor : Actor
             break;
         }
 
-        if (additional && actor.TryGetValue(out FSoftObjectPath[] additionalWorlds, "AdditionalWorlds"))
+        if (actor.TryGetValue(out FSoftObjectPath[] additionalWorlds, "AdditionalWorlds"))
         {
             foreach (var additionalWorld in additionalWorlds)
             {
                 if (!additionalWorld.TryLoad<UWorld>(out var w)) continue;
-                Children.Add(new WorldActor(w, WorldActorType.Components));
+                Children.Add(new WorldActor(w));
             }
         }
     }

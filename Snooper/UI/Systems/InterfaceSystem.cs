@@ -279,4 +279,13 @@ public abstract class InterfaceSystem : SceneManager
         //     yield return new MemoryDetail(icon.Name, icon);
         // }
     }
+
+    public override void Dispose()
+    {
+        _controller.Dispose();
+        foreach (var icon in Icons.Values)
+            icon.Dispose();
+
+        base.Dispose();
+    }
 }

@@ -83,6 +83,11 @@ const string dir = "D:\\CSGO\\steamapps\\common\\Race of the Nine Worlds Demo\\W
 const string mapping = "";
 const string key = "0x34FC366196D4535B12D4B0A67072B5F973CDA66D5BBAD30D26C39503544A6948";
 var version = new VersionContainer(EGame.GAME_UE4_27);
+#elif MR
+const string dir = "D:\\CSGO\\steamapps\\common\\MarvelRivals\\MarvelGame\\Marvel\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\5.3.2-1967306+++depot_marvel+S2_2_release-Marvel+PY.usmap";
+const string key = "0x0C263D8C22DCB085894899C3A3796383E9BF9DE0CBFB08C9BF2DEF2E84F29D74";
+var version = new VersionContainer(EGame.GAME_MarvelRivals);
 #endif
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
@@ -166,7 +171,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("Gameface/Content/ViceCity/Characters/Peds/SK_hmotr.SK_hmotr")));
         // break;
 
-        var world = new WorldActor(provider.LoadPackageObject<UWorld>("Gameface/Content/ViceCity/Maps/VCWorld/VCWorld.VCWorld"), WorldActorType.LevelStreaming);
+        var world = new WorldActor(provider.LoadPackageObject<UWorld>("Gameface/Content/ViceCity/Maps/VCWorld/VCWorld.VCWorld"));
 
         scene.Children.Add(world);
         break;
@@ -175,6 +180,16 @@ switch (provider.ProjectName)
     {
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Cars_Overdrive/Content/LV_Demo.LV_Demo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Cars_Overdrive/Content/LV_Final_World.LV_Final_World")));
+        break;
+    }
+    case "Marvel":
+    {
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoCQ01/TokyoCQ01.TokyoCQ01")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoE01/TokyoE01_Art.TokyoE01_Art")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/NewYorkE01/NewYorkE01_Art.NewYorkE01_Art")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/AsgardE01/AsgardE01_Art.AsgardE01_Art")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/Arakko/ArakkoE01_Art.ArakkoE01_Art")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/Lobby/Lobby_SevenDayActiveEvent_Bg1.Lobby_SevenDayActiveEvent_Bg1")));
         break;
     }
     case "r9w":

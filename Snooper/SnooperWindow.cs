@@ -57,11 +57,42 @@ public partial class SnooperWindow : GameWindow
         // TODO: move this into its own Editor project
         _interface = new EditorSystem(this);
 
+        // runs before the game loop starts
+        Load += () =>
+        {
+            GL.Enable(EnableCap.DepthTest);
+            GL.DepthFunc(DepthFunction.Less);
+
+            GL.Enable(EnableCap.Blend);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+            GL.PatchParameter(PatchParameterInt.PatchVertices, 4);
+
+            // GL.Enable(EnableCap.VertexProgramPointSize);
+            // GL.StencilOp(StencilOp.Keep, StencilOp.Replace, StencilOp.Replace);
+#if DEBUG
+            GL.DebugMessageCallback(_debugMessageDelegate, IntPtr.Zero);
+            GL.Enable(EnableCap.DebugOutput);
+            GL.Enable(EnableCap.DebugOutputSynchronous);
+#endif
+
+            _interface.Load();
+
+            CenterWindow();
+            IsVisible = true;
+        };
+
+        // causes the game loop to stop
         Closing += _ =>
         {
-            _interface.Dispose();
             MeshCache.ClearAndDispose();
             MaterialCache.ClearAndDispose();
+        };
+
+        // runs after the game loop has stopped
+        Unload += () =>
+        {
+            _interface.Dispose();
             Log.CloseAndFlush();
         };
     }
@@ -104,27 +135,7 @@ public partial class SnooperWindow : GameWindow
     {
         base.OnLoad();
 
-        GL.Enable(EnableCap.DepthTest);
-        GL.DepthFunc(DepthFunction.Less);
-
-        GL.Enable(EnableCap.Blend);
-        GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-
-        GL.PatchParameter(PatchParameterInt.PatchVertices, 4);
-
-        // GL.Enable(EnableCap.VertexProgramPointSize);
-        // GL.StencilOp(StencilOp.Keep, StencilOp.Replace, StencilOp.Replace);
-#if DEBUG
-        GL.DebugMessageCallback(_debugMessageDelegate, IntPtr.Zero);
-        GL.Enable(EnableCap.DebugOutput);
-        GL.Enable(EnableCap.DebugOutputSynchronous);
-#endif
-
-        _interface.Load();
         OnFramebufferResize(new FramebufferResizeEventArgs(ClientSize)); // we initialize a bunch of stuff to 1x1 by default until we know the true size of the framebuffer
-
-        CenterWindow();
-        IsVisible = true;
     }
 
     protected override void OnUpdateFrame(FrameEventArgs args)

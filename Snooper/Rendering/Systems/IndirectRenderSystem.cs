@@ -144,9 +144,10 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
     public override void Dispose()
     {
-        base.Dispose();
         Resources.Dispose();
         TextureManager.Dispose();
+
+        base.Dispose();
     }
 
     public virtual long Allocated

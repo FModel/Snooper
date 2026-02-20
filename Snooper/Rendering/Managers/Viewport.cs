@@ -25,7 +25,9 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
             size.Y -= ImGui.GetScrollY();
 
             Camera.Resize((int) size.X, (int) size.Y);
-            ImGui.Image(pipeline.GetFinalTexture().GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
+
+            var texture = pipeline.GetFinalTexture();
+            ImGui.Image(texture.GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
             var itemMin = ImGui.GetItemRectMin();
 
             if (ImGui.IsItemHovered())
@@ -51,7 +53,7 @@ public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline
             drawList.AddText(
                 new Vector2(itemMin.X + margin, itemMin.Y + size.Y - frameHeight),
                 ImGui.GetColorU32(ImGuiCol.Text),
-                $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms) ({size.X} x {size.Y} px)"
+                $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms) ({texture.Width} x {texture.Height} px)"
             );
 
             const string label = "Previewed content may differ from final version saved or used in-game.";

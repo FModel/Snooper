@@ -20,6 +20,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
+    protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.InstanceData | DirtyFlags.Visibility | DirtyFlags.ManualLodSwap | DirtyFlags.Opacity | DirtyFlags.Outline;
+
     public PrimitiveDescriptor<TVertex> Descriptor
     {
         get => field ?? throw new InvalidOperationException($"Descriptor not initialized for {Name} of type {GetType().Name}.");

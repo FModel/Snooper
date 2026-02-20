@@ -11,6 +11,8 @@ namespace Snooper.Rendering.Components.Transforms;
 [DefaultActorSystem(typeof(TransformSystem))]
 public class SpatialComponent : ActorComponent, IControllable
 {
+    protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Transform;
+
     public SpatialComponent(Transform? transform = null, string? name = null) : base(name)
     {
         LocalTransform = transform ?? Transform.Identity;

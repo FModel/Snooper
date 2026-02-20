@@ -27,9 +27,9 @@ public abstract class StagePass(string name) : IDisposable
     }
 }
 
-public sealed class StagePass<TContext>(string name, EmbeddedShader shader, Texture? output = null) : StagePass(name) where TContext : IStageContext
+public sealed class StagePass<TContext>(string name, ShaderProgram shader, Texture? output = null) : StagePass(name) where TContext : IStageContext
 {
-    public Action<TContext, EmbeddedShader>? SetupBindings { get; init; }
+    public Action<TContext, ShaderProgram>? SetupBindings { get; init; }
 
     public override void Run(IStageContext ctx, uint framebufferHandle, Action<Action?> render)
     {

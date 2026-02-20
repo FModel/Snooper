@@ -220,11 +220,12 @@ public class SceneManager : ActorManager
 
     public override void Dispose()
     {
+        RootActor = null;
+
         base.Dispose();
         Pipeline.Dispose();
 
         _cameras.Clear();
         Viewports.Clear();
-        RootActor = null;
     }
 }

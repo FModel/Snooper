@@ -160,8 +160,6 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
     protected override void OnComponentUpdate(LightComponent component, float delta)
     {
-        base.OnComponentUpdate(component, delta);
-
         var data = component.GetLightData();
         if (component._allocation is null)
         {

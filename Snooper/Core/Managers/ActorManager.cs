@@ -272,9 +272,8 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     public virtual void Dispose()
     {
         foreach (var system in Systems.Values)
-        {
             system.Dispose();
-        }
+
         Systems.Clear();
         ThreadManager.Dispose();
     }

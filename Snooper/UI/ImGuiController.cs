@@ -13,7 +13,7 @@ using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
 namespace Snooper.UI;
 
-public class ImGuiController : IResizable
+public class ImGuiController : IResizable, IDisposable
 {
     private bool _frameBegun;
     private Vector2 _size;
@@ -365,5 +365,14 @@ void main()
             Keys.Menu => ImGuiKey.Menu,
             _ => ImGuiKey.None
         };
+    }
+
+    public void Dispose()
+    {
+        _shader.Dispose();
+        _vbo.Dispose();
+        _ebo.Dispose();
+        _vao.Dispose();
+        _fontTexture.Dispose();
     }
 }

@@ -5,30 +5,17 @@ using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition.DataLayer;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
-using Snooper.Extensions;
 using Snooper.Rendering.Components.Transforms;
 using ImGuiNET;
 
 namespace Snooper.Rendering.Actors;
-
-[Flags]
-public enum WorldActorType
-{
-    Components        = 1 << 1,
-    Landscape         = 1 << 2,
-    LevelStreaming    = 1 << 3,
-    AdditionalWorlds  = 1 << 4,
-
-    BaseResolution    = Components | Landscape | AdditionalWorlds, // loads whatever components this world has, including landscape but excluding world partition and level streaming
-    HighResolution    = Landscape | LevelStreaming, // loads only landscape from this world and parse partition and level streaming at BaseResolution
-}
 
 public class WorldActor : Actor
 {
     private readonly Dictionary<string, string> _dataLayers = new();
     private readonly HashSet<string> _visibleDataLayers = [];
 
-    public WorldActor(UWorld world, WorldActorType type = WorldActorType.BaseResolution) : base(world)
+    public WorldActor(UWorld world) : base(world)
     {
         Components.Add(new SpatialComponent(null, "WorldRoot"));
 
@@ -47,7 +34,7 @@ public class WorldActor : Actor
                 continue;
             }
 
-            var a = new LevelActor(data, parents, type);
+            var a = new LevelActor(data, parents);
             if (a.RootComponent is not null)
             {
                 created.Add(a);
@@ -77,13 +64,11 @@ public class WorldActor : Actor
         created.Clear();
         parents.Clear();
 
-        if (type.Includes(WorldActorType.LevelStreaming))
+        // Parallel.ForEach(world.StreamingLevels, new ParallelOptions { MaxDegreeOfParallelism = 10 }, Process);
+        for (var i = 0; i < world.StreamingLevels.Length; i++)
         {
-            for (var i = 0; i < world.StreamingLevels.Length; i++)
-            {
-                Process(world.StreamingLevels[i]);
-                if (i > 5) break; // TODO: optimize
-            }
+            Process(world.StreamingLevels[i]);
+            if (i > 5) break; // TODO: GTA optimize, actually stream it (see world partition) or limit the amount of streaming levels to process
         }
 
         GC.Collect();
@@ -148,9 +133,9 @@ public class WorldActor : Actor
                 Process(cell.LevelStreaming); // UWorldPartitionLevelStreamingDynamic
                 break;
             }
-            case ULevelStreaming { WorldAsset: { } world }:
+            case ULevelStreaming { WorldAsset: { } asset } when asset.TryLoad<UWorld>(out var world):
             {
-                Children.Add(new WorldActor(world.Load<UWorld>()));
+                Children.Add(new WorldActor(world));
                 break;
             }
         }

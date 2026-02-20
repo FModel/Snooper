@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CUE4Parse.UE4.Versions;
-using Snooper.Rendering.Actors;
 
 namespace Snooper.Extensions;
 
@@ -29,6 +28,4 @@ public static class EnumExtensions
         }
         return $"{value} ({suffix})";
     }
-    
-    public static bool Includes(this WorldActorType value, WorldActorType flag) => (value & flag) != 0;
 }

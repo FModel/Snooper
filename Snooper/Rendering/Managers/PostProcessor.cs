@@ -24,83 +24,20 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
 
     public override void Generate()
     {
-        _ssao.Generate();
-        _ssao.Resize(Width, Height);
-        GL.TextureParameter(_ssao, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_ssao, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-
-        _ssaoBlur.Generate();
-        _ssaoBlur.Resize(Width, Height);
-        GL.TextureParameter(_ssaoBlur, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_ssaoBlur, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-
-        _lit.Generate();
-        _lit.Resize(Width, Height);
-        GL.TextureParameter(_lit, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_lit, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-
-        _combined.Generate();
-        _combined.Resize(Width, Height);
-        GL.TextureParameter(_combined, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_combined, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-
-        _fxaa.Generate();
-        _fxaa.Resize(Width, Height);
-        GL.TextureParameter(_fxaa, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_fxaa, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-
-        _shadowViz.Generate();
-        _shadowViz.Resize(Width, Height);
-        GL.TextureParameter(_shadowViz, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_shadowViz, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-
-        _picking.Generate();
-        _picking.Resize(Width, Height);
-
-        _pickingViz.Generate();
-        _pickingViz.Resize(Width, Height);
-        GL.TextureParameter(_pickingViz, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_pickingViz, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+        Generate(_ssao);
+        Generate(_ssaoBlur);
+        Generate(_lit);
+        Generate(_combined);
+        Generate(_fxaa);
+        Generate(_shadowViz);
+        Generate(_picking, TextureMinFilter.Nearest);
+        Generate(_pickingViz);
 
         base.Generate();
         // ColorAttachment0 = final output (outputted to screen)
         // other attachments are for intermediate steps and may be ping-ponged as needed
 
-        const string vertex = "Framebuffers/fullquad.vert";
-        var ssao = new EmbeddedShader(vertex, "Framebuffers/ssao.frag");
-        var lit = new EmbeddedShader(vertex, "Framebuffers/light_clustered.frag")
-        {
-            // Defines = ["DEBUG_CLUSTER_GRID_OVERLAY"]
-        };
-        var combine = new EmbeddedShader(vertex, "Framebuffers/combine.frag");
-        var blur = new EmbeddedShader(vertex, "Framebuffers/blur.frag");
-        var fxaa = new EmbeddedShader(vertex, "Framebuffers/fxaa.frag");
-        var shadow = new EmbeddedShader(vertex, "Framebuffers/shadow.frag");
-        var final = new EmbeddedShader(vertex, "Framebuffers/final.frag");
-        var picking = new EmbeddedShader(vertex, "Picking/combine.frag");
-        var pickingViz = new EmbeddedShader(vertex, "Picking/visualize.frag");
-
-        ssao.Generate();
-        lit.Generate();
-        combine.Generate();
-        blur.Generate();
-        fxaa.Generate();
-        shadow.Generate();
-        final.Generate();
-        picking.Generate();
-        pickingViz.Generate();
-
-        ssao.Link();
-        lit.Link();
-        combine.Link();
-        blur.Link();
-        fxaa.Link();
-        shadow.Link();
-        final.Link();
-        picking.Link();
-        pickingViz.Link();
-
-        _passes.Add(new StagePass<AmbientOcclusionStageContext>("AO Pass", ssao, _ssao)
+        _passes.Add(new StagePass<AmbientOcclusionStageContext>("AO Pass", Generate("Framebuffers/ssao.frag"), _ssao)
         {
             SetupBindings = (ctx, shader) =>
             {
@@ -117,7 +54,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<BlurStageContext>("AO Blur Pass", blur, _ssaoBlur)
+        _passes.Add(new StagePass<BlurStageContext>("AO Blur Pass", Generate("Framebuffers/blur.frag"), _ssaoBlur)
         {
             SetupBindings = (ctx, shader) =>
             {
@@ -129,7 +66,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<LitStageContext>("Lighting Pass", lit, _lit)
+        _passes.Add(new StagePass<LitStageContext>("Lighting Pass", Generate("Framebuffers/light_clustered.frag"), _lit)
         {
             SetupBindings = (ctx, shader) =>
             {
@@ -191,7 +128,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<GeometryStageContext>("Combine Pass", combine, _combined)
+        _passes.Add(new StagePass<GeometryStageContext>("Combine Pass", Generate("Framebuffers/combine.frag"), _combined)
         {
             SetupBindings = (ctx, shader) =>
             {
@@ -208,7 +145,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<NoStageContext>("AA Pass", fxaa, _fxaa)
+        _passes.Add(new StagePass<NoStageContext>("AA Pass", Generate("Framebuffers/fxaa.frag"), _fxaa)
         {
             SetupBindings = (_, shader) =>
             {
@@ -219,7 +156,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<LitStageContext>("Shadow Viz Pass", shadow, _shadowViz)
+        _passes.Add(new StagePass<LitStageContext>("Shadow Viz Pass", Generate("Framebuffers/shadow.frag"), _shadowViz)
         {
             SetupBindings = (ctx, shader) =>
             {
@@ -240,7 +177,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<FinalStageContext>("Final Pass", final)
+        _passes.Add(new StagePass<FinalStageContext>("Final Pass", Generate("Framebuffers/final.frag"))
         {
             SetupBindings = (ctx, shader) =>
             {
@@ -254,7 +191,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<GeometryStageContext>("Picking Pass", picking, _picking)
+        _passes.Add(new StagePass<GeometryStageContext>("Picking Pass", Generate("Picking/combine.frag"), _picking)
         {
             SetupBindings = (ctx, shader) =>
             {
@@ -266,7 +203,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<NoStageContext>("Picking Viz Pass", pickingViz, _pickingViz)
+        _passes.Add(new StagePass<NoStageContext>("Picking Viz Pass", Generate("Picking/visualize.frag"), _pickingViz)
         {
             SetupBindings = (_, shader) =>
             {
@@ -325,6 +262,24 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         return pixel;
     }
 
+    private void Generate(ResizableTexture2D texture, TextureMinFilter filter = TextureMinFilter.Linear)
+    {
+        texture.Generate();
+        texture.Resize(Width, Height);
+        GL.TextureParameter(texture, TextureParameterName.TextureMinFilter, (int) filter);
+        GL.TextureParameter(texture, TextureParameterName.TextureMagFilter, (int) filter);
+        GL.TextureParameter(texture, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
+        GL.TextureParameter(texture, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+    }
+
+    private ShaderProgram Generate(string fragment, string[]? defines = null)
+    {
+        var shader = new EmbeddedShader("Framebuffers/fullquad.vert", fragment) { Defines = defines };
+        shader.Generate();
+        shader.Link();
+        return shader;
+    }
+
     public Texture GetFinalTexture() => base.GetTextures()[^1];
     public override Texture[] GetTextures() =>
     [
@@ -349,5 +304,22 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         _shadowViz.Resize(newWidth, newHeight);
         _picking.Resize(newWidth, newHeight);
         _pickingViz.Resize(newWidth, newHeight);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        foreach (var pass in _passes)
+            pass.Dispose();
+
+        _ssao.Dispose();
+        _ssaoBlur.Dispose();
+        _lit.Dispose();
+        _combined.Dispose();
+        _fxaa.Dispose();
+        _shadowViz.Dispose();
+        _picking.Dispose();
+        _pickingViz.Dispose();
     }
 }
