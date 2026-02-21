@@ -21,26 +21,26 @@ public class AudioComponent : SpatialComponent
     {
         Sound = component.Sound;
         VolumeMultiplier = component.GetOrDefault(nameof(VolumeMultiplier), VolumeMultiplier);
-        
+
         var overrideAttenuation = component.GetOrDefault<bool>("bOverrideAttenuation");
         if (overrideAttenuation && component.TryGetValue(out FSoundAttenuationSettings attenuation, "AttenuationOverrides"))
         {
             AttenuationDistance = attenuation.FalloffDistance * Settings.GlobalScale;
         }
     }
-    
-    internal override string Icon => "audio";
+
+    public override string Icon => "\uf6a8";
 
     public override void DrawControls()
     {
         base.DrawControls();
-        
+
         EditorUI.CollapsingTable("Audio", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Text("Sound", Sound?.Name ?? "N/A");
             EditorUI.Text("Volume Multiplier", VolumeMultiplier.ToString("F"));
             EditorUI.Text("Attenuation Distance", AttenuationDistance.ToString("F"));
-            
+
             EditorUI.Checkbox("Play", ref ShouldPlay);
         });
     }

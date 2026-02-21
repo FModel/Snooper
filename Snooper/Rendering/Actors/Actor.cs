@@ -20,15 +20,14 @@ public class Actor
     public string? ExportType { get; }
     public string? InternalType { get; }
 
-    internal bool _isSelected;
     public bool IsSelected
     {
-        get => _isSelected;
-        internal set
+        get;
+        set
         {
-            if (_isSelected == value) return;
+            if (field == value) return;
 
-            _isSelected = value;
+            field = value;
             IsOutlined = value;
         }
     }
@@ -131,12 +130,12 @@ public class Actor
             if (field == value) return;
 
             field = value;
-            Icon = field?.Icon ?? "component";
+            Icon = field?.Icon ?? "\uf1b2";
         }
     }
 
-    internal readonly int Id = Random.Shared.Next();
-    internal string Icon { get; private set; } = "component";
+    public readonly int Id = Random.Shared.Next();
+    public string Icon { get; private set; } = "\uf1b2";
 
     public event Action<IGameSystem>? OnAttachedToScene;
     public event Action<IGameSystem>? OnDetachedFromScene;
@@ -268,7 +267,7 @@ public class Actor
         }
     }
 
-    internal virtual void DrawInterface()
+    public virtual void DrawInterface()
     {
         ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
         ImGui.TextUnformatted(Name);

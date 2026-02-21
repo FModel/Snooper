@@ -91,7 +91,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         }
     }
 
-    internal override string Icon => "mountain";
+    public override string Icon => "\uf6fc";
 
     private class MaterialDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, FWeightmapLayerAllocationInfo[] allocations) : IMaterialDataContainer
     {

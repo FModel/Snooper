@@ -38,20 +38,6 @@ public partial class SnooperWindow : GameWindow
             Title = $"Snooper ({Settings.APP_SHORT_COMMIT_ID} - {Settings.APP_BUILD_DATE:MMM d, yyyy})"
         })
     {
-        ActorManager.RegisterSystemFactory<SkyboxSystem>();
-        ActorManager.RegisterSystemFactory<GridSystem>();
-        ActorManager.RegisterSystemFactory<TransformSystem>();
-        ActorManager.RegisterSystemFactory<CameraSystem>();
-        ActorManager.RegisterSystemFactory<PrimitiveSystem>();
-        ActorManager.RegisterSystemFactory<LandscapeSystem>();
-        ActorManager.RegisterSystemFactory<MeshRenderSystem>();
-        ActorManager.RegisterSystemFactory<SplineRenderSystem>();
-        ActorManager.RegisterSystemFactory<BillboardSystem>();
-        ActorManager.RegisterSystemFactory<TextRenderSystem>();
-        ActorManager.RegisterSystemFactory<AudioSystem>();
-        ActorManager.RegisterSystemFactory<ClusteredLightSystem>();
-        ActorManager.RegisterSystemFactory<DebugSystem>();
-
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
 
         // TODO: move this into its own Editor project

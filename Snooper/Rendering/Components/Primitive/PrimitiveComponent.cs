@@ -152,7 +152,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         return (overallCenter, MathF.Max(distance, 0.1f));
     }
 
-    internal override string Icon => "primitive";
+    public override string Icon => "\ue4e2";
 
     private int _sectionIndex;
     private int _materialIndex;
@@ -227,7 +227,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
                         var section = lod.Sections[_sectionIndex];
                         if (slided1 || slided2) _materialIndex = (int)section.MaterialIndex;
-                        ImGui.TextUnformatted($"{section.Name}: Material {section.MaterialIndex}, {section.IndexCount} Indices (offset {section.FirstIndex})");
+                        ImGui.TextUnformatted($"{section.Name}: Material {section.MaterialIndex}, {section.IndexCount} Indices, Shadows? {section.CastShadow}");
 
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();

@@ -16,7 +16,7 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
         {
             LocalInstancedTransforms.Add(data.TransformData);
         }
-        
+
         if (LocalInstancedTransforms.Count == 0)
         {
             // add a dummy instance to avoid issues with empty instance arrays

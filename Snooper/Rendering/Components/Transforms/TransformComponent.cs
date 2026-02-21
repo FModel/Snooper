@@ -127,7 +127,7 @@ public class SpatialComponent : ActorComponent, IControllable
         Relation?.MarkDirtyUpward(flags);
     }
 
-    internal override string Icon => "perspective";
+    public override string Icon => "\uf601";
 
     public virtual void DrawControls()
     {

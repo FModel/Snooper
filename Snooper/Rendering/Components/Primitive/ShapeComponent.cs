@@ -25,5 +25,5 @@ public abstract class ShapeComponent : DebugComponent
 
     }
 
-    internal override string Icon => "circle-dashed";
+    public override string Icon => "\uf61f";
 }

@@ -3,13 +3,13 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Programs;
 
-public class EmbeddedShader(string vertex, string fragment) : ShaderProgram(vertex, fragment)
+public class EmbeddedShader(string vertex, string fragment, Assembly? assembly = null) : ShaderProgram(vertex, fragment)
 {
-    private readonly Assembly _assembly = Assembly.GetExecutingAssembly();
+    private readonly Assembly _assembly = assembly ?? Assembly.GetExecutingAssembly();
 
     public string[]? Defines { get; init; }
 
-    public EmbeddedShader(string file) : this($"{file}.vert", $"{file}.frag")
+    public EmbeddedShader(string file, Assembly? assembly = null) : this($"{file}.vert", $"{file}.frag", assembly)
     {
 
     }
@@ -57,7 +57,7 @@ public class EmbeddedShader(string vertex, string fragment) : ShaderProgram(vert
 
     protected override ShaderProgram CloneShader()
     {
-        return new EmbeddedShader(Vertex, Fragment)
+        return new EmbeddedShader(Vertex, Fragment, _assembly)
         {
             Geometry = Geometry,
             TessellationControl = TessellationControl,

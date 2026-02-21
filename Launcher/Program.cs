@@ -14,6 +14,7 @@ using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Versions;
+using Editor;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 using Snooper;
@@ -88,6 +89,16 @@ const string dir = "D:\\CSGO\\steamapps\\common\\MarvelRivals\\MarvelGame\\Marve
 const string mapping = "D:\\FModel\\.data\\5.3.2-1967306+++depot_marvel+S2_2_release-Marvel+PY.usmap";
 const string key = "0x0C263D8C22DCB085894899C3A3796383E9BF9DE0CBFB08C9BF2DEF2E84F29D74";
 var version = new VersionContainer(EGame.GAME_MarvelRivals);
+#elif WEST
+const string dir = "D:\\CSGO\\steamapps\\common\\Far Far West Demo\\FarFarWest\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\507_FarFarWest.usmap";
+const string key = "0xDD5543BCC9C387A03DEADD72473D6A2EAF491AF88FC47365EE963F8AFE16B2D9";
+var version = new VersionContainer(EGame.GAME_UE5_7);
+#elif BUS
+const string dir = "D:\\CSGO\\steamapps\\common\\Denshattack! Demo\\Denshattack_Proto\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\5.6.1-0+UE5-Denshattack_Proto.usmap";
+const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
+var version = new VersionContainer(EGame.GAME_UE5_6);
 #endif
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
@@ -98,7 +109,7 @@ provider.SubmitKey(new FGuid(), new FAesKey(key));
 provider.PostMount();
 provider.LoadVirtualPaths();
 
-var snooper = new SnooperWindow(144, 1500, 900, false);
+var snooper = new EditorWindow(144, 1500, 900, false);
 var scene = new Actor("Scene");
 
 var camera = new CameraActor("Camera");
@@ -134,15 +145,15 @@ switch (provider.ProjectName)
         // Rook
         // Triad
 
-        // camera.CameraComponent.FarClipPlane = 100f;
-        // grid.Components.Clear();
-        // grid.Components.Add(new OpaqueGridComponent());
-        //
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0))));
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0))));
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new FTransform(new FVector(200, 100, 100))));
-        // break;
+        camera.CameraComponent.FarClipPlane = 100f;
+        grid.Components.Clear();
+        grid.Components.Add(new OpaqueGridComponent());
+
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0))));
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0))));
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new FTransform(new FVector(200, 100, 100))));
+        break;
 
         var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
         foreach (var file in files)
@@ -197,6 +208,20 @@ switch (provider.ProjectName)
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("r9w/Content/Maps/Menu/00_MainMenu.00_MainMenu")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("r9w/Content/Maps/Rinky_World/Map_list/01_Prologue_sprint_pursuit.01_Prologue_sprint_pursuit")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("r9w/Content/Maps/Rinky_World/Map_list/Race_list/Circle_Rinky_Planet_01.Circle_Rinky_Planet_01")));
+        break;
+    }
+    case "FarFarWest":
+    {
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Area41.L_Map_Area41"))); // TODO: not a big map but lags a lot, maybe something to do with the number of instances
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Tuto.L_Map_Tuto")));
+        break;
+    }
+    case "Denshattack_Proto":
+    {
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Levels/MainLevel.MainLevel")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/WorldMap.WorldMap")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/3-Shikoku/3-2-2_KochiTrickpark_Art.3-2-2_KochiTrickpark_Art")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/3-Shikoku/3-2-2_KochiTrickpark_Design.3-2-2_KochiTrickpark_Design")));
         break;
     }
     case "CosmicShake":
@@ -289,5 +314,5 @@ switch (provider.ProjectName)
     }
 }
 
-snooper.AddToScene(scene);
+snooper.Manager.RootActor = scene;
 snooper.Run();

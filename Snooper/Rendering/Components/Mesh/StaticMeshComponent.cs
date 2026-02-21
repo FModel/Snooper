@@ -21,5 +21,5 @@ public class StaticMeshComponent : MeshComponent
         // TODO: use component.LODData to override some stuff (eg vertex colors)
     }
 
-    internal override string Icon => "sphere";
+    public override string Icon => "\uf1b2";
 }

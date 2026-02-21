@@ -6,7 +6,7 @@
 public sealed class SceneCameraComponent : InteractiveCameraComponent
 {
     internal int PairIndex = -1;
-    internal bool IsActive = false;
+    public bool IsActive = false;
 
     public bool bFXAA = true;
     public bool bAmbientOcclusion = true;

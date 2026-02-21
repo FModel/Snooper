@@ -9,7 +9,12 @@ namespace Snooper.Rendering.Components.Camera;
 public class InteractiveCameraComponent : CameraComponent
 {
     public CameraType ViewType { get; set; } = CameraType.Free;
-    public float MovementSpeed = 10f;
+
+    public float MovementSpeed
+    {
+        get;
+        set => field = MathF.Max(1f, value);
+    } = 10f;
 
     private Vector3 _velocity = Vector3.Zero;
     private Vector3? _teleportTarget = null;

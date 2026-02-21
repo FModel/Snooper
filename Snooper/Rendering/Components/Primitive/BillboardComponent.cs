@@ -29,7 +29,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
         }
     }
 
-    internal override string Icon => "chalkboard";
+    public override string Icon => "\uf51b";
 
     private class MaterialDataContainer(Texture sprite, float opacityMask) : IMaterialDataContainer
     {

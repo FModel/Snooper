@@ -68,7 +68,8 @@ vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping 
     int weightmapCount = int(materialData.WeightmapCount);
 
     vec3 blendColor = vec3(0.0);
-    float gray = 0.0;
+    float totalWeight = 0.0;
+    float colorWeight = 0.0;
 
     for (int i = 0; i < weightmapCount; i++)
     {
@@ -89,17 +90,20 @@ vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping 
             }
 
             float weight = weightmapColor[c];
-            gray += weight;
+            totalWeight += weight;
+            blendColor += vec3(mix(0.0, 0.3, weight)) * weight;
 
             if (i == mapping.WeightmapIndex && c == mapping.ChannelIndex)
             {
-                blendColor += mapping.DebugColor.rgb * weight * mapping.DebugColor.a;
+                colorWeight += weight;
             }
         }
     }
 
-    blendColor += vec3(gray) * 0.1;
-    return blendColor;
+    if (totalWeight > 0.001)
+        blendColor /= totalWeight;
+
+    return mix(blendColor, mapping.DebugColor.rgb, colorWeight * mapping.DebugColor.a * 0.5);
 }
 
 vec3 getColorFromHeight(float height)
@@ -146,15 +150,16 @@ vec3 getColorFromHeight(float height)
 void main()
 {
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
+    PerMaterialData material = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
 
     vec3 color = vec3(1.0);
-    if (uColorMode == 0)
+    if (!material.IsReady || uColorMode == 0)
     {
         color = getColorFromHeight(fs_in.vHeight);
     }
     else if (uColorMode == 1)
     {
-        color = getColorFromWeightmap(uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex], uWeightMappingBuffer[gDrawID]);
+        color = getColorFromWeightmap(material, uWeightMappingBuffer[gDrawID]);
     }
 
     gPosition = fs_in.vViewPos;

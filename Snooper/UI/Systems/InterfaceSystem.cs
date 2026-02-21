@@ -58,7 +58,7 @@ public abstract class InterfaceSystem : SceneManager
             {
                 Log.Debug("Selected Component ID: {ComponentId}", _selectedComponent.Id);
                 _selectedComponent.IsSelected = true;
-                _selectedComponent.Actor?._isSelected = true; // mark actor as selected but don't outline all its components
+                // _selectedComponent.Actor?._isSelected = true; // mark actor as selected but don't outline all its components
             }
         }
     }
@@ -77,7 +77,7 @@ public abstract class InterfaceSystem : SceneManager
         if (_selectedComponent is not null)
         {
             _selectedComponent.IsSelected = false;
-            _selectedComponent.Actor?._isSelected = false;
+            // _selectedComponent.Actor?._isSelected = false;
         }
     }
 

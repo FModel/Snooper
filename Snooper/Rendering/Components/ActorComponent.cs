@@ -27,7 +27,7 @@ public abstract partial class ActorComponent
     public bool IsSelected
     {
         get;
-        internal set
+        set
         {
             if (field == value) return;
 
@@ -48,7 +48,7 @@ public abstract partial class ActorComponent
         }
     }
 
-    internal virtual string Icon => "component";
+    public virtual string Icon => "\uf111";
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;
 
@@ -144,7 +144,7 @@ public abstract partial class ActorComponent
         IsOutlined = IsSelected || Actor is { IsOutlined: true };
     }
 
-    internal void DrawInterface()
+    public void DrawInterface()
     {
         if (this is not IControllable controllable) return;
 

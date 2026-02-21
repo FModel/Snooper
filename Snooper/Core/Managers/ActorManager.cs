@@ -16,18 +16,11 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
-    private static readonly Dictionary<Type, Func<ActorSystem>> _registeredFactories = [];
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private readonly HashSet<int> _actors = [];
 
     public bool ShowFramebuffers = false;
     public DebugVisualizationMode DebugColorMode = DebugVisualizationMode.None;
-
-    public static void RegisterSystemFactory<T>() where T : ActorSystem, new() => RegisterSystemFactory(() => new T());
-    public static void RegisterSystemFactory<T>(Func<T> factory) where T : ActorSystem
-    {
-        _registeredFactories.Add(typeof(T), factory);
-    }
 
     public RendererInfo Renderer { get; } = new();
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
@@ -155,19 +148,14 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
         foreach (var actorSystemAttribute in actorSystemAttributes)
         {
             var addNewSystem = _systemsToLoad.All(IsSystemNotOfType(actorSystemAttribute.Type)) && Systems.Values.All(IsSystemNotOfType(actorSystemAttribute.Type));
-            if (addNewSystem)
-            {
-                if (_registeredFactories.TryGetValue(actorSystemAttribute.Type, out Func<ActorSystem>? factory))
-                {
-                    var system = factory();
-                    system.ActorManager = this;
+            if (!addNewSystem) continue;
 
-                    _systemsToLoad.Enqueue(system);
-                    continue;
-                }
+            if (actorSystemAttribute.Type.GetConstructor(Type.EmptyTypes) == null)
+                throw new InvalidOperationException($"{actorSystemAttribute.Type.Name} must have a parameterless constructor");
 
-                throw new InvalidOperationException($"{actorSystemAttribute.Type.Name} is not yet registered");
-            }
+            var system = (ActorSystem)Activator.CreateInstance(actorSystemAttribute.Type)!;
+            system.ActorManager = this;
+            _systemsToLoad.Enqueue(system);
         }
     }
 

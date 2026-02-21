@@ -34,7 +34,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new();
     private readonly List<string> _layers = ["None"];
     private float _sizeQuads = 0.0f;
-    private ColorMode _colorMode = ColorMode.Heightmap;
+    private ColorMode _colorMode = ColorMode.Weightmap;
     private int _selectedLayer;
     private bool _updateMapping;
 
