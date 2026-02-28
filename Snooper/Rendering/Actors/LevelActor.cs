@@ -12,7 +12,6 @@ using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
-using Snooper.Extensions;
 using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
@@ -107,7 +106,7 @@ public class LevelActor : Actor
                     UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
                     UArrowComponent arrowComponent => new ArrowComponent(arrowComponent),
                     UBrushComponent brushComponent when brushComponent.GetBrush() is { } brush => new BrushComponent(brushComponent, brush),
-                    UShapeComponent { Outer: not ALevelBounds } shape => shape switch // exclude level bounds because their scale looks weird and overall they provide little value
+                    UShapeComponent shape when shape.Outer?.Object?.Value is not ALevelBounds => shape switch // exclude level bounds because their scale looks weird and overall they provide little value
                     {
                         UBoxComponent boxComponent => new BoxComponent(boxComponent),
                         USphereComponent sphereComponent => new SphereComponent(sphereComponent),

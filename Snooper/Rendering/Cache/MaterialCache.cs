@@ -17,59 +17,79 @@ namespace Snooper.Rendering.Cache;
 
 public static class MaterialCache
 {
-    private static readonly ConcurrentDictionary<string, IMaterialDataContainer?> _cache = new();
+    private static readonly ConcurrentDictionary<string, Lazy<IMaterialDataContainer?>> _cache = new();
 
-    public static IMaterialDataContainer? GetOrCreate(ResolvedObject? materialObject, uint layerCount)
+    /// <summary>
+    /// Resolves a previously registered cache key to its container, blocking until the container is ready.
+    /// Returns null if the key is unknown or the container failed to load.
+    /// </summary>
+    public static IMaterialDataContainer? Resolve(string key)
     {
-        if (materialObject == null) return null;
-
-        var path = materialObject.GetPathName();
-        if (_cache.TryGetValue(path, out var cached))
-        {
-            Log.Verbose("Cache hit for material {Path}", path);
-            return cached;
-        }
-
-        if (!materialObject.TryLoad(out var m) || m is not UUnrealMaterial material)
-        {
-            Log.Warning("Material {Path} could not be loaded or is not valid.", path);
-            return null;
-        }
-
-        Log.Debug("Cache miss for material {Path}, creating new data container", path);
-        var container = ParseMaterialParameters(material, layerCount, null);
-        _cache.TryAdd(path, container);
-
-        return container;
+        if (string.IsNullOrEmpty(key)) return null;
+        return _cache.TryGetValue(key, out var lazy) ? lazy.Value : null;
     }
 
-    public static IMaterialDataContainer? CreateFromTextureData(UBuildingTextureData?[] textureDataLayers, ResolvedObject? baseMaterialObject, uint layerCount)
+    /// <summary>
+    /// Returns the cache key and ensures a <see cref="Lazy{T}"/> entry exists for it,
+    /// without blocking on the actual container creation.
+    /// The container is created on first call to <see cref="Resolve"/>.
+    /// </summary>
+    public static string GetOrCreateKey(ResolvedObject? materialObject, uint layerCount)
     {
-        Log.Debug("Creating material from building texture data with {LayerCount} layers", textureDataLayers.Length);
+        if (materialObject == null) return string.Empty;
 
-        UUnrealMaterial? baseMaterial = null;
-
-        foreach (var textureData in textureDataLayers)
+        var path = materialObject.GetPathName();
+        var newLazy = new Lazy<IMaterialDataContainer?>(() =>
         {
-            if (textureData?.OverrideMaterial.TryLoad<UUnrealMaterial>(out var overrideMaterial) == true)
+            Log.Debug("Cache miss for material {Path}, creating data container", path);
+            if (!materialObject.TryLoad(out var m) || m is not UUnrealMaterial material)
             {
-                baseMaterial = overrideMaterial;
-                break;
+                Log.Warning("Material {Path} could not be loaded or is not valid.", path);
+                return null;
             }
-        }
+            return ParseMaterialParameters(material, layerCount, null);
+        }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-        if (baseMaterial == null && baseMaterialObject?.TryLoad(out var m) == true && m is UUnrealMaterial material)
+        _cache.GetOrAdd(path, newLazy);
+        return path;
+    }
+
+    public static string GetOrCreateKeyFromTextureData(UBuildingTextureData?[] textureDataLayers, ResolvedObject? materialObject, uint layerCount)
+    {
+        if (materialObject == null) return string.Empty;
+
+        var path = materialObject.GetPathName();
+        var dataHash = string.Join("|", textureDataLayers.Select(t => t?.GetPathName() ?? "null"));
+        var key = $"__texdata__{path}__{dataHash}";
+
+        var newLazy = new Lazy<IMaterialDataContainer?>(() =>
         {
-            baseMaterial = material;
-        }
+            Log.Debug("Cache miss for material {Path}, creating data container", path);
 
-        if (baseMaterial == null)
-        {
-            Log.Warning("Building texture data has no override material and no base material");
-            return null;
-        }
+            UUnrealMaterial? baseMaterial = null;
+            foreach (var textureData in textureDataLayers)
+            {
+                if (textureData?.OverrideMaterial.TryLoad<UUnrealMaterial>(out var overrideMaterial) == true)
+                {
+                    baseMaterial = overrideMaterial;
+                    break;
+                }
+            }
 
-        return ParseMaterialParameters(baseMaterial, layerCount, textureDataLayers);
+            if (baseMaterial == null && materialObject.TryLoad(out var m) && m is UUnrealMaterial material)
+                baseMaterial = material;
+
+            if (baseMaterial == null)
+            {
+                Log.Warning("Building texture data has no override material and no base material");
+                return null;
+            }
+
+            return ParseMaterialParameters(baseMaterial, layerCount, textureDataLayers);
+        }, LazyThreadSafetyMode.ExecutionAndPublication);
+
+        _cache.GetOrAdd(key, newLazy);
+        return key;
     }
 
     private static MaterialDataContainer? ParseMaterialParameters(UUnrealMaterial material, uint layerCount, UBuildingTextureData?[]? textureDataLayers)
@@ -170,9 +190,9 @@ public static class MaterialCache
 
     public static void ClearAndDispose()
     {
-        foreach (var cached in _cache.Values)
+        foreach (var lazy in _cache.Values)
         {
-            if (cached is IDisposable disposable)
+            if (lazy is { IsValueCreated: true, Value: IDisposable disposable })
             {
                 disposable.Dispose();
             }
@@ -240,21 +260,7 @@ public static class MaterialCache
                 throw new InvalidOperationException("GPU data has already been finalized and sent.");
 
             if (_diffuses is null || _normals is null || _speculars is null)
-            {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
-            }
-
-            for (var i = 0; i < layers.Length; i++)
-            {
-                _diffuses[i]?.Generate();
-                _diffuses[i]?.MakeResident();
-
-                _normals[i]?.Generate();
-                _normals[i]?.MakeResident();
-
-                _speculars[i]?.Generate();
-                _speculars[i]?.MakeResident();
-            }
 
             // each layer uses 3 bits: HasDiffuse (bit 0), HasNormal (bit 1), HasSpecular (bit 2)
             uint layerTextureFlags = 0;

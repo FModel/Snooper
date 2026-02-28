@@ -10,13 +10,15 @@ public class CapsuleComponent : ShapeComponent
     {
         Color ??= new Vector3(0.15f, 0.15f, 0.45f);
 
-        var radius = 0.5f;
+        const float defaultRadius = 0.5f;
+
+        var radius = defaultRadius;
         if (component.TryGetValue(out float capsuleRadius, "CapsuleRadius"))
         {
             radius = capsuleRadius * Settings.GlobalScale;
         }
 
-        var halfHeight = 0.5f;
+        var halfHeight = defaultRadius * 2.3f;
         if (component.TryGetValue(out float capsuleHalfHeight, "CapsuleHalfHeight"))
         {
             halfHeight = capsuleHalfHeight * Settings.GlobalScale;
@@ -25,7 +27,7 @@ public class CapsuleComponent : ShapeComponent
         var bounds = new CullingBounds(Vector3.Zero, new Vector3(radius, halfHeight, radius));
         Descriptor = new PrimitiveDescriptor<Vector3>(bounds, () => new Geometry(radius, halfHeight));
 
-        Materials[0].MaterialDataContainer = new MaterialDataContainer(Color.Value, LineThickness);
+        Materials[0].InlineContainer = new MaterialDataContainer(Color.Value, LineThickness);
     }
 
     private class Geometry : DebugGeometry

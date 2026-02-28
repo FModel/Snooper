@@ -69,6 +69,8 @@ public class SplineMeshComponent : StaticMeshComponent
 {
     public SplineMeshParams SplineParams;
 
+    internal bool IsInitialized { get; set; } // TODO: rework this hack
+
     // TODO: buffer transfer seem to make spline glitch a lot even tho we are not relying on gl_DrawID anymore, and culling is disabled, must investigate
     protected override bool SupportsOpaquePass => false;
 

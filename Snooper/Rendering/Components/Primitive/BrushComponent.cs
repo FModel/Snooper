@@ -11,7 +11,7 @@ public class BrushComponent : DebugComponent
     {
         Descriptor = new PrimitiveDescriptor<Vector3>(brush.Bounds.GetBox(), () => new Geometry(brush));
 
-        Materials[0].MaterialDataContainer = new MaterialDataContainer(new Vector3(0.75f, 0, 0));
+        Materials[0].InlineContainer = new MaterialDataContainer(new Vector3(0.75f, 0, 0));
     }
 
     private class Geometry : DebugGeometry

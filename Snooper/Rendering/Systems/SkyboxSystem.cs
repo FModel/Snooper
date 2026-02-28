@@ -49,9 +49,9 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
         GL.DepthFunc(DepthFunction.Less);
     }
 
-    protected override void OnActorComponentAdded(CubeComponent component)
+    protected override void OnActorComponentEnqueued(CubeComponent component)
     {
-        base.OnActorComponentAdded(component);
+        base.OnActorComponentEnqueued(component);
 
         if (_component is not null)
             throw new InvalidOperationException("Only one SkyboxComponent can be added to the system at a time.");

@@ -21,7 +21,7 @@ public class BoxComponent : ShapeComponent
         var bounds = new CullingBounds(extent);
         Descriptor = new PrimitiveDescriptor<Vector3>(bounds, () => new Geometry(bounds));
 
-        Materials[0].MaterialDataContainer = new MaterialDataContainer(Color.Value, LineThickness);
+        Materials[0].InlineContainer = new MaterialDataContainer(Color.Value, LineThickness);
     }
 
     public BoxComponent(Vector3 extents, Vector3 color, float lineThickness = 1.0f, Transform? transform = null, string? name = null) : this(Vector3.Zero, extents, color, lineThickness, transform, name)

@@ -12,7 +12,7 @@ public class ArrowComponent : DebugComponent
         Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(), () => new Geometry(Vector3.Zero, component.ArrowLength * Settings.GlobalScale));
 
         var color = new Vector3(component.ArrowColor.R / 255.0f, component.ArrowColor.G / 255.0f, component.ArrowColor.B / 255.0f);
-        Materials[0].MaterialDataContainer = new MaterialDataContainer(color, 3.0f);
+        Materials[0].InlineContainer = new MaterialDataContainer(color, 3.0f);
     }
 
     public ArrowComponent(Transform? transform = null, string? name = null) : base(new Vector3(1.0f, 0.0f, 0.0f), 2, transform, name)

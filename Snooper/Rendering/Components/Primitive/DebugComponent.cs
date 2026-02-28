@@ -22,7 +22,7 @@ public abstract class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
 {
     protected DebugComponent(Vector3 color, float lineThickness = 1.0f, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        Materials[0].MaterialDataContainer = new MaterialDataContainer(color, lineThickness);
+        Materials[0].InlineContainer = new MaterialDataContainer(color, lineThickness);
     }
 
     protected DebugComponent(UPrimitiveComponent component) : base(component)

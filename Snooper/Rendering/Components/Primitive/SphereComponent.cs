@@ -19,7 +19,7 @@ public class SphereComponent : ShapeComponent
 
         Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(radius), () => new Geometry(radius));
 
-        Materials[0].MaterialDataContainer = new MaterialDataContainer(Color.Value, LineThickness);
+        Materials[0].InlineContainer = new MaterialDataContainer(Color.Value, LineThickness);
     }
 
     public SphereComponent(float radius, Vector3 color, float lineThickness = 1.0f, Transform? transform = null, string? name = null) : base(color, lineThickness, transform, name)

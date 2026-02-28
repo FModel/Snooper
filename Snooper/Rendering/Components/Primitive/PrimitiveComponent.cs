@@ -5,7 +5,7 @@ using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
-using Snooper.Core.Managers;
+using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
@@ -79,18 +79,27 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         }
     }
 
-    public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources, TextureManager textureManager)
+    public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources)
     {
         if (Metadata is null)
         {
             Metadata = resources.Add(this);
 
-            // register textures for all materials either now or later, when their data container is set
+            // in our current setup, we first upload the geometry data to the GPU and THEN we set up the material sections
+            // but it's very much possible here that the material section already has its material data container set
+            // in which case, by subscribing to OnMaterialDataContainerSet it will be triggered immediately
             foreach (var material in Materials)
             {
+                // basically the component is responsible for setting a material container for each section
+                // once the container is set, OnMaterialDataContainerSet will be triggered and all the textures in the container will be sent to the texture cache
+                // the cache will generate all these textures, make them bindless, finalize the container's GPU data, and then trigger OnContainerReady
+                // OnContainerReady will upload the material data to the GPU for this component, in the system that owns it
+                // material containers and textures are CPU cached globally, but duplicated on the GPU, per section, per component, per system...
+
+                material.OnContainerReady += resources.Update;
                 material.OnMaterialDataContainerSet += section =>
                 {
-                    textureManager.Add(section);
+                    TextureCache.Add(section);
                     IsOpaque &= !section.IsTranslucent;
                 };
             }

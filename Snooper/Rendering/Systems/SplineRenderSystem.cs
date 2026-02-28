@@ -23,25 +23,21 @@ public class SplineRenderSystem : MeshRenderSystem
 
         base.OnLoad();
 
-        var splines = Components.OfType<SplineMeshComponent>().ToArray();
-
-        var maxComponentId = 0u;
-        foreach (var component in splines)
-        {
-            if (component.Id > maxComponentId)
-                maxComponentId = component.Id;
-        }
-
         _mapping.Generate();
-        _mapping.Allocate(maxComponentId + 1);
+        _mapping.Allocate(_maxComponentId + 1);
 
         _params.Generate();
-        _params.Allocate(ComponentsCount);
+        _params.Allocate(EnqueuedComponentsCount);
+    }
 
-        foreach (var component in splines)
-        {
-            _mapping.Upsert((int) component.Id, (uint)_params.Add(component.SplineParams).StartIndex);
-        }
+    protected override void OnComponentUpdate(MeshComponent component, float delta)
+    {
+        base.OnComponentUpdate(component, delta);
+
+        if (component is not SplineMeshComponent spline || spline.IsInitialized) return;
+        spline.IsInitialized = true;
+
+        _mapping.Upsert((int) spline.Id, (uint)_params.Add(spline.SplineParams).StartIndex);
     }
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
@@ -50,6 +46,19 @@ public class SplineRenderSystem : MeshRenderSystem
 
         _mapping.Bind(3);
         _params.Bind(4);
+    }
+
+    private uint _maxComponentId;
+    protected override void OnActorComponentEnqueued(MeshComponent component)
+    {
+        base.OnActorComponentEnqueued(component);
+
+        if (component is not SplineMeshComponent spline) return;
+
+        if (spline.Id > _maxComponentId)
+        {
+            _maxComponentId = spline.Id;
+        }
     }
 
     public override bool Accepts(Type type) => type == typeof(SplineMeshComponent);

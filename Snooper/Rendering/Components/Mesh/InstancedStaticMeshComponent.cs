@@ -17,6 +17,8 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
             LocalInstancedTransforms.Add(data.TransformData);
         }
 
+        IsVisible = IsVisible && LocalInstancedTransforms.Count > 0;
+
         if (LocalInstancedTransforms.Count == 0)
         {
             // add a dummy instance to avoid issues with empty instance arrays

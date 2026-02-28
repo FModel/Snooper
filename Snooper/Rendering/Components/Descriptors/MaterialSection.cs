@@ -1,5 +1,6 @@
 ﻿using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
+using Snooper.Rendering.Cache;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
@@ -10,17 +11,31 @@ public class MaterialSection : IDisposable
 
     public BufferAllocation? Allocation { get; internal set; } // set when added to the material data buffer
 
-    public IMaterialDataContainer? MaterialDataContainer
+    internal string? CacheKey
     {
         get;
-        internal set
+        set
         {
             if (field == value) return;
 
             field = value;
-            _onMaterialDataContainerSet?.Invoke(this);
+            if (field != null) _onMaterialDataContainerSet?.Invoke(this);
         }
     }
+
+    internal IMaterialDataContainer? InlineContainer
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+
+            field = value;
+            if (field != null) _onMaterialDataContainerSet?.Invoke(this);
+        }
+    }
+
+    public IMaterialDataContainer? MaterialDataContainer => CacheKey != null ? MaterialCache.Resolve(CacheKey) : InlineContainer;
 
     private Action<MaterialSection>? _onMaterialDataContainerSet;
     public event Action<MaterialSection>? OnMaterialDataContainerSet
@@ -30,20 +45,21 @@ public class MaterialSection : IDisposable
             _onMaterialDataContainerSet += value;
             // fire immediately if the material data container is already set
             if (MaterialDataContainer != null && value != null)
-            {
                 value(this);
-            }
         }
         remove => _onMaterialDataContainerSet -= value;
     }
 
     public bool IsTranslucent => MaterialDataContainer?.IsTranslucent ?? false;
 
-    public override bool Equals(object? obj) => obj is MaterialSection section && section.SectionId.Equals(SectionId);
+    public event Action<MaterialSection>? OnContainerReady;
+    internal void ContainerReady() => OnContainerReady?.Invoke(this);
+
+    public override bool Equals(object? obj) => obj is MaterialSection s && s.SectionId.Equals(SectionId);
     public override int GetHashCode() => SectionId.GetHashCode();
 
     public void Dispose()
     {
-        MaterialDataContainer?.Dispose();
+        InlineContainer?.Dispose();
     }
 }

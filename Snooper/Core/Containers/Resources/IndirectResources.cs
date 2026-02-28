@@ -73,17 +73,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         var primitive = component.Descriptor;
         var geometryHandle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
         var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
+
         foreach (var material in component.Materials)
         {
             material.Allocation = _materialData.Add(new TPerMaterialData());
         }
 
         var instanceCount = component.IsVisible ? (uint)instanceAllocation.Length : 0;
-        var baseMaterial = 0u;
-        if (component.Materials[0].Allocation is { } allocation)
-        {
-            baseMaterial = (uint)allocation.StartIndex;
-        }
+        var baseMaterial = component.Materials[0].Allocation is { } first ? (uint)first.StartIndex : 0u;
 
         const uint currentLod = 0u;
         var drawAllocations = new BufferAllocation[primitive.Lods[currentLod].Sections.Length];
@@ -176,14 +173,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     {
         if (material.Allocation is not { } allocation)
             throw new InvalidOperationException("Material section allocation is null.");
-        if (material.MaterialDataContainer is not { } data)
+        if (material.MaterialDataContainer is not { } container)
             throw new InvalidOperationException("Material data container is null.");
-
-        if (data.Raw == null)
-            material.MaterialDataContainer.FinalizeGpuData();
-
-        if (data.Raw is not TPerMaterialData raw)
-            throw new InvalidOperationException($"Material data container raw type {material.MaterialDataContainer?.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
+        if (container.Raw is not TPerMaterialData raw)
+            throw new InvalidOperationException($"Material data container raw type {container.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
 
         // TODO: remove duplicates in GPU memory
         _materialData.QueueUpdate(allocation, raw);

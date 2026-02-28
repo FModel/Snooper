@@ -6,6 +6,7 @@ using Snooper.Core.Hardware;
 using Snooper.Core.Systems;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -35,6 +36,8 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     public virtual void Update(float delta)
     {
         DequeueSystems(1);
+        TextureCache.Update();
+
         foreach (var system in Systems.Values)
         {
             system.Update(delta);

@@ -44,7 +44,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
 
         if (color is { } c)
         {
-            Materials[0].MaterialDataContainer = new MaterialDataContainer(c);
+            Materials[0].InlineContainer = new MaterialDataContainer(c);
         }
     }
 
@@ -52,6 +52,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
     {
         _text = component.GetOrDefault<FText?>("Text")?.Text ?? string.Empty;
         if (string.IsNullOrEmpty(_text)) _text = "DefaultText";
+        _text = _text.Replace("<br>", Environment.NewLine);
 
         _horizontalAlignment = component.GetOrDefault("HorizontalAlignment", EHorizTextAligment.EHTA_Left);
         _verticalAlignment = component.GetOrDefault("VerticalAlignment", EVerticalTextAligment.EVRTA_TextCenter);
@@ -66,7 +67,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
 
         if (color is { } c)
         {
-            Materials[0].MaterialDataContainer = new MaterialDataContainer(new Vector3(c.R, c.G, c.B) / 255f);
+            Materials[0].InlineContainer = new MaterialDataContainer(new Vector3(c.R, c.G, c.B) / 255f);
         }
 
         var zFlip = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, MathF.PI);
@@ -158,7 +159,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
             var indices = new List<uint>();
 
             var pixelToWorld = Settings.GlobalScale / fontAtlas.FontSize;
-            var finalScale = scale * pixelToWorld;
+            var finalScale = scale * pixelToWorld * 0.8f;
 
             float totalWidth = 0;
             var lines = text.Split('\n');
@@ -248,7 +249,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
                     cursorX += charInfo.AdvanceX * finalScale;
                 }
 
-                cursorY -= lineHeight * finalScale;
+                cursorY += lineHeight * finalScale;
                 lineIndex++;
             }
 

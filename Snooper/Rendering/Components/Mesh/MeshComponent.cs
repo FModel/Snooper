@@ -111,17 +111,17 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
             Actor?.ActorManager?.ThreadManager.Enqueue(() =>
             {
-                IMaterialDataContainer? container;
+                string key;
                 if (index == 0 && textureData.Length > 0)
                 {
-                    container = MaterialCache.CreateFromTextureData(textureData, _materials[index], Descriptor.Lods[0].LayerCount);
+                    key = MaterialCache.GetOrCreateKeyFromTextureData(textureData, _materials[index], Descriptor.Lods[0].LayerCount);
                 }
                 else
                 {
-                    container = MaterialCache.GetOrCreate(_materials[index], Descriptor.Lods[0].LayerCount);
+                    key = MaterialCache.GetOrCreateKey(_materials[index], Descriptor.Lods[0].LayerCount);
                 }
 
-                Materials[index].MaterialDataContainer = container;
+                Materials[index].CacheKey = key;
             });
         }
     }

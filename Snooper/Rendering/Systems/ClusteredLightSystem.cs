@@ -82,7 +82,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         base.OnLoad();
 
         _lightDataBuffer.Generate();
-        _lightDataBuffer.Allocate(ComponentsCount);
+        _lightDataBuffer.Allocate(EnqueuedComponentsCount);
 
         _clusterAABBBuffer.Generate();
         _clusterDataBuffer.Generate();
@@ -171,9 +171,9 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         }
     }
 
-    protected override void OnActorComponentAdded(LightComponent component)
+    protected override void OnActorComponentEnqueued(LightComponent component)
     {
-        base.OnActorComponentAdded(component);
+        base.OnActorComponentEnqueued(component);
 
         if (component is DirectionalLightComponent { CastShadows: true } dirLight)
         {

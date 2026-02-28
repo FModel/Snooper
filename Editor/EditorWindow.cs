@@ -43,6 +43,7 @@ public partial class EditorWindow : GameWindow
         {
             MeshCache.ClearAndDispose();
             MaterialCache.ClearAndDispose();
+            TextureCache.ClearAndDispose();
         };
         Unload += DoUnload; // right after the game loop ends
 

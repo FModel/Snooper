@@ -45,20 +45,25 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         _scales.Generate();
         _mapping.Generate();
 
-        _scales.Allocate(ComponentsCount * Settings.TessellationQuadCountTotal);
-        _mapping.Allocate(ComponentsCount);
+        _scales.Allocate(EnqueuedComponentsCount * Settings.TessellationQuadCountTotal);
+        _mapping.Allocate(EnqueuedComponentsCount);
+    }
 
-        foreach (var component in Components)
+    protected override void OnComponentUpdate(LandscapeMeshComponent component, float delta)
+    {
+        base.OnComponentUpdate(component, delta);
+
+        if (component.IsInitialized) return;
+        component.IsInitialized = true;
+
+        _scales.AddRange(component.Scales);
+        _mapping.Add(new WeightHighlightMapping());
+
+        foreach (var layer in component.Layers.Keys)
         {
-            _scales.AddRange(component.Scales);
-            _mapping.Add(new WeightHighlightMapping());
-
-            foreach (var layer in component.Layers.Keys)
-            {
-                if (!_layers.Contains(layer)) _layers.Add(layer);
-            }
-            _sizeQuads = Math.Max(_sizeQuads, component.SizeQuads);
+            if (!_layers.Contains(layer)) _layers.Add(layer);
         }
+        _sizeQuads = Math.Max(_sizeQuads, component.SizeQuads);
     }
 
     protected override void OnUpdate(float delta)

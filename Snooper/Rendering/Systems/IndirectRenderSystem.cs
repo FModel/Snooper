@@ -4,7 +4,6 @@ using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
-using Snooper.Core.Managers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
@@ -12,7 +11,7 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData> : ActorSystem<TComponent>, ITexturedSystem
+public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type) : ActorSystem<TComponent>
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData
@@ -24,16 +23,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
     protected abstract Action<uint> VertexLayout { get; }
 
-    protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; }
-    public TextureManager TextureManager { get; } // TODO: make it shared bruh no need one per system
-
-    protected IndirectRenderSystem(PrimitiveType type)
-    {
-        Resources = new IndirectResources<TVertex, TInstanceData, TPerMaterialData>(type);
-
-        TextureManager = new TextureManager();
-        TextureManager.OnMaterialReady += Resources.Update;
-    }
+    protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; } = new(type);
 
     protected override void OnLoad()
     {
@@ -42,15 +32,11 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Generate();
         Resources.Allocate(_counts, DisplayName);
 
-        TextureManager.Load();
         Resources.SetVertexLayout(VertexLayout);
     }
 
     protected override void OnUpdate(float delta)
     {
-        // dequeue textures
-        TextureManager.Update(delta);
-
         base.OnUpdate(delta);
 
         Resources.Flush();
@@ -68,7 +54,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
     protected override void OnComponentUpdate(TComponent component, float delta)
     {
-        component.Update(Resources, TextureManager);
+        component.Update(Resources);
     }
 
     protected override void PostOnUpdate()
@@ -145,36 +131,15 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public override void Dispose()
     {
         Resources.Dispose();
-        TextureManager.Dispose();
 
         base.Dispose();
     }
 
-    public virtual long Allocated
-    {
-        get
-        {
-            long total = 0;
-            total += Resources.Allocated;
-            total += TextureManager.Allocated;
-            return total;
-        }
-    }
-
-    public virtual long Used
-    {
-        get
-        {
-            long total = 0;
-            total += Resources.Used;
-            total += TextureManager.Used;
-            return total;
-        }
-    }
+    public virtual long Allocated => Resources.Allocated;
+    public virtual long Used => Resources.Used;
 
     public virtual IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("GPU Resources", Resources);
-        yield return new MemoryDetail("Texture Manager", TextureManager);
     }
 }

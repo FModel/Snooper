@@ -99,6 +99,16 @@ const string dir = "D:\\CSGO\\steamapps\\common\\Denshattack! Demo\\Denshattack_
 const string mapping = "D:\\FModel\\.data\\5.6.1-0+UE5-Denshattack_Proto.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_6);
+#elif UPS
+const string dir = "D:\\CSGO\\steamapps\\common\\DEADLINE DELIVERY Demo\\DEADLINE_DELIVERY\\Content\\Paks";
+const string mapping = "";
+const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
+var version = new VersionContainer(EGame.GAME_UE4_27);
+#elif EXA
+const string dir = "D:\\Games\\UE Projects\\ContentExamples\\Saved\\StagedBuilds\\Windows\\ContentExamples\\Content\\Paks";
+const string mapping = "D:\\FModel\\.data\\507_ContentExamples.usmap";
+const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
+var version = new VersionContainer(EGame.GAME_UE5_7);
 #endif
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
@@ -193,6 +203,19 @@ switch (provider.ProjectName)
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Cars_Overdrive/Content/LV_Final_World.LV_Final_World")));
         break;
     }
+    case "ContentExamples":
+    {
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/ExampleProjectWelcome.ExampleProjectWelcome")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Landscape.Level_Landscape")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_WorldPartitionStreaming.Level_WorldPartitionStreaming")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Streaming.Level_Streaming")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Volumes.Level_Volumes")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Geometry/StaticMeshes.StaticMeshes")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Lighting/Lighting_Realtime.Lighting_Realtime")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/AI/AI_NavMesh.AI_NavMesh")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Animation/Animation_ControlRig.Animation_ControlRig")));
+        break;
+    }
     case "Marvel":
     {
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoCQ01/TokyoCQ01.TokyoCQ01")));
@@ -222,6 +245,14 @@ switch (provider.ProjectName)
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/WorldMap.WorldMap")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/3-Shikoku/3-2-2_KochiTrickpark_Art.3-2-2_KochiTrickpark_Art")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/3-Shikoku/3-2-2_KochiTrickpark_Design.3-2-2_KochiTrickpark_Design")));
+        break;
+    }
+    case "DEADLINE_DELIVERY":
+    {
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map18.Map18")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map1.Map1")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map17.Map17")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map2.Map2")));
         break;
     }
     case "CosmicShake":

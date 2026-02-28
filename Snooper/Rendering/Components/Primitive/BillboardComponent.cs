@@ -25,7 +25,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
 
         if (component.GetSprite() is { } sprite)
         {
-            Materials[0].MaterialDataContainer = new MaterialDataContainer(new Texture2D(sprite), component.GetOrDefault("OpacityMaskRefVal", 0.5f));
+            Materials[0].InlineContainer = new MaterialDataContainer(new Texture2D(sprite), component.GetOrDefault("OpacityMaskRefVal", 0.5f));
         }
     }
 
@@ -56,12 +56,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
                 throw new InvalidOperationException("GPU data has already been finalized and sent.");
 
             if (_sprite is null)
-            {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
-            }
-
-            _sprite.Generate();
-            _sprite.MakeResident();
 
             Raw = new PerMaterialBillboardData
             {

@@ -33,6 +33,9 @@ public abstract class Texture(
 
     public override void Generate()
     {
+        if (Handle > 0)
+            throw new InvalidOperationException("Texture already generated.");
+
         GL.CreateTextures(Target, 1, out uint handle);
         Handle = handle;
     }

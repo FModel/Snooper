@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
+using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -7,6 +8,7 @@ using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Mesh;
 
@@ -37,13 +39,14 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
     public readonly Vector2[] Scales;
     public readonly Dictionary<string, LayerMapping> Layers;
 
+    internal bool IsInitialized { get; set; } // TODO: rework this hack
+
     protected override bool SupportsOpaquePass => true;
 
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
         var sizeQuads = (uint)component.ComponentSizeQuads;
-        // frustum culling is broken because the bounding box is for the cached geometry, not the actual tessellated one
-        // do not cache the geometry to fix this
+        // TODO: frustum culling is broken because the bounding box is for the base plane, not the actual tessellated one
         Descriptor = PrimitiveDescriptor<Vector2>.GetOrCreate(sizeQuads, component.CachedLocalBox, id => new Geometry(id));
 
         if (component.GetHeightmap() is not { } heightmap)
@@ -58,7 +61,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             weightmaps[i] = new Texture2D(textures[i]);
         }
 
-        Materials[0].MaterialDataContainer = new MaterialDataContainer(
+        Materials[0].InlineContainer = new MaterialDataContainer(
             new Texture2D(heightmap),
             new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
             weightmaps,
@@ -139,12 +142,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
                 throw new InvalidOperationException("GPU data has already been finalized and sent.");
 
             if (_heightmap is null || _weightmaps?.Length != weightmaps.Length)
-            {
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");
-            }
-
-            _heightmap.Generate();
-            _heightmap.MakeResident();
 
             var data = new PerMaterialLandscapeData
             {
@@ -165,12 +163,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
                     var weightmap = _weightmaps[i];
                     if (weightmap is null)
-                    {
                         throw new InvalidOperationException($"Weightmap at index {i} is not set.");
-                    }
-
-                    weightmap.Generate();
-                    weightmap.MakeResident();
 
                     data.Weightmaps[i] = weightmap;
                     data.Weight_EnabledChannels[i] = 0;
@@ -188,9 +181,30 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
         public IPerMaterialData? Raw { get; private set; }
 
+        private int _selectedWeightmap;
         public void DrawControls()
         {
+            EditorUI.Property("Heightmap Texture");
+            if (_heightmap != null)
+            {
+                _heightmap.DrawControls();
+            }
+            else ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "None");
 
+            EditorUI.Property($"Weightmaps ({weightmaps.Length})");
+
+            var maxWeightmap = weightmaps.Length - 1;
+
+            ImGui.BeginDisabled(maxWeightmap == 0);
+            ImGui.SliderInt("##WeightmapSlider", ref _selectedWeightmap, 0, maxWeightmap);
+            ImGui.EndDisabled();
+
+            EditorUI.Property("Weightmap Texture");
+            if (_weightmaps?[_selectedWeightmap] is { } weightmap)
+            {
+                weightmap.DrawControls();
+            }
+            else ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "None");
         }
 
         public void Dispose()
