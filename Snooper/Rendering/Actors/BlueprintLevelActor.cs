@@ -35,6 +35,8 @@ public class BlueprintLevelActor : LevelActor
         // }
     }
 
+    public override string Icon => "\uf46d";
+
     public override void DrawInterface()
     {
         base.DrawInterface();

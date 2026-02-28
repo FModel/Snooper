@@ -113,7 +113,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     private TInstanceData[]? _cachedInstanceData;
     public TInstanceData[] GetPerInstanceData()
     {
-        var matrices = GetInstanceMatrices();
+        var matrices = GetWorldMatrices();
         var data = new TInstanceData[matrices.Length];
         for (var i = 0; i < data.Length; i++)
         {
@@ -143,7 +143,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public override (Vector3, float) GetTeleportPosition(CameraComponent camera)
     {
-        var matrices = GetInstanceMatrices();
+        var matrices = GetWorldMatrices();
         if (matrices.Length == 0) return (Vector3.Zero, 1.0f);
 
         var overallCenter = Vector3.Zero;

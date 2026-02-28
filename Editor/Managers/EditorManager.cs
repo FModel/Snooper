@@ -46,19 +46,10 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
             {
                 var view = camera.ViewMatrix;
                 var proj = camera.ProjectionMatrix;
-                var matrix = s.WorldMatrix;
+                var matrix = s.GizmoMatrix;
 
                 if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
-                {
-                    var invRelation = Matrix4x4.Identity;
-                    if (s.Relation is { } relation)
-                    {
-                        Matrix4x4.Invert(relation.WorldMatrix, out invRelation);
-                    }
-
-                    Matrix4x4.Decompose(matrix * invRelation, out var scale, out var rotation, out var position);
-                    s.LocalTransform = new Transform { Scale = scale, Rotation = rotation, Position = position };
-                }
+                    s.ApplyGizmoMatrix(matrix);
             }
 
             if (ImGui.IsItemHovered() && !ImGuizmo.IsUsing())

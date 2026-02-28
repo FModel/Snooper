@@ -130,12 +130,12 @@ public class Actor
             if (field == value) return;
 
             field = value;
-            Icon = field?.Icon ?? "\uf1b2";
+            Icon = field?.Icon ?? Icon;
         }
     }
 
     public readonly int Id = Random.Shared.Next();
-    public string Icon { get; private set; } = "\uf1b2";
+    public virtual string Icon { get; private set; } = "\uf1b2";
 
     public event Action<IGameSystem>? OnAttachedToScene;
     public event Action<IGameSystem>? OnDetachedFromScene;

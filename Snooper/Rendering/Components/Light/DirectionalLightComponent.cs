@@ -17,4 +17,6 @@ public class DirectionalLightComponent : LightComponent
         // manually placed directional lights should be at the origin, just for easy manipulation
         LocalTransform.Position = Vector3.Zero;
     }
+
+    public override string Icon => "\uf185";
 }

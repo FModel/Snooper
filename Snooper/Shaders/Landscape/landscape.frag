@@ -17,6 +17,10 @@ struct PerMaterialData
 
     vec2 HeightmapScaleBias;
     vec2 WeightmapScaleBias;
+
+    // uint.MaxValue == no visibility layer on this tile
+    uint VisibilityTextureIndex;
+    uint VisibilityChannelIndex;
 };
 
 struct WeightHighlightMapping

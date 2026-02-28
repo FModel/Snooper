@@ -16,6 +16,10 @@ struct PerMaterialData
 
     vec2 HeightmapScaleBias;
     vec2 WeightmapScaleBias;
+
+    // uint.MaxValue == no visibility layer on this tile
+    uint VisibilityTextureIndex;
+    uint VisibilityChannelIndex;
 };
 
 layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
@@ -48,12 +52,12 @@ out TE_OUT {
 void main()
 {
     gDrawID = tcDrawID[0];
-    
+
     te_out.vTessCoord = gl_TessCoord.xy;
-    
+
     float u = te_out.vTessCoord.x;
     float v = te_out.vTessCoord.y;
-    
+
     vec4 p00 = gl_in[0].gl_Position;
     vec4 p01 = gl_in[1].gl_Position;
     vec4 p10 = gl_in[2].gl_Position;
@@ -75,15 +79,39 @@ void main()
         gl_Position = uProjectionMatrix * uViewMatrix * matrix * p;
         return;
     }
-    
-    vec2 heightmapSize = textureSize(materialData.Heightmap, 0);
-    vec2 texelSize = 1.0 / heightmapSize;
-    vec2 componentUvSize = vec2(uSizeQuads) / heightmapSize;
+
     float quadFraction = 1.0 / uQuadCount;
-    
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
-    vec2 uv = materialData.HeightmapScaleBias + subPatchOffset * componentUvSize + vec2(u, v) * (componentUvSize * quadFraction);
-    uv = uv * (1.0 - texelSize) + 0.5 * texelSize;
+
+    // Hole: if a visibility layer exists, sample it and discard the patch by
+    // pushing the vertex out of clip space when the channel value > 0.5.
+    if (materialData.VisibilityTextureIndex != 0xFFFFFFFFu)
+    {
+        sampler2D weightmap = materialData.Weightmaps[materialData.VisibilityTextureIndex];
+
+        vec2 weightmapSize = textureSize(weightmap, 0);
+        vec2 weightmapTexelSize = 1.0 / weightmapSize;
+        vec2 weightmapUvSize = vec2(uSizeQuads) / weightmapSize;
+
+        vec2 visUv = materialData.WeightmapScaleBias + subPatchOffset * weightmapUvSize + vec2(u, v) * (weightmapUvSize * quadFraction);
+        visUv = visUv * (1.0 - weightmapTexelSize) + 0.5 * weightmapTexelSize;
+
+        if (texture(weightmap, visUv)[materialData.VisibilityChannelIndex] > 0.5)
+        {
+            gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+            te_out.vViewPos = vec3(0.0);
+            te_out.TBN = mat3(uViewMatrix);
+            te_out.vHeight = 0.0;
+            return;
+        }
+    }
+
+    vec2 heightmapSize = textureSize(materialData.Heightmap, 0);
+    vec2 heightmapTexelSize = 1.0 / heightmapSize;
+    vec2 heightmapUvSize = vec2(uSizeQuads) / heightmapSize;
+
+    vec2 uv = materialData.HeightmapScaleBias + subPatchOffset * heightmapUvSize + vec2(u, v) * (heightmapUvSize * quadFraction);
+    uv = uv * (1.0 - heightmapTexelSize) + 0.5 * heightmapTexelSize;
 
     vec4 color = texture(materialData.Heightmap, uv);
     float R = color.r * 255.0;

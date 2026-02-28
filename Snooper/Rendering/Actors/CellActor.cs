@@ -74,16 +74,13 @@ public class CellActor : Actor
             var pixelToWorld = Settings.GlobalScale / atlasFontSize;
             var fontSize = fontWidth / (estimatedPixelWidth * pixelToWorld);
 
-            Components.Add(new TextRenderComponent(Name, fontSize, color, name: Name)
+            Components.Add(new TextRenderComponent(Name, fontSize, color, transform: new Transform
             {
-                LocalTransform = new Transform
-                {
-                    Position = new Vector3(0, extents.Z, 0),
-                    Rotation = useY
-                        ? Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2)
-                        : Quaternion.Identity
-                }
-            });
+                Position = new Vector3(0, extents.Z, 0),
+                Rotation = useY
+                    ? Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2)
+                    : Quaternion.Identity
+            }, name: Name));
         }
 
         if (cell is UWorldPartitionRuntimeLevelStreamingCell streaming &&
@@ -136,7 +133,7 @@ public class CellActor : Actor
         var w = new WorldActor(world.Load<UWorld>());
         if (w.RootComponent != null && RootComponent != null)
         {
-            w.RootComponent.LocalTransform = RootComponent.LocalTransform.Inverse();
+            w.RootComponent.SetLocalTransform(RootComponent.LocalTransform.Inverse());
         }
 
         Children.Add(w);

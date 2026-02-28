@@ -30,6 +30,10 @@ public unsafe struct PerMaterialLandscapeData : IPerMaterialData
 
     public Vector2 HeightmapScaleBias;
     public Vector2 WeightmapScaleBias;
+
+    // Visibility (hole) layer — uint.MaxValue means no visibility layer on this tile
+    public uint VisibilityTextureIndex;
+    public uint VisibilityChannelIndex;
 }
 
 [DefaultActorSystem(typeof(LandscapeSystem))]
@@ -45,28 +49,28 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {
-        var sizeQuads = (uint)component.ComponentSizeQuads;
-        // TODO: frustum culling is broken because the bounding box is for the base plane, not the actual tessellated one
-        Descriptor = PrimitiveDescriptor<Vector2>.GetOrCreate(sizeQuads, component.CachedLocalBox, id => new Geometry(id));
-
         if (component.GetHeightmap() is not { } heightmap)
-        {
             throw new InvalidOperationException("Landscape component does not have a valid heightmap.");
-        }
 
-        var textures = component.GetWeightmapTextures();
-        var weightmaps = new Texture[textures.Length];
-        for (var i = 0; i < weightmaps.Length; i++)
-        {
-            weightmaps[i] = new Texture2D(textures[i]);
-        }
+        // Build CullingBounds in our geometry's local space, not from CachedLocalBox.
+        //
+        // Our vertex shader outputs geometry as a flat plane at Y=0, spanning
+        // [0, sizeQuads*GlobalScale] in X and Z. The tessellation shader then displaces
+        // each vertex along Y by: ((R*256+G) - 32768) / 128 * GlobalScale.
+        //
+        // CachedLocalBox.Min.Z and Max.Z store exactly that min/max height for this tile
+        // in UE units (before GlobalScale), so we can use them directly for Y extents.
+        //
+        // Each tile gets its own descriptor (not cached) so bounds are per-tile.
+        var sizeQuads = (uint)component.ComponentSizeQuads;
+        var halfSize = sizeQuads * Settings.GlobalScale * 0.5f;
+        var minHeight = component.CachedLocalBox.Min.Z * Settings.GlobalScale;
+        var maxHeight = component.CachedLocalBox.Max.Z * Settings.GlobalScale;
+        var tessellatedBounds = new CullingBounds(
+            new Vector3(halfSize, (minHeight + maxHeight) * 0.5f, halfSize),
+            new Vector3(halfSize, (maxHeight - minHeight) * 0.5f, halfSize));
 
-        Materials[0].InlineContainer = new MaterialDataContainer(
-            new Texture2D(heightmap),
-            new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
-            weightmaps,
-            new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W),
-            component.WeightmapLayerAllocations);
+        Descriptor = new PrimitiveDescriptor<Vector2>(tessellatedBounds, () => new Geometry(sizeQuads));
 
         SizeQuads = sizeQuads + 1;
         Scales = new Vector2[Settings.TessellationQuadCountTotal];
@@ -78,6 +82,13 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             {
                 Scales[x * quadCount + y] = new Vector2(x, y);
             }
+        }
+
+        var textures = component.GetWeightmapTextures();
+        var weightmaps = new Texture[textures.Length];
+        for (var i = 0; i < weightmaps.Length; i++)
+        {
+            weightmaps[i] = new Texture2D(textures[i]);
         }
 
         Layers = new Dictionary<string, LayerMapping>();
@@ -92,11 +103,23 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
                 DebugColor = info.LayerUsageDebugColor
             });
         }
+
+        Materials[0].InlineContainer = new MaterialDataContainer(
+            new Texture2D(heightmap),
+            new Vector2(component.HeightmapScaleBias.Z, component.HeightmapScaleBias.W),
+            weightmaps,
+            new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W),
+            component.WeightmapLayerAllocations,
+            Layers.TryGetValue("__LANDSCAPE_VISIBILITY__", out var visibility) ? visibility : null);
     }
 
     public override string Icon => "\uf6fc";
 
-    private class MaterialDataContainer(Texture heightmap, Vector2 heightmapScaleBias, Texture[] weightmaps, Vector2 weightmapScaleBias, FWeightmapLayerAllocationInfo[] allocations) : IMaterialDataContainer
+    private class MaterialDataContainer(
+        Texture heightmap, Vector2 heightmapScaleBias,
+        Texture[] weightmaps, Vector2 weightmapScaleBias,
+        FWeightmapLayerAllocationInfo[] allocations,
+        LayerMapping? visibilityMapping) : IMaterialDataContainer
     {
         private BindlessTexture? _heightmap;
         private BindlessTexture?[]? _weightmaps = new BindlessTexture[weightmaps.Length];
@@ -153,6 +176,9 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
                 WeightmapCount = (uint)weightmaps.Length,
                 WeightmapScaleBias = weightmapScaleBias,
+
+                VisibilityTextureIndex = visibilityMapping?.TextureIndex ?? uint.MaxValue,
+                VisibilityChannelIndex = visibilityMapping?.ChannelIndex ?? 0u,
             };
 
             unsafe
