@@ -64,8 +64,11 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
 
     protected override bool IsLocalTransformDirty(int index = -1) => index < 0 ? base.IsLocalTransformDirty(index) : _instanceDirtyFlags[index];
 
-    protected override Matrix4x4[] GetWorldMatrices()
+    protected override Matrix4x4[] GetWorldMatrices(int index = -1)
     {
+        if (index >= 0 && index < LocalInstancedTransforms.Count)
+            return [LocalInstancedTransforms[index].ToMatrix() * WorldMatrix];
+
         var matrices = new Matrix4x4[LocalInstancedTransforms.Count];
         for (var i = 0; i < LocalInstancedTransforms.Count; i++)
         {

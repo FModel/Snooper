@@ -91,18 +91,26 @@ public class SpatialComponent : ActorComponent, IControllable
     {
         get
         {
-            var matrices = GetWorldMatrices();
-            if (matrices.Length < 2)
-                return matrices[0]; // No instances — gizmo sits at the origin.
+            if (InstanceCount > 1 && _instanceIndex >= 0 && _instanceIndex < InstanceCount)
+            {
+                return GetWorldMatrices(_instanceIndex)[0]; // Specific instance selected — gizmo sits at that instance's origin.
+            }
+            return WorldMatrix; // No instance selected — gizmo sits at the origin (or for instances, the pivot's origin).
 
-            if (_instanceIndex >= 0 && _instanceIndex < matrices.Length)
-                return matrices[_instanceIndex]; // Specific instance selected — gizmo sits at that instance's origin.
+            // TODO: if offsetting gizmo is implemented, avoid calling GetWorldMatrices without an index
+            // because for large instances, it's gonna send you a list of 50k matrices and you don't want that every frame trust me
 
-            // No instance selected — gizmo sits at the centroid.
-            return WorldMatrix;
-            var center = Vector3.Zero;
-            foreach (var m in matrices) center += m.Translation;
-            return Matrix4x4.CreateTranslation(center / matrices.Length);
+            // var matrices = GetWorldMatrices();
+            // if (matrices.Length < 2)
+            //     return matrices[0]; // No instances — gizmo sits at the origin.
+            //
+            // if (_instanceIndex >= 0 && _instanceIndex < matrices.Length)
+            //     return matrices[_instanceIndex]; // Specific instance selected — gizmo sits at that instance's origin.
+            //
+            // // No instance selected — gizmo sits at the centroid.
+            // var center = Vector3.Zero;
+            // foreach (var m in matrices) center += m.Translation;
+            // return Matrix4x4.CreateTranslation(center / matrices.Length);
         }
     }
 
@@ -132,6 +140,7 @@ public class SpatialComponent : ActorComponent, IControllable
     {
         LocalTransform = transform;
         _isTransformDirty = true;
+        MarkDirtyUpward(DirtyFlags.Transform); // TODO: fix, for imgui LocalTransform = transform, so we need to force it dirty
     }
 
     protected virtual void ResetLocalTransform(int index = -1)
@@ -148,7 +157,7 @@ public class SpatialComponent : ActorComponent, IControllable
 
     protected virtual bool IsLocalTransformDirty(int index = -1) => _isTransformDirty;
 
-    protected virtual Matrix4x4[] GetWorldMatrices() => [WorldMatrix];
+    protected virtual Matrix4x4[] GetWorldMatrices(int index = -1) => [WorldMatrix];
 
     public virtual (Vector3, float) GetTeleportPosition(CameraComponent camera)
     {

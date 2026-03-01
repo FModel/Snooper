@@ -31,6 +31,26 @@ public class LevelActor : Actor
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("SplineComponent"));
+
+        if (actor is AInstancedFoliageActor { FoliageInfos: { } foliages })
+        {
+            foreach (var foliage in foliages.Values)
+            {
+                switch (foliage.Implementation)
+                {
+                    case FFoliageStaticMesh staticMesh:
+                    {
+                        EnqueuePointers(staticMesh.Component);
+                        break;
+                    }
+                    case FFoliageActor:
+                    {
+                        throw new NotImplementedException("FoliageActor is not supported yet");
+                    }
+                }
+            }
+        }
 
         actor.TryGetAllValues(out _textureData, "TextureData");
 
@@ -103,6 +123,7 @@ public class LevelActor : Actor
                     },
                     USkeletalMeshComponent sk when sk.GetSkeletalMesh().TryLoad<USkeletalMesh>(out var mesh) => new SkeletalMeshComponent(mesh, sk),
                     ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
+                    ULandscapeSplinesComponent landscapeSplinesComponent => new LandscapeSplinesComponent(landscapeSplinesComponent),
                     UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
                     UArrowComponent arrowComponent => new ArrowComponent(arrowComponent),
                     UBrushComponent brushComponent when brushComponent.GetBrush() is { } brush => new BrushComponent(brushComponent, brush),
