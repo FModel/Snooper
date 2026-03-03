@@ -57,6 +57,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         }
     } = true;
 
+    public readonly bool CastShadow = true;
+
     /// <summary>
     /// opaque pass requires shader support for writing to multiple render targets, so by default it's disabled and primitives are rendered in the translucent pass
     /// </summary>
@@ -76,6 +78,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         else if (component.TryGetValue(out bool hidden, "bHiddenInGame"))
         {
             IsVisible = !hidden;
+        }
+
+        if (component.TryGetValue(out bool castShadow, "CastShadow", "bCastStaticShadow", "bCastDynamicShadow"))
+        {
+            CastShadow = castShadow;
         }
     }
 
@@ -236,7 +243,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
                         var section = lod.Sections[_sectionIndex];
                         if (slided1 || slided2) _materialIndex = (int)section.MaterialIndex;
-                        ImGui.TextUnformatted($"{section.Name}: Material {section.MaterialIndex}, {section.IndexCount} Indices, Shadows? {section.CastShadow}");
+                        ImGui.TextUnformatted($"{section.Name}: Material {section.MaterialIndex}, {section.IndexCount} Indices, Shadows? {section.CastShadow && CastShadow}");
 
                         ImGui.SetWindowFontScale(1.0f);
                         ImGui.PopStyleVar();

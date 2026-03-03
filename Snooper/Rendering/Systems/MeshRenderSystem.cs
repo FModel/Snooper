@@ -54,7 +54,7 @@ public class MeshRenderSystem : PrimitiveSystem<Vertex, MeshComponent, PerInstan
 
     public void RenderShadows(IViewProjectionProvider[] cascades)
     {
-        Resources.Cull(cascades[^1], CommandBufferType.Opaque); // use the farthest cascade camera for culling
+        Resources.Cull(cascades[^1], CommandBufferType.Opaque, true); // use the farthest cascade camera for culling
 
         _shadowShader.Use();
         for (int i = 0; i < cascades.Length; i++)

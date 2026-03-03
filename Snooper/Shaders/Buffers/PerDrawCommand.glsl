@@ -14,6 +14,7 @@
     uint OriginalInstanceCount;
     uint OriginalBaseInstance;
     uint SectionId; // section index in the current model (0-X)
+    uint CastShadow; // 0 or 1
 };
 
 layout(std430, binding = 0) buffer PerDrawCommandBuffer

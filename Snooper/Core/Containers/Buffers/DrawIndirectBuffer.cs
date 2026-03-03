@@ -30,4 +30,5 @@ public struct DrawElementsIndirectCommand
     public uint OriginalInstanceCount;
     public uint OriginalBaseInstance;
     public uint SectionId;
+    public uint CastShadow;
 }

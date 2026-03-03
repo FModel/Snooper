@@ -46,7 +46,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _primitives.UpdateCustom(allocation, overrideLod, 32);
     }
 
-    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
+    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands, bool shadowPass = false) where TInstanceData : unmanaged, IPerInstanceData
     {
         var matrix = camera.ViewMatrix * camera.ProjectionMatrix;
         var planes = new Plane[6];
@@ -61,6 +61,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _compute.SetUniform("uFrustumPlanes", planes);
         _compute.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
         _compute.SetUniform("uCameraPosition", matrix.Translation);
+        _compute.SetUniform("uShadowPass", shadowPass);
 
         commands.Bind(0);
         instances.Bind(1);

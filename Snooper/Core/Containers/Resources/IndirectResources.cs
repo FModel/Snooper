@@ -105,6 +105,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 OriginalInstanceCount = instanceCount,
                 OriginalBaseInstance = (uint)instanceAllocation.StartIndex,
                 SectionId = i,
+                CastShadow = section.CastShadow && component.CastShadow ? 1u : 0u
             });
         }
 
@@ -215,7 +216,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _materialData.Remove(metadata.MaterialAllocation);
     }
 
-    public void Cull(IViewProjectionProvider camera, CommandBufferType type) => _geometry.Cull(camera, _instanceData, _commands.GetBuffer(type));
+    public void Cull(IViewProjectionProvider camera, CommandBufferType type, bool shadowPass = false) => _geometry.Cull(camera, _instanceData, _commands.GetBuffer(type), shadowPass);
 
     public void Render(CommandBufferType type)
     {
