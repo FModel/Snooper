@@ -27,21 +27,18 @@ public class MeshRenderSystem : PrimitiveSystem<Vertex, MeshComponent, PerInstan
 
     protected override Action<uint> VertexLayout { get; } = vao =>
     {
-        GL.VertexArrayAttribFormat(vao, 0, 3, VertexAttribType.Float, false, 0);
-        GL.VertexArrayAttribFormat(vao, 1, 3, VertexAttribType.Float, false, 12);
-        GL.VertexArrayAttribFormat(vao, 2, 3, VertexAttribType.Float, false, 24);
-        GL.VertexArrayAttribFormat(vao, 3, 2, VertexAttribType.Float, false, 36);
-        GL.VertexArrayAttribIFormat(vao, 4, 1, VertexAttribType.UnsignedInt, 44);
+        GL.VertexArrayAttribIFormat(vao, 0, 2, VertexAttribIType.UnsignedInt, 0);
+        GL.VertexArrayAttribIFormat(vao, 1, 1, VertexAttribIType.UnsignedInt, 8);
+        GL.VertexArrayAttribIFormat(vao, 2, 1, VertexAttribIType.UnsignedInt, 12);
+        GL.VertexArrayAttribIFormat(vao, 3, 1, VertexAttribIType.UnsignedInt, 16);
         GL.EnableVertexArrayAttrib(vao, 0);
         GL.EnableVertexArrayAttrib(vao, 1);
         GL.EnableVertexArrayAttrib(vao, 2);
         GL.EnableVertexArrayAttrib(vao, 3);
-        GL.EnableVertexArrayAttrib(vao, 4);
         GL.VertexArrayAttribBinding(vao, 0, 0);
         GL.VertexArrayAttribBinding(vao, 1, 0);
         GL.VertexArrayAttribBinding(vao, 2, 0);
         GL.VertexArrayAttribBinding(vao, 3, 0);
-        GL.VertexArrayAttribBinding(vao, 4, 0);
     };
 
     protected override void OnLoad()

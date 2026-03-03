@@ -45,13 +45,13 @@ public struct SplineMeshParams
         StartRoll = p.StartRoll;
         StartTangent = p.StartTangent * Settings.GlobalScale;
         StartScale = p.StartScale;
-        StartOffset = p.StartOffset;
+        StartOffset = p.StartOffset * Settings.GlobalScale;
 
         EndPos = p.EndPos * Settings.GlobalScale;
         EndRoll = p.EndRoll;
         EndTangent = p.EndTangent * Settings.GlobalScale;
         EndScale = p.EndScale;
-        EndOffset = p.EndOffset;
+        EndOffset = p.EndOffset * Settings.GlobalScale;
 
         SplineUpDir = component.SplineUpDir;
         SplineBoundaryMin = component.SplineBoundaryMin;

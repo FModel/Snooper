@@ -59,24 +59,19 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         }
 
         // capture vertices and indices for lazy factory creation
-        var cVertices = new CMeshVertex[vertices.Length];
-        Array.Copy(vertices, cVertices, vertices.Length);
-
-        var cIndices = new uint[indices.Length];
-        Array.Copy(indices, cIndices, indices.Length);
+        var cVertices = (CMeshVertex[])vertices.Clone();
+        var cIndices = (uint[])indices.Clone();
 
         FColor[]? cColors = null;
         if (lod.VertexColors is { Length: > 0 } colors)
         {
-            cColors = new FColor[colors.Length];
-            Array.Copy(colors, cColors, colors.Length);
+            cColors = (FColor[])colors.Clone();
         }
 
         FMeshUVFloat[]? cExtraUvs = null;
         if (lod.ExtraUV?.Value is { Length: > 0 } extraUvs && extraUvs[0] is { Length: > 0 } extraUv1)
         {
-            cExtraUvs = new FMeshUVFloat[extraUv1.Length];
-            Array.Copy(extraUv1, cExtraUvs, extraUv1.Length);
+            cExtraUvs = (FMeshUVFloat[])extraUv1.Clone();
         }
 
         HasVertexColors = cColors != null;

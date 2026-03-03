@@ -206,10 +206,10 @@ mat4 CalcSliceTransformAtSplineOffset(SplineMeshParams params, vec3 computed)
     }
 
     mat4 scaleMatrix = mat4(
-    vec4(scale.x, 0.0, 0.0, 0.0),
-    vec4(0.0, scale.y, 0.0, 0.0),
-    vec4(0.0, 0.0, scale.z, 0.0),
-    vec4(0.0, 0.0, 0.0, 1.0)
+        vec4(scale.x, 0.0, 0.0, 0.0),
+        vec4(0.0, scale.y, 0.0, 0.0),
+        vec4(0.0, 0.0, scale.z, 0.0),
+        vec4(0.0, 0.0, 0.0, 1.0)
     );
 
     return sliceTransform * scaleMatrix;

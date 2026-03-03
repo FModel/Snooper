@@ -6,17 +6,19 @@ public interface TPrimitiveData<T> : IDisposable where T : unmanaged
 {
     public T[]? Vertices { get; }
     public uint[]? Indices { get; }
-    
+
     // optional data
     public int[]? Colors { get; }
+    public int[]? BoneInfluences { get; }
 }
 
 public abstract class PrimitiveData<T> : TPrimitiveData<T> where T : unmanaged
 {
     public T[]? Vertices { get; protected set; }
     public uint[]? Indices { get; protected set; }
-    
+
     public int[]? Colors { get; protected set; }
+    public int[]? BoneInfluences { get; protected set; }
 
     public void Dispose()
     {
@@ -25,17 +27,23 @@ public abstract class PrimitiveData<T> : TPrimitiveData<T> where T : unmanaged
             Array.Clear(Vertices);
             Vertices = null;
         }
-        
+
         if (Indices is not null)
         {
             Array.Clear(Indices);
             Indices = null;
         }
-        
+
         if (Colors is not null)
         {
             Array.Clear(Colors);
             Colors = null;
+        }
+
+        if (BoneInfluences is not null)
+        {
+            Array.Clear(BoneInfluences);
+            BoneInfluences = null;
         }
     }
 }
