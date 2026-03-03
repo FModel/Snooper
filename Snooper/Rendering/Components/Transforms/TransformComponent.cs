@@ -157,7 +157,7 @@ public class SpatialComponent : ActorComponent, IControllable
 
     protected virtual bool IsLocalTransformDirty(int index = -1) => _isTransformDirty;
 
-    protected virtual Matrix4x4[] GetWorldMatrices(int index = -1) => [WorldMatrix];
+    public virtual Matrix4x4[] GetWorldMatrices(int index = -1) => [WorldMatrix];
 
     public virtual (Vector3, float) GetTeleportPosition(CameraComponent camera)
     {

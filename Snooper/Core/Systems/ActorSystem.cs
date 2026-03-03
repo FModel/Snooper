@@ -147,6 +147,8 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         return Capacity < 0 || Capacity > (EnqueuedComponentsCount + ComponentsCount); // TODO: some systems override this without calling base
     }
 
+    public IEnumerable<T> GetComponents<T>() where T : TComponent => Components.OfType<T>();
+
     protected virtual void OnActorComponentEnqueued(TComponent component)
     {
 

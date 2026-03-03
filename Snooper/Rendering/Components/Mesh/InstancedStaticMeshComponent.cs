@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Visualization;
 
 namespace Snooper.Rendering.Components.Mesh;
 
@@ -36,6 +37,8 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
         _instanceDirtyFlags = new bool[LocalInstancedTransforms.Count];
     }
 
+    protected override DebugComponent CreateDebugVisualization() => new InstancedMeshBoundsVisualization(this);
+
     public override Transform GetLocalTransform(int index = -1) => index < 0 ? base.GetLocalTransform(index) : LocalInstancedTransforms[index];
     public override void SetLocalTransform(Transform transform, int index = -1)
     {
@@ -64,7 +67,7 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
 
     protected override bool IsLocalTransformDirty(int index = -1) => index < 0 ? base.IsLocalTransformDirty(index) : _instanceDirtyFlags[index];
 
-    protected override Matrix4x4[] GetWorldMatrices(int index = -1)
+    public override Matrix4x4[] GetWorldMatrices(int index = -1)
     {
         if (index >= 0 && index < LocalInstancedTransforms.Count)
             return [LocalInstancedTransforms[index].ToMatrix() * WorldMatrix];

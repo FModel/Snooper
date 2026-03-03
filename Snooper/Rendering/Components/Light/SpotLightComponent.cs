@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Light;
@@ -14,6 +15,8 @@ public class SpotLightComponent : PointLightComponent
         InnerConeAngle = component.InnerConeAngle;
         OuterConeAngle = component.OuterConeAngle;
     }
+
+    protected override DebugComponent CreateDebugVisualization() => new SpotLightComponentVisualization(this);
 
     protected override void SetLightData(ref LightData lightData)
     {

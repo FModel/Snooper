@@ -6,6 +6,7 @@ using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -251,6 +252,8 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             Raw = null;
         }
     }
+
+    protected override DebugComponent CreateDebugVisualization() => new BoxComponent(Descriptor.Bounds, Settings.LandscapeBounds, name: $"{Name} (Bounds)");
 
     private class Geometry : PrimitiveData<Vector2>
     {

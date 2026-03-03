@@ -1,6 +1,7 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component.Lights;
 using Snooper.Rendering.Systems;
 using System.Numerics;
+using Snooper.Rendering.Components.Visualization;
 
 namespace Snooper.Rendering.Components.Light;
 
@@ -20,6 +21,8 @@ public class RectLightComponent : LocalLightComponent
         BarnDoorLength = component.BarnDoorLength * Settings.GlobalScale;
         LightFunctionConeAngle = component.LightFunctionConeAngle;
     }
+
+    protected override DebugComponent CreateDebugVisualization() => new RectLightComponentVisualization(this);
 
     protected override void SetLightData(ref LightData lightData)
     {

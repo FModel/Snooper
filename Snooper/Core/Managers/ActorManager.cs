@@ -227,6 +227,9 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
             system.Resize(newWidth, newHeight);
     }
 
+    public IEnumerable<T> GetSystems<T>() where T : ActorSystem => Systems.Values.OfType<T>();
+    public T? GetSystem<T>() where T : ActorSystem => GetSystems<T>().FirstOrDefault();
+
     public virtual void DrawControls()
     {
         ImGui.SetWindowFontScale(0.85f);

@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Visualization;
 
 namespace Snooper.Rendering.Components.Primitive;
 

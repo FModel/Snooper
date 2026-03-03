@@ -3,11 +3,12 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
-namespace Snooper.Rendering.Components.Primitive;
+namespace Snooper.Rendering.Components.Visualization;
 
 public struct PerMaterialDebugData : IPerMaterialData
 {

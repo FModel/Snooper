@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Visualization;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
@@ -49,6 +50,30 @@ public abstract partial class ActorComponent
     }
 
     public virtual string Icon => "\uf111";
+
+    private DebugComponent? _visualization;
+    protected virtual DebugComponent? CreateDebugVisualization() => null;
+
+    public void SetDebugVisualizationVisibility(bool visible)
+    {
+        if (_visualization is null)
+        {
+            if (!visible) return;
+            if (Actor is null)
+                throw new InvalidOperationException("Cannot create debug visualization for a component that is not attached to an actor.");
+
+            _visualization = CreateDebugVisualization();
+            if (_visualization is null)
+                return;
+
+            if (this is SpatialComponent relation)
+                _visualization.Relation = relation;
+
+            Actor.Components.Add(_visualization);
+        }
+
+        _visualization.IsVisible = visible;
+    }
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;
 

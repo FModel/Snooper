@@ -4,6 +4,8 @@ using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Core;
 using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
@@ -78,6 +80,8 @@ public class SplineMeshComponent : StaticMeshComponent
     {
         SplineParams = new SplineMeshParams(component, Descriptor.Bounds);
     }
+
+    protected override DebugComponent CreateDebugVisualization() => new SplineMeshComponentVisualization(this);
 
     public override string Icon => "\uf55b";
 }

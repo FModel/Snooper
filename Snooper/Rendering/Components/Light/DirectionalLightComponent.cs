@@ -1,6 +1,8 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Visualization;
 
 namespace Snooper.Rendering.Components.Light;
 
@@ -17,6 +19,8 @@ public class DirectionalLightComponent : LightComponent
         // manually placed directional lights should be at the origin, just for easy manipulation
         LocalTransform.Position = Vector3.Zero;
     }
+
+    protected override DebugComponent CreateDebugVisualization() => new ArrowComponent(Settings.DirectionalLight, null, $"{Name} (Direction)");
 
     public override string Icon => "\uf185";
 }

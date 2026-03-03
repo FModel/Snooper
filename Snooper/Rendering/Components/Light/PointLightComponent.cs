@@ -1,4 +1,5 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Light;
@@ -19,6 +20,8 @@ public class PointLightComponent : LocalLightComponent
         SourceLength = component.SourceLength * Settings.GlobalScale;
         UseInverseSquaredFalloff = component.bUseInverseSquaredFalloff;
     }
+
+    protected override DebugComponent CreateDebugVisualization() => new PointLightComponentVisualization(this);
 
     protected override void SetLightData(ref LightData lightData)
     {

@@ -14,6 +14,7 @@ using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -89,7 +90,6 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         _materials = materials;
 
         Materials = new MaterialSection[_materials.Length];
-        // TODO: preload materials for basic properties (blend mode, etc.)
     }
 
     protected MeshComponent(ResolvedObject?[] materials, UMeshComponent component) : base(component)
@@ -105,13 +105,12 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             _materials[i] = overrideMaterials[i].ResolvedObject;
         }
 
-        if (_materials.Length == 0) // TODO: remove MaterialSection dependency when resources are being sent to the GPU
+        if (_materials.Length == 0)
         {
             _materials = [new FPackageIndex().ResolvedObject];
         }
 
         Materials = new MaterialSection[_materials.Length];
-        // TODO: preload materials for basic properties (blend mode, etc.)
     }
 
     public void RegisterTextureData(UBuildingTextureData textureData, int layerIndex)
@@ -152,6 +151,8 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             });
         }
     }
+
+    protected override DebugComponent CreateDebugVisualization() => new BoxComponent(Descriptor.Bounds, IsVisible ? Settings.VisibleMeshBounds : Settings.HiddenMeshBounds, name: $"{Name} (Bounds)");
 
     protected class Geometry : PrimitiveData<Vertex>
     {
