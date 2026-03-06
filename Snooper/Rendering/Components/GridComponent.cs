@@ -9,7 +9,7 @@ namespace Snooper.Rendering.Components;
 [DefaultActorSystem(typeof(GridSystem))]
 public class GridComponent() : PrimitiveComponent(new Geometry())
 {
-    public override string Icon => "\uf850";
+    internal override string Icon => "\uf850";
 
     private class Geometry : PrimitiveData
     {

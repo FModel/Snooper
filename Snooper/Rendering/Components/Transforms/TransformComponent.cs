@@ -215,7 +215,7 @@ public class SpatialComponent : ActorComponent, IControllable
         Relation?.MarkDirtyUpward(flags);
     }
 
-    public override string Icon => "\uf601";
+    internal override string Icon => "\uf601";
 
     private int _instanceIndex = -1; // -1 = pivot, 0..N-1 = instance index
     public virtual void DrawControls()

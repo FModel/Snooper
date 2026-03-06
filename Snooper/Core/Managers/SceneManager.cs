@@ -117,7 +117,7 @@ public class SceneManager : ActorManager
         }
     }
 
-    protected override void AddComponent(ActorComponent component, Actor actor)
+    protected sealed override void AddComponent(ActorComponent component, Actor actor)
     {
         base.AddComponent(component, actor);
 
@@ -127,12 +127,12 @@ public class SceneManager : ActorManager
 
             if (camera is InteractiveCameraComponent interactiveCamera)
             {
-                _viewportsToLoad.Enqueue(new Viewport(interactiveCamera, Pipeline, Window));
+                _viewportsToLoad.Enqueue(new Viewport(interactiveCamera));
             }
         }
     }
 
-    protected override void RemoveComponent(ActorComponent component, Actor actor)
+    protected sealed override void RemoveComponent(ActorComponent component, Actor actor)
     {
         base.RemoveComponent(component, actor);
 

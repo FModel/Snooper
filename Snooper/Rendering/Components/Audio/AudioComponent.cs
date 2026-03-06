@@ -29,7 +29,7 @@ public class AudioComponent : SpatialComponent
         }
     }
 
-    public override string Icon => "\uf6a8";
+    internal override string Icon => "\uf6a8";
 
     public override void DrawControls()
     {

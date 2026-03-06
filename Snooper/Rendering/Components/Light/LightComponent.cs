@@ -52,7 +52,7 @@ public abstract class LightComponent : SpatialComponent
         lightData.Intensity = IntensityNits;
     }
 
-    public override string Icon => "\uf0eb";
+    internal override string Icon => "\uf0eb";
 
     public sealed override void DrawControls()
     {

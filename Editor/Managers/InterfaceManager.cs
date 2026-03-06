@@ -46,7 +46,8 @@ public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
             {
                 Log.Debug("Selected Component ID: {ComponentId}", _selectedComponent.Id);
                 _selectedComponent.IsSelected = true;
-                // _selectedComponent.Actor?._isSelected = true; // mark actor as selected but don't outline all its components
+                _selectedComponent.OnJsonRequested += OnComponentJsonRequested;
+                _selectedComponent.Actor?._isSelected = true; // mark actor as selected but don't outline all its components
             }
         }
     }
@@ -57,6 +58,11 @@ public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
         SelectedComponent = GetComponentById(GetComponentId(mousePos, windowPos, windowSize));
     }
 
+    protected virtual void OnComponentJsonRequested(ActorComponent component, string[] properties)
+    {
+
+    }
+
     private void ClearSelection()
     {
         _selectedActor?.IsSelected = false;
@@ -64,7 +70,8 @@ public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
         if (_selectedComponent is not null)
         {
             _selectedComponent.IsSelected = false;
-            // _selectedComponent.Actor?._isSelected = false;
+            _selectedComponent.OnJsonRequested -= OnComponentJsonRequested;
+            _selectedComponent.Actor?._isSelected = false;
         }
     }
 }

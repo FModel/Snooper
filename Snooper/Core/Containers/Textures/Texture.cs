@@ -104,12 +104,7 @@ public abstract class Texture(
         ImGui.Image(GetPointer(), new Vector2(previewSize, previewSize), Vector2.Zero, Vector2.One, Vector4.One, Vector4.One / 2);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
         {
-            TexturePreviewWindow.Open(
-                Guid.ToString(EGuidFormats.UniqueObjectGuid),
-                $"Diffuse - {Name}",
-                GetPointer(),
-                new Vector2(Width, Height)
-            );
+            // TODO: Open texture in new window
         }
 
         ImGui.SameLine();

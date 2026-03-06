@@ -2,7 +2,7 @@
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Textures;
 
-namespace Snooper.UI.Containers.Textures;
+namespace Editor;
 
 public class ImGuiFontTexture() : Texture2D(0, 0, SizedInternalFormat.Rgba32f, PixelFormat.Rgba, PixelType.UnsignedByte)
 {
@@ -16,7 +16,7 @@ public class ImGuiFontTexture() : Texture2D(0, 0, SizedInternalFormat.Rgba32f, P
 
         Width = width;
         Height = height;
-        
+
         var mipCount = (int)Math.Floor(Math.Log2(Math.Max(Width, Height))) + 1;
         GL.TextureStorage2D(Handle, mipCount, info.InternalFormat, Width, Height);
         GL.TextureSubImage2D(Handle, 0, 0, 0, Width, Height, info.Format, info.Type, pixels);

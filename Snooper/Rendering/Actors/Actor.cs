@@ -7,7 +7,6 @@ using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.UI;
 
 namespace Snooper.Rendering.Actors;
 
@@ -17,14 +16,15 @@ public class Actor
     public string? ExportType { get; }
     public string? InternalType { get; }
 
+    internal bool _isSelected;
     public bool IsSelected
     {
-        get;
-        set
+        get => _isSelected;
+        internal set
         {
-            if (field == value) return;
+            if (_isSelected == value) return;
 
-            field = value;
+            _isSelected = value;
             IsOutlined = value;
         }
     }
@@ -131,8 +131,8 @@ public class Actor
         }
     }
 
-    public readonly int Id = Random.Shared.Next();
-    public virtual string Icon { get; private set; } = "\uf1b2";
+    internal readonly int Id = Random.Shared.Next();
+    internal virtual string Icon { get; private set; } = "\uf1b2";
 
     public event Action<IGameSystem>? OnAttachedToScene;
     public event Action<IGameSystem>? OnDetachedFromScene;
@@ -244,11 +244,11 @@ public class Actor
         }
     }
 
-    public virtual void DrawInterface()
+    internal virtual void DrawInterface()
     {
-        ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
+        // ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
         ImGui.TextUnformatted(Name);
-        ImGui.PopFont();
+        // ImGui.PopFont();
         if (ExportType != null)
         {
             ImGui.Text($"Export Type: {ExportType}");

@@ -168,7 +168,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         return (overallCenter, MathF.Max(distance, 0.1f));
     }
 
-    public override string Icon => "\ue4e2";
+    internal override string Icon => "\ue4e2";
 
     private int _sectionIndex;
     private int _materialIndex;

@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Mesh;
-using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Components.Visualization;
 
@@ -17,7 +16,7 @@ public class SplineMeshComponentVisualization : DebugComponent
         private const int Segments    = 16;
         private const int CircleSegs  = 12;
         private const float CircleRadius = 0.2f;
-        private const float DebugLift    = 1.0f; // units above mesh surface along SplineUpDir
+        private const float DebugLift    = 0.0f; // units above mesh surface along SplineUpDir
 
         public Geometry(SplineMeshParams p)
         {

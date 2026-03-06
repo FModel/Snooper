@@ -63,7 +63,7 @@ public class HierarchicalActor : Actor
         }
     }
 
-    public override void DrawInterface()
+    internal override void DrawInterface()
     {
         base.DrawInterface();
 

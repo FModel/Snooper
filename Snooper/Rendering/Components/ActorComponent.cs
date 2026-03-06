@@ -6,6 +6,7 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
 using Snooper.UI;
+using System.Numerics;
 
 namespace Snooper.Rendering.Components;
 
@@ -18,17 +19,14 @@ public abstract partial class ActorComponent
     protected readonly string Header;
     private readonly string? _exportType;
     private readonly string? _internalType;
-
-#if DEBUG
     private readonly string[]? _jsonProperties;
-#endif
 
     public string? ObjectPath { get; protected init; }
 
     public bool IsSelected
     {
         get;
-        set
+        internal set
         {
             if (field == value) return;
 
@@ -49,7 +47,7 @@ public abstract partial class ActorComponent
         }
     }
 
-    public virtual string Icon => "\uf111";
+    internal virtual string Icon => "\uf111";
 
     private DebugComponent? _visualization;
     protected virtual DebugComponent? CreateDebugVisualization() => null;
@@ -76,6 +74,7 @@ public abstract partial class ActorComponent
     }
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;
+    public event Action<ActorComponent, string[]>? OnJsonRequested;
 
     protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
     {
@@ -90,7 +89,6 @@ public abstract partial class ActorComponent
     {
         ObjectPath = component.GetPathName();
 
-#if DEBUG
         var jsonProperties = new List<string> { JsonConvert.SerializeObject(component, Formatting.Indented) };
 
         var templatePtr = component.Template;
@@ -101,7 +99,6 @@ public abstract partial class ActorComponent
         }
 
         _jsonProperties = jsonProperties.ToArray();
-#endif
     }
 
     public Actor? Actor
@@ -169,7 +166,7 @@ public abstract partial class ActorComponent
         IsOutlined = IsSelected || Actor is { IsOutlined: true };
     }
 
-    public void DrawInterface()
+    internal void DrawInterface()
     {
         if (this is not IControllable controllable) return;
 
@@ -200,26 +197,30 @@ public abstract partial class ActorComponent
             ImGui.Spacing();
         }
 
-#if DEBUG
-        if (_jsonProperties != null)
+        if (_jsonProperties is { Length: > 0 })
         {
-            if (ImGui.CollapsingHeader("JSON Properties"))
-            {
-                var avail = ImGui.GetContentRegionAvail();
-                for (int i = 0; i < _jsonProperties.Length; i++)
-                {
-                    var hasNode = i > 0 && ImGui.TreeNode($"Template Level {i}");
-                    if (i == 0 || hasNode)
-                    {
-                        if (ImGui.Button($"Copy JSON##jsonProperties{i}")) ImGui.SetClipboardText(_jsonProperties[i]);
-                        var height = MathF.Min(300, ImGui.CalcTextSize(_jsonProperties[i]).Y);
-                        ImGui.InputTextMultiline($"##jsonProperties{i}", ref _jsonProperties[i], ushort.MaxValue, avail with { Y = height }, ImGuiInputTextFlags.ReadOnly);
-                    }
-                    if (hasNode) ImGui.TreePop();
-                }
-            }
+            ImGui.CollapsingHeader("JSON Properties", ImGuiTreeNodeFlags.AllowOverlap | ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.Bullet | ImGuiTreeNodeFlags.NoTreePushOnOpen);
+
+            var rectMin = ImGui.GetItemRectMin();
+            var btnSize = new Vector2(ImGui.GetFrameHeight());
+            var rightX = rectMin.X + ImGui.GetItemRectSize().X - ImGui.GetStyle().FramePadding.X;
+            ImGui.SetCursorScreenPos(rectMin with { X = rightX - btnSize.X });
+
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0f);
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0f, 0f, 0f, 0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 1f, 1f, 0.08f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(1f, 1f, 1f, 0.15f));
+
+            if (ImGui.Button("\uf1c9##OpenJson", btnSize))
+                OnJsonRequested?.Invoke(this, _jsonProperties);
+
+            ImGui.PopStyleColor(3);
+            ImGui.PopStyleVar(2);
+
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Open JSON");
         }
-#endif
         controllable.DrawControls();
 
         ImGui.PopID();

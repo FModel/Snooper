@@ -25,7 +25,6 @@ using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.UI;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
@@ -219,10 +218,11 @@ switch (provider.ProjectName)
     case "Marvel":
     {
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoCQ01/TokyoCQ01.TokyoCQ01")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoE01/TokyoE01_Art.TokyoE01_Art")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoE01/TokyoE01_Art.TokyoE01_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/NewYorkE01/NewYorkE01_Art.NewYorkE01_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/AsgardE01/AsgardE01_Art.AsgardE01_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/Arakko/ArakkoE01_Art.ArakkoE01_Art")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/WakandaMC01/WakandaC03/WakandaC03_Art.WakandaC03_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/Lobby/Lobby_SevenDayActiveEvent_Bg1.Lobby_SevenDayActiveEvent_Bg1")));
         break;
     }
@@ -249,8 +249,8 @@ switch (provider.ProjectName)
     }
     case "DEADLINE_DELIVERY":
     {
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map18.Map18")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map1.Map1")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map18.Map18")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map1.Map1")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map17.Map17")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map2.Map2")));
         break;

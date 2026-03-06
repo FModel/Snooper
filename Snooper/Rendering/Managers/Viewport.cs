@@ -1,73 +1,13 @@
-﻿using System.Numerics;
-using ImGuiNET;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
+﻿using ImGuiNET;
 using Snooper.Core.Containers;
 using Snooper.Rendering.Components.Camera;
 using Snooper.UI;
-using Snooper.UI.Widgets;
 
 namespace Snooper.Rendering.Managers;
 
-public class Viewport(InteractiveCameraComponent camera, RenderPipeline pipeline, GameWindow wnd) : IWidget, IControllable, IResizable
+public class Viewport(InteractiveCameraComponent camera) : IControllable, IResizable
 {
     public InteractiveCameraComponent Camera { get; } = camera;
-
-    public event Action<Vector2, Vector2, Vector2>? OnLeftClick;
-
-    public void Render()
-    {
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        if (ImGui.Begin($"Viewport##{Camera.Id}"))
-        {
-            var size = ImGui.GetContentRegionAvail();
-            size.X -= ImGui.GetScrollX();
-            size.Y -= ImGui.GetScrollY();
-
-            Camera.Resize((int) size.X, (int) size.Y);
-
-            var texture = pipeline.GetFinalTexture();
-            ImGui.Image(texture.GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
-            var itemMin = ImGui.GetItemRectMin();
-
-            if (ImGui.IsItemHovered())
-            {
-                if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
-                {
-                    wnd.CursorState = CursorState.Grabbed;
-                }
-
-                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
-                {
-                    OnLeftClick?.Invoke(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
-                }
-            }
-
-            ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold]);
-
-            const float margin = 7.5f;
-            var frameHeight = ImGui.GetFrameHeight();
-            var drawList = ImGui.GetWindowDrawList();
-
-            var framerate = ImGui.GetIO().Framerate;
-            drawList.AddText(
-                new Vector2(itemMin.X + margin, itemMin.Y + size.Y - frameHeight),
-                ImGui.GetColorU32(ImGuiCol.Text),
-                $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms) ({texture.Width} x {texture.Height} px)"
-            );
-
-            const string label = "Previewed content may differ from final version saved or used in-game.";
-            drawList.AddText(
-                new Vector2(itemMin.X + size.X - ImGui.CalcTextSize(label).X - margin, itemMin.Y + size.Y - frameHeight),
-                ImGui.GetColorU32(new Vector4(1.00f, 1.00f, 1.00f, 0.50f)),
-                label
-            );
-
-            ImGui.PopFont();
-        }
-        ImGui.PopStyleVar();
-        ImGui.End();
-    }
 
     public void DrawControls()
     {

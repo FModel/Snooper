@@ -147,7 +147,7 @@ public class WorldActor : Actor
         }
     }
 
-    public override void DrawInterface()
+    internal override void DrawInterface()
     {
         base.DrawInterface();
 

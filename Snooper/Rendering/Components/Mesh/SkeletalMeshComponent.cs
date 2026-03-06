@@ -19,5 +19,5 @@ public class SkeletalMeshComponent : MeshComponent
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 
-    public override string Icon => "\uf5d7";
+    internal override string Icon => "\uf5d7";
 }

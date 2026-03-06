@@ -10,7 +10,6 @@ using Serilog;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
-using Snooper.UI.Containers.Textures;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
 namespace Editor.Managers;

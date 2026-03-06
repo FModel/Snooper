@@ -4,9 +4,10 @@ using OpenTK.Windowing.Desktop;
 using ImGuizmoNET;
 using OpenTK.Windowing.Common;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.UI;
+using Editor.Widgets;
 
 namespace Editor.Managers;
 
@@ -14,6 +15,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 {
     private bool _test = true;
     private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
+    private readonly JsonViewerWidget _jsonViewer = new();
 
     protected override void RenderInterface()
     {
@@ -56,12 +58,13 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
             {
                 if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
                 {
-                    wnd.CursorState = CursorState.Grabbed;
+                    Window.CursorState = CursorState.Grabbed;
                 }
 
                 if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                 {
                     OnViewportLeftClick(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
+                    _scrollToSelected = true;
                 }
             }
 
@@ -128,6 +131,8 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 
         }
         ImGui.End();
+
+        _jsonViewer.Draw();
     }
 
     private void GizmoButton(string icon, OPERATION operation)
@@ -148,7 +153,6 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
     }
 
     private bool _scrollToSelected;
-    private readonly Vector2 _iconSize = new(18);
     private readonly Vector2 _actionIconSize = new(16);
 
     private bool HasSelectedDescendant(Actor actor)
@@ -356,5 +360,10 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
         }
 
         component.DrawInterface();
+    }
+
+    protected override void OnComponentJsonRequested(ActorComponent component, string[] properties)
+    {
+        _jsonViewer.Open(component.Name, properties);
     }
 }

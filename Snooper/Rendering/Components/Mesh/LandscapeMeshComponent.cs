@@ -114,7 +114,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             Layers.TryGetValue("__LANDSCAPE_VISIBILITY__", out var visibility) ? visibility : null);
     }
 
-    public override string Icon => "\uf6fc";
+    internal override string Icon => "\uf6fc";
 
     private class MaterialDataContainer(
         Texture heightmap, Vector2 heightmapScaleBias,
