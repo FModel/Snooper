@@ -109,8 +109,8 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
         shader.SetUniform("uGlobalScale", Settings.GlobalScale);
 
-        _scales.Bind(3);
-        _mapping.Bind(4);
+        _scales.Bind(6);
+        _mapping.Bind(7);
     }
 
     public override long Allocated => base.Allocated + _scales.Allocated + _mapping.Allocated;

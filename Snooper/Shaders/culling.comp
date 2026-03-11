@@ -18,6 +18,7 @@ struct PrimitiveDescriptor
     uvec4 sectionCount[2]; // number of sections for each LOD
     uvec4 sectionOffset[2]; // section offsets for each LOD in SectionDescriptorsBuffer
     uvec4 baseColor[2]; // Color buffer offsets for each LOD
+    uvec4 baseBoneInfluence[2]; // bone influence offset buffer offsets for each LOD
 };
 
 struct SectionDescriptor
@@ -72,6 +73,7 @@ bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
         a.FirstIndex == b.FirstIndex &&
         a.BaseVertex == b.BaseVertex &&
         a.BaseColor == b.BaseColor &&
+        a.BaseBoneInfluence == b.BaseBoneInfluence &&
         a.MaterialIndex == b.MaterialIndex;
 }
 
@@ -195,6 +197,7 @@ void main()
                 newCmd.FirstIndex = primitive.firstIndex[lodGroup][lodSub] + section.firstIndex;
                 newCmd.BaseVertex = primitive.baseVertex[lodGroup][lodSub];
                 newCmd.BaseColor = primitive.baseColor[lodGroup][lodSub];
+                newCmd.BaseBoneInfluence = primitive.baseBoneInfluence[lodGroup][lodSub];
                 newCmd.MaterialIndex = section.materialIndex;
             }
         }
@@ -212,6 +215,7 @@ void main()
         uDrawCommandBuffer[drawId].BaseVertex    = newCmd.BaseVertex;
         uDrawCommandBuffer[drawId].BaseInstance  = newCmd.BaseInstance;
         uDrawCommandBuffer[drawId].BaseColor     = newCmd.BaseColor;
+        uDrawCommandBuffer[drawId].BaseBoneInfluence = newCmd.BaseBoneInfluence;
         uDrawCommandBuffer[drawId].MaterialIndex = newCmd.MaterialIndex;
     }
 }

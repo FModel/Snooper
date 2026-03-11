@@ -5,13 +5,14 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
+public class LodDescriptor<TVertex> where TVertex : unmanaged
 {
     public uint IndexCount { get; }
     public uint VertexCount { get; }
     public float ScreenSize { get; }
     public uint LayerCount { get; }
-    public bool HasVertexColors { get; }
+    public bool HasColoredVertices { get; }
+    public bool HasSkinnedVertices { get; }
     public SectionDescriptor[] Sections { get; }
 
     private TPrimitiveData<TVertex>? _primitive;
@@ -26,7 +27,8 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
         VertexCount = (uint)(_primitive?.Vertices?.Length ?? 0);
         ScreenSize = 0.0f;
         LayerCount = 1;
-        HasVertexColors = false;
+        HasColoredVertices = _primitive?.Colors?.Length > 0;
+        HasSkinnedVertices = _primitive?.BoneInfluences?.Length > 0 && _primitive?.BoneInfluenceCounts?.Length > 0;
         Sections = [new SectionDescriptor(0, IndexCount, 0)];
     }
 
@@ -74,7 +76,9 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
             cExtraUvs = (FMeshUVFloat[])extraUv1.Clone();
         }
 
-        HasVertexColors = cColors != null;
+        HasColoredVertices = cColors != null;
+        HasSkinnedVertices = lod is CSkelMeshLod;
+
         _factory = () => factory(cVertices, cIndices, cColors, cExtraUvs);
     }
 
@@ -88,11 +92,5 @@ public class LodDescriptor<TVertex> : IDisposable where TVertex : unmanaged
 
         _primitive = _factory();
         return _primitive;
-    }
-
-    public void Dispose()
-    {
-        _primitive?.Dispose();
-        _primitive = null;
     }
 }

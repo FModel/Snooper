@@ -1,11 +1,36 @@
 using System.Numerics;
 using ImGuiNET;
+using Snooper.Rendering;
 
 namespace Snooper.UI;
 
 public static class EditorUI
 {
-    // ── Axis label colors ────────────────────────────────────────────────────
+    public static bool FragmentColorCombo(string id, ref int value) => LabelCombo(id, ref value, FragmentColorMode.Labels);
+
+    public static bool LabelCombo(string id, ref int value, string[] labels)
+    {
+        var preview = (uint)value < (uint)labels.Length ? labels[value] : "Unknown";
+        var changed = false;
+
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+        if (ImGui.BeginCombo(id, preview))
+        {
+            for (var i = 0; i < labels.Length; i++)
+            {
+                if (ImGui.Selectable(labels[i], i == value))
+                {
+                    value = i;
+                    changed = true;
+                }
+                if (i == value) ImGui.SetItemDefaultFocus();
+            }
+            ImGui.EndCombo();
+        }
+
+        return changed;
+    }
+
     private static readonly Vector4 _axisColorX = new(0.5f, 0.000f, 0.000f, 1f);
     private static readonly Vector4 _axisColorY = new(0.000f, 0.5f, 0.000f, 1f);
     private static readonly Vector4 _axisColorZ = new(0.000f, 0.000f, 0.5f, 1f);

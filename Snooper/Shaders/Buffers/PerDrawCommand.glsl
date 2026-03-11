@@ -8,6 +8,7 @@
 
     uint BaseGeometry; // offset of this geometry in the culling buffer
     uint BaseColor;
+    uint BaseBoneInfluence;
     uint BaseMaterial; // offset of the first material this geometry uses in the material buffer
     uint MaterialIndex; // index of the material relative to BaseMaterial
     uint PickingId;

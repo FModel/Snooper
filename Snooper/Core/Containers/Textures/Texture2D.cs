@@ -25,7 +25,7 @@ public class Texture2D(int width, int height,
     public override void Generate()
     {
         base.Generate();
-        if (_owner is null or UVolumeTexture)
+        if (_owner is null or UVolumeTexture or UTextureRenderTarget)
         {
             return;
         }

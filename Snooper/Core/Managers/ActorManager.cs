@@ -20,8 +20,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private readonly HashSet<int> _actors = [];
 
-    public bool ShowFramebuffers = false;
-    public DebugVisualizationMode DebugColorMode = DebugVisualizationMode.None;
+    public int FragmentColor = FragmentColorMode.Disabled;
 
     public RendererInfo Renderer { get; } = new();
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
@@ -237,6 +236,9 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
         ImGui.SetWindowFontScale(1.0f);
 
         ImGui.SeparatorText("General");
+
+        ImGui.TextUnformatted("Fragment Color");
+        EditorUI.FragmentColorCombo("##FragmentColor", ref FragmentColor);
 
         var light = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
         ImGui.BeginDisabled(light == null);

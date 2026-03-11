@@ -156,14 +156,12 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     protected class Geometry : PrimitiveData<Vertex>
     {
-        private const int MaxBoneInfluences = 8;
-
         public Geometry(CMeshVertex[] vertices, uint[] indices, FColor[]? colors, FMeshUVFloat[]? extraUvs)
         {
-            Vertices = new Vertex[vertices.Length];
-            // if (vertices is CSkelMeshVertex[])
-                // BoneInfluence = new int[Vertices.Length * MaxBoneInfluences]; // TODO: optimize this by using a more compact format and/or only storing non-zero influences
+            var counts = vertices is CSkelMeshVertex[] ? new byte[vertices.Length] : null;
+            var influences = counts != null ? new List<uint>(counts.Length * 4) : null;
 
+            Vertices = new Vertex[vertices.Length];
             for (var i = 0; i < Vertices.Length; i++)
             {
                 var vertex = vertices[i];
@@ -175,17 +173,17 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
                 Vertices[i] = new Vertex(position, normal, tangent, texCoord, texLayer);
 
-                // if (vertex is CSkelMeshVertex skelVertex)
-                // {
-                //     var max = skelVertex.Influences.Count;
-                //     for (var j = 0; j < MaxBoneInfluences; j++)
-                //     {
-                //         var boneID = j < max ? skelVertex.Influences[j].Bone : (ushort) 0;
-                //         var weight = j < max ? skelVertex.Influences[j].RawWeight : (ushort) 0;
-                //
-                //         BoneInfluence[i + j] = (boneID << 16) | weight;
-                //     }
-                // }
+                if (vertex is CSkelMeshVertex skVertex && influences != null && counts != null)
+                {
+                    byte count = 0;
+                    foreach (var influence in skVertex.Influences)
+                    {
+                        if (influence.RawWeight == 0) continue;
+                        influences.Add(((uint)influence.Bone << 16) | influence.RawWeight);
+                        count++;
+                    }
+                    counts[i] = count;
+                }
             }
 
             Indices = indices;
@@ -197,6 +195,12 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 {
                     Colors[i] = colors[i].ToPackedARGB();
                 }
+            }
+
+            if (influences != null && counts != null)
+            {
+                BoneInfluences = influences.ToArray();
+                BoneInfluenceCounts = counts;
             }
         }
     }

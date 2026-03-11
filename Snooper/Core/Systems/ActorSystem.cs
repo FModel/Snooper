@@ -84,7 +84,6 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override int ComponentsCount => Components.Count;
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
 
-    protected DebugVisualizationMode DebugColorMode => ActorManager?.DebugColorMode ?? DebugVisualizationMode.None;
     protected bool ClearMaskBuffer { get; private set; } = false;
 
     protected HashSet<TComponent> Components { get; } = [];

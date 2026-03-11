@@ -4,7 +4,7 @@ layout (location = 1) out uint gPicking;
 
 #include "material_sampling.glsl"
 
-uniform int uDebugColorMode;
+uniform int uFragmentColorMode;
 
 #include "pbr.glsl"
 #include "Buffers/PerDrawCommand.glsl"
@@ -14,9 +14,8 @@ flat in uint vTexLayer;
 in VS_OUT {
     vec3 vViewPos;
     vec2 vTexCoords;
-    vec4 vColor;
     mat3 TBN;
-    vec3 vDebugColor;
+    vec3 vFragColor;
 } fs_in;
 
 out vec4 FragColor;
@@ -26,16 +25,13 @@ void main()
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
     PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
 
-    vec4 color = vec4(fs_in.vDebugColor, 1.0);
+    vec4 color = vec4(fs_in.vFragColor, 1.0);
     vec3 spec = vec3(1.0);
     vec3 normal = vec3(0.0, 0.0, 1.0);
 
-    if (uDebugColorMode == 0 && materialData.IsReady)
+    if (uFragmentColorMode == 0 && materialData.IsReady)
     {
-        // Sample material for the current layer
         LayerData layerData = SampleLayer(materialData, vTexLayer, fs_in.vTexCoords);
-
-        // Handle translucency
         if (IsTranslucent(materialData) && layerData.diffuse.a < 0.1)
         {
             discard;
@@ -45,20 +41,12 @@ void main()
         spec = layerData.specular;
         normal = layerData.normal;
     }
-    else if (uDebugColorMode == 4)
-    {
-        color.rgb = mix(vec3(0.25), vec3(1.0), vec3(
-            float((gl_PrimitiveID * 61u) % 255u) / 255.0,
-            float((gl_PrimitiveID * 149u) % 255u) / 255.0,
-            float((gl_PrimitiveID * 233u) % 255u) / 255.0
-        ));
-    }
-    else if (uDebugColorMode == 5)
-    {
-        color = fs_in.vColor;
-    }
 
     normal = normalize(fs_in.TBN * normal);
+    if (uFragmentColorMode == 6) // Normals
+    {
+        color = vec4(normal, 1.0);
+    }
 
     vec3 albedo = color.rgb;
     float metallic = spec.g;

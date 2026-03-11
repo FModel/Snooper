@@ -2,50 +2,34 @@
 
 namespace Snooper.Rendering.Primitives;
 
-public interface TPrimitiveData<T> : IDisposable where T : unmanaged
+public interface TPrimitiveData<T> where T : unmanaged
 {
     public T[]? Vertices { get; }
     public uint[]? Indices { get; }
 
-    // optional data
+    // ---------- optional data ----------
+
     public int[]? Colors { get; }
-    public int[]? BoneInfluences { get; }
+
+    /// <summary>
+    /// flat array of all bone influences across all vertices, stored contiguously, and free of zeros
+    /// </summary>
+    public uint[]? BoneInfluences { get; }
+
+    /// <summary>
+    /// the number of influences that vertex contributes to <see cref="BoneInfluences"/>.
+    /// </summary>
+    public byte[]? BoneInfluenceCounts { get; }
 }
 
 public abstract class PrimitiveData<T> : TPrimitiveData<T> where T : unmanaged
 {
-    public T[]? Vertices { get; protected set; }
-    public uint[]? Indices { get; protected set; }
+    public T[]? Vertices { get; protected init; }
+    public uint[]? Indices { get; protected init; }
 
-    public int[]? Colors { get; protected set; }
-    public int[]? BoneInfluences { get; protected set; }
-
-    public void Dispose()
-    {
-        if (Vertices is not null)
-        {
-            Array.Clear(Vertices);
-            Vertices = null;
-        }
-
-        if (Indices is not null)
-        {
-            Array.Clear(Indices);
-            Indices = null;
-        }
-
-        if (Colors is not null)
-        {
-            Array.Clear(Colors);
-            Colors = null;
-        }
-
-        if (BoneInfluences is not null)
-        {
-            Array.Clear(BoneInfluences);
-            BoneInfluences = null;
-        }
-    }
+    public int[]? Colors { get; protected init; }
+    public uint[]? BoneInfluences { get; protected init; }
+    public byte[]? BoneInfluenceCounts { get; protected init; }
 }
 
 public class PrimitiveData : PrimitiveData<Vector3>;

@@ -89,10 +89,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
                 _counts.Indices += lod.IndexCount;
                 _counts.Vertices += lod.VertexCount;
 
-                if (lod.HasVertexColors)
-                {
-                    _counts.ColoredVertices += lod.VertexCount;
-                }
+                if (lod.HasColoredVertices) _counts.ColoredVertices += lod.VertexCount;
+                if (lod.HasSkinnedVertices) _counts.SkinnedVertices += lod.VertexCount;
             }
         }
     }
@@ -114,10 +112,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
                 _counts.Indices -= lod.IndexCount;
                 _counts.Vertices -= lod.VertexCount;
 
-                if (lod.HasVertexColors)
-                {
-                    _counts.ColoredVertices -= lod.VertexCount;
-                }
+                if (lod.HasColoredVertices) _counts.ColoredVertices -= lod.VertexCount;
+                if (lod.HasSkinnedVertices) _counts.SkinnedVertices -= lod.VertexCount;
             }
         }
 

@@ -6,12 +6,13 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation cullingAllocation, uint baseColor, int overrideLod = -1)
+public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation cullingAllocation, uint baseColor, uint baseBoneInfluence, int overrideLod = -1)
 {
     public readonly uint FirstIndex = firstIndex; // first index of lod 0
     public readonly uint BaseVertex = baseVertex; // base vertex of lod 0
     public readonly BufferAllocation CullingAllocation = cullingAllocation;
     public readonly uint BaseColor = baseColor;
+    public readonly uint BaseBoneInfluence = baseBoneInfluence;
 
     public int OverrideLod { get; internal set; } = overrideLod;
 }
@@ -22,6 +23,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     private readonly ElementArrayBuffer<uint> _ebo = new();
     private readonly ArrayBuffer<TVertex> _vbo = new();
     private readonly ShaderStorageBuffer<int> _colors = new();
+    private readonly ShaderStorageBuffer<uint> _boneInfluences = new();
+    private readonly ShaderStorageBuffer<uint> _boneInfluenceOffsets = new();
     private readonly CullingResources _culling = new();
 
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
@@ -33,6 +36,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _ebo.Generate();
         _vbo.Generate();
         _colors.Generate();
+        _boneInfluences.Generate();
+        _boneInfluenceOffsets.Generate();
         _culling.Generate();
 
         _ebo.OnHandleChanged += (_, _) => BindBuffersToVao();
@@ -57,10 +62,18 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     {
         _ebo.Allocate(counts.Indices);
         _vbo.Allocate(counts.Vertices);
+
         if (counts.ColoredVertices > 0)
         {
             _colors.Allocate(counts.ColoredVertices);
         }
+
+        if (counts.SkinnedVertices > 0)
+        {
+            _boneInfluences.Allocate(counts.SkinnedVertices * 4);
+            _boneInfluenceOffsets.Allocate(counts.SkinnedVertices);
+        }
+
         _culling.Allocate(counts);
     }
 
@@ -68,14 +81,14 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     {
         if (!_cache.TryGetValue(guid, out var handle))
         {
-            var (firstIndex, baseVertex, baseColor, offsets) = CreateOffsets();
-            handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(offsets), baseColor, lods.Length > 1 ? -1 : 0);
+            var (firstIndex, baseVertex, baseColor, baseBoneInfluence, offsets) = CreateOffsets();
+            handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(offsets), baseColor, baseBoneInfluence, lods.Length > 1 ? -1 : 0);
             _cache.Add(guid, handle);
         }
 
         return handle;
 
-        unsafe (uint, uint, uint, PrimitiveOffsets) CreateOffsets()
+        unsafe (uint, uint, uint, uint, PrimitiveOffsets) CreateOffsets()
         {
             var maxLod = 0u;
             var o = new PrimitiveOffsets(bounds);
@@ -94,16 +107,31 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
                 o.LOD_SectionCount[i] = (uint)lods[i].Sections.Length;
                 o.LOD_SectionOffset[i] = (uint)_culling.Add(lods[i].Sections).StartIndex;
 
-                if (primitive.Colors != null)
+                if (primitive.Colors is { Length: > 0 } colors)
                 {
-                    o.LOD_BaseColor[i] = (uint)_colors.AddRange(primitive.Colors).StartIndex;
+                    o.LOD_BaseColor[i] = (uint)_colors.AddRange(colors).StartIndex;
+                }
+
+                if (primitive is { BoneInfluences: { Length: > 0 } boneInfluences, BoneInfluenceCounts: { Length: > 0 } boneInfluenceCounts })
+                {
+                    var cursor = (uint)_boneInfluences.AddRange(boneInfluences).StartIndex;
+
+                    var packedOffsets = new uint[boneInfluenceCounts.Length];
+                    for (var j = 0; j < packedOffsets.Length; j++)
+                    {
+                        var count = boneInfluenceCounts[j];
+                        packedOffsets[j] = (cursor << 8) | count;
+                        cursor += count;
+                    }
+
+                    o.LOD_BaseBoneInfluence[i] = (uint)_boneInfluenceOffsets.AddRange(packedOffsets).StartIndex;
                 }
 
                 maxLod++;
             }
             o.MaxLOD = Math.Min(maxLod, Settings.MaxNumberOfLods) - 1;
 
-            return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], o);
+            return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], o.LOD_BaseBoneInfluence[0], o);
         }
     }
 
@@ -112,7 +140,9 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     public void Render(Action mdi)
     {
-        _colors.Bind(5);
+        _colors.Bind(3);
+        _boneInfluences.Bind(4);
+        _boneInfluenceOffsets.Bind(5);
 
         _vao.Bind();
         _ebo.Bind();
@@ -140,6 +170,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _ebo.Dispose();
         _vbo.Dispose();
         _colors.Dispose();
+        _boneInfluences.Dispose();
+        _boneInfluenceOffsets.Dispose();
         _culling.Dispose();
     }
 
@@ -151,6 +183,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             total += _ebo.Allocated;
             total += _vbo.Allocated;
             total += _colors.Allocated;
+            total += _boneInfluences.Allocated;
+            total += _boneInfluenceOffsets.Allocated;
             total += _culling.Allocated;
             return total;
         }
@@ -164,6 +198,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             total += _ebo.Used;
             total += _vbo.Used;
             total += _colors.Used;
+            total += _boneInfluences.Used;
+            total += _boneInfluenceOffsets.Used;
             total += _culling.Used;
             return total;
         }
@@ -174,6 +210,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         yield return new MemoryDetail("Index Buffer", _ebo);
         yield return new MemoryDetail("Vertex Buffer", _vbo);
         yield return new MemoryDetail("Vertex Color Buffer", _colors);
+        yield return new MemoryDetail("Bone Influence Buffer", _boneInfluences);
+        yield return new MemoryDetail("Bone Influence Offset Buffer", _boneInfluenceOffsets);
         yield return new MemoryDetail("Culling Resources", _culling);
     }
 }

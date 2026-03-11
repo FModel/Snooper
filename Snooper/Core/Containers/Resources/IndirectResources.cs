@@ -19,6 +19,7 @@ public struct AllocationCounts
     public uint Indices; // total number of indices across all LODs of all unique components
     public uint Vertices; // total number of vertices across all LODs of all unique components
     public uint ColoredVertices; // total number of vertices with color data across all LODs of all unique components
+    public uint SkinnedVertices; // total number of vertices with bone data across all LODs of all unique components
 }
 
 public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(PrimitiveType mode) : IMemoryDetailsProvider, IDisposable
@@ -70,8 +71,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (component.Materials.Length == 0)
             throw new InvalidOperationException("Primitive component must have at least one material assigned before being added to IndirectResources.");
 
-        var primitive = component.Descriptor;
-        var geometryHandle = _geometry.Add(primitive.Guid, primitive.Lods, primitive.Bounds);
+        var descriptor = component.Descriptor;
+        var geometryHandle = _geometry.Add(descriptor.Guid, descriptor.Lods, descriptor.Bounds);
         var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
 
         foreach (var material in component.Materials)
@@ -83,13 +84,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         var baseMaterial = component.Materials[0].Allocation is { } first ? (uint)first.StartIndex : 0u;
 
         const uint currentLod = 0u;
-        var drawAllocations = new BufferAllocation[primitive.Lods[currentLod].Sections.Length];
+        var drawAllocations = new BufferAllocation[descriptor.Lods[currentLod].Sections.Length];
 
         var bufferType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
         var buffer = _commands.GetBuffer(bufferType);
         for (var i = 0u; i < drawAllocations.Length; i++)
         {
-            var section = primitive.Lods[currentLod].Sections[i];
+            var section = descriptor.Lods[currentLod].Sections[i];
             drawAllocations[i] = buffer.Add(new DrawElementsIndirectCommand
             {
                 IndexCount = section.IndexCount,
@@ -99,6 +100,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 BaseInstance = (uint)instanceAllocation.StartIndex,
                 BaseGeometry = (uint)geometryHandle.CullingAllocation.StartIndex,
                 BaseColor = geometryHandle.BaseColor,
+                BaseBoneInfluence = geometryHandle.BaseBoneInfluence,
                 BaseMaterial = baseMaterial,
                 MaterialIndex = section.MaterialIndex,
                 PickingId = component.Id,
@@ -149,7 +151,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         if (component.IsDirty(DirtyFlags.Visibility))
         {
-            const int offset = 40; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
+            const int offset = 44; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
             var buffer = _commands.GetBuffer(metadata.BufferType);
 
             if (component.IsVisible)

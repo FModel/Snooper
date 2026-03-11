@@ -10,12 +10,13 @@ using Snooper.Rendering.Primitives;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanaged
+public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
 {
     public string? Path { get; }
     public FGuid Guid { get; } // does not have to match the cached GUID (if descriptor is cached), but it's better for debug purposes if it does
     public CullingBounds Bounds { get; }
     public LodDescriptor<TVertex>[] Lods { get; }
+    public SkeletonDescriptor? Skeleton { get; }
 
     public PrimitiveDescriptor(CullingBounds bounds, Func<TPrimitiveData<TVertex>> factory)
     {
@@ -63,6 +64,8 @@ public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanage
                 Lods[i] = new LodDescriptor<TVertex>(mesh.LODs[i], factory);
             }
         }
+
+        Skeleton = new SkeletonDescriptor(owner.ReferenceSkeleton);
     }
 
     /// <summary>
@@ -85,12 +88,4 @@ public class PrimitiveDescriptor<TVertex> : IDisposable where TVertex : unmanage
     /// </summary>
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(new FGuid((uint)owner.Name.GetHashCode()), () => new PrimitiveDescriptor<TVertex>(owner, factory));
-
-    public void Dispose()
-    {
-        foreach (var lod in Lods)
-        {
-            lod.Dispose();
-        }
-    }
 }
