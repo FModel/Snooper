@@ -85,7 +85,7 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
             }
         }
 
-        if (ActorManager?.GetSystem<SplineRenderSystem>() is { } splineSystem)
+        if (ActorManager?.GetSystem<SplineMeshRenderSystem>() is { } splineSystem)
         {
             if (ImGui.Checkbox("Show Spline Mesh Paths", ref _showSplineViz))
             {

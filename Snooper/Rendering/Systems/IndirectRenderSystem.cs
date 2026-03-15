@@ -83,6 +83,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         if (_guids.TryAdd(component.Descriptor.Guid, 0))
         {
             _counts.UniqueComponents++;
+            if (component.Descriptor.Skeleton is { } skeleton)
+                _counts.Bones += (uint)skeleton.BoneCount;
+
             foreach (var lod in component.Descriptor.Lods)
             {
                 _counts.Sections += (uint)lod.Sections.Length;
@@ -107,6 +110,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         if (_guids.Remove(component.Descriptor.Guid, out _))
         {
             _counts.UniqueComponents--;
+            if (component.Descriptor.Skeleton is { } skeleton)
+                _counts.Bones -= (uint)skeleton.BoneCount;
+
             foreach (var lod in component.Descriptor.Lods)
             {
                 _counts.Indices -= lod.IndexCount;

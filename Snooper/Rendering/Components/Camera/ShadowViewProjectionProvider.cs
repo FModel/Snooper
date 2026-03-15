@@ -2,8 +2,8 @@
 
 namespace Snooper.Rendering.Components.Camera;
 
-public readonly struct ShadowViewProjectionProvider(Matrix4x4 view, Matrix4x4 projection) : IViewProjectionProvider
+public record ShadowViewProjectionProvider(Matrix4x4 ViewMatrix, Matrix4x4 ProjectionMatrix) : IViewProjectionProvider
 {
-    public Matrix4x4 ViewMatrix { get; } = view;
-    public Matrix4x4 ProjectionMatrix { get; } = projection;
+    public Matrix4x4 InverseViewMatrix { get; } = Matrix4x4.Invert(ViewMatrix, out var inverse) ? inverse : Matrix4x4.Identity;
+    public Matrix4x4 InverseProjectionMatrix { get; } = Matrix4x4.Invert(ProjectionMatrix, out var inverse) ? inverse : Matrix4x4.Identity;
 }

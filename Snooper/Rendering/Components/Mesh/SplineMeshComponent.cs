@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Core;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Visualization;
@@ -66,15 +67,16 @@ public struct SplineMeshParams
     }
 }
 
-[DefaultActorSystem(typeof(SplineRenderSystem))]
+[DefaultActorSystem(typeof(SplineMeshRenderSystem))]
 public class SplineMeshComponent : StaticMeshComponent
 {
     public SplineMeshParams SplineParams;
 
-    internal bool IsInitialized { get; set; } // TODO: rework this hack
+    internal BufferAllocation? _allocation; // TODO: rework this hack
 
     // TODO: buffer transfer seem to make spline glitch a lot even tho we are not relying on gl_DrawID anymore, and culling is disabled, must investigate
     protected override bool SupportsOpaquePass => false;
+    protected sealed override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Spline;
 
     public SplineMeshComponent(UStaticMesh staticMesh, USplineMeshComponent component) : base(staticMesh, component)
     {

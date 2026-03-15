@@ -8,70 +8,55 @@ namespace Editor.Managers;
 
 public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
 {
-    private Actor? _selectedActor;
-    protected Actor? SelectedActor
+    protected Actor? SelectedActor { get; private set; }
+    protected ActorComponent? SelectedComponent { get; private set; }
+
+    protected void SelectActor(Actor? actor) => Select(actor, null);
+    protected void SelectComponent(ActorComponent? component) => Select(null, component);
+
+    private void Select(Actor? actor, ActorComponent? component)
     {
-        get => _selectedActor;
-        set
+        if (SelectedActor == actor && SelectedComponent == component) return;
+
+        SelectedActor?.IsSelected = false;
+        if (SelectedComponent is not null)
         {
-            if (_selectedActor == value)
-                return;
-
-            ClearSelection();
-
-            _selectedActor = value;
-            _selectedComponent = null;
-            if (_selectedActor is not null)
-            {
-                Log.Debug("Selected Actor: {ActorName}", _selectedActor.Name);
-                _selectedActor.IsSelected = true;
-            }
+            SelectedComponent.IsSelected = false;
+            SelectedComponent.OnJsonRequested -= OnComponentJsonRequested;
+            SelectedComponent.Actor?._isSelected = false;
         }
+
+        SelectedActor = actor;
+        SelectedComponent = component;
+
+        if (SelectedActor is not null)
+        {
+            Log.Debug("Selected Actor: {ActorName}", SelectedActor.Name);
+            SelectedActor.IsSelected = true;
+        }
+        if (SelectedComponent is not null)
+        {
+            Log.Debug("Selected Component ID: {ComponentId}", SelectedComponent.Id);
+            SelectedComponent.IsSelected = true;
+            SelectedComponent.OnJsonRequested += OnComponentJsonRequested;
+            SelectedComponent.Actor?._isSelected = true;
+        }
+
+        OnSelectionChanged(SelectedActor, SelectedComponent);
     }
 
-    private ActorComponent? _selectedComponent;
-    protected ActorComponent? SelectedComponent
+    protected sealed override void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
     {
-        get => _selectedComponent;
-        set
-        {
-            if (_selectedComponent == value)
-                return;
-
-            ClearSelection();
-
-            _selectedComponent = value;
-            _selectedActor = _selectedComponent?.Actor;
-            if (_selectedComponent is not null)
-            {
-                Log.Debug("Selected Component ID: {ComponentId}", _selectedComponent.Id);
-                _selectedComponent.IsSelected = true;
-                _selectedComponent.OnJsonRequested += OnComponentJsonRequested;
-                _selectedComponent.Actor?._isSelected = true; // mark actor as selected but don't outline all its components
-            }
-        }
+        SelectComponent(GetComponentById(GetComponentId(mousePos, windowPos, windowSize)));
     }
 
-    protected override void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
+    protected virtual void OnSelectionChanged(Actor? actor, ActorComponent? component)
     {
-        SelectedActor = null;
-        SelectedComponent = GetComponentById(GetComponentId(mousePos, windowPos, windowSize));
+
     }
 
     protected virtual void OnComponentJsonRequested(ActorComponent component, string[] properties)
     {
 
-    }
-
-    private void ClearSelection()
-    {
-        _selectedActor?.IsSelected = false;
-
-        if (_selectedComponent is not null)
-        {
-            _selectedComponent.IsSelected = false;
-            _selectedComponent.OnJsonRequested -= OnComponentJsonRequested;
-            _selectedComponent.Actor?._isSelected = false;
-        }
     }
 }

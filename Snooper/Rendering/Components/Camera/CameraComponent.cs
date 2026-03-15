@@ -45,8 +45,26 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
 
     public CameraMode ProjectionMode { get; } = CameraMode.Perspective;
 
-    public Matrix4x4 ViewMatrix { get; private set; } = Matrix4x4.Identity;
-    public Matrix4x4 ProjectionMatrix { get; private set; } = Matrix4x4.Identity;
+    public Matrix4x4 ViewMatrix
+    {
+        get;
+        private set
+        {
+            field = value;
+            InverseViewMatrix = Matrix4x4.Invert(field, out var inverse) ? inverse : Matrix4x4.Identity;
+        }
+    } = Matrix4x4.Identity;
+    public Matrix4x4 ProjectionMatrix
+    {
+        get;
+        private set
+        {
+            field = value;
+            InverseProjectionMatrix = Matrix4x4.Invert(field, out var inverse) ? inverse : Matrix4x4.Identity;
+        }
+    } = Matrix4x4.Identity;
+    public Matrix4x4 InverseViewMatrix { get; private set; } = Matrix4x4.Identity;
+    public Matrix4x4 InverseProjectionMatrix { get; private set; } = Matrix4x4.Identity;
 
     public float FieldOfViewRadians => MathF.PI / 180.0f * FieldOfView;
     public float NearClipPlane

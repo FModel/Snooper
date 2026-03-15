@@ -119,8 +119,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         _clusterBuildProgram.SetUniform("uZNear", camera.NearClipPlane);
         _clusterBuildProgram.SetUniform("uZFar", camera.FarClipPlane);
 
-        Matrix4x4.Invert(camera.ProjectionMatrix, out var invProj);
-        _clusterBuildProgram.SetUniform("uInverseProjectionMatrix", invProj);
+        _clusterBuildProgram.SetUniform("uInverseProjectionMatrix", camera.InverseProjectionMatrix);
 
         _clusterAABBBuffer.Bind(0);
 
@@ -148,10 +147,8 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         _lightCullingProgram.SetUniform("uGridDimZ", GridDimensionZ);
         _lightCullingProgram.SetUniform("uViewMatrix", camera.ViewMatrix);
 
-        _lightDataBuffer.Bind(0);
-        _clusterAABBBuffer.Bind(1);
-        _clusterDataBuffer.Bind(2);
-        _lightIndexListBuffer.Bind(3);
+        BindForRendering();
+        _clusterAABBBuffer.Bind(3);
         _globalIndexCountBuffer.Bind(4);
 
         GL.DispatchCompute(_numWorkGroups, 1, 1);
@@ -223,9 +220,9 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
     internal void BindForRendering()
     {
-        _lightDataBuffer.Bind(6);
-        _clusterDataBuffer.Bind(7);
-        _lightIndexListBuffer.Bind(8);
+        _lightDataBuffer.Bind(0);
+        _clusterDataBuffer.Bind(1);
+        _lightIndexListBuffer.Bind(2);
     }
     internal DirectionalLightComponent? GetDirectionalLight() => _cachedDirectionalLight;
 

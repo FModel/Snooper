@@ -22,6 +22,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
 
     public int FragmentColor = FragmentColorMode.Disabled;
 
+    public float Time { get; private set; }
     public RendererInfo Renderer { get; } = new();
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
@@ -34,6 +35,8 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
 
     public virtual void Update(float delta)
     {
+        Time += delta;
+
         DequeueSystems(1);
         TextureCache.Update();
 

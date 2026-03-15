@@ -23,6 +23,9 @@ public sealed class TransformSystem : ActorSystem<SpatialComponent>
 
     protected override bool CanEnqueueActorComponent(SpatialComponent component)
     {
+        // TODO: this system should register all components, not only those without a relation
+        // so that we are able to update the transform of a component at any given level
+        // and don't have to rely on MarkDirtyUpward
         return base.CanEnqueueActorComponent(component) && component.Relation is null;
     }
 

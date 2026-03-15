@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using System.Numerics;
+using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
@@ -20,6 +21,7 @@ public struct AllocationCounts
     public uint Vertices; // total number of vertices across all LODs of all unique components
     public uint ColoredVertices; // total number of vertices with color data across all LODs of all unique components
     public uint SkinnedVertices; // total number of vertices with bone data across all LODs of all unique components
+    public uint Bones; // total number of bones across all unique components
 }
 
 public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(PrimitiveType mode) : IMemoryDetailsProvider, IDisposable
@@ -31,6 +33,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     private readonly CommandBufferSet _commands = new();
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new();
     private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new();
+    private readonly ShaderStorageBuffer<Matrix4x4> _boneData = new();
+    private readonly ShaderStorageBuffer<Matrix4x4> _poseData = new();
 
     private readonly List<Action> _geometryUpdates = []; // TODO: remove this hack
 
@@ -40,6 +44,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _commands.Generate();
         _instanceData.Generate();
         _materialData.Generate();
+        _boneData.Generate();
+        _poseData.Generate();
     }
 
     public void SetVertexLayout(Action<uint> setter) => _geometry.SetVertexLayout(setter);
@@ -50,6 +56,11 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _commands.Allocate(counts.Draws);
         _instanceData.Allocate(counts.Instances);
         _materialData.Allocate(counts.Materials);
+        if (counts.Bones > 0)
+        {
+            _boneData.Allocate(counts.Bones);
+            _poseData.Allocate(counts.Bones);
+        }
 
         Log.Debug("Allocated {SystemName}<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
             systemName,
@@ -80,6 +91,25 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             material.Allocation = _materialData.Add(new TPerMaterialData());
         }
 
+        BufferAllocation? poseAllocation = null;
+        if (descriptor.Skeleton is { } skeleton)
+        {
+            var inverseBoneMatrices = new Matrix4x4[skeleton.BoneMatrices.Length];
+            for (var i = 0; i < inverseBoneMatrices.Length; i++)
+            {
+                Matrix4x4.Invert(skeleton.BoneMatrices[i], out inverseBoneMatrices[i]);
+            }
+
+            _boneData.AddRange(inverseBoneMatrices);
+            poseAllocation = _poseData.AddRange(skeleton.BoneMatrices);
+            skeleton.OnBoneMatricesChanged += () =>
+            {
+                // TODO: not pretty
+                _poseData.QueueUpdate(poseAllocation.Value, skeleton.BoneMatrices);
+                component.SetLocalTransform(component.LocalTransform); // TODO: really not pretty
+            };
+        }
+
         var instanceCount = component.IsVisible ? (uint)instanceAllocation.Length : 0;
         var baseMaterial = component.Materials[0].Allocation is { } first ? (uint)first.StartIndex : 0u;
 
@@ -101,6 +131,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 BaseGeometry = (uint)geometryHandle.CullingAllocation.StartIndex,
                 BaseColor = geometryHandle.BaseColor,
                 BaseBoneInfluence = geometryHandle.BaseBoneInfluence,
+                BaseBone = poseAllocation.HasValue ? (uint)poseAllocation.Value.StartIndex : 0u,
                 BaseMaterial = baseMaterial,
                 MaterialIndex = section.MaterialIndex,
                 PickingId = component.Id,
@@ -151,7 +182,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         if (component.IsDirty(DirtyFlags.Visibility))
         {
-            const int offset = 44; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
+            const int offset = 48; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
             var buffer = _commands.GetBuffer(metadata.BufferType);
 
             if (component.IsVisible)
@@ -200,6 +231,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         _instanceData.FlushUpdates();
         _materialData.FlushUpdates();
+        _boneData.FlushUpdates();
+        _poseData.FlushUpdates();
     }
 
     public void Remove(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
@@ -227,6 +260,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         buffer.Bind(0);
         _instanceData.Bind(1);
         _materialData.Bind(2);
+        _boneData.Bind(3);
+        _poseData.Bind(4);
 
         _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, 0, buffer.Capacity, buffer.Stride));
 
@@ -248,6 +283,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _commands.Dispose();
         _instanceData.Dispose();
         _materialData.Dispose();
+        _boneData.Dispose();
+        _poseData.Dispose();
     }
 
     public long Allocated
@@ -259,6 +296,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             total += _commands.Allocated;
             total += _instanceData.Allocated;
             total += _materialData.Allocated;
+            total += _boneData.Allocated;
+            total += _poseData.Allocated;
             return total;
         }
     }
@@ -272,6 +311,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             total += _commands.Used;
             total += _instanceData.Used;
             total += _materialData.Used;
+            total += _boneData.Used;
+            total += _poseData.Used;
             return total;
         }
     }
@@ -282,5 +323,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         yield return new MemoryDetail("Draw Commands", _commands);
         yield return new MemoryDetail("Instance Data", _instanceData);
         yield return new MemoryDetail("Material Data", _materialData);
+        yield return new MemoryDetail("Bone Data", _boneData);
+        yield return new MemoryDetail("Pose Data", _poseData);
     }
 }

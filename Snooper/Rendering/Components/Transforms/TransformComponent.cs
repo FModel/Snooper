@@ -1,8 +1,10 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
@@ -28,19 +30,21 @@ public class SpatialComponent : ActorComponent, IControllable
     public SpatialComponent(USceneComponent component) : base(component)
     {
         LocalTransform = component.GetRelativeTransform();
-        _originalTransform   = Snapshot();
 
+        _attachSocketName = component.GetOrDefault<FName?>("AttachSocketName")?.Text;
         _absPosition = component.GetOrDefault<bool>("bAbsoluteLocation");
         _absRotation = component.GetOrDefault<bool>("bAbsoluteRotation");
         _absScale = component.GetOrDefault<bool>("bAbsoluteScale");
 
         _originalAbsPosition = _absPosition;
         _originalAbsRotation = _absRotation;
-        _originalAbsScale    = _absScale;
+        _originalAbsScale = _absScale;
+        _originalTransform = Snapshot();
     }
 
     private Transform Snapshot() => new() { Position = LocalTransform.Position, Rotation = LocalTransform.Rotation, Scale = LocalTransform.Scale };
 
+    private string? _attachSocketName;
     private bool _absPosition;
     private bool _absRotation;
     private bool _absScale;
@@ -181,17 +185,25 @@ public class SpatialComponent : ActorComponent, IControllable
         else
         {
             if (recursive) Relation.UpdateWorldMatrix();
+
+            var relationMatrix = Relation.WorldMatrix;
+            if (!string.IsNullOrEmpty(_attachSocketName) && Relation is SkinnedMeshComponent { Descriptor.Skeleton: { } skeleton })
+            {
+                var socket = skeleton.GetBoneModelMatrix(_attachSocketName);
+                relationMatrix = socket * relationMatrix;
+            }
+
             if (!_absPosition && !_absRotation && !_absScale)
             {
-                WorldMatrix = LocalTransform.ToMatrix() * Relation.WorldMatrix;
+                WorldMatrix = LocalTransform.ToMatrix() * relationMatrix;
             }
             else
             {
-                Matrix4x4.Decompose(Relation.WorldMatrix, out var scale, out var rotation, out _);
+                Matrix4x4.Decompose(relationMatrix, out var scale, out var rotation, out _);
 
                 WorldMatrix = new Transform
                 {
-                    Position = _absPosition ? LocalTransform.Position : Vector3.Transform(LocalTransform.Position, Relation.WorldMatrix),
+                    Position = _absPosition ? LocalTransform.Position : Vector3.Transform(LocalTransform.Position, relationMatrix),
                     Rotation = _absRotation ? LocalTransform.Rotation : rotation * LocalTransform.Rotation,
                     Scale = _absScale ? LocalTransform.Scale : LocalTransform.Scale * scale
                 }.ToMatrix();

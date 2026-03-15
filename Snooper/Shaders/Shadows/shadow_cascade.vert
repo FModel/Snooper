@@ -8,6 +8,8 @@ void main()
     vec2 posXY = unpackHalf2x16(aPosHalf.x);
     vec2 posZW = unpackHalf2x16(aPosHalf.y);
 
+    // TODO: alter pos for skinning and splines
+
     SetCommonVSOut();
 
     gl_Position = uInstanceDataBuffer[gBaseInstance + gInstanceID].Matrix * vec4(posXY, posZW);

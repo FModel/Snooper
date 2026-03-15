@@ -88,7 +88,6 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadow
         Matrix4x4.Decompose(light.WorldMatrix, out _, out var rotation, out _);
         var lightDir = Vector3.Transform(Settings.ForwardVector, rotation);
 
-        Matrix4x4.Invert(camera.ViewMatrix, out var invView);
         var aspect = camera.AspectRatio;
         var tanHalfFov = MathF.Tan(camera.FieldOfViewRadians * 0.5f);
         var up = camera.Up;
@@ -120,7 +119,7 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadow
 
             for (var i = 0; i < frustumCorners.Length; i++)
             {
-                frustumCorners[i] = Vector3.Transform(frustumCorners[i], invView);
+                frustumCorners[i] = Vector3.Transform(frustumCorners[i], camera.InverseViewMatrix);
             }
 
             var center = Vector3.Zero;

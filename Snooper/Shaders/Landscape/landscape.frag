@@ -35,12 +35,12 @@ layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
     PerMaterialData uMaterialDataBuffer[];
 };
 
-layout(std430, binding = 6) restrict readonly buffer LandscapeScales
+layout(std430, binding = 8) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };
 
-layout(std430, binding = 7) restrict readonly buffer WeightMappingBuffer
+layout(std430, binding = 9) restrict readonly buffer WeightMappingBuffer
 {
     WeightHighlightMapping uWeightMappingBuffer[];
 };

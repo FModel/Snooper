@@ -28,7 +28,6 @@ public abstract class ActorSystem : IGameSystem
     public bool IsEnabled = true;
     public bool ShowWireframe = false;
     public ActorManager? ActorManager { get; internal set; }
-    public float Time { get; private set; }
 
     public abstract ActorSystemType SystemType { get; }
     public abstract uint Order { get; }
@@ -54,7 +53,6 @@ public abstract class ActorSystem : IGameSystem
         if (!IsEnabled) return;
         Profiler.Time(ProfilerMetric.Update, () =>
         {
-            Time += delta;
             OnUpdate(delta);
         });
     }

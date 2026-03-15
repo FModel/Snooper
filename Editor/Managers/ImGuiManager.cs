@@ -197,7 +197,7 @@ public abstract class ImGuiManager : SceneManager
         _controller.Load();
     }
 
-    public sealed override void Update(float delta)
+    public override void Update(float delta)
     {
         if (Window.IsKeyPressed(Keys.F10))
             _show = !_show;

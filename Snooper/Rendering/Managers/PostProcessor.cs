@@ -80,8 +80,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 ctx.Geometry.Bind(EDeferredTexture.Color, 2);
                 ctx.Geometry.Bind(EDeferredTexture.Specular, 3);
 
-                Matrix4x4.Invert(ctx.Camera.ViewMatrix, out var inverseViewMatrix);
-                shader.SetUniform("uInverseViewMatrix", inverseViewMatrix);
+                shader.SetUniform("uInverseViewMatrix", ctx.Camera.InverseViewMatrix);
                 shader.SetUniform("uZNear", ctx.Camera.NearClipPlane);
                 shader.SetUniform("uZFar", ctx.Camera.FarClipPlane);
 

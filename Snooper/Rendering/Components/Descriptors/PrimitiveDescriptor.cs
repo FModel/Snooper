@@ -87,5 +87,5 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
     /// The factory function is used to generate the primitive data if it doesn't already exist in the
     /// </summary>
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(new FGuid((uint)owner.Name.GetHashCode()), () => new PrimitiveDescriptor<TVertex>(owner, factory));
+        => MeshCache.GetOrCreate(FGuid.Random(), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 }

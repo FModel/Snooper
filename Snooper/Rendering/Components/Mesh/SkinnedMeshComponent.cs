@@ -5,19 +5,19 @@ using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Mesh;
 
-public class SkinnedMeshComponent : MeshComponent
+public abstract class SkinnedMeshComponent : MeshComponent
 {
-    public SkinnedMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh.Materials, transform, skeletalMesh.Name)
+    protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh.Materials, transform, skeletalMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 
-    public SkinnedMeshComponent(USkeletalMesh skeletalMesh, USkinnedMeshComponent component) : base(skeletalMesh.Materials, component)
+    protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, USkinnedMeshComponent component) : base(skeletalMesh.Materials, component)
     {
         ObjectPath = skeletalMesh.GetPathName();
 
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 
-    internal override string Icon => "\uf5d7";
+    internal sealed override string Icon => "\uf5d7";
 }

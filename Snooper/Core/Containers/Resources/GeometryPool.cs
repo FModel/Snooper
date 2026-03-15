@@ -140,9 +140,9 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     public void Render(Action mdi)
     {
-        _colors.Bind(3);
-        _boneInfluences.Bind(4);
-        _boneInfluenceOffsets.Bind(5);
+        _colors.Bind(5);
+        _boneInfluences.Bind(6);
+        _boneInfluenceOffsets.Bind(7);
 
         _vao.Bind();
         _ebo.Bind();

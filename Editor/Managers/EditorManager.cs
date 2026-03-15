@@ -176,10 +176,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
         if (anyChildSelected && count > 0) ImGui.SetNextItemOpen(true);
 
         var open = ImGui.TreeNodeEx("##Tree", flags);
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-        {
-            SelectedActor = actor;
-        }
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left)) SelectActor(actor);
         if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && MainViewport?.Camera is { } camera && actor.RootComponent is not null)
         {
             var (center, distance) = actor.RootComponent.GetTeleportPosition(camera);
@@ -256,7 +253,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
             ("delete", "\uf1f8", "Delete", () =>
             {
                 actor.Parent?.Children.Remove(actor);
-                if (actor.IsSelected) SelectedActor = null;
+                if (actor.IsSelected) SelectActor(null);
             }, true),
         };
 
@@ -351,7 +348,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
                 var selected = c.Id == SelectedComponent?.Id;
                 if (ImGui.Selectable($"{c.Icon} {c.Name}", selected))
                 {
-                    SelectedComponent = c;
+                    SelectComponent(c);
                 }
 
                 if (selected) ImGui.SetItemDefaultFocus();

@@ -13,3 +13,24 @@
     vec3 upVector;
     uint UseInverseSquaredFalloff;
 };
+
+layout(std430, binding = 0) readonly buffer LightBuffer
+{
+    PerLightData lights[];
+};
+
+struct ClusterData
+{
+    uint offset;
+    uint count;
+};
+
+layout(std430, binding = 1) buffer ClusterDataBuffer
+{
+    ClusterData clusterData[];
+};
+
+layout(std430, binding = 2) buffer LightIndexList
+{
+    uint lightIndices[];
+};

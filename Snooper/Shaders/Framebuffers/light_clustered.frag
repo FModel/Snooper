@@ -35,27 +35,6 @@ out vec4 FragColor;
 #include "pbr.glsl"
 #include "Buffers/PerLightData.glsl"
 
-struct ClusterData
-{
-    uint offset;
-    uint count;
-};
-
-layout(std430, binding = 6) readonly buffer LightBuffer
-{
-    PerLightData lights[];
-};
-
-layout(std430, binding = 7) readonly buffer ClusterDataBuffer
-{
-    ClusterData clusterData[];
-};
-
-layout(std430, binding = 8) readonly buffer LightIndexList
-{
-    uint lightIndices[];
-};
-
 float CalculateShadow(vec3 worldPos, float NdotL, int layer)
 {
     vec4 fragPosLightSpace = uLightViewProjectionMatrices[layer] * vec4(worldPos, 1.0);

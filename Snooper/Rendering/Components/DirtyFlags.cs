@@ -10,6 +10,7 @@ public enum DirtyFlags
     ManualLodSwap = 1 << 3,
     Opacity = 1 << 4,
     Outline = 1 << 5,
+    Spline = 1 << 6,
     // X = 1 << Y,
 
     All = ~0

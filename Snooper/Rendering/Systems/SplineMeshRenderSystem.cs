@@ -1,12 +1,13 @@
 ﻿using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class SplineRenderSystem : MeshRenderSystem
+public class SplineMeshRenderSystem : MeshRenderSystem
 {
     public override uint Order => 24;
     protected override bool IsCulled => false; // TODO: alter the bounding box based on the spline params, then restore culling
@@ -32,20 +33,28 @@ public class SplineRenderSystem : MeshRenderSystem
 
     protected override void OnComponentUpdate(MeshComponent component, float delta)
     {
+        if (component is SplineMeshComponent spline && spline.IsDirty(DirtyFlags.Spline))
+        {
+            if (spline._allocation is null)
+            {
+                spline._allocation = _params.Add(spline.SplineParams);
+                _mapping.Upsert((int) spline.Id, (uint)spline._allocation.Value.StartIndex);
+            }
+            else
+            {
+                _params.Update(spline._allocation.Value, spline.SplineParams);
+            }
+        }
+
         base.OnComponentUpdate(component, delta);
-
-        if (component is not SplineMeshComponent spline || spline.IsInitialized) return;
-        spline.IsInitialized = true;
-
-        _mapping.Upsert((int) spline.Id, (uint)_params.Add(spline.SplineParams).StartIndex);
     }
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
         base.PreRender(camera, shader);
 
-        _mapping.Bind(3);
-        _params.Bind(4);
+        _mapping.Bind(8);
+        _params.Bind(9);
     }
 
     private uint _maxComponentId;
