@@ -30,8 +30,8 @@ public class SpatialComponent : ActorComponent, IControllable
     public SpatialComponent(USceneComponent component) : base(component)
     {
         LocalTransform = component.GetRelativeTransform();
+        AttachSocketName = component.GetOrDefault<FName?>("AttachSocketName")?.Text;
 
-        _attachSocketName = component.GetOrDefault<FName?>("AttachSocketName")?.Text;
         _absPosition = component.GetOrDefault<bool>("bAbsoluteLocation");
         _absRotation = component.GetOrDefault<bool>("bAbsoluteRotation");
         _absScale = component.GetOrDefault<bool>("bAbsoluteScale");
@@ -44,7 +44,6 @@ public class SpatialComponent : ActorComponent, IControllable
 
     private Transform Snapshot() => new() { Position = LocalTransform.Position, Rotation = LocalTransform.Rotation, Scale = LocalTransform.Scale };
 
-    private string? _attachSocketName;
     private bool _absPosition;
     private bool _absRotation;
     private bool _absScale;
@@ -57,6 +56,8 @@ public class SpatialComponent : ActorComponent, IControllable
     private bool _isTransformDirty;
 
     protected virtual int InstanceCount => 1;
+
+    public string? AttachSocketName;
 
     public Transform LocalTransform
     {
@@ -187,10 +188,9 @@ public class SpatialComponent : ActorComponent, IControllable
             if (recursive) Relation.UpdateWorldMatrix();
 
             var relationMatrix = Relation.WorldMatrix;
-            if (!string.IsNullOrEmpty(_attachSocketName) && Relation is SkinnedMeshComponent { Descriptor.Skeleton: { } skeleton })
+            if (!string.IsNullOrEmpty(AttachSocketName) && Relation is MeshComponent mesh)
             {
-                var socket = skeleton.GetBoneModelMatrix(_attachSocketName);
-                relationMatrix = socket * relationMatrix;
+                relationMatrix = mesh.Descriptor.GetSocketModelMatrix(AttachSocketName) * relationMatrix;
             }
 
             if (!_absPosition && !_absRotation && !_absScale)

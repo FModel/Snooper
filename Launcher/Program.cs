@@ -158,7 +158,13 @@ switch (provider.ProjectName)
         grid.Components.Clear();
         grid.Components.Add(new OpaqueGridComponent());
 
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0))));
+        var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
+        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Equippables/Guns/Rifles/AK/Afterglow/Models/GN_AK_Afterglow_Lv2_Skelmesh.GN_AK_Afterglow_Lv2_Skelmesh"))
+        {
+            AttachSocketName = "R_Hand"
+        });
+
+        scene.Children.Add(character);
         scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0))));
         scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
         scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new FTransform(new FVector(200, 100, 100))));

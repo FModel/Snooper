@@ -1,10 +1,13 @@
-﻿using CUE4Parse_Conversion.Meshes;
+﻿using System.Numerics;
+using CUE4Parse_Conversion.Meshes;
 using CUE4Parse_Conversion.Meshes.PSK;
+using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Meshes;
+using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Primitives;
 
@@ -17,12 +20,14 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
     public CullingBounds Bounds { get; }
     public LodDescriptor<TVertex>[] Lods { get; }
     public SkeletonDescriptor? Skeleton { get; }
+    public ISocketDescriptor?[] Sockets { get; }
 
     public PrimitiveDescriptor(CullingBounds bounds, Func<TPrimitiveData<TVertex>> factory)
     {
         Guid = FGuid.Random();
         Bounds = bounds;
         Lods = [new LodDescriptor<TVertex>(factory())];
+        Sockets = [];
     }
 
     private PrimitiveDescriptor(uint id, CullingBounds bounds, Func<uint, TPrimitiveData<TVertex>> factory)
@@ -30,6 +35,7 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
         Guid = new FGuid(id);
         Bounds = bounds;
         Lods = [new LodDescriptor<TVertex>(factory(id))];
+        Sockets = [];
     }
 
     private PrimitiveDescriptor(UStaticMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
@@ -44,6 +50,13 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
         {
             Bounds = new CullingBounds(mesh.BoundingBox);
             Lods = (from lod in mesh.LODs where lod.NumVerts > 0 select new LodDescriptor<TVertex>(lod, factory)).ToArray();
+        }
+
+        Sockets = new ISocketDescriptor[owner.Sockets.Length];
+        for (var i = 0; i < Sockets.Length; i++)
+        {
+            if (!owner.Sockets[i].TryLoad<UStaticMeshSocket>(out var socket)) continue;
+            Sockets[i] = new StaticMeshSocketDescriptor(socket);
         }
     }
 
@@ -66,6 +79,39 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
         }
 
         Skeleton = new SkeletonDescriptor(owner.ReferenceSkeleton);
+
+        var sockets = new List<FPackageIndex>();
+        sockets.AddRange(owner.Sockets);
+        if (owner.Skeleton.TryLoad<USkeleton>(out var skeleton))
+        {
+            sockets.AddRange(skeleton.Sockets);
+        }
+
+        Sockets = new ISocketDescriptor[sockets.Count];
+        for (var i = 0; i < Sockets.Length; i++)
+        {
+            if (!sockets[i].TryLoad<USkeletalMeshSocket>(out var socket)) continue;
+            Sockets[i] = new SkeletalMeshSocketDescriptor(socket);
+        }
+    }
+
+    public Matrix4x4 GetSocketModelMatrix(string name)
+    {
+        var socket = Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+        var boneName = name;
+        if (socket is SkeletalMeshSocketDescriptor sk)
+        {
+            boneName = sk.BoneName;
+        }
+
+        var matrix = socket?.LocalMatrix ?? Matrix4x4.Identity;
+        if (Skeleton != null && Skeleton.BoneNameToIndex.TryGetValue(boneName, out var boneIndex))
+        {
+            matrix = Skeleton.BoneMatrices[boneIndex] * matrix;
+        }
+
+        return matrix;
     }
 
     /// <summary>

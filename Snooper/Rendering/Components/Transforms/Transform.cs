@@ -27,11 +27,16 @@ public class Transform()
 
     }
 
-    public Transform(FTransform transform) : this()
+    public Transform(FVector position, FQuat rotation, FVector scale) : this()
     {
-        Position = new Vector3(transform.Translation.X, transform.Translation.Z, transform.Translation.Y) * Settings.GlobalScale;
-        Rotation = new Quaternion(transform.Rotation.X, transform.Rotation.Z, transform.Rotation.Y, -transform.Rotation.W);
-        Scale = new Vector3(transform.Scale3D.X, transform.Scale3D.Z, transform.Scale3D.Y);
+        Position = new Vector3(position.X, position.Z, position.Y) * Settings.GlobalScale;
+        Rotation = new Quaternion(rotation.X, rotation.Z, rotation.Y, -rotation.W);
+        Scale = new Vector3(scale.X, scale.Z, scale.Y);
+    }
+
+    public Transform(FTransform transform) : this(transform.Translation, transform.Rotation, transform.Scale3D)
+    {
+
     }
 
     public Matrix4x4 ToMatrix()
