@@ -15,7 +15,7 @@ public struct PerMaterialData : IPerMaterialData
     public bool IsReady { get; init; }
 }
 
-public interface IMaterialDataContainer : IControllable, IDisposable
+public interface IMaterialDataContainer : IControllable
 {
     public string Name { get; }
     public IPerMaterialData? Raw { get; }

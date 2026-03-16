@@ -233,24 +233,6 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             }
             else ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "None");
         }
-
-        public void Dispose()
-        {
-            _heightmap?.Dispose();
-            _heightmap = null;
-
-            if (_weightmaps is not null)
-            {
-                for (var i = 0; i < _weightmaps.Length; i++)
-                {
-                    _weightmaps[i]?.Dispose();
-                }
-                Array.Clear(_weightmaps);
-                _weightmaps = null;
-            }
-
-            Raw = null;
-        }
     }
 
     protected override DebugComponent CreateDebugVisualization() => new BoxComponent(Descriptor.Bounds, Settings.LandscapeBounds, name: $"{Name} (Bounds)");

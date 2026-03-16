@@ -8,31 +8,43 @@ public record BoneDescriptor(string Name, int ParentIndex, Matrix4x4 BindPoseLoc
 
 public class SkeletonDescriptor
 {
-    public Matrix4x4[] BoneMatrices { get; } // model space relative to the parent bone
+    /// <summary>
+    /// local-space transform for each bone for the current frame. This is the single source of truth for bone transforms.
+    /// </summary>
+    public Matrix4x4[] BoneLocalMatrices { get; }
+
+    /// <summary>
+    /// this is never modified after construction.
+    /// </summary>
     public BoneDescriptor[] BoneDescriptors { get; }
-    public Dictionary<string, uint> BoneNameToIndex { get; }
 
-    public int BoneCount => BoneMatrices.Length;
+    /// <summary>
+    /// model-space transform for each bone for the current frame. This is always recalculated from BoneLocalMatrices.
+    /// Never set this array directly.
+    /// </summary>
+    public Matrix4x4[] BoneMatrices { get; }
 
-    private readonly Matrix4x4[] _boneLocalMatrices;
+    public IReadOnlyDictionary<string, uint> BoneNameToIndex => _boneNameToIndex;
+    private readonly Dictionary<string, uint> _boneNameToIndex;
+
+    public int BoneCount => BoneLocalMatrices.Length;
 
     public SkeletonDescriptor(FReferenceSkeleton reference)
     {
-        BoneMatrices = new Matrix4x4[reference.FinalRefBonePose.Length];
-        BoneNameToIndex = new Dictionary<string, uint>(BoneCount, StringComparer.OrdinalIgnoreCase);
+        BoneLocalMatrices = new Matrix4x4[reference.FinalRefBonePose.Length];
         BoneDescriptors = new BoneDescriptor[BoneCount];
-
-        _boneLocalMatrices = new Matrix4x4[BoneCount];
+        BoneMatrices = new Matrix4x4[BoneCount];
+        _boneNameToIndex = new Dictionary<string, uint>(BoneCount, StringComparer.OrdinalIgnoreCase);
 
         for (var boneIndex = 0u; boneIndex < BoneCount; boneIndex++)
         {
             var info = reference.FinalRefBoneInfo[boneIndex];
             var matrix = new Transform(reference.FinalRefBonePose[boneIndex]).ToMatrix();
+            var descriptor = new BoneDescriptor(info.Name.Text, info.ParentIndex, matrix);
 
-            BoneNameToIndex.Add(info.Name.Text, boneIndex);
-            BoneDescriptors[boneIndex] = new BoneDescriptor(info.Name.Text, info.ParentIndex, matrix);
-
-            _boneLocalMatrices[boneIndex] = matrix;
+            BoneLocalMatrices[boneIndex] = descriptor.BindPoseLocalMatrix;
+            BoneDescriptors[boneIndex] = descriptor;
+            _boneNameToIndex.Add(descriptor.Name, boneIndex);
         }
 
         RecalculateBoneMatrices();
@@ -40,7 +52,6 @@ public class SkeletonDescriptor
 
     public event Action? OnBoneMatricesChanged;
 
-    public Matrix4x4 GetBoneModelMatrix(string boneName) => BoneMatrices[BoneNameToIndex[boneName]];
     public string GetBoneName(int index) => BoneDescriptors[index].Name;
     public int GetBoneParentIndex(int index) => BoneDescriptors[index].ParentIndex;
 
@@ -49,11 +60,11 @@ public class SkeletonDescriptor
         var pi = BoneDescriptors[boneIndex].ParentIndex;
         if (pi >= 0 && Matrix4x4.Invert(BoneMatrices[pi], out var parentMatrix))
         {
-            _boneLocalMatrices[boneIndex] = matrix * parentMatrix;
+            BoneLocalMatrices[boneIndex] = matrix * parentMatrix;
         }
         else
         {
-            _boneLocalMatrices[boneIndex] = matrix;
+            BoneLocalMatrices[boneIndex] = matrix;
         }
 
         RecalculateBoneMatrices(boneIndex);
@@ -61,7 +72,7 @@ public class SkeletonDescriptor
 
     public void ResetBone(int boneIndex)
     {
-        _boneLocalMatrices[boneIndex] = BoneDescriptors[boneIndex].BindPoseLocalMatrix;
+        BoneLocalMatrices[boneIndex] = BoneDescriptors[boneIndex].BindPoseLocalMatrix;
         RecalculateBoneMatrices(boneIndex);
     }
 
@@ -69,9 +80,8 @@ public class SkeletonDescriptor
     {
         for (var i = 0; i < BoneCount; i++)
         {
-            _boneLocalMatrices[i] = BoneDescriptors[i].BindPoseLocalMatrix;
+            BoneLocalMatrices[i] = BoneDescriptors[i].BindPoseLocalMatrix;
         }
-
         RecalculateBoneMatrices();
     }
 
@@ -82,7 +92,7 @@ public class SkeletonDescriptor
         for (var i = from; i <= to; i++)
         {
             var pi = BoneDescriptors[i].ParentIndex;
-            BoneMatrices[i] = pi < 0 ? _boneLocalMatrices[i] : _boneLocalMatrices[i] * BoneMatrices[pi];
+            BoneMatrices[i] = pi < 0 ? BoneLocalMatrices[i] : BoneLocalMatrices[i] * BoneMatrices[pi];
         }
 
         OnBoneMatricesChanged?.Invoke();

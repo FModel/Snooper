@@ -393,40 +393,5 @@ public static class MaterialCache
                 ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "Uploading...");
             }
         }
-
-        public void Dispose()
-        {
-            if (_diffuses is not null)
-            {
-                for (var i = 0; i < _diffuses.Length; i++)
-                {
-                    _diffuses[i]?.Dispose();
-                }
-                Array.Clear(_diffuses);
-                _diffuses = null;
-            }
-
-            if (_normals is not null)
-            {
-                for (var i = 0; i < _normals.Length; i++)
-                {
-                    _normals[i]?.Dispose();
-                }
-                Array.Clear(_normals);
-                _normals = null;
-            }
-
-            if (_speculars is not null)
-            {
-                for (var i = 0; i < _speculars.Length; i++)
-                {
-                    _speculars[i]?.Dispose();
-                }
-                Array.Clear(_speculars);
-                _speculars = null;
-            }
-
-            Raw = null;
-        }
     }
 }

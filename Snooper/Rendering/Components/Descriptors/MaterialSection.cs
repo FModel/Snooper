@@ -4,7 +4,7 @@ using Snooper.Rendering.Cache;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public class MaterialSection : IDisposable
+public class MaterialSection
 {
     private static int _nextId;
     public readonly int SectionId = Interlocked.Increment(ref _nextId);
@@ -57,9 +57,4 @@ public class MaterialSection : IDisposable
 
     public override bool Equals(object? obj) => obj is MaterialSection s && s.SectionId.Equals(SectionId);
     public override int GetHashCode() => SectionId.GetHashCode();
-
-    public void Dispose()
-    {
-        InlineContainer?.Dispose();
-    }
 }

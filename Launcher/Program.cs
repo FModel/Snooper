@@ -122,8 +122,8 @@ var snooper = new EditorWindow(144, 1500, 900, false);
 var scene = new Actor("Scene");
 
 var camera = new CameraActor("Camera");
-camera.CameraComponent.LocalTransform.Position -= Vector3.UnitZ * 5;
-camera.CameraComponent.LocalTransform.Position += Vector3.UnitY * 1.5f;
+camera.CameraComponent.LocalTransform.Position = new Vector3(1, 2, -0.5f);
+camera.CameraComponent.LocalTransform.Rotation = new Quaternion(0, -1, 0, 1);
 scene.Children.Add(camera);
 
 var grid = new Actor("Grid");
@@ -158,16 +158,25 @@ switch (provider.ProjectName)
         grid.Components.Clear();
         grid.Components.Add(new OpaqueGridComponent());
 
-        var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new FTransform(new FVector(0, 200, 0)));
-        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Equippables/Guns/Rifles/AK/Afterglow/Models/GN_AK_Afterglow_Lv2_Skelmesh.GN_AK_Afterglow_Lv2_Skelmesh"))
-        {
-            AttachSocketName = "R_Hand"
-        });
+        var textOrientation = new Quaternion(0.5f, 0.5f, -0.5f, 0.5f);
 
-        scene.Children.Add(character);
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new FTransform(new FVector(0, -200, 0))));
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new FTransform(new FVector(200, 0, 100))));
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new FTransform(new FVector(200, 100, 100))));
+        var character1P = new Actor("Raze 1P");
+        character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/1P/Models/FP_Clay_S0_Skelmesh.FP_Clay_S0_Skelmesh")));
+        character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Equippables/Guns/Rifles/AK/Afterglow/Models/GN_AK_Afterglow_Lv2_Skelmesh.GN_AK_Afterglow_Lv2_Skelmesh"))
+        {
+            AttachSocketName = "L_WeaponPoint"
+        });
+        character1P.Components.Add(new TextRenderComponent(character1P.Name, transform: new Transform(new Vector3(0, 1.9f, 0), textOrientation)));
+        scene.Children.Add(character1P);
+
+        var character3P = new Actor("Raze 3P");
+        character3P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new Vector3(0, 0, -1)));
+        character3P.Components.Add(new TextRenderComponent(character3P.Name, transform: new Transform(new Vector3(0, 2.2f, 0), textOrientation)));
+        scene.Children.Add(character3P);
+
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new Vector3(-3, 0, 0)));
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new Vector3(2, 0, 1)));
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
         break;
 
         var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
@@ -309,13 +318,23 @@ switch (provider.ProjectName)
     }
     case "FortniteGame":
     {
-        // camera.CameraComponent.FarPlaneDistance = 1000f;
+        // camera.CameraComponent.FarClipPlane = 1000f;
         // grid.Components.Clear();
         // grid.Components.Add(new OpaqueGridComponent());
         //
         // var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/F_MED_RoseForm.F_MED_RoseForm"));
-        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Heads/F_MED_RoseForm_Head/Meshes/F_MED_RoseForm_Head.F_MED_RoseForm_Head")));
-        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/Parts/F_MED_RoseForm_FaceAcc.F_MED_RoseForm_FaceAcc")));
+        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Heads/F_MED_RoseForm_Head/Meshes/F_MED_RoseForm_Head.F_MED_RoseForm_Head"))
+        // {
+        //     AttachSocketName = "root"
+        // });
+        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/Parts/F_MED_RoseForm_FaceAcc.F_MED_RoseForm_FaceAcc"))
+        // {
+        //     AttachSocketName = "root"
+        // });
+        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Accessories/FORT_Backpacks/Backpack_M_MED_BadCat/Meshes/M_MED_BadCat_Pack.M_MED_BadCat_Pack"))
+        // {
+        //     AttachSocketName = "Backpack_BR"
+        // });
         // character.Components.Add(new TextRenderComponent("Character (Clip)", 16, transform: new Transform(new Vector3(0, 1.8f, 0), new Quaternion(1, 0, 0, 1))));
         // scene.Children.Add(character);
         //

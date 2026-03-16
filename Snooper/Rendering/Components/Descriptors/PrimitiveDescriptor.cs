@@ -108,7 +108,12 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
         var matrix = socket?.LocalMatrix ?? Matrix4x4.Identity;
         if (Skeleton != null && Skeleton.BoneNameToIndex.TryGetValue(boneName, out var boneIndex))
         {
-            matrix = Skeleton.BoneMatrices[boneIndex] * matrix;
+            matrix = Skeleton.BoneLocalMatrices[boneIndex] * matrix;
+            var parentIndex = Skeleton.BoneDescriptors[boneIndex].ParentIndex;
+            if (parentIndex >= 0)
+            {
+                matrix *= Skeleton.BoneMatrices[parentIndex];
+            }
         }
 
         return matrix;

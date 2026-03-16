@@ -298,16 +298,29 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         }
     }
 
-    public void CopyFrom(Buffer<T> sourceBuffer, BufferAllocation sourceAllocation, BufferAllocation targetAllocation)
+    public BufferAllocation CopyFrom(Buffer<T> sourceBuffer, BufferAllocation sourceAllocation)
     {
-        if (sourceAllocation.Length != targetAllocation.Length)
-            throw new ArgumentException("Source and target allocations must have the same length.");
+        var length = sourceAllocation.Length;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
 
-        var sourceOffset = sourceAllocation.StartIndex * Stride;
-        var targetOffset = targetAllocation.StartIndex * Stride;
-        var size = sourceAllocation.Length * Stride;
+        if (!_bInitialized)
+        {
+            Allocate(length);
+        }
 
-        GL.CopyNamedBufferSubData(sourceBuffer.Handle, Handle, sourceOffset, targetOffset, size);
+        var (allocationId, startIndex) = AllocateSpace(length);
+        if (startIndex + length > Capacity)
+        {
+            ResizeIfNeeded(startIndex + length, copy: true);
+        }
+
+        GL.CopyNamedBufferSubData(sourceBuffer.Handle, Handle, sourceAllocation.StartIndex * Stride, startIndex * Stride, length * Stride);
+
+        var metadata = new BufferAllocationMetadata(allocationId, startIndex, length, DateTime.UtcNow);
+        _allocations[allocationId] = metadata;
+        Count += length;
+
+        return new BufferAllocation(allocationId, startIndex, length);
     }
 
     public void Clear()

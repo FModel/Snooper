@@ -137,11 +137,6 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         {
 
         }
-
-        public void Dispose()
-        {
-            Raw = null;
-        }
     }
 
     private class Geometry : PrimitiveData<Vector4>

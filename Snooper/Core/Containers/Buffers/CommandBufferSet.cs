@@ -63,33 +63,22 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
 
         var sourceBuffer = GetBuffer(from);
         var targetBuffer = GetBuffer(to);
+        var delete = (from == CommandBufferType.Opaque && to == CommandBufferType.Transparent) ||
+                     (from == CommandBufferType.Transparent && to == CommandBufferType.Opaque);
 
-        // we allocate space for all commands at once to avoid multiple resizes
-        // that batch allocation will then be split into individual allocations for each command, which are returned to the caller
-        // it works because each allocation has length 1 (commands are added one by one)
-        var totalCommands = sourceAllocations.Length;
-        var batchAllocation = targetBuffer.AddRange(new DrawElementsIndirectCommand[totalCommands]);
-
-        var targetAllocations = new BufferAllocation[totalCommands];
-        for (var i = 0; i < totalCommands; i++)
+        var targetAllocations = new BufferAllocation[sourceAllocations.Length];
+        for (var i = 0; i < targetAllocations.Length; i++)
         {
             var sourceAllocation = sourceAllocations[i];
-            targetAllocations[i] = new BufferAllocation(batchAllocation.AllocationId + i, batchAllocation.StartIndex + i, sourceAllocation.Length);
-
-            targetBuffer.CopyFrom(sourceBuffer, sourceAllocation, targetAllocations[i]);
+            targetAllocations[i] = targetBuffer.CopyFrom(sourceBuffer, sourceAllocations[i]);
 
             // only remove from source if transferring between opaque/transparent (not copying to mask)
-            if ((from == CommandBufferType.Opaque && to == CommandBufferType.Transparent) ||
-                (from == CommandBufferType.Transparent && to == CommandBufferType.Opaque))
+            if (delete)
             {
                 sourceBuffer.Remove(sourceAllocation);
             }
         }
 
-        // TODO: if totalCommands > 1, what we return here is unusable for any operation
-        // this is because our buffer has its own private list of allocations
-        // and by manually splitting the batch allocation into individual allocations, those individual allocations are not registered in the buffer's list of allocations
-        // for now this is fine but it might become a problem later on (eg on removal)
         return targetAllocations;
     }
 

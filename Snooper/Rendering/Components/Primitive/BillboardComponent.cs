@@ -72,14 +72,6 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
         {
 
         }
-
-        public void Dispose()
-        {
-            _sprite?.Dispose();
-            _sprite = null;
-
-            Raw = null;
-        }
     }
 
     private class Geometry : PrimitiveData<Vector2>

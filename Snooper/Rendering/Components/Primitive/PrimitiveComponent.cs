@@ -15,6 +15,14 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Primitive;
 
+public interface IPrimitiveComponent
+{
+    public ResourcesMetadata? Metadata { get; }
+    public MaterialSection[] Materials { get; }
+    public bool IsOpaque { get; }
+    public bool IsVisible { get; set; }
+}
+
 public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> : SpatialComponent, IPrimitiveComponent
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData

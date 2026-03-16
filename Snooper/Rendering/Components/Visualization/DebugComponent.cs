@@ -58,11 +58,6 @@ public abstract class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
         {
 
         }
-
-        public void Dispose()
-        {
-            Raw = null;
-        }
     }
 
     protected abstract class DebugGeometry : PrimitiveData;

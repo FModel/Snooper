@@ -124,10 +124,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         }
 
         Resources.Remove(component);
-        foreach (var material in component.Materials)
-        {
-            material.Dispose();
-        }
     }
 
     public override void Dispose()

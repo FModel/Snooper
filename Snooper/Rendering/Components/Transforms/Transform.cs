@@ -54,4 +54,6 @@ public class Transform()
     }
 
     public static implicit operator Transform(FTransform transform) => new(transform);
+    public static implicit operator Transform(Vector3 position) => new(position);
+    public static implicit operator Transform(Quaternion rotation) => new(rotation);
 }
