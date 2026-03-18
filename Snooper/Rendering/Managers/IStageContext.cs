@@ -7,42 +7,48 @@ namespace Snooper.Rendering.Managers;
 
 public interface IStageContext;
 
-public sealed record NoStageContext : IStageContext;
+public readonly struct NoStageContext : IStageContext;
 
-public sealed record GeometryStageContext(
-    GeometryRenderer Geometry
-) : IStageContext;
+public readonly struct GeometryStageContext(GeometryRenderer geometry) : IStageContext
+{
+    public readonly GeometryRenderer Geometry = geometry;
+}
 
-public sealed record AmbientOcclusionStageContext(
-    CameraComponent Camera,
-    GeometryRenderer Geometry,
-    int DirectionCount = 6,
-    int StepsPerDirection = 6
-) : IStageContext;
+public readonly struct AmbientOcclusionStageContext(CameraComponent camera, GeometryRenderer geometry, int directionCount = 6, int stepsPerDirection = 6) : IStageContext
+{
+    public readonly CameraComponent Camera = camera;
+    public readonly GeometryRenderer Geometry = geometry;
+    public readonly int DirectionCount = directionCount;
+    public readonly int StepsPerDirection = stepsPerDirection;
+}
 
-public sealed record BlurStageContext(
-    int Radius
-) : IStageContext;
+public readonly struct BlurStageContext(int radius) : IStageContext
+{
+    public readonly int Radius = radius;
+}
 
-public sealed record LitStageContext(
-    CameraComponent Camera,
-    GeometryRenderer Geometry,
-    ClusteredLightSystem? LightSystem,
-    bool AmbienOcclusion = true,
-    ShadowStageContext? ShadowContext = null
-) : IStageContext;
+public readonly struct LitStageContext(CameraComponent camera, GeometryRenderer geometry, ClusteredLightSystem? lightSystem, bool ambientOcclusion = true, ShadowStageContext? shadowContext = null) : IStageContext
+{
+    public readonly CameraComponent Camera = camera;
+    public readonly GeometryRenderer Geometry = geometry;
+    public readonly ClusteredLightSystem? LightSystem = lightSystem;
+    public readonly bool AmbientOcclusion = ambientOcclusion;
+    public readonly ShadowStageContext? ShadowContext = shadowContext;
+}
 
-public sealed record ShadowStageContext(
-    int Width,
-    int Height,
-    int Depth,
-    float Bias,
-    float[] PlaneDistances,
-    Matrix4x4[] Matrices
-) : IStageContext;
+public readonly struct ShadowStageContext(int width, int height, int depth, float bias, float[] planeDistances, Matrix4x4[] matrices) : IStageContext
+{
+    public readonly int Width = width;
+    public readonly int Height = height;
+    public readonly int Depth = depth;
+    public readonly float Bias = bias;
+    public readonly float[] PlaneDistances = planeDistances;
+    public readonly Matrix4x4[] Matrices = matrices;
+}
 
-public sealed record FinalStageContext(
-    bool AntiAliasing,
-    Texture? Texture = null,
-    float? Split = null
-) : IStageContext;
+public readonly struct FinalStageContext(bool antiAliasing, Texture? texture = null, float? split = null) : IStageContext
+{
+    public readonly bool AntiAliasing = antiAliasing;
+    public readonly Texture? Texture = texture;
+    public readonly float? Split = split;
+}

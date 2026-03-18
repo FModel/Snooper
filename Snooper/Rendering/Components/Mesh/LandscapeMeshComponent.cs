@@ -13,11 +13,11 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Mesh;
 
-public struct LayerMapping
+public readonly struct LayerMapping
 {
-    public uint ChannelIndex;
-    public uint TextureIndex;
-    public Vector4 DebugColor;
+    public uint ChannelIndex { get; init; }
+    public uint TextureIndex { get; init; }
+    public Vector4 DebugColor { get; init; }
 }
 
 public unsafe struct PerMaterialLandscapeData : IPerMaterialData

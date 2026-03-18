@@ -217,7 +217,11 @@ public static class TextureCache
             yield return new MemoryDetail(texture.Name, texture);
     }
 
-    private record ContainerDependency(string ContainerKey, string TextureKey);
+    private readonly struct ContainerDependency(string containerKey, string textureKey)
+    {
+        public readonly string ContainerKey = containerKey;
+        public readonly string TextureKey = textureKey;
+    }
 
     private class ContainerLoadState(IMaterialDataContainer container, int textureCount)
     {

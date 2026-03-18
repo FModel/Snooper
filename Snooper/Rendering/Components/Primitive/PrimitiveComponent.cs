@@ -346,7 +346,7 @@ public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<
 
     }
 
-    public sealed override MaterialSection[] Materials { get; } = [new()];
+    public sealed override MaterialSection[] Materials { get; } = [new(0)];
 }
 
 /// <inheritdoc />

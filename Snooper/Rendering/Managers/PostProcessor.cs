@@ -84,8 +84,8 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("uZNear", ctx.Camera.NearClipPlane);
                 shader.SetUniform("uZFar", ctx.Camera.FarClipPlane);
 
-                shader.SetUniform("useSsao", ctx.AmbienOcclusion);
-                if (ctx.AmbienOcclusion)
+                shader.SetUniform("useSsao", ctx.AmbientOcclusion);
+                if (ctx.AmbientOcclusion)
                 {
                     _ssaoBlur.Bind(4);
                     shader.SetUniform("ssao", 4);

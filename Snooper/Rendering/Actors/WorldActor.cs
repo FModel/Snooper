@@ -138,10 +138,16 @@ public class WorldActor : Actor
                 Process(cell.LevelStreaming); // UWorldPartitionLevelStreamingDynamic
                 break;
             }
-            case ULevelStreaming { WorldAsset: { } asset } when asset.TryLoad<UWorld>(out var world):
+            case ULevelStreaming { WorldAsset: { } worldAsset } streaming when worldAsset.TryLoad<UWorld>(out var world):
             {
-                // use ULevelStreamingAlwaysLoaded to immediately load the world
-                Children.Add(new WorldActor(world));
+                if (streaming is ULevelStreamingAlwaysLoaded or ULevelStreamingPersistent)
+                {
+                    Children.Add(new WorldActor(world));
+                }
+                else
+                {
+                    Children.Add(new CellActor(worldAsset, world));
+                }
                 break;
             }
         }

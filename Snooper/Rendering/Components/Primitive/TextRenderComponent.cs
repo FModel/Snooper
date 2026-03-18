@@ -15,18 +15,18 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Primitive;
 
-public struct PerMaterialTextData : IPerMaterialData
+public readonly struct PerMaterialTextData : IPerMaterialData
 {
-    public bool IsReady { get; set; }
-    public uint Padding1;
-    public ulong Padding2;
-    public Vector3 FontColor;
+    public bool IsReady { get; init; }
+    public uint Padding1 { get; init; }
+    public ulong Padding2 { get; init; }
+    public Vector3 FontColor { get; init; }
 }
 
 [DefaultActorSystem(typeof(TextRenderSystem))]
 public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, PerMaterialTextData>
 {
-    public sealed override MaterialSection[] Materials { get; } = [new()];
+    public sealed override MaterialSection[] Materials { get; } = [new(0)];
 
     private readonly string _text;
     private readonly EHorizTextAligment _horizontalAlignment;

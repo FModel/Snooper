@@ -7,15 +7,17 @@ namespace Snooper.Rendering.Managers;
 
 public interface IRenderContext;
 
-public sealed record NoRenderContext : IRenderContext;
+public readonly struct NoRenderContext : IRenderContext;
 
-public sealed record SystemRenderContext(
-    CameraComponent Camera,
-    IEnumerable<IRenderSystem> Systems
-) : IRenderContext;
+public readonly struct SystemRenderContext(CameraComponent camera, IEnumerable<IRenderSystem> systems) : IRenderContext
+{
+    public readonly CameraComponent Camera = camera;
+    public readonly IEnumerable<IRenderSystem> Systems = systems;
+}
 
-public sealed record ShadowRenderContext(
-    CameraComponent Camera,
-    DirectionalLightComponent Light,
-    IEnumerable<IShadowSystem> Systems
-) : IRenderContext;
+public readonly struct ShadowRenderContext(CameraComponent camera, DirectionalLightComponent light, IEnumerable<IShadowSystem> systems) : IRenderContext
+{
+    public readonly CameraComponent Camera = camera;
+    public readonly DirectionalLightComponent Light = light;
+    public readonly IEnumerable<IShadowSystem> Systems = systems;
+}

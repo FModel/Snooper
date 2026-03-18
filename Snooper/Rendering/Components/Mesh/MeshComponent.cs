@@ -126,11 +126,11 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
     {
         base.OnActorAttachedToScene(scene);
 
-        for (var i = 0; i < _materials.Length; i++)
+        for (var i = 0u; i < _materials.Length; i++)
         {
             var index = i;
             var textureData = _textureData.ToArray();
-            Materials[index] = new MaterialSection();
+            Materials[index] = new MaterialSection(index);
 
             if (Actor?.ActorManager == null)
                 throw new InvalidOperationException("Actor or ActorManager is null when loading materials???");

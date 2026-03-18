@@ -18,14 +18,13 @@ public readonly struct BufferAllocation(int allocationId, int startIndex, int le
     public int EndIndex => StartIndex + Length - 1;
 }
 
-public record BufferAllocationMetadata(
-    int AllocationId,
-    int StartIndex,
-    int Length,
-    DateTime CreatedAt,
-    DateTime? LastModified = null
-)
+public struct BufferAllocationMetadata(int allocationId, int startIndex, int length, DateTime createdAt)
 {
+    public readonly int AllocationId = allocationId;
+    public readonly int StartIndex = startIndex;
+    public readonly int Length = length;
+    public readonly DateTime CreatedAt = createdAt;
+    public DateTime? LastModified;
     public int EndIndex => StartIndex + Length - 1;
 }
 
@@ -348,14 +347,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         var allocations = _allocations.Values.OrderBy(a => a.StartIndex).ToList();
         var freeBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
 
-        return new BufferStatistics(
-            Capacity: Capacity,
-            UsedItems: Count,
-            FreeItems: Capacity - Count,
-            Allocations: allocations,
-            FreeBlocks: freeBlocks,
-            FragmentationPercentage: CalculateFragmentation()
-        );
+        return new BufferStatistics(Capacity, Count, Capacity - Count, allocations, freeBlocks, CalculateFragmentation());
     }
 
     private (int allocationId, int startIndex) AllocateSpace(int length)

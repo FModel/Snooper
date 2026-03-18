@@ -34,7 +34,7 @@ public unsafe struct PrimitiveOffsets
     }
 }
 
-public struct SectionOffsets(SectionDescriptor descriptor)
+public readonly struct SectionOffsets(SectionDescriptor descriptor)
 {
     public readonly uint FirstIndex = descriptor.FirstIndex;
     public readonly uint IndexCount = descriptor.IndexCount;

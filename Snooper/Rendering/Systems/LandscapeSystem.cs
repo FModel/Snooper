@@ -149,11 +149,11 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         Weightmap
     }
 
-    private struct WeightHighlightMapping
+    private readonly struct WeightHighlightMapping
     {
-        public uint WeightmapIndex;
-        public uint ChannelIndex;
-        public Vector2 Padding;
-        public Vector4 DebugColor;
+        public uint WeightmapIndex { get; init; }
+        public uint ChannelIndex { get; init; }
+        public Vector2 Padding { get; init; }
+        public Vector4 DebugColor { get; init; }
     }
 }

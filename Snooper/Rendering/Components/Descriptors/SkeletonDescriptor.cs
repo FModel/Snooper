@@ -4,7 +4,12 @@ using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public record BoneDescriptor(string Name, int ParentIndex, Matrix4x4 BindPoseLocalMatrix);
+public readonly struct BoneDescriptor(string name, int parentIndex, Matrix4x4 bindPoseLocalMatrix)
+{
+    public readonly string Name = name;
+    public readonly int ParentIndex = parentIndex;
+    public readonly Matrix4x4 BindPoseLocalMatrix = bindPoseLocalMatrix;
+}
 
 public class SkeletonDescriptor
 {

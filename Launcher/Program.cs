@@ -140,20 +140,6 @@ switch (provider.ProjectName)
 {
     case "ShooterGame":
     {
-        // Ascent
-        // Bonsai
-        // Duality
-        // FoxTrot
-        // Infinity
-        // Jam
-        // Juliett
-        // Pitt
-        // Port
-        // Poveglia
-        // PovegliaV2
-        // Rook
-        // Triad
-
         camera.CameraComponent.FarClipPlane = 100f;
         grid.Components.Clear();
         grid.Components.Add(new OpaqueGridComponent());
@@ -175,26 +161,24 @@ switch (provider.ProjectName)
         scene.Children.Add(character3P);
 
         scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new Vector3(-3, 0, 0)));
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new Vector3(2, 0, 1)));
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new Vector3(-2, 4, 1)));
         scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
         break;
 
-        var files = provider.Files.Values.Where(x => x is { Directory: "ShooterGame/Content/Maps/Bonsai", Extension: "umap" });
-        foreach (var file in files)
-        {
-            var parts = file.NameWithoutExtension.Split('_');
-            if (parts.Length < 2) continue;
+        // Ascent
+        // Bonsai
+        // Duality
+        // FoxTrot
+        // Infinity
+        // Jam
+        // Juliett
+        // Pitt
+        // Port
+        // Rook
+        // Triad
+        const string Map = "Bonsai";
 
-            var trigger = parts[1];
-            if (trigger is "Art" or "Skybox" or "Audio" or "Lighting" or "Mode" or "TeamSpawnPoints")
-            {
-                var obj = file.NameWithoutExtension;
-                if (obj == "Duality_Art_MIdPathB")
-                    obj = "Duality_Art_MidPathB";
-
-                scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>(file.PathWithoutExtension + "." + obj)));
-            }
-        }
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>($"ShooterGame/Content/Maps/{Map}/{Map}.{Map}")));
         break;
     }
     case "Gameface":

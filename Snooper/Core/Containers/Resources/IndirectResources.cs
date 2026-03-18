@@ -183,21 +183,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (component.IsDirty(DirtyFlags.Visibility))
         {
             const int offset = 48; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
-            var buffer = _commands.GetBuffer(metadata.BufferType);
 
-            if (component.IsVisible)
+            var buffer = _commands.GetBuffer(metadata.BufferType);
+            var originalInstanceCount = component.IsVisible ? (uint)metadata.InstanceAllocation.Length : 0u;
+            foreach (var drawAllocation in metadata.DrawAllocations)
             {
-                var originalInstanceCount = (uint)metadata.InstanceAllocation.Length;
-                foreach (var drawAllocation in metadata.DrawAllocations)
-                {
-                    buffer.UpdateCustom(drawAllocation, originalInstanceCount, offset);
-                    buffer.UpdateCustom(drawAllocation, originalInstanceCount, 4);
-                }
-            }
-            else foreach (var drawAllocation in metadata.DrawAllocations)
-            {
-                buffer.UpdateCustom(drawAllocation, 0u, offset);
-                buffer.UpdateCustom(drawAllocation, 0u, 4);
+                buffer.UpdateCustom(drawAllocation, originalInstanceCount, offset);
+                buffer.UpdateCustom(drawAllocation, originalInstanceCount, 4);
             }
             component.MarkClean(DirtyFlags.Visibility);
         }

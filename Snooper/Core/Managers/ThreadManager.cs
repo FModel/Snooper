@@ -59,14 +59,14 @@ public class ThreadManager : IDisposable
         }
     }
 
-    public struct WorkerStats
+    public readonly struct WorkerStats
     {
-        public string Name;
-        public int QueueLength;
-        public long JobsProcessed;
-        public float AverageJobTimeMs;
-        public float MaxJobTimeMs;
-        public bool IsIdle;
+        public string Name { get; init; }
+        public int QueueLength { get; init; }
+        public long JobsProcessed { get; init; }
+        public float AverageJobTimeMs { get; init; }
+        public float MaxJobTimeMs { get; init; }
+        public bool IsIdle { get; init; }
     }
 
     private class Worker : IDisposable

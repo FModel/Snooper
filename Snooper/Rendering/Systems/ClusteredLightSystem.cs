@@ -31,19 +31,19 @@ public struct LightData
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct ClusterAABB
+public readonly struct ClusterAABB
 {
-    public Vector3 MinPoint;
-    public float Padding1;
-    public Vector3 MaxPoint;
-    public float Padding2;
+    public readonly Vector3 MinPoint;
+    public readonly float Padding1;
+    public readonly Vector3 MaxPoint;
+    public readonly float Padding2;
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct ClusterData
+public readonly struct ClusterData
 {
-    public uint Offset;   // Offset into light index list
-    public uint Count;    // Number of lights in this cluster
+    public readonly uint Offset;   // Offset into light index list
+    public readonly uint Count;    // Number of lights in this cluster
 }
 
 public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsProvider, IControllable, IResizable

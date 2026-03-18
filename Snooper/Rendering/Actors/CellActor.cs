@@ -20,7 +20,7 @@ public class CellActor : Actor
 
     private readonly FSoftObjectPath? _worldAsset;
 
-    public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool isNonSpatiallyLoaded = false) : base(cell.Name)
+    public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool isNonSpatiallyLoaded = false) : base(cell)
     {
         IsVisible = IsNonSpatiallyLoaded = isNonSpatiallyLoaded;
         DataLayers = cell.DataLayers?.DataLayers.Select(x => x.Text).ToArray() ?? [];
@@ -97,6 +97,15 @@ public class CellActor : Actor
                 CanLoad = true;
             }
         }
+    }
+
+    public CellActor(FSoftObjectPath worldAsset, UWorld world) : base(world)
+    {
+        IsVisible = false;
+        DataLayers = [];
+
+        _worldAsset = worldAsset;
+        CanLoad = true;
     }
 
     public Action? GetLoadJob()

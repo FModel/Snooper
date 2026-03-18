@@ -9,11 +9,11 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Primitive;
 
-public struct PerMaterialBillboardData : IPerMaterialData
+public readonly struct PerMaterialBillboardData : IPerMaterialData
 {
     public bool IsReady { get; init; }
-    public float OpacityMask;
-    public ulong Sprite;
+    public float OpacityMask { get; init; }
+    public ulong Sprite { get; init; }
 }
 
 [DefaultActorSystem(typeof(BillboardSystem))]

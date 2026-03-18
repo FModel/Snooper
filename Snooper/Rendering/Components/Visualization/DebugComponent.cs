@@ -10,7 +10,7 @@ using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Visualization;
 
-public struct PerMaterialDebugData : IPerMaterialData
+public readonly struct PerMaterialDebugData : IPerMaterialData
 {
     public bool IsReady { get; init; }
     public float LineThickness { get; init; }
