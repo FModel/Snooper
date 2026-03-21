@@ -29,12 +29,23 @@ void main()
     vec3 spec = vec3(1.0);
     vec3 normal = vec3(0.0, 0.0, 1.0);
 
+    float opacity = 1.0;
     if (uFragmentColorMode == 0 && materialData.IsReady)
     {
         LayerData layerData = SampleLayer(materialData, vTexLayer, fs_in.vTexCoords);
-        if (IsTranslucent(materialData) && layerData.diffuse.a < 0.1)
+
+        uint blendMode = GetBlendMode(materialData);
+        if (blendMode == 1u && layerData.diffuse.a < 0.3333) // masked
         {
             discard;
+        }
+        else if (blendMode == 2u) // translucent
+        {
+            opacity = layerData.diffuse.a;
+        }
+        else if (blendMode == 3u) // additive
+        {
+            opacity = layerData.diffuse.r;
         }
 
         color = layerData.diffuse;
@@ -87,7 +98,7 @@ void main()
     );
 
     finalColor = pow(finalColor, vec3(1.0 / 2.2));
-    FragColor = vec4(finalColor, 1.0);
+    FragColor = vec4(finalColor, opacity);
 
     gPicking = cmd.PickingId;
 }

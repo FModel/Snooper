@@ -169,8 +169,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
         // break;
 
-        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("ShooterGame/Content/Characters/Clay/FXC_CharacterSelect_Clay.FXC_CharacterSelect_Clay_C")));
-        const string Character = "Wraith";
+        const string Character = "Gumshoe";
         scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C")));
         break;
 
@@ -257,8 +256,16 @@ switch (provider.ProjectName)
     }
     case "DEADLINE_DELIVERY":
     {
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/monke_NPC.monke_NPC_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/monke_NPC_Car.monke_NPC_Car_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/Car_MASTER.Car_MASTER_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/CarMP_MASTER.CarMP_MASTER_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/Inspector/monke_Inspector.monke_Inspector_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/NPCs/Bus.Bus_C")));
+        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/Hippievan/Car_HIPPIEVAN.Car_HIPPIEVAN_C")));
+
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map18.Map18")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map1.Map1")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map1.Map1")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map17.Map17")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map2.Map2")));
         break;

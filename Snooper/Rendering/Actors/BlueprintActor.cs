@@ -2,87 +2,83 @@
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
+using Serilog;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
 
 public class BlueprintActor : UnrealActor
 {
-    private readonly Dictionary<FGuid, (USCS_Node, FPackageIndex?)> _nodes = [];
-
     public BlueprintActor(UBlueprintGeneratedClass blueprint) : base(blueprint)
     {
-        var supers = new List<UBlueprintGeneratedClass>();
+        var bps = new List<UBlueprintGeneratedClass>();
         var current = blueprint;
         while (current != null)
         {
-            supers.Add(current);
+            bps.Add(current);
             current = current.Super?.Load<UBlueprintGeneratedClass>();
         }
-        supers.Reverse();
+        bps.Reverse();
 
-        foreach (var super in supers)
+        foreach (var bp in bps)
         {
-            if (super.SimpleConstructionScript?.TryLoad<USimpleConstructionScript>(out var construction) == true)
+            var handler = bp.InheritableComponentHandler?.Load<UInheritableComponentHandler>();
+            if (handler == null) continue;
+
+            foreach (var record in handler.Records)
             {
-                EnqueuePointers(construction.GetOrDefault<FPackageIndex?>("DefaultSceneRootNode"));
-                EnqueuePointers(construction.GetOrDefault<FPackageIndex?[]>("RootNodes"));
-                EnqueuePointers(construction.GetOrDefault<FPackageIndex?[]>("AllNodes"));
+                if (record.ComponentTemplate == null || record.ComponentTemplate.IsNull) continue;
+                _overrides[record.ComponentKey.AssociatedGuid] = record.ComponentTemplate;
             }
-
-            foreach (var ptr in _ptrs)
-            {
-                if (!ptr.TryLoad<USCS_Node>(out var node)) continue;
-
-                var guid = node.GetOrDefault<FGuid>("VariableGuid");
-                _nodes[guid] = (node, null);
-            }
-
-            if (super.InheritableComponentHandler?.TryLoad<UInheritableComponentHandler>(out var handler) == true)
-            {
-                foreach (var record in handler.GetRecords())
-                {
-                    var guid = record.ComponentKey.AssociatedGuid;
-                    if (record.ComponentTemplate is { IsNull: false })
-                    {
-                        var node = _nodes[guid];
-                        node.Item2 = record.ComponentTemplate;
-                        _nodes[guid] = node;
-                    }
-                }
-            }
-
-            _ptrs.Clear();
         }
 
-        foreach (var node in _nodes.Values)
+        var candidates = new HashSet<FPackageIndex?>();
+        foreach (var bp in bps)
         {
-            var pair = CreateComponentPair(node.Item2 ?? node.Item1.GetOrDefault<FPackageIndex>("ComponentTemplate"));
+            var script = bp.SimpleConstructionScript?.Load<USimpleConstructionScript>();
+            if (script == null) continue;
 
-            if (node.Item1.GetOrDefault<FName?>("ParentComponentOrVariableName") is { } parentComponentOrVariableName &&
-                Components.FirstOrDefault(c => c.Name == parentComponentOrVariableName.Text) is SpatialComponent parentComponent)
-            {
-                pair.Component.AttachSocketName = node.Item1.GetOrDefault<FName?>("AttachToName")?.Text;
-                pair.Component.Relation = parentComponent;
-            }
-            if (node.Item1.GetOrDefault<FName?>("InternalVariableName") is { } internalVariableName)
-            {
-                pair.Component.Name = internalVariableName.Text;
-            }
-
-            Components.Add(pair.Component);
+            candidates.Add(script.DefaultSceneRootNode);
+            candidates.UnionWith(script.RootNodes);
         }
+
+        foreach (var candidate in candidates)
+        {
+            if (candidate?.TryLoad<USCS_Node>(out var node) == true)
+            {
+                ProcessNode(node);
+            }
+        }
+
+        _overrides.Clear();
     }
 
-    private readonly HashSet<FPackageIndex> _ptrs = [];
-    private void EnqueuePointers(params FPackageIndex?[]? ptrs)
+    private readonly Dictionary<FGuid, FPackageIndex> _overrides = [];
+
+    private void ProcessNode(USCS_Node node, SpatialComponent? parent = null)
     {
-        foreach (var ptr in ptrs ?? [])
+        _overrides.TryGetValue(node.VariableGuid, out var templateOverride);
+
+        var template = templateOverride ?? node.ComponentTemplate;
+        if (template == null || template.IsNull)
         {
-            if (ptr is { IsNull: false })
-            {
-                _ptrs.Add(ptr);
-            }
+            Log.Warning("Node {NodeName} has no component template, skipping.", node.InternalVariableName.Text);
+            return;
+        }
+
+        var component = CreateComponentPair(template).Component;
+        component.Name = node.GetOrDefault<FName?>("InternalVariableName")?.Text ?? component.Name;
+        component.AttachSocketName = node.GetOrDefault<FName?>("AttachToName")?.Text;
+        if (node.GetOrDefault<FName?>("ParentComponentOrVariableName") is { } parentComponentOrVariableName)
+        {
+            parent = Components.OfType<SpatialComponent>().FirstOrDefault(c => c.Name == parentComponentOrVariableName.Text);
+        }
+        component.Relation = parent;
+        Components.Add(component);
+
+        foreach (var child in node.GetChildNodes())
+        {
+            ProcessNode(child, component);
         }
     }
 }

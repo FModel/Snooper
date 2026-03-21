@@ -185,7 +185,7 @@ public static class MaterialCache
         }
 
         var materialName = textureDataLayers != null ? $"BuildingTexture_{material.Name}" : material.Name;
-        return layers.Count == 0 ? null : new MaterialDataContainer(materialName, layers.ToArray(), parameters.BlendMode is EBlendMode.BLEND_Translucent or EBlendMode.BLEND_Masked);
+        return layers.Count == 0 ? null : new MaterialDataContainer(materialName, layers.ToArray(), parameters.BlendMode);
     }
 
     public static void ClearAndDispose()
@@ -211,7 +211,7 @@ public static class MaterialCache
         public readonly Vector3 DiffuseColor = diffuseColor;
     }
 
-    private class MaterialDataContainer(string name, MaterialLayerData[] layers, bool translucent = false) : IMaterialDataContainer
+    private class MaterialDataContainer(string name, MaterialLayerData[] layers, EBlendMode blendMode) : IMaterialDataContainer
     {
         private BindlessTexture?[]? _diffuses = new BindlessTexture?[layers.Length];
         private BindlessTexture?[]? _normals = new BindlessTexture?[layers.Length];
@@ -219,7 +219,7 @@ public static class MaterialCache
 
         public string Name { get; } = name;
         public bool HasTextures => true;
-        public bool IsTranslucent { get; } = translucent;
+        public bool IsTranslucent { get; } = blendMode is not EBlendMode.BLEND_Opaque;
 
         public Dictionary<string, Texture> GetTextures()
         {
@@ -274,8 +274,7 @@ public static class MaterialCache
                 layerTextureFlags |= layerFlags << (i * 3);
             }
 
-            uint globalFlags = 0;
-            if (IsTranslucent) globalFlags |= 1u; // Bit 0: IsTranslucent
+            uint globalFlags = (uint)blendMode & 0xF;
 
             var data = new PerMaterialMeshData
             {
@@ -360,11 +359,9 @@ public static class MaterialCache
             ImGui.SameLine();
             ImGui.TextUnformatted($"RGB({layer.DiffuseColor.X:F2}, {layer.DiffuseColor.Y:F2}, {layer.DiffuseColor.Z:F2})");
 
-            EditorUI.Property("Roughness");
-            ImGui.TextUnformatted($"Min: {layer.Roughness.X:F2}, Max: {layer.Roughness.Y:F2}");
-
-            EditorUI.Property("Translucent");
-            ImGui.TextUnformatted(IsTranslucent ? "Yes" : "No");
+            EditorUI.Text("Roughness", $"Min: {layer.Roughness.X:F2}, Max: {layer.Roughness.Y:F2}");
+            EditorUI.Text("Blend Mode", ((byte) blendMode).ToString());
+            EditorUI.Text("Translucent", IsTranslucent ? "Yes" : "No");
 
             EditorUI.Property("GPU Status");
             if (Raw is PerMaterialMeshData { IsReady: true } gpuData)

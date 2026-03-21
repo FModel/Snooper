@@ -11,6 +11,7 @@ public enum DirtyFlags
     Opacity = 1 << 4,
     Outline = 1 << 5,
     Spline = 1 << 6,
+    Animation = 1 << 7,
     // X = 1 << Y,
 
     All = ~0

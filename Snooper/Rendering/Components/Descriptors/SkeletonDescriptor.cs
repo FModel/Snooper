@@ -90,7 +90,7 @@ public class SkeletonDescriptor
         RecalculateBoneMatrices();
     }
 
-    private void RecalculateBoneMatrices(int start = -1, int end = -1)
+    internal void RecalculateBoneMatrices(int start = -1, int end = -1)
     {
         var from = start >= 0 ? start : 0;
         var to = end >= 0 && end < BoneCount ? end : BoneCount - 1;

@@ -59,7 +59,7 @@ public unsafe struct PerMaterialMeshData : IPerMaterialData
 {
     public bool IsReady { get; init; }
     public uint LayerCount; // Number of UV layers (1-4)
-    public uint GlobalFlags; // Bit 0: IsTranslucent, other bits available for global settings
+    public uint GlobalFlags;
 
     // Per-layer texture flags (3 bits per layer: HasDiffuse, HasNormal, HasSpecular)
     // Layer 0: bits 0-2, Layer 1: bits 3-5, Layer 2: bits 6-8, Layer 3: bits 9-11

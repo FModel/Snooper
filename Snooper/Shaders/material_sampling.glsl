@@ -124,8 +124,7 @@ LayerData SampleLayer(PerMaterialData materialData, uint layer, vec2 uv)
     return result;
 }
 
-// Check global flags
-bool IsTranslucent(PerMaterialData materialData)
+uint GetBlendMode(PerMaterialData materialData)
 {
-    return (materialData.GlobalFlags & 1u) != 0u;
+    return materialData.GlobalFlags & 0xFu;
 }
