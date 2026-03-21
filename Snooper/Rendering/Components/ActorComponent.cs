@@ -15,12 +15,12 @@ public abstract partial class ActorComponent
     private static uint _nextId = 1;
     public readonly uint Id = _nextId++;
 
-    public readonly string Name;
     protected readonly string Header;
     private readonly string? _exportType;
     private readonly string? _internalType;
     private readonly string[]? _jsonProperties;
 
+    public string Name { get; internal set; }
     public string? ObjectPath { get; protected init; }
 
     public bool IsSelected

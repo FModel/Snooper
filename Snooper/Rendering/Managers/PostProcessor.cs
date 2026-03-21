@@ -101,7 +101,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 }
                 else shader.SetUniform("useLighting", false);
 
-                if (ctx.LightSystem?.GetDirectionalLight() is { Actor.IsVisible: true } light)
+                if (ctx.LightSystem?.GetDirectionalLight() is { IsEnabled: true } light)
                 {
                     Matrix4x4.Decompose(light.WorldMatrix, out _, out var rotation, out _);
 

@@ -59,7 +59,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     }
     private void AddActorInternal(Actor actor)
     {
-        if (!_actors.Add(actor.Id))
+        if (!_actors.Add(actor._id))
             throw new ArgumentException("This actor is already added to the actor manager.", nameof(actor));
         if (actor.ActorManager != null)
             throw new ArgumentException("This actor is already used by another actor manager.", nameof(actor));
@@ -91,7 +91,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     }
     private void RemoveActorInternal(Actor actor)
     {
-        if (!_actors.Remove(actor.Id))
+        if (!_actors.Remove(actor._id))
             throw new ArgumentException("This actor is not part of the actor manager.", nameof(actor));
         if (actor.ActorManager != this)
             throw new ArgumentException("This actor is not part of this actor manager.", nameof(actor));
@@ -248,7 +248,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
         EditorUI.TogglableTreeNode("Lighting", light?.IsEnabled ?? false, () => light?.DrawControls(), toggle =>
         {
             light?.IsEnabled = toggle;
-            light?.GetDirectionalLight()?.Actor?.IsVisible = !toggle;
+            light?.GetDirectionalLight()?.IsEnabled = !toggle;
         });
         ImGui.EndDisabled();
 

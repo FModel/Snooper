@@ -4,11 +4,14 @@ using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
 using CUE4Parse.MappingsProvider;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Engine;
@@ -40,8 +43,8 @@ DetexHelper.Initialize("D:\\FModel\\.data\\Detex.dll");
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-39.00-CL-48444883_br.usmap";
-const string key = "0x8E95784F8ECC94113349AE1678C62EBB50ABBA8C10422E7C5D8399B13DA07AE8";
+const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-40.00-CL-51746096_br.usmap";
+const string key = "0x55AFB842F6B302A2DDC69A3C437DDEABBB3370C700F8814A70520BBABBF7B770";
 var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
@@ -120,6 +123,7 @@ provider.LoadVirtualPaths();
 
 var snooper = new EditorWindow(144, 1500, 900, false);
 var scene = new Actor("Scene");
+scene.Components.Add(new BoxComponent(Vector3.Zero, Vector3.One));
 
 var camera = new CameraActor("Camera");
 camera.CameraComponent.LocalTransform.Position = new Vector3(1, 2, -0.5f);
@@ -140,29 +144,34 @@ switch (provider.ProjectName)
 {
     case "ShooterGame":
     {
-        camera.CameraComponent.FarClipPlane = 100f;
-        grid.Components.Clear();
-        grid.Components.Add(new OpaqueGridComponent());
+        // camera.CameraComponent.FarClipPlane = 100f;
+        // grid.Components.Clear();
+        // grid.Components.Add(new OpaqueGridComponent());
+        //
+        // var textOrientation = new Quaternion(0.5f, 0.5f, -0.5f, 0.5f);
+        //
+        // var character1P = new Actor("Raze 1P");
+        // character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/1P/Models/FP_Clay_S0_Skelmesh.FP_Clay_S0_Skelmesh")));
+        // character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Equippables/Guns/Rifles/AK/Afterglow/Models/GN_AK_Afterglow_Lv2_Skelmesh.GN_AK_Afterglow_Lv2_Skelmesh"))
+        // {
+        //     AttachSocketName = "L_WeaponPoint"
+        // });
+        // character1P.Components.Add(new TextRenderComponent(character1P.Name, transform: new Transform(new Vector3(0, 1.9f, 0), textOrientation)));
+        // scene.Children.Add(character1P);
+        //
+        // var character3P = new Actor("Raze 3P");
+        // character3P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new Vector3(0, 0, -1)));
+        // character3P.Components.Add(new TextRenderComponent(character3P.Name, transform: new Transform(new Vector3(0, 2.2f, 0), textOrientation)));
+        // scene.Children.Add(character3P);
+        //
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new Vector3(-3, 0, 0)));
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new Vector3(-2, 4, 1)));
+        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
+        // break;
 
-        var textOrientation = new Quaternion(0.5f, 0.5f, -0.5f, 0.5f);
-
-        var character1P = new Actor("Raze 1P");
-        character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/1P/Models/FP_Clay_S0_Skelmesh.FP_Clay_S0_Skelmesh")));
-        character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Equippables/Guns/Rifles/AK/Afterglow/Models/GN_AK_Afterglow_Lv2_Skelmesh.GN_AK_Afterglow_Lv2_Skelmesh"))
-        {
-            AttachSocketName = "L_WeaponPoint"
-        });
-        character1P.Components.Add(new TextRenderComponent(character1P.Name, transform: new Transform(new Vector3(0, 1.9f, 0), textOrientation)));
-        scene.Children.Add(character1P);
-
-        var character3P = new Actor("Raze 3P");
-        character3P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new Vector3(0, 0, -1)));
-        character3P.Components.Add(new TextRenderComponent(character3P.Name, transform: new Transform(new Vector3(0, 2.2f, 0), textOrientation)));
-        scene.Children.Add(character3P);
-
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new Vector3(-3, 0, 0)));
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new Vector3(-2, 4, 1)));
-        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("ShooterGame/Content/Characters/Clay/FXC_CharacterSelect_Clay.FXC_CharacterSelect_Clay_C")));
+        const string Character = "Wraith";
+        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C")));
         break;
 
         // Ascent

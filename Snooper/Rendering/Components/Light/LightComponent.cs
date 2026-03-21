@@ -21,6 +21,8 @@ public abstract class LightComponent : SpatialComponent
 
     internal BufferAllocation? _allocation;
 
+    public bool IsEnabled { get; internal set; }
+
     public LightComponent(ULightComponent component) : base(component)
     {
         Intensity = component.Intensity;

@@ -73,7 +73,7 @@ public class WorldActor : Actor
         {
             // TODO: these fucking streaming levels can reference each other
             Process(world.StreamingLevels[i]);
-            if (i > 5) break; // TODO: GTA optimize, actually stream it (see world partition) or limit the amount of streaming levels to process
+            // if (i > 5) break; // TODO: GTA optimize, actually stream it (see world partition) or limit the amount of streaming levels to process
         }
 
         GC.Collect();

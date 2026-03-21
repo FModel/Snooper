@@ -175,6 +175,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         if (component is DirectionalLightComponent { CastShadows: true } dirLight)
         {
             _cachedDirectionalLight = dirLight;
+            _cachedDirectionalLight.IsEnabled = true;
         }
     }
 
@@ -189,6 +190,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
         if (component == _cachedDirectionalLight)
         {
+            _cachedDirectionalLight.IsEnabled = false;
             _cachedDirectionalLight = null;
         }
     }
@@ -244,8 +246,8 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         {
             var sun = GetDirectionalLight();
             ImGui.BeginDisabled(sun == null);
-            var check = sun?.Actor?.IsVisible ?? false;
-            if (EditorUI.Checkbox("Sun Light", ref check)) sun?.Actor?.IsVisible = check;
+            var check = sun?.IsEnabled ?? false;
+            if (EditorUI.Checkbox("Sun Light", ref check)) sun?.IsEnabled = check;
             ImGui.EndDisabled();
 
             EditorUI.Text("Lights", $"{ComponentsCount}/{Capacity}");

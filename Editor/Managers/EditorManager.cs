@@ -165,7 +165,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 
     private void DrawActorTree(Actor actor, bool clip = false)
     {
-        ImGui.PushID(actor.Id);
+        ImGui.PushID(actor._id);
 
         var count = actor.Children.Count;
         var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.AllowOverlap | ImGuiTreeNodeFlags.FramePadding;
@@ -199,7 +199,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
             {
                 foreach (var child in children)
                 {
-                    ImGui.PushID(child.Id);
+                    ImGui.PushID(child._id);
                     var isOpen = ImGui.GetStateStorage().GetInt(ImGui.GetID("##Tree")) != 0;
                     ImGui.PopID();
                     if (isOpen && child.Children.Count > 0)

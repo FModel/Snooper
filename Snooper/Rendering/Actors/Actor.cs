@@ -131,7 +131,7 @@ public class Actor
         }
     }
 
-    internal readonly int Id = Random.Shared.Next();
+    internal readonly int _id = Random.Shared.Next();
     internal virtual string Icon { get; private set; } = "\uf1b2";
 
     public event Action<IGameSystem>? OnAttachedToScene;

@@ -67,7 +67,7 @@ public class SpatialComponent : ActorComponent, IControllable
             if (field == value) return;
 
             field = value;
-            MarkDirtyUpward(DirtyFlags.Transform);
+            MarkDirty(DirtyFlags.Transform);
         }
     }
 
@@ -84,7 +84,7 @@ public class SpatialComponent : ActorComponent, IControllable
             if (field != null && !field.Children.Contains(this))
                 field.Children.Add(this);
 
-            MarkDirtyUpward(DirtyFlags.Transform);
+            MarkDirty(DirtyFlags.Transform);
         }
     }
 
@@ -145,7 +145,7 @@ public class SpatialComponent : ActorComponent, IControllable
     {
         LocalTransform = transform;
         _isTransformDirty = true;
-        MarkDirtyUpward(DirtyFlags.Transform); // TODO: fix, for imgui LocalTransform = transform, so we need to force it dirty
+        MarkDirty(DirtyFlags.Transform); // TODO: fix, for imgui LocalTransform = transform, so we need to force it dirty
     }
 
     protected virtual void ResetLocalTransform(int index = -1)
@@ -157,7 +157,7 @@ public class SpatialComponent : ActorComponent, IControllable
         _absRotation = _originalAbsRotation;
         _absScale    = _originalAbsScale;
         _isTransformDirty = false;
-        MarkDirtyUpward(DirtyFlags.Transform);
+        MarkDirty(DirtyFlags.Transform);
     }
 
     protected virtual bool IsLocalTransformDirty(int index = -1) => _isTransformDirty;
@@ -219,12 +219,6 @@ public class SpatialComponent : ActorComponent, IControllable
         {
             child.MarkDirty(DirtyFlags.Transform);
         }
-    }
-
-    private void MarkDirtyUpward(DirtyFlags flags)
-    {
-        MarkDirty(flags);
-        Relation?.MarkDirtyUpward(flags);
     }
 
     internal override string Icon => "\uf601";
