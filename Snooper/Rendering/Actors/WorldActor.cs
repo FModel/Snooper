@@ -3,7 +3,6 @@ using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition.DataLayer;
-using CUE4Parse.UE4.Assets.Objects.Properties;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Components.Transforms;
@@ -35,10 +34,7 @@ public class WorldActor : Actor
                 continue;
             }
 
-            var a = data.Class?.TryLoad<UBlueprintGeneratedClass>(out var blueprint) == true
-                ? new BlueprintLevelActor(data, parents, blueprint)
-                : new LevelActor(data, parents);
-
+            var a = new LevelActor(data, parents);
             if (a.RootComponent is not null)
             {
                 created.Add(a);

@@ -1,19 +1,19 @@
 ﻿namespace Snooper.Rendering.Components;
 
 [Flags]
-public enum DirtyFlags
+public enum DirtyFlags : uint
 {
     None = 0,
-    Transform = 1 << 0,
-    InstanceData = 1 << 1,
-    Visibility = 1 << 2,
-    ManualLodSwap = 1 << 3,
-    Opacity = 1 << 4,
-    Outline = 1 << 5,
-    Spline = 1 << 6,
-    Animation = 1 << 7,
-    // X = 1 << Y,
+    Transform = 1u << 0,
+    InstanceData = 1u << 1,
+    Visibility = 1u << 2,
+    ManualLodSwap = 1u << 3,
+    Opacity = 1u << 4,
+    Outline = 1u << 5,
+    Spline = 1u << 6,
+    Animation = 1u << 7,
+    // X = 1u << Y,
 
-    All = ~0
+    All = uint.MaxValue
 }
 

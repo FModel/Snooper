@@ -18,12 +18,8 @@ public readonly struct BufferAllocation(int allocationId, int startIndex, int le
     public int EndIndex => StartIndex + Length - 1;
 }
 
-public struct BufferAllocationMetadata(int allocationId, int startIndex, int length, DateTime createdAt)
+public record BufferAllocationMetadata(int AllocationId, int StartIndex, int Length, DateTime CreatedAt)
 {
-    public readonly int AllocationId = allocationId;
-    public readonly int StartIndex = startIndex;
-    public readonly int Length = length;
-    public readonly DateTime CreatedAt = createdAt;
     public DateTime? LastModified;
     public int EndIndex => StartIndex + Length - 1;
 }
@@ -207,7 +203,8 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
         GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, length * Stride, data);
 
-        _allocations[allocationId] = metadata with { LastModified = DateTime.UtcNow };
+        if (!batched)
+            _allocations[allocationId] = metadata with { LastModified = DateTime.UtcNow };
     }
 
     public void UpdateCustom<TCustom>(BufferAllocation allocation, TCustom data, int offset) where TCustom : unmanaged => UpdateCustomInternal(allocation.AllocationId, data, offset);
@@ -342,7 +339,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
     public override long Allocated => Capacity * Stride;
     public override long Used => Count * Stride;
-    public BufferStatistics GetBufferStatistics()
+    public BufferStatistics? GetBufferStatistics()
     {
         var allocations = _allocations.Values.OrderBy(a => a.StartIndex).ToList();
         var freeBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();

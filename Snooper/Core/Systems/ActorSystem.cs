@@ -34,6 +34,7 @@ public abstract class ActorSystem : IGameSystem
     public abstract int Capacity { get; }
     public abstract int ComponentsCount { get; }
     public abstract int EnqueuedComponentsCount { get; }
+    public abstract int DirtyComponentsCount { get; }
 
     protected ActorSystem(Type componentType)
     {
@@ -81,6 +82,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override int Capacity => -1; // unlimited
     public override int ComponentsCount => Components.Count;
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
+    public override int DirtyComponentsCount => DirtyComponents.Count;
 
     protected bool ClearMaskBuffer { get; private set; } = false;
 
@@ -154,7 +156,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     protected virtual void OnActorComponentAdded(TComponent component)
     {
         component.OnRequestSystemUpdate += OnComponentRequestUpdate;
-        component.MarkDirty(DirtyFlags.All);
+        DirtyComponents.Add(component);
     }
 
     protected virtual void OnActorComponentRemoved(TComponent component)

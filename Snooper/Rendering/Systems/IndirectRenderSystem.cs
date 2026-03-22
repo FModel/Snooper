@@ -11,7 +11,7 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type) : ActorSystem<TComponent>
+public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type) : ActorSystem<TComponent>, IMemoryDetailsProvider
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData

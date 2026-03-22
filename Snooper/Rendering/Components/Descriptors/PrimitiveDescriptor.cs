@@ -16,7 +16,7 @@ namespace Snooper.Rendering.Components.Descriptors;
 public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
 {
     public string? Path { get; }
-    public FGuid Guid { get; } // does not have to match the cached GUID (if descriptor is cached), but it's better for debug purposes if it does
+    public FGuid Guid { get; } // this will be used by the geometry pool in order to not upload the geometry data twice on the gpu
     public CullingBounds Bounds { get; }
     public LodDescriptor<TVertex>[] Lods { get; }
     public SkeletonDescriptor? Skeleton { get; }

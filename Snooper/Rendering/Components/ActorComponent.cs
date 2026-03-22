@@ -121,7 +121,7 @@ public abstract partial class ActorComponent
 
     protected virtual DirtyFlags SupportedDirtyFlags => DirtyFlags.None;
 
-    private DirtyFlags _dirtyFlags = DirtyFlags.None;
+    private DirtyFlags _dirtyFlags = DirtyFlags.All;
     internal bool IsDirty(DirtyFlags flags) => (_dirtyFlags & flags) != 0;
     internal void MarkDirty(DirtyFlags flags)
     {

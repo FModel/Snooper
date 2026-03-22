@@ -4,6 +4,7 @@ using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using Snooper.Core;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
 
@@ -14,17 +15,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Animation;
 
-    public CAnimSet? Animation
-    {
-        get;
-        private init
-        {
-            if (field == value) return;
-
-            field = value;
-            MarkDirty(DirtyFlags.Animation);
-        }
-    }
+    public CAnimSet? Animation { get; }
 
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh, transform)
     {
@@ -40,6 +31,16 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
             {
                 sequence.RetargetTracks(Animation.Skeleton);
             }
+        }
+    }
+
+    public override void Update(IndirectResources<Vertex, PerInstanceData, PerMaterialMeshData> resources)
+    {
+        base.Update(resources);
+
+        if (Animation != null)
+        {
+            MarkDirty(DirtyFlags.Animation);
         }
     }
 }

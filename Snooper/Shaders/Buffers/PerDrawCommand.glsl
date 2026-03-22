@@ -9,7 +9,8 @@
     uint BaseGeometry; // offset of this geometry in the culling buffer
     uint BaseColor;
     uint BaseBoneInfluence;
-    uint BaseBone; // offset of this mesh's bones in the global bone/pose buffers
+    uint BaseBone; // offset of this mesh's bones in the cached bone buffers
+    uint BasePose; // offset of this mesh's bones in the global pose buffers
     uint BaseMaterial; // offset of the first material this geometry uses in the material buffer
     uint MaterialIndex; // index of the material relative to BaseMaterial
     uint PickingId;

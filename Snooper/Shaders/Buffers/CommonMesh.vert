@@ -10,14 +10,14 @@ uniform int uFragmentColorMode;
 #include "Buffers/PerDrawCommand.glsl"
 #include "Buffers/PerInstanceData.glsl"
 
-layout(std430, binding = 3) buffer PerBoneInverseBindBuffer
-{
-    mat4 uInverseBindBuffer[]; // inverse bind pose matrices
-};
-
-layout(std430, binding = 4) buffer PerBonePoseBuffer
+layout(std430, binding = 3) buffer PerBonePoseBuffer
 {
     mat4 uPoseBuffer[]; // current pose matrices (bind pose or animated pose)
+};
+
+layout(std430, binding = 4) buffer PerBoneInverseBindBuffer
+{
+    mat4 uInverseBindBuffer[]; // inverse bind pose matrices
 };
 
 layout(std430, binding = 5) buffer PerVertexColorBuffer
@@ -135,7 +135,7 @@ void CommonMeshMain()
 
     aPos = (sliceTransform * vec4(uePos, 1.0)).xzyw;
 #else
-    if (cmd.BaseBoneInfluence != 0xFFFFFFFFu)
+    if (cmd.BaseBoneInfluence != 0xFFFFFFFFu && cmd.BaseBone != 0xFFFFFFFFu && cmd.BasePose != 0xFFFFFFFFu)
     {
         uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[cmd.BaseBoneInfluence + (gl_VertexID - gl_BaseVertex)];
         uint startIndex = packedInfluenceOffset >> 8;
@@ -148,10 +148,10 @@ void CommonMeshMain()
         for (uint i = 0u; i < count; i++)
         {
             uvec2 inf = unpackBoneInfluence(uVertexBoneInfluenceBuffer[startIndex + i]);
-            uint boneIndex = cmd.BaseBone + inf.x;
+            uint boneIndex = inf.x;
             float weight = float(inf.y) / 255.0;
 
-            mat4 skinningMatrix = uPoseBuffer[boneIndex] * uInverseBindBuffer[boneIndex];
+            mat4 skinningMatrix = uPoseBuffer[cmd.BasePose + boneIndex] * uInverseBindBuffer[cmd.BaseBone + boneIndex];
             uePos += skinningMatrix * aPos * weight;
             ueNormal += mat3(skinningMatrix) * aNormal * weight;
             ueTangent += mat3(skinningMatrix) * aTangent * weight;

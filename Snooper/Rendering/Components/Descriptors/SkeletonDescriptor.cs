@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Animation;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Descriptors;
@@ -13,6 +14,8 @@ public readonly struct BoneDescriptor(string name, int parentIndex, Matrix4x4 bi
 
 public class SkeletonDescriptor
 {
+    internal BufferAllocation? _poseAllocation;
+
     /// <summary>
     /// local-space transform for each bone for the current frame. This is the single source of truth for bone transforms.
     /// </summary>
@@ -55,8 +58,6 @@ public class SkeletonDescriptor
         RecalculateBoneMatrices();
     }
 
-    public event Action? OnBoneMatricesChanged;
-
     public string GetBoneName(int index) => BoneDescriptors[index].Name;
     public int GetBoneParentIndex(int index) => BoneDescriptors[index].ParentIndex;
 
@@ -90,7 +91,7 @@ public class SkeletonDescriptor
         RecalculateBoneMatrices();
     }
 
-    internal void RecalculateBoneMatrices(int start = -1, int end = -1)
+    public void RecalculateBoneMatrices(int start = -1, int end = -1)
     {
         var from = start >= 0 ? start : 0;
         var to = end >= 0 && end < BoneCount ? end : BoneCount - 1;
@@ -99,7 +100,5 @@ public class SkeletonDescriptor
             var pi = BoneDescriptors[i].ParentIndex;
             BoneMatrices[i] = pi < 0 ? BoneLocalMatrices[i] : BoneLocalMatrices[i] * BoneMatrices[pi];
         }
-
-        OnBoneMatricesChanged?.Invoke();
     }
 }

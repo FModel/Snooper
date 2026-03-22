@@ -81,4 +81,6 @@ public class BlueprintActor : UnrealActor
             ProcessNode(child, component);
         }
     }
+
+    internal override string Icon => "\uf46d";
 }

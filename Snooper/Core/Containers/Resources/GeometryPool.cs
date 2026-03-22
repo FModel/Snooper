@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Objects.Core.Misc;
+﻿using System.Numerics;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Camera;
@@ -6,11 +7,12 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation cullingAllocation, uint baseColor, uint baseBoneInfluence, int overrideLod = -1)
+public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation cullingAllocation, uint baseColor, BufferAllocation? boneAllocation, uint baseBoneInfluence, int overrideLod = -1)
 {
     public readonly uint FirstIndex = firstIndex; // first index of lod 0
     public readonly uint BaseVertex = baseVertex; // base vertex of lod 0
     public readonly BufferAllocation CullingAllocation = cullingAllocation;
+    public readonly BufferAllocation? BoneAllocation = boneAllocation;
     public readonly uint BaseColor = baseColor;
     public readonly uint BaseBoneInfluence = baseBoneInfluence;
 
@@ -23,6 +25,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     private readonly ElementArrayBuffer<uint> _ebo = new();
     private readonly ArrayBuffer<TVertex> _vbo = new();
     private readonly ShaderStorageBuffer<int> _colors = new();
+    private readonly ShaderStorageBuffer<Matrix4x4> _boneData = new();
     private readonly ShaderStorageBuffer<uint> _boneInfluences = new();
     private readonly ShaderStorageBuffer<uint> _boneInfluenceOffsets = new();
     private readonly CullingResources _culling = new();
@@ -36,6 +39,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _ebo.Generate();
         _vbo.Generate();
         _colors.Generate();
+        _boneData.Generate();
         _boneInfluences.Generate();
         _boneInfluenceOffsets.Generate();
         _culling.Generate();
@@ -68,21 +72,26 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             _colors.Allocate(counts.ColoredVertices);
         }
 
+        if (counts.Bones > 0)
+        {
+            _boneData.Allocate(counts.Bones);
+        }
+
         if (counts.SkinnedVertices > 0)
         {
-            _boneInfluences.Allocate(counts.SkinnedVertices * 4);
+            _boneInfluences.Allocate(counts.SkinnedVertices * 2);
             _boneInfluenceOffsets.Allocate(counts.SkinnedVertices);
         }
 
         _culling.Allocate(counts);
     }
 
-    public GeometryHandle Add(FGuid guid, LodDescriptor<TVertex>[] lods, CullingBounds bounds)
+    public GeometryHandle Add(FGuid guid, LodDescriptor<TVertex>[] lods, CullingBounds bounds, SkeletonDescriptor? skeleton = null)
     {
         if (!_cache.TryGetValue(guid, out var handle))
         {
             var (firstIndex, baseVertex, baseColor, baseBoneInfluence, offsets) = CreateOffsets();
-            handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(offsets), baseColor, baseBoneInfluence, lods.Length > 1 ? -1 : 0);
+            handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(offsets), baseColor, CreateBoneAllocation(), baseBoneInfluence, lods.Length > 1 ? -1 : 0);
             _cache.Add(guid, handle);
         }
 
@@ -133,6 +142,17 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
             return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], o.LOD_BaseBoneInfluence[0], o);
         }
+        BufferAllocation? CreateBoneAllocation()
+        {
+            if (skeleton == null) return null;
+
+            var inverseBoneMatrices = new Matrix4x4[skeleton.BoneMatrices.Length];
+            for (var i = 0; i < inverseBoneMatrices.Length; i++)
+            {
+                Matrix4x4.Invert(skeleton.BoneMatrices[i], out inverseBoneMatrices[i]);
+            }
+            return _boneData.AddRange(inverseBoneMatrices);
+        }
     }
 
     public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands, bool shadowPass = false)
@@ -140,6 +160,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     public void Render(Action mdi)
     {
+        _boneData.Bind(4);
         _colors.Bind(5);
         _boneInfluences.Bind(6);
         _boneInfluenceOffsets.Bind(7);
@@ -170,6 +191,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _ebo.Dispose();
         _vbo.Dispose();
         _colors.Dispose();
+        _boneData.Dispose();
         _boneInfluences.Dispose();
         _boneInfluenceOffsets.Dispose();
         _culling.Dispose();
@@ -183,6 +205,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             total += _ebo.Allocated;
             total += _vbo.Allocated;
             total += _colors.Allocated;
+            total += _boneData.Allocated;
             total += _boneInfluences.Allocated;
             total += _boneInfluenceOffsets.Allocated;
             total += _culling.Allocated;
@@ -198,6 +221,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             total += _ebo.Used;
             total += _vbo.Used;
             total += _colors.Used;
+            total += _boneData.Used;
             total += _boneInfluences.Used;
             total += _boneInfluenceOffsets.Used;
             total += _culling.Used;
@@ -210,6 +234,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         yield return new MemoryDetail("Index Buffer", _ebo);
         yield return new MemoryDetail("Vertex Buffer", _vbo);
         yield return new MemoryDetail("Vertex Color Buffer", _colors);
+        yield return new MemoryDetail("Bone Data", _boneData);
         yield return new MemoryDetail("Bone Influence Buffer", _boneInfluences);
         yield return new MemoryDetail("Bone Influence Offset Buffer", _boneInfluenceOffsets);
         yield return new MemoryDetail("Culling Resources", _culling);
