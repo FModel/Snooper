@@ -82,6 +82,24 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
         return targetAllocations;
     }
 
+    public BufferAllocation Transfer(BufferAllocation sourceAllocation, CommandBufferType from, CommandBufferType to)
+    {
+        if (from == to) return sourceAllocation;
+
+        var sourceBuffer = GetBuffer(from);
+        var targetBuffer = GetBuffer(to);
+        var delete = (from == CommandBufferType.Opaque && to == CommandBufferType.Transparent) ||
+                     (from == CommandBufferType.Transparent && to == CommandBufferType.Opaque);
+
+        var targetAllocations = targetBuffer.CopyFrom(sourceBuffer, sourceAllocation);
+        if (delete)
+        {
+            sourceBuffer.Remove(sourceAllocation);
+        }
+
+        return targetAllocations;
+    }
+
     public void ClearMask()
     {
         _mask.Clear();

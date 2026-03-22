@@ -8,6 +8,12 @@ using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Transforms;
 using Editor.Widgets;
+using Snooper.Core.Containers;
+using Snooper.Extensions;
+using Snooper.Rendering.Components.Light;
+using Snooper.Rendering.Components.Mesh;
+using Snooper.Rendering.Components.Skybox;
+using Snooper.UI;
 
 namespace Editor.Managers;
 
@@ -15,7 +21,18 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 {
     private bool _test = true;
     private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
+    private readonly ResourcesViewerWidget _resourcesViewer = new();
     private readonly JsonViewerWidget _jsonViewer = new();
+    private readonly SkeletonOverlayWidget _skeletonOverlay = new();
+    private readonly SplineOverlayWidget _splineOverlay = new();
+    private readonly ViewportAxisWidget _axisWidget = new();
+
+    public override void Update(float delta)
+    {
+        base.Update(delta);
+
+        _axisWidget.Update(delta);
+    }
 
     protected override void RenderInterface()
     {
@@ -44,17 +61,86 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 
             ImGuizmo.SetDrawlist(drawList);
             ImGuizmo.SetRect(itemMin.X, itemMin.Y, size.X, size.Y);
-            if (SelectedComponent is SpatialComponent s && MainViewport?.Camera is { } camera)
-            {
-                var view = camera.ViewMatrix;
-                var proj = camera.ProjectionMatrix;
-                var matrix = s.GizmoMatrix;
 
-                if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
-                    s.ApplyGizmoMatrix(matrix);
+            if (MainViewport?.Camera is { } camera)
+            {
+                if (_axisWidget.Draw(drawList, camera, itemMin with { X = itemMin.X + size.X }))
+                {
+                    camera.SnapRotationTo(_axisWidget.SnapRotations[_axisWidget.HoveredAxis]);
+                }
+
+                var component = SelectedComponent ?? SelectedActor?.RootComponent;
+                if (component is SpatialComponent s)
+                {
+                    var view = camera.ViewMatrix;
+                    var proj = camera.ProjectionMatrix;
+                    var matrix = s.GizmoMatrix;
+
+                    switch (s)
+                    {
+                        case SplineMeshComponent { Actor: { } splineActor }:
+                        {
+                            _splineOverlay.BeginFrame();
+                            foreach (var sm in splineActor.Components.OfType<SplineMeshComponent>())
+                                _splineOverlay.Feed(sm);
+                            _splineOverlay.DrawOverlay(drawList, camera, itemMin, size);
+                            var overlayAction = _splineOverlay.EndFrame(drawList, itemMin, size);
+                            if (overlayAction is SplineOverlayAction.Changed)
+                                _splineOverlay.SelectedSpline?.MarkDirty(DirtyFlags.Spline);
+
+                            if (_splineOverlay.SelectedHandle != -1 && _splineOverlay.SelectedSpline is not null)
+                            {
+                                var handleMatrix = _splineOverlay.SelectedHandleMatrix;
+                                if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.TRANSLATE, MODE.WORLD, ref handleMatrix.M11))
+                                {
+                                    _splineOverlay.ApplyGizmoMatrix(handleMatrix);
+                                    _splineOverlay.SelectedSpline.MarkDirty(DirtyFlags.Spline);
+                                }
+                            }
+
+                            break;
+                        }
+                        case MeshComponent mesh when mesh.Descriptor.Sockets.Length > 0 || mesh.Descriptor.Skeleton != null:
+                        {
+                            _skeletonOverlay.Draw(drawList, mesh, s.WorldMatrix, camera, itemMin, size);
+
+                            var boneIndex = _skeletonOverlay.SelectedBoneIndex;
+                            if (boneIndex >= 0 && mesh.Descriptor.Skeleton is { } skeleton)
+                            {
+                                matrix = skeleton.BoneMatrices[boneIndex] * s.GizmoMatrix;
+
+                                if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
+                                {
+                                    Matrix4x4.Invert(s.GizmoMatrix, out var invGizmo);
+                                    skeleton.MoveBone(boneIndex, matrix * invGizmo);
+                                    mesh.MarkDirty(DirtyFlags.Animation);
+                                }
+                            }
+
+                            break;
+                        }
+                        case DirectionalLightComponent:
+                        {
+                            if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.ROTATE_X | OPERATION.ROTATE_Y | OPERATION.ROTATE_SCREEN, MODE.LOCAL, ref matrix.M11))
+                            {
+                                s.ApplyGizmoMatrix(matrix);
+                            }
+                            break;
+                        }
+                        case GridComponent or AtmosphericComponent: break;
+                        default:
+                        {
+                            if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
+                            {
+                                s.ApplyGizmoMatrix(matrix);
+                            }
+                            break;
+                        }
+                    }
+                }
             }
 
-            if (ImGui.IsItemHovered() && !ImGuizmo.IsUsing())
+            if (ImGui.IsItemHovered() && !ImGuizmo.IsUsing() && !_skeletonOverlay.IsUsing && !_splineOverlay.IsUsing)
             {
                 if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
                 {
@@ -129,6 +215,145 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
         if (ImGui.Begin("\uf120 Log"))
         {
 
+        }
+        ImGui.End();
+
+        if (ImGui.Begin("\uf200 Resources Viewer"))
+        {
+            if (ImGui.BeginTabBar("ProfilerTabs"))
+            {
+                if (ImGui.BeginTabItem("Overview"))
+                {
+                    ImGui.Columns(2, "SysInfo", false);
+                    ImGui.Text($"API: {Renderer.Name}");
+                    ImGui.Text($"GPU: {Renderer.DeviceInfo.Name}");
+                    ImGui.NextColumn();
+                    ImGui.Text($"OpenGL: {Renderer.Version}");
+                    ImGui.Text($"Vendor: {Renderer.DeviceInfo.Vendor}");
+                    ImGui.Columns(1);
+                    ImGui.Spacing();
+                    ImGui.SeparatorText("Thread Manager");
+                    ImGui.Columns(3, "ThreadInfo", false);
+                    ImGui.Text($"Workers: {ThreadManager.WorkerCount}");
+                    ImGui.Text($"Queued Jobs: {ThreadManager.CurrentQueuedJobs}");
+                    ImGui.NextColumn();
+                    ImGui.Text($"Jobs Processed: {ThreadManager.TotalJobsProcessed:N0}");
+                    ImGui.Text($"Jobs Enqueued: {ThreadManager.TotalJobsEnqueued:N0}");
+                    ImGui.NextColumn();
+                    ImGui.Text($"Avg Job Time: {ThreadManager.AverageJobTimeMs.FormatTime()}");
+                    ImGui.Text($"Max Job Time: {ThreadManager.MaxJobTimeMs.FormatTime()}");
+                    ImGui.Columns(1);
+                    if (ImGui.TreeNode("Worker Threads"))
+                    {
+                        if (ImGui.BeginTable("WorkerTable", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
+                        {
+                            ImGui.TableSetupColumn("Name");
+                            ImGui.TableSetupColumn("Status");
+                            ImGui.TableSetupColumn("Queue");
+                            ImGui.TableSetupColumn("Jobs Processed");
+                            ImGui.TableSetupColumn("Avg Time (ms)");
+                            ImGui.TableSetupColumn("Max Time (ms)");
+                            ImGui.TableHeadersRow();
+                            var workerStats = ThreadManager.GetWorkerStats();
+                            foreach (var worker in workerStats)
+                            {
+                                ImGui.TableNextRow();
+                                ImGui.TableNextColumn();
+                                ImGui.TextUnformatted(worker.Name);
+                                ImGui.TableNextColumn();
+                                if (worker.IsIdle)
+                                {
+                                    ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1.0f), "Idle");
+                                }
+                                else
+                                {
+                                    ImGui.TextColored(new Vector4(0.0f, 1.0f, 0.0f, 1.0f), "Working");
+                                }
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{worker.QueueLength}");
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{worker.JobsProcessed:N0}");
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{worker.AverageJobTimeMs:F3}");
+                                ImGui.TableNextColumn();
+                                ImGui.Text($"{worker.MaxJobTimeMs:F3}");
+                            }
+                            ImGui.EndTable();
+                        }
+                        ImGui.TreePop();
+                    }
+                    ImGui.Spacing();
+                    ImGui.SeparatorText("GPU Memory");
+                    _resourcesViewer.DrawMemorySummary(this);
+                    ImGui.EndTabItem();
+                }
+
+                if (ImGui.BeginTabItem("Memory"))
+                {
+                    _resourcesViewer.DrawMemoryTable(this);
+                    ImGui.EndTabItem();
+                }
+
+                if (ImGui.BeginTabItem("Systems"))
+                {
+                    foreach (var system in Systems.Values)
+                    {
+                        var isBusy = system.DirtyComponentsCount > 0;
+                        if (isBusy)
+                        {
+                            var timeColor = ImGui.GetColorU32(new Vector4(0.8f, 0.5f, 0.0f, 0.5f + 0.5f * (float) Math.Sin(Time * 5)));
+                            ImGui.PushStyleColor(ImGuiCol.Header, timeColor);
+                            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, timeColor);
+                        }
+                        if (ImGui.CollapsingHeader($"{system.Order}. {system.DisplayName}"))
+                        {
+                            ImGui.Columns(2, $"SysTable{system.Order}", false);
+                            {
+                                ImGui.TextDisabled("Components");
+                                ImGui.TextUnformatted($"{system.ComponentsCount:N0} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}");
+                                ImGui.Spacing();
+                                ImGui.TextDisabled("Dirty Components");
+                                ImGui.TextUnformatted($"{system.DirtyComponentsCount:N0} {system.ComponentType.Name}{(system.DirtyComponentsCount > 1 ? "s" : "")}");
+                                ImGui.Spacing();
+                                system.Profiler.PollResults();
+                                ImGui.TextDisabled("Primitives");
+                                ImGui.TextUnformatted($"{system.Profiler.PrimitivesGenerated:N0}");
+                                ImGui.NextColumn();
+                                ImGui.TextDisabled("Show Wireframe");
+                                ImGui.Checkbox($"##ShowWireframe{system.Order}", ref system.ShowWireframe);
+                                ImGui.Spacing();
+                                ImGui.TextDisabled("Is Enabled");
+                                ImGui.Checkbox($"##Enabled{system.Order}", ref system.IsEnabled);
+                            }
+                            ImGui.Columns(1);
+                            if (system is IMemorySizeProvider provider)
+                            {
+                                ImGui.Spacing();
+                                _resourcesViewer.DrawMemorySummary(provider);
+                            }
+                            if (ImGui.TreeNode($"Performance Metrics##SysMetrics{system.Order}"))
+                            {
+                                _resourcesViewer.DrawPerformanceMetrics(system.Profiler, system.Order.ToString());
+                                ImGui.TreePop();
+                            }
+                            if (system is IControllable controllable)
+                            {
+                                if (ImGui.TreeNode($"Controls##SysControls{system.Order}"))
+                                {
+                                    controllable.DrawControls();
+                                    ImGui.TreePop();
+                                }
+                            }
+                        }
+                        if (isBusy)
+                        {
+                            ImGui.PopStyleColor(2);
+                        }
+                    }
+                    ImGui.EndTabItem();
+                }
+                ImGui.EndTabBar();
+            }
         }
         ImGui.End();
 
@@ -357,6 +582,12 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
         }
 
         component.DrawInterface();
+    }
+
+    protected override void OnSelectionChanged(Actor? actor, ActorComponent? component)
+    {
+        _skeletonOverlay.Reset();
+        _splineOverlay.Reset();
     }
 
     protected override void OnComponentJsonRequested(ActorComponent component, string[] properties)

@@ -24,6 +24,24 @@ public class InteractiveCameraComponent : CameraComponent
 
     public void Update(KeyboardState keyboard, float time)
     {
+        // Handle smooth rotation snap
+        if (_snapTarget.HasValue)
+        {
+            _snapProgress += time / SnapDuration;
+            if (_snapProgress >= 1f)
+            {
+                LocalTransform.Rotation = _snapTarget.Value;
+                _snapTarget   = null;
+                _snapProgress = 0f;
+            }
+            else
+            {
+                var t = _snapProgress * _snapProgress * (3f - 2f * _snapProgress);
+                LocalTransform.Rotation = Quaternion.Normalize(Quaternion.Slerp(_snapStart, _snapTarget.Value, t));
+            }
+            MarkDirty(DirtyFlags.Transform);
+        }
+
         // Handle smooth teleportation
         if (_teleportTarget.HasValue)
         {
@@ -80,10 +98,22 @@ public class InteractiveCameraComponent : CameraComponent
         MarkDirty(DirtyFlags.Transform);
     }
 
+    private Quaternion? _snapTarget = null;
+    private Quaternion _snapStart = Quaternion.Identity;
+    private float _snapProgress = 0f;
+    private const float SnapDuration = 0.25f;
+
     public void TeleportTo(Vector3 targetPosition)
     {
         _teleportTarget = targetPosition;
         _teleportStart = LocalTransform.Position;
         _teleportProgress = 0f;
+    }
+
+    public void SnapRotationTo(Quaternion targetRotation)
+    {
+        _snapStart    = LocalTransform.Rotation;
+        _snapTarget   = targetRotation;
+        _snapProgress = 0f;
     }
 }
