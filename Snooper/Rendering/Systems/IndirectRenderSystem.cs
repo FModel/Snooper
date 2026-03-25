@@ -41,9 +41,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Flush();
     }
 
-    protected override void PreOnUpdate()
+    protected override void PreOnUpdate(TComponent[] components)
     {
-        base.PreOnUpdate();
+        base.PreOnUpdate(components);
 
         if (ClearMaskBuffer)
             Resources.ClearMaskBuffer();

@@ -11,7 +11,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Animation;
 
-    public CAnimSet? Animation { get; }
+    public CAnimSet? Animation { get; private set; }
 
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh, transform)
     {
@@ -22,11 +22,16 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     {
         if (component.AnimationData is { } animationData && animationData.AnimToPlay.TryLoad<UAnimationAsset>(out var animToPlay))
         {
-            Animation = animToPlay.ConvertAnims();
-            foreach (var sequence in Animation.Sequences)
-            {
-                sequence.RetargetTracks(Animation.Skeleton);
-            }
+            SetAnimation(animToPlay);
+        }
+    }
+
+    public void SetAnimation(UAnimationAsset animToPlay)
+    {
+        Animation = animToPlay.ConvertAnims();
+        foreach (var sequence in Animation.Sequences)
+        {
+            sequence.RetargetTracks(Animation.Skeleton);
         }
     }
 }

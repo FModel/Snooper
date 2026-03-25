@@ -8,6 +8,7 @@ namespace Snooper.Rendering.Systems;
 public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
 {
     public override uint Order => 23;
+    protected override bool IsCulled => _maxAnimationTime == 0.0f;
 
     // TODO: move IndirectResources._poseData here
 
@@ -21,44 +22,62 @@ public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
         base.OnLoad();
     }
 
+    private float _maxAnimationTime;
+    protected override void PreOnUpdate(SkinnedMeshComponent[] components)
+    {
+        base.PreOnUpdate(components);
+
+        foreach (var component in components)
+        {
+            if (component is SkeletalMeshComponent { Animation: { } animation })
+            {
+                _maxAnimationTime = Math.Max(_maxAnimationTime, animation.TotalAnimTime);
+            }
+        }
+    }
+
     protected override void OnComponentUpdate(SkinnedMeshComponent component, float delta)
     {
         base.OnComponentUpdate(component, delta);
 
-        if (component is SkeletalMeshComponent { IsVisible: true, Descriptor.Skeleton: { } skeleton,  Animation: { } animation })
+        if (component is SkeletalMeshComponent { IsVisible: true, Descriptor.Skeleton: { } skeleton, Animation: { } animation })
         {
             float time = ActorManager?.Time ?? delta;
-            time %= animation.TotalAnimTime;
+            time %= _maxAnimationTime;
 
-            var sequenceIndex = 0;
-            for (var i = 0; i < animation.Sequences.Count; i++)
-            {
-                var s = animation.Sequences[i];
-                if (time >= s.StartPos && time < s.StartPos + s.AnimEndTime)
-                {
-                    sequenceIndex = i;
-                    break;
-                }
-            }
-
-            var sequence = animation.Sequences[sequenceIndex];
-            var frame = (time - sequence.StartPos) * sequence.FramesPerSecond;
+            // TODO: preprocess the data and clean up the following shit
 
             foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
             {
-                if (!animation.Skeleton.ReferenceSkeleton.FinalNameToIndexMap.TryGetValue(boneName, out var trackIndex))
+                // for each vertex bone, find its skeleton bone
+                if (!animation.Skeleton.ReferenceSkeleton.FinalNameToIndexMap.TryGetValue(boneName, out var skeletonIndex))
                     continue;
 
-                var boneOrientation = FQuat.Identity;
-                var bonePosition = FVector.ZeroVector;
-                var boneScale = FVector.OneVector;
+                foreach (var sequence in animation.Sequences)
+                {
+                    // for this bone, find the first sequence it is animated by
+                    if (sequence.OriginalSequence.FindTrackForBoneIndex(skeletonIndex) < 0)
+                        continue;
 
-                sequence.Tracks[trackIndex].GetBoneTransform(frame, sequence.NumFrames, ref boneOrientation, ref bonePosition, ref boneScale);
+                    // if this sequence should be played for this frame
+                    if (time >= sequence.StartPos && time < sequence.StartPos + sequence.AnimEndTime)
+                    {
+                        var frame = (time - sequence.StartPos) * sequence.OriginalSequence.RateScale / (sequence.AnimEndTime / sequence.NumFrames);
 
-                skeleton.BoneLocalMatrices[boneIndex] = new Transform(bonePosition, boneOrientation, boneScale).ToMatrix();
+                        var boneOrientation = FQuat.Identity;
+                        var bonePosition = FVector.ZeroVector;
+                        var boneScale = FVector.OneVector;
+
+                        sequence.Tracks[skeletonIndex].GetBoneTransform(frame, sequence.NumFrames, ref boneOrientation, ref bonePosition, ref boneScale);
+
+                        skeleton.BoneLocalMatrices[boneIndex] = new Transform(bonePosition, boneOrientation, boneScale).ToMatrix();
+                        break;
+                    }
+                }
             }
 
             skeleton.RecalculateBoneMatrices();
+
             component.MarkDirty(DirtyFlags.Animation);
         }
     }

@@ -98,7 +98,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         var components = DirtyComponents.ToArray();
         DirtyComponents.Clear();
 
-        PreOnUpdate();
+        PreOnUpdate(components);
         foreach (var component in components)
         {
             OnComponentUpdate(component, delta);
@@ -165,7 +165,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         DirtyComponents.Remove(component);
     }
 
-    protected virtual void PreOnUpdate()
+    protected virtual void PreOnUpdate(TComponent[] components)
     {
 
     }

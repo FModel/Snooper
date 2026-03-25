@@ -6,6 +6,7 @@ using CUE4Parse.FileProvider;
 using CUE4Parse.MappingsProvider;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
+using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
@@ -167,8 +168,52 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
         // break;
 
-        const string Character = "Killjoy";
-        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C")));
+        /*
+         * Wraith
+         * Pandemic
+         * Vampire
+         * Killjoy
+         * Sarge
+         * Phoenix
+         * _Core           NoSelection
+         * _Core           Waiting
+         * _Core           SequencerBase
+         * _Core           Base
+         * Breach
+         * Gumshoe
+         * Hunter
+         * Thorne
+         * Clay
+         * Wushu
+         * Grenadier
+         * Mage            Base_Mage
+         * Sprinter
+         * Deadeye (1)
+         * AggroBot        Aggrobot
+         * BountyHunter
+         * Cable
+         * Rift
+         * Sequoia
+         * Guide
+         * Stealth
+        */
+
+        // const string Character = "Deadeye";
+        // var actor = new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C"));
+        // var cameraRig = actor.Components.OfType<SpatialComponent>().FirstOrDefault(x => x.Name == "CameraRig");
+        // if (cameraRig != null && camera.RootComponent is { } spatial)
+        // {
+        //     spatial.SetLocalTransform(Transform.Identity);
+        //     spatial.Relation = cameraRig;
+        //     spatial.AttachSocketName = "Camera";
+        // }
+        // scene.Children.Add(actor);
+
+        var actor = new Actor("Actor");
+        var mesh = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Deadeye/S0/3P/Models/TP_Deadeye_S0_Skelmesh.TP_Deadeye_S0_Skelmesh"));
+        mesh.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Deadeye/S0/Ability_4/3P/Anims/TP_Deadeye_S0_4_Card_Equip_Montage.TP_Deadeye_S0_4_Card_Equip_Montage"));
+        actor.Components.Add(mesh);
+        scene.Children.Add(actor);
         break;
 
         // Ascent
@@ -183,7 +228,6 @@ switch (provider.ProjectName)
         // Rook
         // Triad
         const string Map = "Bonsai";
-
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>($"ShooterGame/Content/Maps/{Map}/{Map}.{Map}")));
         break;
     }
