@@ -4,14 +4,19 @@ using Snooper.UI;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation instanceAllocation, BufferAllocation materialAllocation, BufferAllocation[] drawAllocations, CommandBufferType bufferType) : IControllable
+public class DrawBufferAllocation(BufferAllocation bufferAllocation, CommandBufferType bufferType, uint materialIndex)
+{
+    public BufferAllocation BufferAllocation = bufferAllocation;
+    public CommandBufferType BufferType = bufferType;
+    public readonly uint MaterialIndex = materialIndex;
+}
+
+public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation instanceAllocation, BufferAllocation materialAllocation, DrawBufferAllocation[] drawAllocations) : IControllable
 {
     public readonly GeometryHandle GeometryHandle = geometryHandle;
     public readonly BufferAllocation InstanceAllocation = instanceAllocation;
     public readonly BufferAllocation MaterialAllocation = materialAllocation;
-
-    public BufferAllocation[] DrawAllocations = drawAllocations; // we create one draw per section in lod 0
-    public CommandBufferType BufferType = bufferType; // TODO: support per draw buffer types
+    public readonly DrawBufferAllocation[] DrawAllocations = drawAllocations; // we create one draw per section in lod 0
 
     public void DrawControls()
     {
@@ -49,7 +54,7 @@ public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation i
             {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn(); ImGui.Text($"Draw {i}");
-                var draw = DrawAllocations[i];
+                var draw = DrawAllocations[i].BufferAllocation;
                 ImGui.TableNextColumn(); ImGui.Text(draw.AllocationId.ToString());
                 ImGui.TableNextColumn(); ImGui.Text(draw.StartIndex.ToString());
                 ImGui.TableNextColumn(); ImGui.Text(draw.Length.ToString());

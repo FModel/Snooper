@@ -94,7 +94,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 
             // this only works because there's a match between the draw allocation id and the mapping allocation id
             // would be better to have a direct reference
-            _mapping.Update(metadata.DrawAllocations[0], m);
+            _mapping.Update(metadata.DrawAllocations[0].BufferAllocation, m);
         }
 
         _updateMapping = false;

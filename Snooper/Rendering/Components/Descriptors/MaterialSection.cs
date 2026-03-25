@@ -9,7 +9,7 @@ public class MaterialSection(uint index)
     private static int _nextId;
     public readonly int SectionId = Interlocked.Increment(ref _nextId);
 
-    public uint Index { get; } = index;
+    public readonly uint Index = index;
 
     public BufferAllocation? Allocation { get; internal set; } // set when added to the material data buffer
 

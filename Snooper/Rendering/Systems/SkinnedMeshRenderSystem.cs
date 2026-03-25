@@ -25,7 +25,7 @@ public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
     {
         base.OnComponentUpdate(component, delta);
 
-        if (component.IsDirty(DirtyFlags.Animation) && component is SkeletalMeshComponent { IsVisible: true, Descriptor.Skeleton: { } skeleton,  Animation: { } animation })
+        if (component is SkeletalMeshComponent { IsVisible: true, Descriptor.Skeleton: { } skeleton,  Animation: { } animation })
         {
             float time = ActorManager?.Time ?? delta;
             time %= animation.TotalAnimTime;
@@ -57,7 +57,9 @@ public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
 
                 skeleton.BoneLocalMatrices[boneIndex] = new Transform(bonePosition, boneOrientation, boneScale).ToMatrix();
             }
+
             skeleton.RecalculateBoneMatrices();
+            component.MarkDirty(DirtyFlags.Animation);
         }
     }
 }

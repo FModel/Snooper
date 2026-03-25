@@ -97,14 +97,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         var baseMaterial = component.Materials[0].Allocation is { } first ? (uint)first.StartIndex : 0u;
 
         const uint currentLod = 0u;
-        var drawAllocations = new BufferAllocation[descriptor.Lods[currentLod].Sections.Length];
+        var drawAllocations = new DrawBufferAllocation[descriptor.Lods[currentLod].Sections.Length];
 
         var bufferType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
         var buffer = _commands.GetBuffer(bufferType);
         for (var i = 0u; i < drawAllocations.Length; i++)
         {
             var section = descriptor.Lods[currentLod].Sections[i];
-            drawAllocations[i] = buffer.Add(new DrawElementsIndirectCommand
+            var draw = buffer.Add(new DrawElementsIndirectCommand
             {
                 IndexCount = section.IndexCount,
                 InstanceCount = instanceCount,
@@ -124,10 +124,12 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 SectionId = i,
                 CastShadow = section.CastShadow && component.CastShadow ? 1u : 0u
             });
+
+            drawAllocations[i] = new DrawBufferAllocation(draw, bufferType, section.MaterialIndex);
         }
 
         component.MarkClean(DirtyFlags.All);
-        return new ResourcesMetadata(geometryHandle, instanceAllocation, component.Materials[0].Allocation!.Value, drawAllocations, bufferType);
+        return new ResourcesMetadata(geometryHandle, instanceAllocation, component.Materials[0].Allocation!.Value, drawAllocations);
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
@@ -136,11 +138,11 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         if (component.IsDirty(DirtyFlags.Opacity))
         {
-            var targetType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
-            if (metadata.BufferType != targetType)
+            foreach (var draw in metadata.DrawAllocations)
             {
-                metadata.DrawAllocations = _commands.Transfer(metadata.DrawAllocations, metadata.BufferType, targetType);
-                metadata.BufferType = targetType;
+                if (!component.Materials[draw.MaterialIndex].IsTranslucent) continue;
+                draw.BufferAllocation = _commands.Transfer(draw.BufferAllocation, draw.BufferType, CommandBufferType.Transparent);
+                draw.BufferType = CommandBufferType.Transparent;
             }
 
             component.MarkClean(DirtyFlags.Opacity);
@@ -148,7 +150,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         if (component.IsDirty(DirtyFlags.Outline))
         {
-            if (component.IsOutlined) _commands.Transfer(metadata.DrawAllocations, metadata.BufferType, CommandBufferType.Mask);
+            if (component.IsOutlined)
+                foreach (var draw in metadata.DrawAllocations)
+                    _commands.Transfer(draw.BufferAllocation, draw.BufferType, CommandBufferType.Mask);
+
             component.MarkClean(DirtyFlags.Outline);
         }
 
@@ -164,9 +169,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             component.MarkClean(DirtyFlags.InstanceData);
         }
 
-        if (component.IsDirty(DirtyFlags.Animation) && component.Descriptor.Skeleton is { _poseAllocation: { } poseAllocation } skeleton)
+        if (component.IsDirty(DirtyFlags.Animation))
         {
-            _poseData.Update(poseAllocation, skeleton.BoneMatrices);
+            if (component.Descriptor.Skeleton is { _poseAllocation: { } poseAllocation } skeleton)
+                _poseData.Update(poseAllocation, skeleton.BoneMatrices);
 
             component.MarkClean(DirtyFlags.Animation);
             foreach (var child in component.Children)
@@ -179,13 +185,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         {
             const int offset = 52; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
 
-            var buffer = _commands.GetBuffer(metadata.BufferType);
             var originalInstanceCount = component.IsVisible ? (uint)metadata.InstanceAllocation.Length : 0u;
-            foreach (var drawAllocation in metadata.DrawAllocations)
+            foreach (var draw in metadata.DrawAllocations)
             {
-                buffer.UpdateCustom(drawAllocation, originalInstanceCount, offset);
-                buffer.UpdateCustom(drawAllocation, originalInstanceCount, 4);
+                var buffer = _commands.GetBuffer(draw.BufferType);
+                buffer.UpdateCustom(draw.BufferAllocation, originalInstanceCount, offset);
+                buffer.UpdateCustom(draw.BufferAllocation, originalInstanceCount, 4);
             }
+
             component.MarkClean(DirtyFlags.Visibility);
         }
     }
@@ -232,7 +239,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             metadata.MaterialAllocation.Length);
 
         _geometry.Remove(metadata.GeometryHandle);
-        _commands.GetBuffer(metadata.BufferType).RemoveRange(metadata.DrawAllocations);
+        foreach (var draw in metadata.DrawAllocations)
+            _commands.GetBuffer(draw.BufferType).Remove(draw.BufferAllocation);
         _instanceData.Remove(metadata.InstanceAllocation);
         _materialData.Remove(metadata.MaterialAllocation);
     }
