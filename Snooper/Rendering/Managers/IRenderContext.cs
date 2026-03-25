@@ -15,9 +15,9 @@ public readonly struct SystemRenderContext(CameraComponent camera, IEnumerable<I
     public readonly IEnumerable<IRenderSystem> Systems = systems;
 }
 
-public readonly struct ShadowRenderContext(CameraComponent camera, DirectionalLightComponent light, IEnumerable<IShadowSystem> systems) : IRenderContext
+public readonly struct ShadowRenderContext(CameraComponent camera, DirectionalLightComponent light, IEnumerable<IMeshRenderSystem> systems) : IRenderContext
 {
     public readonly CameraComponent Camera = camera;
     public readonly DirectionalLightComponent Light = light;
-    public readonly IEnumerable<IShadowSystem> Systems = systems;
+    public readonly IEnumerable<IMeshRenderSystem> Systems = systems;
 }

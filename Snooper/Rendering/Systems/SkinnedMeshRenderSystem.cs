@@ -1,35 +1,31 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Math;
-using Snooper.Core.Containers.Buffers;
-using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Systems;
 
-public class AnimationSystem : ActorSystem<SkeletalMeshComponent>
+public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
 {
-    public override ActorSystemType SystemType => ActorSystemType.Animation;
-    public override uint Order => 98;
+    public override uint Order => 23;
 
-    protected override void OnRender(CameraComponent camera, CommandBufferType type)
+    // TODO: move IndirectResources._poseData here
+
+    protected override void OnLoad()
     {
-        // TODO: there's a nasty bug with animations when there's more static meshes than skeletal meshes????
-        // world space bone matrices are correct but skinned mesh in the shader does not follow the bones displayed by the editor widget
-        // it's all distorted like if there was some kind of buffer offset issue (the vertex does not follow the correct bone smh)
-        // influence is correct, bind pose data is correct and never updated anyway, pose data for this frame is correct since the widget works
-        // maybe gl_VertexID - gl_BaseVertex in the shader does not give the vertex index of the current command?
-        // but why only when unknown conditions meet?
-        // see DEADLINE_DELIVERY/Content/Blueprints/NPCs/Bus.Bus_C
+        foreach (var shader in Shaders.Values)
+        {
+            shader.Vertex = "skinned_mesh.vert";
+        }
+
+        base.OnLoad();
     }
 
-    protected override void OnComponentUpdate(SkeletalMeshComponent component, float delta)
+    protected override void OnComponentUpdate(SkinnedMeshComponent component, float delta)
     {
         base.OnComponentUpdate(component, delta);
-        if (!component.IsDirty(DirtyFlags.Animation)) return;
 
-        if (component is { Animation: { } animation, Descriptor.Skeleton: { } skeleton })
+        if (component.IsDirty(DirtyFlags.Animation) && component is SkeletalMeshComponent { IsVisible: true, Descriptor.Skeleton: { } skeleton,  Animation: { } animation })
         {
             float time = ActorManager?.Time ?? delta;
             time %= animation.TotalAnimTime;

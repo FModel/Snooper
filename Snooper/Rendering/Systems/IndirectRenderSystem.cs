@@ -18,7 +18,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
     public override ActorSystemType SystemType => ActorSystemType.Rendering;
-    public override uint Order => 19;
     protected override bool AllowDerivation => false;
 
     protected abstract Action<uint> VertexLayout { get; }

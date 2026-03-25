@@ -16,7 +16,6 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
-    public override uint Order => 20;
     protected override bool AllowDerivation => false;
     protected virtual bool IsCulled => true;
     protected virtual Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
@@ -118,6 +117,8 @@ public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(Primit
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
+    public override uint Order => 20;
+
     protected override Action<uint> VertexLayout { get; } = vao =>
     {
         GL.VertexArrayAttribFormat(vao, 0, 3, VertexAttribType.Float, false, 0);

@@ -21,7 +21,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 {
     private bool _test = true;
     private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
-    private readonly ResourcesViewerWidget _resourcesViewer = new();
+    private readonly ProfilerWidget _profiler = new();
     private readonly JsonViewerWidget _jsonViewer = new();
     private readonly SkeletonOverlayWidget _skeletonOverlay = new();
     private readonly SplineOverlayWidget _splineOverlay = new();
@@ -218,7 +218,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
         }
         ImGui.End();
 
-        if (ImGui.Begin("\uf200 Resources Viewer"))
+        if (ImGui.Begin("\uf200 Profiler"))
         {
             if (ImGui.BeginTabBar("ProfilerTabs"))
             {
@@ -284,13 +284,13 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
                     }
                     ImGui.Spacing();
                     ImGui.SeparatorText("GPU Memory");
-                    _resourcesViewer.DrawMemorySummary(this);
+                    _profiler.DrawMemorySummary(this);
                     ImGui.EndTabItem();
                 }
 
                 if (ImGui.BeginTabItem("Memory"))
                 {
-                    _resourcesViewer.DrawMemoryTable(this);
+                    _profiler.DrawMemoryTable(this);
                     ImGui.EndTabItem();
                 }
 
@@ -329,11 +329,11 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
                             if (system is IMemorySizeProvider provider)
                             {
                                 ImGui.Spacing();
-                                _resourcesViewer.DrawMemorySummary(provider);
+                                _profiler.DrawMemorySummary(provider);
                             }
                             if (ImGui.TreeNode($"Performance Metrics##SysMetrics{system.Order}"))
                             {
-                                _resourcesViewer.DrawPerformanceMetrics(system.Profiler, system.Order.ToString());
+                                _profiler.DrawPerformanceMetrics(system.Profiler, system.Order.ToString());
                                 ImGui.TreePop();
                             }
                             if (system is IControllable controllable)

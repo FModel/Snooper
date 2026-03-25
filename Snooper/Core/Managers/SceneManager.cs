@@ -61,18 +61,17 @@ public class SceneManager : ActorManager
 
     public override void Render()
     {
+        // TODO: we do not support multiple cameras yet
+        if (MainViewport == null) return;
+
         var renderSystems = Systems.Values.OfType<IRenderSystem>().ToArray();
-        var shadowSystems = Systems.Values.OfType<IShadowSystem>().ToArray();
+        var meshSystems = renderSystems.OfType<IMeshRenderSystem>().ToArray();
         var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
         var directionalLight = lightSystem?.GetDirectionalLight();
 
-        // TODO: we do not support multiple cameras yet
-        if (MainViewport != null)
-        {
-            var camera = MainViewport.Camera;
-            Pipeline.RenderScene(camera, shadowSystems, renderSystems, directionalLight);
-            Pipeline.PostProcessScene(camera, lightSystem);
-        }
+        var camera = MainViewport.Camera;
+        Pipeline.RenderScene(camera, meshSystems, renderSystems, directionalLight);
+        Pipeline.PostProcessScene(camera, lightSystem);
     }
 
     protected uint GetComponentId(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => Pipeline.GetComponentId(mousePos, windowPos, windowSize);

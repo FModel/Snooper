@@ -7,7 +7,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class SplineMeshRenderSystem : MeshRenderSystem
+public class SplineMeshRenderSystem : StaticMeshRenderSystem
 {
     public override uint Order => 24;
     protected override bool IsCulled => false; // TODO: alter the bounding box based on the spline params, then restore culling
@@ -31,7 +31,7 @@ public class SplineMeshRenderSystem : MeshRenderSystem
         _params.Allocate(EnqueuedComponentsCount);
     }
 
-    protected override void OnComponentUpdate(MeshComponent component, float delta)
+    protected override void OnComponentUpdate(StaticMeshComponent component, float delta)
     {
         if (component is SplineMeshComponent spline && spline.IsDirty(DirtyFlags.Spline))
         {
@@ -58,7 +58,7 @@ public class SplineMeshRenderSystem : MeshRenderSystem
     }
 
     private uint _maxComponentId;
-    protected override void OnActorComponentEnqueued(MeshComponent component)
+    protected override void OnActorComponentEnqueued(StaticMeshComponent component)
     {
         base.OnActorComponentEnqueued(component);
 
@@ -72,7 +72,7 @@ public class SplineMeshRenderSystem : MeshRenderSystem
 
     public override bool Accepts(Type type) => type == typeof(SplineMeshComponent);
 
-    protected override bool CanEnqueueActorComponent(MeshComponent component) => true;
+    protected override bool CanEnqueueActorComponent(StaticMeshComponent component) => true;
 
     public override long Allocated => base.Allocated + _mapping.Allocated + _params.Allocated;
     public override long Used => base.Used + _mapping.Used + _params.Used;

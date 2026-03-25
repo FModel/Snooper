@@ -44,16 +44,16 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
 
     public void DrawControls()
     {
-        if (ActorManager?.GetSystem<MeshRenderSystem>() is { } meshSystem)
+        if (ActorManager?.GetSystem<StaticMeshRenderSystem>() is { } meshSystem)
         {
-            if (ImGui.Checkbox("Show Visible Mesh Bounds", ref _showVisibleMeshBounds))
+            if (ImGui.Checkbox("Show Visible Static Mesh Bounds", ref _showVisibleMeshBounds))
             {
-                Toggle(meshSystem.GetComponents<MeshComponent>().Where(x => x.IsVisible), _showVisibleMeshBounds);
+                Toggle(meshSystem.GetComponents<StaticMeshComponent>().Where(x => x.IsVisible), _showVisibleMeshBounds);
             }
 
-            if (ImGui.Checkbox("Show Hidden Mesh Bounds", ref _showHiddenMeshBounds))
+            if (ImGui.Checkbox("Show Hidden Static Mesh Bounds", ref _showHiddenMeshBounds))
             {
-                Toggle(meshSystem.GetComponents<MeshComponent>().Where(x => !x.IsVisible), _showHiddenMeshBounds);
+                Toggle(meshSystem.GetComponents<StaticMeshComponent>().Where(x => !x.IsVisible), _showHiddenMeshBounds);
             }
         }
 

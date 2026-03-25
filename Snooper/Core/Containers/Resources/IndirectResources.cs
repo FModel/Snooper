@@ -169,7 +169,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             _poseData.Update(poseAllocation, skeleton.BoneMatrices);
 
             component.MarkClean(DirtyFlags.Animation);
-            component.MarkDirty(DirtyFlags.Transform);
+            foreach (var child in component.Children)
+            {
+                child.MarkDirty(DirtyFlags.Transform);
+            }
         }
 
         if (component.IsDirty(DirtyFlags.Visibility))

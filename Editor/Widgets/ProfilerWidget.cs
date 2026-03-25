@@ -7,7 +7,7 @@ using Snooper.Extensions;
 
 namespace Editor.Widgets;
 
-public class ResourcesViewerWidget
+public class ProfilerWidget
 {
     private readonly Stack<(string Name, IMemoryDetailsProvider Provider)> _navStack = new();
     private string _selectedLeafNode = string.Empty;

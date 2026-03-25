@@ -75,7 +75,6 @@ public unsafe struct PerMaterialMeshData : IPerMaterialData
     public fixed float DiffuseColor[12]; // 3 floats per layer (RGB) * 4 layers
 }
 
-[DefaultActorSystem(typeof(MeshRenderSystem))]
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>
 {
     private readonly ResolvedObject?[] _materials;

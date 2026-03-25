@@ -94,7 +94,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         }
     }
 
-    public virtual void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources)
+    public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources)
     {
         if (Metadata is null)
         {

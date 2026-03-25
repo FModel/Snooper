@@ -10,29 +10,9 @@ uniform int uFragmentColorMode;
 #include "Buffers/PerDrawCommand.glsl"
 #include "Buffers/PerInstanceData.glsl"
 
-layout(std430, binding = 3) buffer PerBonePoseBuffer
-{
-    mat4 uPoseBuffer[]; // current pose matrices (bind pose or animated pose)
-};
-
-layout(std430, binding = 4) buffer PerBoneInverseBindBuffer
-{
-    mat4 uInverseBindBuffer[]; // inverse bind pose matrices
-};
-
 layout(std430, binding = 5) buffer PerVertexColorBuffer
 {
     int uVertexColorBuffer[];
-};
-
-layout(std430, binding = 6) buffer PerVertexBoneInfluenceBuffer
-{
-    uint uVertexBoneInfluenceBuffer[]; // upper 16 bits = boneId, lower 16 bits = rawWeight
-};
-
-layout(std430, binding = 7) buffer PerVertexBoneInfluenceOffsetBuffer
-{
-    uint uVertexBoneInfluenceOffsetBuffer[];
 };
 
 flat out uint vTexLayer;
@@ -52,11 +32,6 @@ vec4 UnpackColor(int color)
     return vec4(r, g, b, a) / 255.0;
 }
 
-uvec2 unpackBoneInfluence(uint boneInfluence)
-{
-    return uvec2(boneInfluence >> 16, boneInfluence & 0xFFFFu);
-}
-
 vec3 hashColor(uint id)
 {
     uint x = id * 747796405u + 2891336453u;
@@ -68,32 +43,6 @@ vec3 hashColor(uint id)
     float g = clamp(2.0 - abs(h - 2.0), 0.0, 1.0);
     float b = clamp(2.0 - abs(h - 4.0), 0.0, 1.0);
     return vec3(r, g, b);
-}
-
-vec3 heatmap(float t)
-{
-    float s = t * 4.0;
-    float r = clamp(s - 2.0, 0.0, 1.0);
-    float g = clamp(s, 0.0, 1.0) - clamp(s - 3.0, 0.0, 1.0);
-    float b = 1.0 - clamp(s - 1.0, 0.0, 1.0);
-    return vec3(r, g, b);
-}
-
-void dominantInfluence(uint startIndex, uint count, out uint bone, out float weight)
-{
-    bone   = 0u;
-    weight = 0.0;
-    uint dominantRaw = 0u;
-    for (uint i = 0u; i < count; i++)
-    {
-        uvec2 inf = unpackBoneInfluence(uVertexBoneInfluenceBuffer[startIndex + i]);
-        if (inf.y > dominantRaw)
-        {
-            dominantRaw = inf.y;
-            bone        = inf.x;
-            weight      = float(inf.y) / 255.0;
-        }
-    }
 }
 
 float Unpack10Snorm(uint bits)
@@ -125,42 +74,38 @@ void CommonMeshMain()
     mat4 matrix = uInstanceDataBuffer[id].Matrix;
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gl_DrawID];
 
-#ifdef SPLINE_VERTEX
+#if defined(SPLINE_VERTEX)
     vec3 uePos = aPos.xzy;
     SplineMeshParams params = uSplineParameters[uSplineIdToParameterIndex[cmd.PickingId]];
     float distanceAlong = GetAxisValueRef(params.ForwardAxis, uePos);
     vec3 computed = ComputeRatioAlongSpline(params, distanceAlong);
     mat4 sliceTransform = CalcSliceTransformAtSplineOffset(params, computed);
     SetAxisValueRef(params.ForwardAxis, uePos, 0.0);
-
     aPos = (sliceTransform * vec4(uePos, 1.0)).xzyw;
-#else
-    if (cmd.BaseBoneInfluence != 0xFFFFFFFFu && cmd.BaseBone != 0xFFFFFFFFu && cmd.BasePose != 0xFFFFFFFFu)
+#elif defined(SKINNED_MESH_VERTEX)
+    uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[cmd.BaseBoneInfluence + (gl_VertexID - gl_BaseVertex)];
+    uint startIndex = packedInfluenceOffset >> 8;
+    uint count = packedInfluenceOffset & 0xFFu;
+
+    vec4 uePos = vec4(0.0);
+    vec3 ueNormal = vec3(0.0);
+    vec3 ueTangent = vec3(0.0);
+
+    for (uint i = 0u; i < count; i++)
     {
-        uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[cmd.BaseBoneInfluence + (gl_VertexID - gl_BaseVertex)];
-        uint startIndex = packedInfluenceOffset >> 8;
-        uint count = packedInfluenceOffset & 0xFFu;
+        uvec2 inf = unpackBoneInfluence(uVertexBoneInfluenceBuffer[startIndex + i]);
+        uint boneIndex = inf.x;
+        float weight = float(inf.y) / 255.0;
 
-        vec4 uePos = vec4(0.0);
-        vec3 ueNormal = vec3(0.0);
-        vec3 ueTangent = vec3(0.0);
-
-        for (uint i = 0u; i < count; i++)
-        {
-            uvec2 inf = unpackBoneInfluence(uVertexBoneInfluenceBuffer[startIndex + i]);
-            uint boneIndex = inf.x;
-            float weight = float(inf.y) / 255.0;
-
-            mat4 skinningMatrix = uPoseBuffer[cmd.BasePose + boneIndex] * uInverseBindBuffer[cmd.BaseBone + boneIndex];
-            uePos += skinningMatrix * aPos * weight;
-            ueNormal += mat3(skinningMatrix) * aNormal * weight;
-            ueTangent += mat3(skinningMatrix) * aTangent * weight;
-        }
-
-        aPos = uePos;
-        aNormal = ueNormal;
-        aTangent = ueTangent;
+        mat4 skinningMatrix = uPoseBuffer[cmd.BasePose + boneIndex] * uInverseBindBuffer[cmd.BaseBone + boneIndex];
+        uePos += skinningMatrix * aPos * weight;
+        ueNormal += mat3(skinningMatrix) * aNormal * weight;
+        ueTangent += mat3(skinningMatrix) * aTangent * weight;
     }
+
+    aPos = uePos;
+    aNormal = ueNormal;
+    aTangent = ueTangent;
 #endif
 
     vec4 viewPos = uViewMatrix * matrix * aPos;
@@ -198,7 +143,8 @@ void CommonMeshMain()
     {
         vs_out.vFragColor = UnpackColor(uVertexColorBuffer[cmd.BaseColor + (gl_VertexID - gl_BaseVertex)]).rgb;
     }
-    else if (mode == 7 && cmd.BaseBoneInfluence != 0xFFFFFFFFu) // BoneInfluences / BoneWeightPainting
+#if defined(SKINNED_MESH_VERTEX)
+    else if (mode == 7) // BoneInfluences / BoneWeightPainting
     {
         uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[cmd.BaseBoneInfluence + (gl_VertexID - gl_BaseVertex)];
         uint startIndex = packedInfluenceOffset >> 8;
@@ -215,4 +161,5 @@ void CommonMeshMain()
             vs_out.vFragColor = heatmap(weight);
         }
     }
+#endif
 }

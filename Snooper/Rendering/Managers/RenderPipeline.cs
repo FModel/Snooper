@@ -35,11 +35,11 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         _postProcess.Generate();
     }
 
-    public void RenderScene(CameraComponent camera, IShadowSystem[] shadowSystems, IRenderSystem[] renderSystems, DirectionalLightComponent? directionalLight)
+    public void RenderScene(CameraComponent camera, IMeshRenderSystem[] meshSystems, IRenderSystem[] renderSystems, DirectionalLightComponent? directionalLight)
     {
         if (_shadows && directionalLight is { Actor.IsVisible: true })
         {
-            _geometry.DoRenderPass("Shadow Pass", new ShadowRenderContext(camera, directionalLight, shadowSystems));
+            _geometry.DoRenderPass("Shadow Pass", new ShadowRenderContext(camera, directionalLight, meshSystems));
         }
 
         var context = new SystemRenderContext(camera, renderSystems);

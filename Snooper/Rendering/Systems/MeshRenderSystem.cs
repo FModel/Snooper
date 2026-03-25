@@ -1,5 +1,4 @@
 ﻿using OpenTK.Graphics.OpenGL4;
-using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -9,10 +8,13 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-[DefaultActorSystem(typeof(MeshRenderSystem))]
-public class MeshRenderSystem : PrimitiveSystem<Vertex, MeshComponent, PerInstanceData, PerMaterialMeshData>, IShadowSystem
+public interface IMeshRenderSystem
 {
-    public override uint Order => 22;
+    public void RenderShadows(IViewProjectionProvider[] cascades);
+}
+
+public abstract class MeshRenderSystem<TComponent> : PrimitiveSystem<Vertex, TComponent, PerInstanceData, PerMaterialMeshData>, IMeshRenderSystem where TComponent : MeshComponent
+{
     protected override bool AllowDerivation => true;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {
@@ -62,8 +64,6 @@ public class MeshRenderSystem : PrimitiveSystem<Vertex, MeshComponent, PerInstan
 
         Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
     }
-
-    public override bool Accepts(Type type) => type != typeof(SplineMeshComponent) && base.Accepts(type);
 
     public override long Allocated => base.Allocated + _shadowShader.Allocated;
     public override long Used => base.Used + _shadowShader.Used;

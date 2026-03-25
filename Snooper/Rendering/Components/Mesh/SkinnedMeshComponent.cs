@@ -1,10 +1,13 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using Snooper.Core;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 
+[DefaultActorSystem(typeof(SkinnedMeshRenderSystem))]
 public abstract class SkinnedMeshComponent : MeshComponent
 {
     protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh.Materials, transform, skeletalMesh.Name)
