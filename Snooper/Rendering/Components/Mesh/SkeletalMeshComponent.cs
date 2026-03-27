@@ -1,8 +1,7 @@
-﻿using CUE4Parse_Conversion.Animations;
-using CUE4Parse_Conversion.Animations.PSA;
-using CUE4Parse.UE4.Assets.Exports.Animation;
+﻿using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Mesh;
@@ -11,9 +10,26 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Animation;
 
-    public CAnimSet? Animation { get; private set; }
+    public AnimationDescriptor? Animation { get; private set; }
+
+    public float MaxAnimationDuration
+    {
+        get
+        {
+            if (Relation is SkeletalMeshComponent skeletal)
+            {
+                return skeletal.MaxAnimationDuration;
+            }
+            return Animation?.Duration ?? 0.0f;
+        }
+    }
 
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh, transform)
+    {
+
+    }
+
+    public SkeletalMeshComponent(USkeleton skeleton, Transform? transform = null) : base(skeleton, transform)
     {
 
     }
@@ -28,10 +44,6 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 
     public void SetAnimation(UAnimationAsset animToPlay)
     {
-        Animation = animToPlay.ConvertAnims();
-        foreach (var sequence in Animation.Sequences)
-        {
-            sequence.RetargetTracks(Animation.Skeleton);
-        }
+        Animation = new AnimationDescriptor(animToPlay);
     }
 }

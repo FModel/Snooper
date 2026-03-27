@@ -95,6 +95,27 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
         }
     }
 
+    private PrimitiveDescriptor(USkeleton owner, Func<TPrimitiveData<TVertex>> factory)
+    {
+        Path = owner.Name;
+        Guid = owner.Guid;
+
+        if (!owner.TryConvert(out _, out var boundingBox))
+            throw new ArgumentException("Failed to convert skeleton.", nameof(owner));
+
+        Bounds = new CullingBounds(boundingBox);
+        Lods = [new LodDescriptor<TVertex>(factory())];
+
+        Skeleton = new SkeletonDescriptor(owner.ReferenceSkeleton);
+
+        Sockets = new ISocketDescriptor[owner.Sockets.Length];
+        for (var i = 0; i < Sockets.Length; i++)
+        {
+            if (!owner.Sockets[i].TryLoad<USkeletalMeshSocket>(out var socket)) continue;
+            Sockets[i] = new SkeletalMeshSocketDescriptor(socket);
+        }
+    }
+
     public Matrix4x4 GetSocketModelMatrix(string name)
     {
         var socket = Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
@@ -134,4 +155,7 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
     /// </summary>
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(FGuid.Random(), () => new PrimitiveDescriptor<TVertex>(owner, factory));
+
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeleton owner, Func<TPrimitiveData<TVertex>> factory)
+        => MeshCache.GetOrCreate(owner.Guid, () => new PrimitiveDescriptor<TVertex>(owner, factory));
 }

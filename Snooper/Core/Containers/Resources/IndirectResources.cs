@@ -51,13 +51,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public void Allocate(AllocationCounts counts, string systemName)
     {
         _geometry.Allocate(counts);
-        _commands.Allocate(counts.Draws);
-        _instanceData.Allocate(counts.Instances);
-        _materialData.Allocate(counts.Materials);
-        if (counts.Bones > 0)
-        {
-            _poseData.Allocate(counts.Bones);
-        }
+        if (counts.Draws > 0) _commands.Allocate(counts.Draws);
+        if (counts.Instances > 0) _instanceData.Allocate(counts.Instances);
+        if (counts.Materials > 0) _materialData.Allocate(counts.Materials);
+        if (counts.Bones > 0) _poseData.Allocate(counts.Bones);
 
         Log.Debug("Allocated {SystemName}<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
             systemName,
@@ -76,29 +73,26 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
     public ResourcesMetadata Add(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
-        if (component.Materials.Length == 0)
-            throw new InvalidOperationException("Primitive component must have at least one material assigned before being added to IndirectResources.");
-
         var descriptor = component.Descriptor;
         var geometryHandle = _geometry.Add(descriptor.Guid, descriptor.Lods, descriptor.Bounds, descriptor.Skeleton);
         var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
-
-        foreach (var material in component.Materials)
-        {
-            material.Allocation = _materialData.Add(new TPerMaterialData());
-        }
 
         if (descriptor.Skeleton is { } skeleton)
         {
             skeleton._poseAllocation = _poseData.AddRange(skeleton.BoneMatrices);
         }
 
-        var instanceCount = component.IsVisible ? (uint)instanceAllocation.Length : 0;
-        var baseMaterial = component.Materials[0].Allocation is { } first ? (uint)first.StartIndex : 0u;
+        BufferAllocation? materialAllocation = null;
+        foreach (var material in component.Materials)
+        {
+            material.Allocation = _materialData.Add(new TPerMaterialData());
+            materialAllocation ??= material.Allocation;
+        }
 
         const uint currentLod = 0u;
         var drawAllocations = new DrawBufferAllocation[descriptor.Lods[currentLod].Sections.Length];
 
+        var instanceCount = component.IsVisible ? (uint)instanceAllocation.Length : 0;
         var bufferType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
         var buffer = _commands.GetBuffer(bufferType);
         for (var i = 0u; i < drawAllocations.Length; i++)
@@ -116,7 +110,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 BaseBoneInfluence = geometryHandle.BaseBoneInfluence,
                 BaseBone = (uint)(geometryHandle.BoneAllocation?.StartIndex ?? int.MaxValue),
                 BasePose = (uint)(descriptor.Skeleton?._poseAllocation?.StartIndex ?? int.MaxValue),
-                BaseMaterial = baseMaterial,
+                BaseMaterial = (uint)(materialAllocation?.StartIndex ?? int.MaxValue),
                 MaterialIndex = section.MaterialIndex,
                 PickingId = component.Id,
                 OriginalInstanceCount = instanceCount,
@@ -129,7 +123,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         }
 
         component.MarkClean(DirtyFlags.All);
-        return new ResourcesMetadata(geometryHandle, instanceAllocation, component.Materials[0].Allocation!.Value, drawAllocations);
+        return new ResourcesMetadata(geometryHandle, instanceAllocation, materialAllocation, drawAllocations);
     }
 
     public void Update(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
@@ -236,13 +230,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             component.Id,
             metadata.DrawAllocations.Length,
             metadata.InstanceAllocation.Length,
-            metadata.MaterialAllocation.Length);
+            metadata.MaterialAllocation?.Length);
 
         _geometry.Remove(metadata.GeometryHandle);
         foreach (var draw in metadata.DrawAllocations)
             _commands.GetBuffer(draw.BufferType).Remove(draw.BufferAllocation);
         _instanceData.Remove(metadata.InstanceAllocation);
-        _materialData.Remove(metadata.MaterialAllocation);
+        if (metadata.MaterialAllocation is { } materialAllocation)
+            _materialData.Remove(materialAllocation);
     }
 
     public void Cull(IViewProjectionProvider camera, CommandBufferType type, bool shadowPass = false) => _geometry.Cull(camera, _instanceData, _commands.GetBuffer(type), shadowPass);

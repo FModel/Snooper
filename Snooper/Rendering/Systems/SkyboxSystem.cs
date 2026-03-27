@@ -47,6 +47,7 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
     {
         GL.DepthMask(true);
         GL.DepthFunc(DepthFunction.Less);
+        shader.Unuse();
     }
 
     protected override void OnActorComponentEnqueued(CubeComponent component)

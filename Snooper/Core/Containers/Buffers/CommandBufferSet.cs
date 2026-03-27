@@ -14,7 +14,7 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
 {
     private readonly DrawIndirectBuffer _opaque = new();
     private readonly DrawIndirectBuffer _transparent = new();
-    private readonly DrawIndirectBuffer _mask = new(BufferUsageHint.StaticDraw);
+    private readonly DrawIndirectBuffer _mask = new();
 
     private Buffer<DrawElementsIndirectCommand>.DeferMergeScope? _opaqueScope;
     private Buffer<DrawElementsIndirectCommand>.DeferMergeScope? _transparentScope;

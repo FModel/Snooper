@@ -195,6 +195,8 @@ public class ImGuiController : IResizable, IDisposable
         GL.Disable(EnableCap.Blend);
         GL.Disable(EnableCap.ScissorTest);
 
+        _shader.Unuse();
+
         // Reset state
         GL.BindTexture(TextureTarget.Texture2D, prevTexture2D);
         GL.ActiveTexture((TextureUnit)prevActiveTexture);

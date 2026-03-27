@@ -63,6 +63,7 @@ public abstract class MeshRenderSystem<TComponent> : PrimitiveSystem<Vertex, TCo
         }
 
         Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
+        _shadowShader.Unuse();
     }
 
     public override long Allocated => base.Allocated + _shadowShader.Allocated;

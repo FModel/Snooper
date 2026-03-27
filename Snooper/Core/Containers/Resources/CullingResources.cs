@@ -24,8 +24,8 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
     public void Allocate(AllocationCounts counts)
     {
-        _primitives.Allocate(counts.UniqueComponents);
-        _sections.Allocate(counts.Sections);
+        if (counts.UniqueComponents > 0) _primitives.Allocate(counts.UniqueComponents);
+        if (counts.Sections > 0) _sections.Allocate(counts.Sections);
     }
 
     public BufferAllocation Add(SectionDescriptor[] sections)
@@ -70,6 +70,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
         GL.DispatchCompute(commands.Capacity, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
+        _compute.Unuse();
     }
 
     public void Remove(int index)

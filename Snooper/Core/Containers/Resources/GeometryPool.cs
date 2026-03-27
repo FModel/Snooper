@@ -64,19 +64,10 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     public void Allocate(AllocationCounts counts)
     {
-        _ebo.Allocate(counts.Indices);
-        _vbo.Allocate(counts.Vertices);
-
-        if (counts.ColoredVertices > 0)
-        {
-            _colors.Allocate(counts.ColoredVertices);
-        }
-
-        if (counts.Bones > 0)
-        {
-            _boneData.Allocate(counts.Bones);
-        }
-
+        if (counts.Indices > 0) _ebo.Allocate(counts.Indices);
+        if (counts.Vertices > 0) _vbo.Allocate(counts.Vertices);
+        if (counts.ColoredVertices > 0) _colors.Allocate(counts.ColoredVertices);
+        if (counts.Bones > 0) _boneData.Allocate(counts.Bones);
         if (counts.SkinnedVertices > 0)
         {
             _boneInfluences.Allocate(counts.SkinnedVertices * 2);

@@ -1,6 +1,5 @@
 ﻿layout (location = 0) in uvec2 aPosHalf;
 
-#include "Buffers/common.vert"
 #include "Buffers/PerInstanceData.glsl"
 
 void main()
@@ -10,8 +9,5 @@ void main()
 
     // TODO: alter pos for skinning and splines
 
-    SetCommonVSOut();
-
-    gl_Position = uInstanceDataBuffer[gBaseInstance + gInstanceID].Matrix * vec4(posXY, posZW);
+    gl_Position = uInstanceDataBuffer[gl_BaseInstance + gl_InstanceID].Matrix * vec4(posXY, posZW);
 }
-

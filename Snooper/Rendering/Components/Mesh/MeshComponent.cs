@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.UE4.Assets;
+using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
@@ -201,6 +202,29 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
                 BoneInfluences = influences.ToArray();
                 BoneInfluenceCounts = counts;
             }
+        }
+
+        public Geometry(USkeleton skeleton)
+        {
+            var refSkeleton = skeleton.ReferenceSkeleton;
+            var boneCount = refSkeleton.FinalRefBonePose.Length;
+            Vertices = new Vertex[boneCount];
+            var indices = new List<uint>();
+
+            for (int i = 0; i < boneCount; i++)
+            {
+                var transform = refSkeleton.FinalRefBonePose[i];
+                var position = new Vector3(transform.Translation.X, transform.Translation.Z, transform.Translation.Y) * Settings.GlobalScale;
+                Vertices[i] = new Vertex(position, Vector3.UnitY, Vector3.UnitX, Vector2.Zero, 0);
+
+                var parent = refSkeleton.FinalRefBoneInfo[i].ParentIndex;
+                if (parent >= 0)
+                {
+                    indices.Add((uint)parent);
+                    indices.Add((uint)i);
+                }
+            }
+            Indices = indices.ToArray();
         }
     }
 }

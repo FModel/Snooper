@@ -5,6 +5,7 @@ using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
+using Snooper.Rendering.Actors;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
@@ -174,6 +175,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         var distance = maxExtent * 1.25f / MathF.Tan(camera.FieldOfViewRadians / 2f);
 
         return (overallCenter, MathF.Max(distance, 0.1f));
+    }
+
+    protected override void OnActorAttached(Actor actor)
+    {
+        base.OnActorAttached(actor);
+
+        if (!actor.IsVisible) IsVisible = false;
     }
 
     internal override string Icon => "\ue4e2";

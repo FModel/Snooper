@@ -77,7 +77,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
         _counts.Components++;
         _counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
-        _counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
+        if (component.Descriptor.Lods.Length > 0)
+            _counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
         _counts.Materials += (uint)component.Materials.Length;
         if (_guids.TryAdd(component.Descriptor.Guid, 0))
         {
@@ -104,7 +105,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         // not used ig
         _counts.Components--;
         _counts.Instances -= component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
-        _counts.Draws -= (uint)component.Descriptor.Lods[0].Sections.Length;
+        if (component.Descriptor.Lods.Length > 0)
+            _counts.Draws -= (uint)component.Descriptor.Lods[0].Sections.Length;
         _counts.Materials -= (uint)component.Materials.Length;
         if (_guids.Remove(component.Descriptor.Guid, out _))
         {

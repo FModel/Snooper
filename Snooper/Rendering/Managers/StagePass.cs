@@ -54,6 +54,7 @@ public sealed class StagePass<TContext>(string name, ShaderProgram shader, Textu
             shader.Use();
             SetupBindings?.Invoke(context, shader);
         });
+        shader.Unuse();
     }
 
     public override void Dispose()

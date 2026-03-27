@@ -173,7 +173,7 @@ switch (provider.ProjectName)
          * Pandemic
          * Vampire
          * Killjoy
-         * Sarge
+         * Sarge (2)
          * Phoenix
          * _Core           NoSelection
          * _Core           Waiting
@@ -198,8 +198,8 @@ switch (provider.ProjectName)
          * Stealth
         */
 
-        // const string Character = "Deadeye";
-        // var actor = new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C"));
+        const string Character = "Sarge";
+        var actor = new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C"));
         // var cameraRig = actor.Components.OfType<SpatialComponent>().FirstOrDefault(x => x.Name == "CameraRig");
         // if (cameraRig != null && camera.RootComponent is { } spatial)
         // {
@@ -207,13 +207,20 @@ switch (provider.ProjectName)
         //     spatial.Relation = cameraRig;
         //     spatial.AttachSocketName = "Camera";
         // }
+        scene.Children.Add(actor);
+
+        // var actor = new Actor("Skeleton");
+        // var anim = provider.LoadPackageObject<UAnimMontage>("ShooterGame/Content/Characters/Sarge/S0/CharSelect/3P/Anims/CS_Sarge_S0_CharSelect_Anim_Montage.CS_Sarge_S0_CharSelect_Anim_Montage");
+        // var skeleton = new SkeletalMeshComponent(anim.Skeleton.Load<USkeleton>());
+        // skeleton.SetAnimation(anim);
+        // actor.Components.Add(skeleton);
         // scene.Children.Add(actor);
 
-        var actor = new Actor("Actor");
-        var mesh = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Deadeye/S0/3P/Models/TP_Deadeye_S0_Skelmesh.TP_Deadeye_S0_Skelmesh"));
-        mesh.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Deadeye/S0/Ability_4/3P/Anims/TP_Deadeye_S0_4_Card_Equip_Montage.TP_Deadeye_S0_4_Card_Equip_Montage"));
-        actor.Components.Add(mesh);
-        scene.Children.Add(actor);
+        // var actor = new Actor("Actor");
+        // var mesh = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Deadeye/S0/3P/Models/TP_Deadeye_S0_Skelmesh.TP_Deadeye_S0_Skelmesh"));
+        // mesh.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Deadeye/S0/Ability_4/3P/Anims/TP_Deadeye_S0_4_Card_Equip_Montage.TP_Deadeye_S0_4_Card_Equip_Montage"));
+        // actor.Components.Add(mesh);
+        // scene.Children.Add(actor);
         break;
 
         // Ascent
@@ -240,9 +247,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("Gameface/Content/ViceCity/Characters/Peds/SK_hmotr.SK_hmotr")));
         // break;
 
-        var world = new WorldActor(provider.LoadPackageObject<UWorld>("Gameface/Content/ViceCity/Maps/VCWorld/VCWorld.VCWorld"));
-
-        scene.Children.Add(world);
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Gameface/Content/ViceCity/Maps/VCWorld/VCWorld.VCWorld")));
         break;
     }
     case "Cars_Overdrive":
@@ -254,14 +259,14 @@ switch (provider.ProjectName)
     case "ContentExamples":
     {
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/ExampleProjectWelcome.ExampleProjectWelcome")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Landscape.Level_Landscape")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Landscape.Level_Landscape")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_WorldPartitionStreaming.Level_WorldPartitionStreaming")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Streaming.Level_Streaming")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Volumes.Level_Volumes")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Geometry/StaticMeshes.StaticMeshes")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Lighting/Lighting_Realtime.Lighting_Realtime")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/AI/AI_NavMesh.AI_NavMesh")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Animation/Animation_ControlRig.Animation_ControlRig")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Animation/Animation_ControlRig.Animation_ControlRig")));
         break;
     }
     case "Marvel":
@@ -302,8 +307,8 @@ switch (provider.ProjectName)
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/monke_NPC_Car.monke_NPC_Car_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/Car_MASTER.Car_MASTER_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/CarMP_MASTER.CarMP_MASTER_C")));
-        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/Inspector/monke_Inspector.monke_Inspector_C")));
-        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/NPCs/Bus.Bus_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/Inspector/monke_Inspector.monke_Inspector_C")));
+        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/NPCs/Bus.Bus_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/Hippievan/Car_HIPPIEVAN.Car_HIPPIEVAN_C")));
 
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map18.Map18")));
@@ -394,7 +399,6 @@ switch (provider.ProjectName)
         // break;
 
         grid.Parent?.Children.Remove(grid);
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/BRMapCh6/Content/Maps/Hermes_Terrain.Hermes_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_Terrain.Hera_Terrain")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));

@@ -11,11 +11,11 @@ public class DrawBufferAllocation(BufferAllocation bufferAllocation, CommandBuff
     public readonly uint MaterialIndex = materialIndex;
 }
 
-public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation instanceAllocation, BufferAllocation materialAllocation, DrawBufferAllocation[] drawAllocations) : IControllable
+public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation instanceAllocation, BufferAllocation? materialAllocation, DrawBufferAllocation[] drawAllocations) : IControllable
 {
     public readonly GeometryHandle GeometryHandle = geometryHandle;
     public readonly BufferAllocation InstanceAllocation = instanceAllocation;
-    public readonly BufferAllocation MaterialAllocation = materialAllocation;
+    public readonly BufferAllocation? MaterialAllocation = materialAllocation;
     public readonly DrawBufferAllocation[] DrawAllocations = drawAllocations; // we create one draw per section in lod 0
 
     public void DrawControls()
@@ -45,10 +45,10 @@ public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation i
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); ImGui.Text("Material");
-            ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation.AllocationId.ToString());
-            ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation.StartIndex.ToString());
-            ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation.Length.ToString());
-            ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation.EndIndex.ToString());
+            ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation?.AllocationId.ToString());
+            ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation?.StartIndex.ToString());
+            ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation?.Length.ToString());
+            ImGui.TableNextColumn(); ImGui.Text(MaterialAllocation?.EndIndex.ToString());
 
             for (var i = 0; i < DrawAllocations.Length; i++)
             {

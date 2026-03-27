@@ -181,11 +181,6 @@ public class Actor
         }
 
         component.Actor = this;
-
-        if (!IsVisible && component is IPrimitiveComponent primitive)
-        {
-            primitive.IsVisible = false;
-        }
     }
 
     private void RemoveComponentInternal(ActorComponent component)

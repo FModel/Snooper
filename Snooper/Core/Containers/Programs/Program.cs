@@ -24,6 +24,11 @@ public abstract class Program : HandledObject, ICloneable
         GL.UseProgram(Handle);
     }
 
+    public void Unuse()
+    {
+        GL.UseProgram(0);
+    }
+
     protected void VerifyCurrent()
     {
         if (Handle != GL.GetInteger(GetPName.CurrentProgram))

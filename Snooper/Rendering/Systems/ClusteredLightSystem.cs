@@ -125,6 +125,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
         GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
+        _clusterBuildProgram.Unuse();
     }
 
     private void CullLights(CameraComponent camera)
@@ -153,6 +154,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
         GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
+        _lightCullingProgram.Unuse();
     }
 
     protected override void OnComponentUpdate(LightComponent component, float delta)

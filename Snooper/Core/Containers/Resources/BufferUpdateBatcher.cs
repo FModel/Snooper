@@ -1,17 +1,18 @@
-﻿using Snooper.Core.Containers.Buffers;
+﻿using System.Collections.Concurrent;
+using Snooper.Core.Containers.Buffers;
 
 namespace Snooper.Core.Containers.Resources;
 
 public class BufferUpdateBatcher<T> where T : unmanaged
 {
-    private readonly Dictionary<BufferAllocation, T[]> _updates = [];
+    private readonly ConcurrentDictionary<BufferAllocation, T[]> _updates = [];
 
     public void Add(BufferAllocation allocation, T data) => _updates[allocation] = [data];
     public void Add(BufferAllocation allocation, T[] data) => _updates[allocation] = data;
 
     public void Flush(Buffer<T> buffer)
     {
-        if (Count == 0) return;
+        if (_updates.IsEmpty) return;
 
         foreach (var (allocation, data) in BatchConsecutiveUpdates())
         {
@@ -27,7 +28,7 @@ public class BufferUpdateBatcher<T> where T : unmanaged
 
     private List<(BufferAllocation allocation, T[] data)> BatchConsecutiveUpdates()
     {
-        if (_updates.Count == 0) return [];
+        if (_updates.IsEmpty) return [];
 
         var sorted = _updates.OrderBy(kvp => kvp.Key.StartIndex).ToList();
         var batches = new List<(BufferAllocation allocation, T[] data)>();

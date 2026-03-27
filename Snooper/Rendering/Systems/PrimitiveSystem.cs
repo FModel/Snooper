@@ -76,7 +76,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
 
     protected virtual void PostRender(CameraComponent camera, ShaderProgram shader)
     {
-
+        shader.Unuse();
     }
 
     public override long Allocated
