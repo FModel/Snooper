@@ -114,7 +114,7 @@ const string key = "0x0000000000000000000000000000000000000000000000000000000000
 var version = new VersionContainer(EGame.GAME_UE5_7);
 #endif
 
-var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version);
+var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version, StringComparer.OrdinalIgnoreCase);
 if (!string.IsNullOrEmpty(mapping))
     provider.MappingsContainer = new FileUsmapTypeMappingsProvider(mapping);
 provider.Initialize();
@@ -289,8 +289,12 @@ switch (provider.ProjectName)
     }
     case "FarFarWest":
     {
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Area41.L_Map_Area41"))); // TODO: not a big map but lags a lot, maybe something to do with the number of instances
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Tuto.L_Map_Tuto")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Characters/BP_NPC_RailwayWorker.BP_NPC_RailwayWorker_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Quests/Assets/BP_GatlingAntenna.BP_GatlingAntenna_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/GPE/Assets/Train/BP_TrainExtraction.BP_TrainExtraction_C")));
+
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Area41.L_Map_Area41"))); // TODO: not a big map but lags a lot, maybe something to do with the number of instances
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Tuto.L_Map_Tuto")));
         break;
     }
     case "Denshattack_Proto":

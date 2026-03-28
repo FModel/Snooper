@@ -27,7 +27,7 @@ public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
         if (component is SkeletalMeshComponent { IsVisible: true, Descriptor.Skeleton: { } skeleton, Animation: { Sequences.Length: > 0 } animation } skeletal)
         {
             float time = ActorManager?.Time ?? delta;
-            time %= skeletal.MaxAnimationDuration;
+            time = (time * animation.PlayRate + animation.StartTime) % skeletal.MaxAnimationDuration;
 
             foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
             {
@@ -42,7 +42,8 @@ public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
                     // if this sequence should be played for this frame
                     if (time >= sequence.StartTime && time < sequence.EndTime)
                     {
-                        skeleton.BoneLocalMatrices[boneIndex] = sequence.GetBoneMatrix(skeletonIndex, time);
+                        var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
+                        skeleton.BoneLocalMatrices[boneIndex] = sequence.GetBoneMatrix(skeletonIndex, time, scale);
                         break;
                     }
                 }

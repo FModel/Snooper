@@ -72,14 +72,12 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
     {
         if (newSize <= Capacity) return;
 
-        newSize = (int) Math.Max(Capacity * factor, newSize);
-
         var oldCapacity = Capacity;
-        Capacity = newSize;
+        Capacity = (int) Math.Max(Capacity * factor, newSize);
 
         if (_bInitialized)
         {
-            Log.Warning("Resizing buffer {0} ({1}) from {2} to {3} (initialized!!!!!!)", Handle, PName, oldCapacity, Capacity);
+            Log.Warning("Resizing buffer {0} ({1}) from {2} to {3} (asked: {4}) (initialized!!!!!!)", Handle, PName, oldCapacity, Capacity, newSize);
 
             _bInitialized = false;
             if (copy)

@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Assets.Exports.Engine;
+﻿using CUE4Parse.UE4.Assets;
+using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
@@ -16,6 +17,9 @@ public class BlueprintActor : UnrealActor
         while (current != null)
         {
             bps.Add(current);
+            if (current.Owner is { } pkg)
+                _blueprintPackages.Add(pkg);
+
             current = current.Super?.Load<UBlueprintGeneratedClass>();
         }
         bps.Reverse();
@@ -51,9 +55,11 @@ public class BlueprintActor : UnrealActor
         }
 
         _overrides.Clear();
+        _blueprintPackages.Clear();
     }
 
     private readonly Dictionary<FGuid, FPackageIndex> _overrides = [];
+    private readonly List<IPackage> _blueprintPackages = [];
 
     private void ProcessNode(USCS_Node node, SpatialComponent? parent = null)
     {
@@ -67,11 +73,14 @@ public class BlueprintActor : UnrealActor
         }
 
         var component = CreateComponentPair(template).Component;
-        component.Name = node.GetOrDefault<FName?>("InternalVariableName")?.Text ?? component.Name;
         component.AttachSocketName = node.GetOrDefault<FName?>("AttachToName")?.Text;
+        if (node.GetOrDefault<FName?>("InternalVariableName") is { } internalVariableName)
+        {
+            component.Name = internalVariableName.Text;
+        }
         if (node.GetOrDefault<FName?>("ParentComponentOrVariableName") is { } parentComponentOrVariableName)
         {
-            parent = Components.OfType<SpatialComponent>().FirstOrDefault(c => c.Name == parentComponentOrVariableName.Text);
+            parent = node.GetOrDefault("bIsParentComponentNative", false) ? LoadNativeComponent(parentComponentOrVariableName.Text) : Components.OfType<SpatialComponent>().FirstOrDefault(c => c.Name == parentComponentOrVariableName.Text);
         }
         component.Relation = parent;
         Components.Add(component);
@@ -80,6 +89,20 @@ public class BlueprintActor : UnrealActor
         {
             ProcessNode(child, component);
         }
+    }
+
+    private SpatialComponent? LoadNativeComponent(string name)
+    {
+        foreach (var package in _blueprintPackages)
+        {
+            var exportIdx = package.GetExportIndex(name);
+            if (exportIdx < 0) continue;
+
+            var component = CreateComponentPair(new FPackageIndex(package, exportIdx + 1)).Component;
+            Components.Add(component);
+            return component;
+        }
+        return null;
     }
 
     internal override string Icon => "\uf46d";

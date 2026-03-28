@@ -9,7 +9,10 @@ public sealed class AnimationDescriptor
     public readonly SequenceDescriptor[] Sequences;
     public readonly float Duration;
 
-    public AnimationDescriptor(UAnimationAsset animToPlay)
+    public readonly float StartTime;
+    public readonly float PlayRate;
+
+    public AnimationDescriptor(UAnimationAsset animToPlay, float startTime = 0f, float playRate = 1f)
     {
         var animation = animToPlay.ConvertAnims();
 
@@ -25,5 +28,8 @@ public sealed class AnimationDescriptor
 
         if (Sequences.Length > 0)
             Duration = Sequences[^1].EndTime;
+
+        StartTime = startTime;
+        PlayRate = playRate;
     }
 }

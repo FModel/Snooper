@@ -38,12 +38,12 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     {
         if (component.AnimationData is { } animationData && animationData.AnimToPlay.TryLoad<UAnimationAsset>(out var animToPlay))
         {
-            SetAnimation(animToPlay);
+            SetAnimation(animToPlay, animationData.SavedPosition, animationData.SavedPlayRate);
         }
     }
 
-    public void SetAnimation(UAnimationAsset animToPlay)
+    public void SetAnimation(UAnimationAsset animToPlay, float startTime = 0f, float playRate = 1f)
     {
-        Animation = new AnimationDescriptor(animToPlay);
+        Animation = new AnimationDescriptor(animToPlay, startTime, playRate);
     }
 }

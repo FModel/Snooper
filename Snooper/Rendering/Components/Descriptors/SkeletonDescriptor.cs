@@ -5,11 +5,26 @@ using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public readonly struct BoneDescriptor(string name, int parentIndex, Matrix4x4 bindPoseLocalMatrix)
+public readonly struct BoneDescriptor
 {
-    public readonly string Name = name;
-    public readonly int ParentIndex = parentIndex;
-    public readonly Matrix4x4 BindPoseLocalMatrix = bindPoseLocalMatrix;
+    public readonly string Name;
+    public readonly int ParentIndex;
+    public readonly Matrix4x4 BindPoseLocalMatrix;
+
+    public bool IsRoot => ParentIndex < 0;
+
+    public BoneDescriptor(string name, int parentIndex, Matrix4x4 bindPoseLocalMatrix)
+    {
+        Name = name;
+        ParentIndex = parentIndex;
+
+        if (IsRoot && Matrix4x4.Decompose(bindPoseLocalMatrix, out _, out var rotation, out var position))
+        {
+            // some games scale their root bone for some reason which offsets all others (FarFarWest)
+            bindPoseLocalMatrix = Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(position);
+        }
+        BindPoseLocalMatrix = bindPoseLocalMatrix;
+    }
 }
 
 public class SkeletonDescriptor
