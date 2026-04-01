@@ -150,7 +150,6 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
                 if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                 {
                     OnViewportLeftClick(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
-                    _scrollToSelected = true;
                 }
             }
 
@@ -178,25 +177,12 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
         ImGui.PopStyleVar(2);
         ImGui.End();
 
-        if (ImGui.Begin("\uf0e8 Hierarchy"))
-        {
-            if (RootActor is { } root && root.Children.ToList() is { Count: > 0 } children)
-            {
-                foreach (var child in children)
-                    DrawActorTree(child, true);
-            }
-        }
-        ImGui.End();
+        SceneHierarchyWidget.Draw(RootActor);
+        InspectorWidget.Draw(SelectedActor, SelectedComponent);
 
         if (ImGui.Begin("\uf013 Render World Settings"))
         {
             DrawControls();
-        }
-        ImGui.End();
-
-        if (ImGui.Begin("\uf002 Inspector"))
-        {
-            DrawActorInspector();
         }
         ImGui.End();
 
@@ -375,213 +361,6 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 
         if (isActive)
             ImGui.PopStyleColor(2);
-    }
-
-    private bool _scrollToSelected;
-    private readonly Vector2 _actionIconSize = new(16);
-
-    private bool HasSelectedDescendant(Actor actor)
-    {
-        if (actor.IsSelected) return true;
-        foreach (var child in actor.Children)
-            if (HasSelectedDescendant(child)) return true;
-        return false;
-    }
-
-    private void DrawActorTree(Actor actor, bool clip = false)
-    {
-        ImGui.PushID(actor._id);
-
-        var count = actor.Children.Count;
-        var flags = ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.AllowOverlap | ImGuiTreeNodeFlags.FramePadding;
-        if (actor.IsSelected) flags |= ImGuiTreeNodeFlags.Selected;
-        if (count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
-
-        var anyChildSelected = _scrollToSelected && HasSelectedDescendant(actor);
-        if (anyChildSelected && count > 0) ImGui.SetNextItemOpen(true);
-
-        var open = ImGui.TreeNodeEx("##Tree", flags);
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left)) SelectActor(actor);
-        if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && MainViewport?.Camera is { } camera && actor.RootComponent is not null)
-        {
-            var (center, distance) = actor.RootComponent.GetTeleportPosition(camera);
-            camera.TeleportTo(center + camera.Forward * distance);
-        }
-
-        ImGui.SameLine();
-        ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiSemiBold]);
-        ImGui.PushStyleColor(ImGuiCol.Text, actor.IsVisible ? ImGui.GetColorU32(ImGuiCol.Text) : ImGui.GetColorU32(ImGuiCol.TextDisabled));
-        ImGui.TextUnformatted($"{actor.Icon} {actor.Name}");
-        ImGui.PopStyleColor();
-        ImGui.PopFont();
-
-        DrawActorActionButtons(actor);
-
-        if (open && count > 0 && actor.Children.ToList() is { Count: > 0 } children)
-        {
-            var anyChildExpanded = false;
-            if (clip && !anyChildSelected)
-            {
-                foreach (var child in children)
-                {
-                    ImGui.PushID(child._id);
-                    var isOpen = ImGui.GetStateStorage().GetInt(ImGui.GetID("##Tree")) != 0;
-                    ImGui.PopID();
-                    if (isOpen && child.Children.Count > 0)
-                    {
-                        anyChildExpanded = true;
-                        break;
-                    }
-                }
-            }
-
-            // only use clipper if no child is expanded and not scrolling to selected
-            if (clip && !anyChildSelected && !anyChildExpanded)
-            {
-                unsafe
-                {
-                    var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
-                    clipper.Begin(children.Count);
-                    while (clipper.Step())
-                    {
-                        for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
-                        {
-                            DrawActorTree(children[i]);
-                        }
-                    }
-                    clipper.End();
-                    clipper.Destroy();
-                }
-            }
-            else foreach (var child in children)
-            {
-                DrawActorTree(child);
-            }
-
-            ImGui.TreePop();
-        }
-
-        if (actor.IsSelected && _scrollToSelected)
-        {
-            ImGui.SetScrollHereY();
-            _scrollToSelected = false;
-        }
-
-        ImGui.PopID();
-    }
-
-    private void DrawActorActionButtons(Actor actor)
-    {
-        var actionButtons = new List<(string id, string icon, string tooltip, Action action, bool enabled)>
-        {
-            ("visibility", actor.IsVisible ? "\uf06e" : "\uf070", actor.IsVisible ? "Hide" : "Show", () => actor.IsVisible = !actor.IsVisible, true),
-            ("delete", "\uf1f8", "Delete", () =>
-            {
-                actor.Parent?.Children.Remove(actor);
-                if (actor.IsSelected) SelectActor(null);
-            }, true),
-        };
-
-        if (actor is CellActor cell)
-        {
-            actionButtons.Insert(0, ("download", cell.IsLoaded ? "download_off" : "\uf019", "Load", () => cell.EnqueueLoad(), cell is { CanLoad: true, IsLoaded: false, IsLoading: false }));
-        }
-
-        switch (actor.RootComponent)
-        {
-            case SceneCameraComponent { IsActive: true }:
-                actionButtons.RemoveRange(0, 2);
-                break;
-        }
-
-        if (actionButtons.Count == 0) return;
-
-        var style = ImGui.GetStyle();
-        var buttonX = ImGui.GetWindowWidth() - style.FramePadding.X - style.WindowPadding.X;
-        buttonX -= ImGui.GetScrollMaxY() > 0 ? style.ScrollbarSize : 0;
-        buttonX -= actionButtons.Count * (_actionIconSize.X + style.ItemSpacing.X) - style.ItemSpacing.X / 2;
-
-        ImGui.SameLine();
-        ImGui.SetCursorPosX(buttonX);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
-        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.3f, 0.3f, 0.4f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.4f, 0.4f, 0.4f, 0.5f));
-
-        var buttonY = ImGui.GetCursorPosY();
-        for (var i = 0; i < actionButtons.Count; i++)
-        {
-            ImGui.SetCursorPosY(buttonY);
-
-            var (id, iconName, tooltip, action, enabled) = actionButtons[i];
-            ImGui.BeginDisabled(!enabled);
-            if (ImGui.Button($"{iconName}##{id}"))
-            {
-                action();
-            }
-            ImGui.EndDisabled();
-
-            if (ImGui.IsItemHovered())
-            {
-                ImGui.SetTooltip(tooltip);
-            }
-
-            if (i < actionButtons.Count - 1)
-            {
-                ImGui.SameLine();
-            }
-        }
-
-        ImGui.PopStyleColor(3);
-        ImGui.PopStyleVar();
-    }
-
-    private void DrawActorInspector()
-    {
-        if (SelectedComponent is not { } component)
-        {
-            component = SelectedActor?.RootComponent;
-            if (component is null)
-            {
-                ImGui.TextUnformatted("No actor or component selected.");
-                return;
-            }
-        }
-
-        if (component.Actor is not { } actor)
-        {
-            ImGui.TextUnformatted("This component is not assigned to any actor.");
-            return;
-        }
-
-        actor.DrawInterface();
-
-        var components = actor.Components;
-        if (components.Count == 0)
-        {
-            ImGui.TextUnformatted("This actor has no components.");
-            return;
-        }
-
-        ImGui.SeparatorText($"{components.Count} Component{(components.Count > 1 ? "s" : "")}");
-
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        if (ImGui.BeginCombo("##Components", $"{component.Icon} {component.Name}"))
-        {
-            foreach (var c in components)
-            {
-                var selected = c.Id == SelectedComponent?.Id;
-                if (ImGui.Selectable($"{c.Icon} {c.Name}", selected))
-                {
-                    SelectComponent(c);
-                }
-
-                if (selected) ImGui.SetItemDefaultFocus();
-            }
-            ImGui.EndCombo();
-        }
-
-        component.DrawInterface();
     }
 
     protected override void OnSelectionChanged(Actor? actor, ActorComponent? component)

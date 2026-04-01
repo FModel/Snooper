@@ -28,5 +28,5 @@ public abstract class SkinnedMeshComponent : MeshComponent
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 
-    internal sealed override string Icon => "\uf5d7";
+    public sealed override string Icon => "\uf5d7";
 }

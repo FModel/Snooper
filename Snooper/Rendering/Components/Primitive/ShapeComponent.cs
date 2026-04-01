@@ -26,5 +26,5 @@ public abstract class ShapeComponent : DebugComponent
 
     }
 
-    internal override string Icon => "\uf61f";
+    public override string Icon => "\uf61f";
 }

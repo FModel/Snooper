@@ -112,7 +112,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 BasePose = (uint)(descriptor.Skeleton?._poseAllocation?.StartIndex ?? int.MaxValue),
                 BaseMaterial = (uint)(materialAllocation?.StartIndex ?? int.MaxValue),
                 MaterialIndex = section.MaterialIndex,
-                PickingId = component.Id,
+                PickingId = (uint)component.Id,
                 OriginalInstanceCount = instanceCount,
                 OriginalBaseInstance = (uint)instanceAllocation.StartIndex,
                 SectionId = i,

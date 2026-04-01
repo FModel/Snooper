@@ -22,5 +22,5 @@ public class DirectionalLightComponent : LightComponent
 
     protected override DebugComponent CreateDebugVisualization() => new ArrowComponent(Settings.DirectionalLight, null, $"{Name} (Direction)");
 
-    internal override string Icon => "\uf185";
+    public override string Icon => "\uf185";
 }

@@ -26,6 +26,14 @@ public static class Settings
     public static readonly Vector3 RectLight = new(0.45f, 0.20f, 0.95f);
     public static readonly Vector3 DirectionalLight = new(0.95f, 0.80f, 0.10f);
 
+    public const uint AxisColorX = 0xFF_55_3E_E9;
+    public const uint AxisColorY = 0xFF_28_CE_8C;
+    public const uint AxisColorZ = 0xFF_F9_9B_31;
+    public const uint AxisColorW = 0xFF_8A_8A_8A;
+
+    public const string TrashIcon = "\uf1f8";
+    public const string AddIcon = "\uf055";
+
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";
     public const int MaxTextureMipSize = 1024;

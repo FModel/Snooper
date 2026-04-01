@@ -57,16 +57,16 @@ public class SplineMeshRenderSystem : StaticMeshRenderSystem
         _params.Bind(9);
     }
 
-    private uint _maxComponentId;
+    private int _maxComponentId;
     protected override void OnActorComponentEnqueued(StaticMeshComponent component)
     {
         base.OnActorComponentEnqueued(component);
 
-        if (component is not SplineMeshComponent spline) return;
+        if (component is not SplineMeshComponent) return;
 
-        if (spline.Id > _maxComponentId)
+        if (component.Id > _maxComponentId)
         {
-            _maxComponentId = spline.Id;
+            _maxComponentId = component.Id;
         }
     }
 

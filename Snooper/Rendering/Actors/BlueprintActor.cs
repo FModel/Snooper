@@ -105,5 +105,5 @@ public class BlueprintActor : UnrealActor
         return null;
     }
 
-    internal override string Icon => "\uf46d";
+    public override string Icon => "\uf46d";
 }

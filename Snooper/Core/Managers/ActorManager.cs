@@ -27,6 +27,8 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
+    public int ActorCount => _actors.Count;
+
     public virtual void Load()
     {
         Renderer.Load();
@@ -59,7 +61,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     }
     private void AddActorInternal(Actor actor)
     {
-        if (!_actors.Add(actor._id))
+        if (!_actors.Add(actor.Id))
             throw new ArgumentException("This actor is already added to the actor manager.", nameof(actor));
         if (actor.ActorManager != null)
             throw new ArgumentException("This actor is already used by another actor manager.", nameof(actor));
@@ -91,7 +93,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     }
     private void RemoveActorInternal(Actor actor)
     {
-        if (!_actors.Remove(actor._id))
+        if (!_actors.Remove(actor.Id))
             throw new ArgumentException("This actor is not part of the actor manager.", nameof(actor));
         if (actor.ActorManager != this)
             throw new ArgumentException("This actor is not part of this actor manager.", nameof(actor));

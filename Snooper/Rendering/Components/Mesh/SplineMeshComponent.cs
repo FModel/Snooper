@@ -85,5 +85,5 @@ public class SplineMeshComponent : StaticMeshComponent
 
     protected override DebugComponent CreateDebugVisualization() => new SplineMeshComponentVisualization(this);
 
-    internal override string Icon => "\uf55b";
+    public override string Icon => "\uf55b";
 }

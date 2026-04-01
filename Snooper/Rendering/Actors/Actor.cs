@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using ImGuiNET;
+using Newtonsoft.Json;
 using Snooper.Core.Managers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
@@ -14,20 +15,9 @@ public class Actor
 {
     public string Name { get; }
     public string? ExportType { get; }
-    public string? InternalType { get; }
-
-    internal bool _isSelected;
-    public bool IsSelected
-    {
-        get => _isSelected;
-        internal set
-        {
-            if (_isSelected == value) return;
-
-            _isSelected = value;
-            IsOutlined = value;
-        }
-    }
+    public string? PackagePath { get; }
+    public string? ObjectPath { get; }
+    public string? JsonProperties { get; }
 
     public bool IsVisible
     {
@@ -52,7 +42,7 @@ public class Actor
     public bool IsOutlined
     {
         get;
-        private set
+        internal set
         {
             if (field == value) return;
 
@@ -87,7 +77,9 @@ public class Actor
         }
 
         ExportType = actor.ExportType;
-        InternalType = actor.GetType().Name;
+        PackagePath = actor.Owner?.Provider?.FixPath(actor.Owner.Name);
+        ObjectPath = actor.Owner?.Provider?.FixPath(actor.GetPathName());
+        JsonProperties = JsonConvert.SerializeObject(actor, Formatting.Indented);
     }
 
     public ActorComponentCollection Components { get; }
@@ -127,12 +119,25 @@ public class Actor
             if (field == value) return;
 
             field = value;
+            field?.Open = true;
+
             Icon = field?.Icon ?? Icon;
         }
     }
 
-    internal readonly int _id = Random.Shared.Next();
-    internal virtual string Icon { get; private set; } = "\uf1b2";
+    public void ToggleVisibility()
+    {
+        IsVisible = !IsVisible;
+    }
+
+    public void TeleportTo()
+    {
+        if (RootComponent == null || ActorManager is not SceneManager { MainViewport.Camera: { } camera })
+            return;
+
+        var (center, distance) = RootComponent.GetTeleportPosition(camera);
+        camera.TeleportTo(center + camera.Forward * distance);
+    }
 
     public event Action<IGameSystem>? OnAttachedToScene;
     public event Action<IGameSystem>? OnDetachedFromScene;
@@ -155,6 +160,7 @@ public class Actor
 
         actor._parent = this;
         actor.RootComponent?.Relation = RootComponent;
+        actor.UpdateHierarchyDepth();
     }
 
     private void RemoveChildrenInternal(Actor actor)
@@ -166,6 +172,7 @@ public class Actor
 
         actor._parent = null;
         actor.RootComponent?.Relation = null;
+        actor.UpdateHierarchyDepth();
     }
 
     private void AddComponentInternal(ActorComponent component)
@@ -239,6 +246,30 @@ public class Actor
         }
     }
 
+    public int Id { get; } = Random.Shared.Next();
+    public virtual string Icon { get; private set; } = "\uf1b2";
+    public bool Open { get; set; }
+    public bool Selected { get; set; }
+    public bool ScrollToMe
+    {
+        get;
+        set
+        {
+            field = value;
+            Parent?.ScrollToMe = field;
+
+            if (field) Open = true;
+        }
+    }
+    public int Depth { get; set; }
+    public int Index { get; set; }
+    private void UpdateHierarchyDepth()
+    {
+        Depth = (_parent?.Depth ?? -1) + 1;
+        foreach (var child in Children)
+            child.UpdateHierarchyDepth();
+    }
+
     internal virtual void DrawInterface()
     {
         // ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
@@ -247,10 +278,6 @@ public class Actor
         if (ExportType != null)
         {
             ImGui.Text($"Export Type: {ExportType}");
-        }
-        if (InternalType != null)
-        {
-            ImGui.Text($"Internal Type: {InternalType}");
         }
     }
 }

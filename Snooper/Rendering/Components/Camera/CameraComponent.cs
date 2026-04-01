@@ -151,7 +151,7 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         };
     }
 
-    internal override string Icon => "\uf030";
+    public override string Icon => "\uf030";
 
     public sealed override void DrawControls()
     {

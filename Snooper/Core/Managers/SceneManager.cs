@@ -14,7 +14,7 @@ namespace Snooper.Core.Managers;
 public class SceneManager : ActorManager
 {
     protected GameWindow Window { get; }
-    protected Viewport? MainViewport { get; private set; }
+    public Viewport? MainViewport { get; private set; }
 
     public Actor? RootActor
     {

@@ -6,34 +6,17 @@ using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
 using Snooper.UI;
-using System.Numerics;
 
 namespace Snooper.Rendering.Components;
 
-public abstract partial class ActorComponent
+public abstract partial class ActorComponent(string? name = null, string? exportType = null) : IControllable
 {
-    private static uint _nextId = 1;
-    public readonly uint Id = _nextId++;
-
-    protected readonly string Header;
-    private readonly string? _exportType;
-    private readonly string? _internalType;
-    private readonly string[]? _jsonProperties;
-
-    public string Name { get; internal set; }
+    private static int _nextId = 1;
+    public int Id { get; } = _nextId++;
+    public string Name { get; internal set; } = name ?? Settings.NoName;
+    public string? ExportType { get; } = exportType;
     public string? ObjectPath { get; protected init; }
-
-    public bool IsSelected
-    {
-        get;
-        internal set
-        {
-            if (field == value) return;
-
-            field = value;
-            UpdateIsOutlined();
-        }
-    }
+    public readonly string[]? JsonProperties;
 
     public bool IsOutlined
     {
@@ -46,8 +29,6 @@ public abstract partial class ActorComponent
             MarkDirty(DirtyFlags.Outline);
         }
     }
-
-    internal virtual string Icon => "\uf111";
 
     private DebugComponent? _visualization;
     protected virtual DebugComponent? CreateDebugVisualization() => null;
@@ -76,16 +57,9 @@ public abstract partial class ActorComponent
     public event Action<ActorComponent>? OnRequestSystemUpdate;
     public event Action<ActorComponent, string[]>? OnJsonRequested;
 
-    protected ActorComponent(string? name = null, string? exportType = null, string? internalType = null)
-    {
-        Name = name ?? Settings.NoName;
-        Header = UpperCaseToSpace().Replace(GetType().Name[..^"Component".Length], " $1");
+    public void FireJsonRequested() => OnJsonRequested?.Invoke(this, JsonProperties ?? []);
 
-        _exportType = exportType;
-        _internalType = internalType;
-    }
-
-    protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType, component.GetType().Name)
+    protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType)
     {
         ObjectPath = component.GetPathName();
 
@@ -98,7 +72,7 @@ public abstract partial class ActorComponent
             templatePtr = template.Template;
         }
 
-        _jsonProperties = jsonProperties.ToArray();
+        JsonProperties = jsonProperties.ToArray();
     }
 
     public Actor? Actor
@@ -163,67 +137,12 @@ public abstract partial class ActorComponent
 
     private void UpdateIsOutlined()
     {
-        IsOutlined = IsSelected || Actor is { IsOutlined: true };
+        IsOutlined = Selected || Actor is { IsOutlined: true };
     }
 
-    internal void DrawInterface()
+    public virtual void DrawControls()
     {
-        if (this is not IControllable controllable) return;
-
-        ImGui.PushID((int)Id);
-
-        var condition = false;
-        if (_exportType != null)
-        {
-            ImGui.Text($"Export Type: {_exportType}");
-            condition = true;
-        }
-        if (_internalType != null)
-        {
-            ImGui.Text($"Internal Type: {_internalType}");
-            condition = true;
-        }
-        if (ObjectPath != null)
-        {
-            if (ImGui.SmallButton("Copy Path: "))
-                ImGui.SetClipboardText(ObjectPath);
-
-            ImGui.SameLine();
-            ImGui.TextWrapped(ObjectPath);
-            condition = true;
-        }
-        if (condition)
-        {
-            ImGui.Spacing();
-        }
-
-        if (_jsonProperties is { Length: > 0 })
-        {
-            ImGui.CollapsingHeader("JSON Properties", ImGuiTreeNodeFlags.AllowOverlap | ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.Bullet | ImGuiTreeNodeFlags.NoTreePushOnOpen);
-
-            var rectMin = ImGui.GetItemRectMin();
-            var btnSize = new Vector2(ImGui.GetFrameHeight());
-            var rightX = rectMin.X + ImGui.GetItemRectSize().X - ImGui.GetStyle().FramePadding.X;
-            ImGui.SetCursorScreenPos(rectMin with { X = rightX - btnSize.X });
-
-            ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0f);
-            ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0f, 0f, 0f, 0f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 1f, 1f, 0.08f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(1f, 1f, 1f, 0.15f));
-
-            if (ImGui.Button("\uf1c9##OpenJson", btnSize))
-                OnJsonRequested?.Invoke(this, _jsonProperties);
-
-            ImGui.PopStyleColor(3);
-            ImGui.PopStyleVar(2);
-
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Open JSON");
-        }
-        controllable.DrawControls();
-
-        ImGui.PopID();
+        ImGui.SeparatorText($"{Name} Details");
     }
 
     [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]
@@ -236,4 +155,27 @@ public abstract partial class ActorComponent
         return left.Id == right.Id;
     }
     public static bool operator !=(ActorComponent? left, ActorComponent? right) => !(left == right);
+
+    public virtual string Icon => "\uf111";
+    public bool Open { get; set; }
+    public bool Selected
+    {
+        get;
+        set
+        {
+            field = value;
+            UpdateIsOutlined();
+        }
+    }
+    public virtual bool ScrollToMe
+    {
+        get;
+        set
+        {
+            field = value;
+            if (field) Open = true;
+        }
+    }
+    public int Depth { get; set; }
+    public int Index { get; set; }
 }

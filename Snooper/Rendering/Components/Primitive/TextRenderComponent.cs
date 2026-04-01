@@ -97,7 +97,7 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         return new CullingBounds(Vector3.Zero, Vector3.One);
     }
 
-    internal override string Icon => "\uf075";
+    public override string Icon => "\uf075";
 
     public override void DrawControls()
     {

@@ -25,7 +25,7 @@ public class AtmosphericComponent : CubeComponent
         AtmosphereRadius = 6400e3f
     };
 
-    internal override string Icon => "\uf0c2";
+    public override string Icon => "\uf0c2";
 
     public override void DrawControls()
     {

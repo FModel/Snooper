@@ -221,11 +221,24 @@ public class SpatialComponent : ActorComponent, IControllable
         }
     }
 
-    internal override string Icon => "\uf601";
+    public override string Icon => "\uf601";
+    public override bool ScrollToMe
+    {
+        get;
+        set
+        {
+            field = value;
+            Relation?.ScrollToMe = field;
+
+            if (field) Open = true;
+        }
+    }
 
     private int _instanceIndex = -1; // -1 = pivot, 0..N-1 = instance index
-    public virtual void DrawControls()
+    public override void DrawControls()
     {
+        base.DrawControls();
+
         var open = ImGui.CollapsingHeader("Transform", ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
 
         var isPivot = _instanceIndex < 0;
@@ -353,7 +366,7 @@ public class SpatialComponent : ActorComponent, IControllable
         ImGui.PopStyleVar();
 
         // ── Relation info (pivot only) ────────────────────────────────────────
-        if (isPivot && Relation is ActorComponent relation)
+        if (isPivot && !string.IsNullOrEmpty(AttachSocketName))
         {
             ImGui.TableNextRow();
             ImGui.TableSetColumnIndex(0);
@@ -361,10 +374,10 @@ public class SpatialComponent : ActorComponent, IControllable
             ImGui.TextUnformatted("Attached To");
             ImGui.TableSetColumnIndex(1);
             ImGui.AlignTextToFramePadding();
-            ImGui.TextUnformatted(relation.Name);
+            ImGui.TextUnformatted(AttachSocketName);
             ImGui.SameLine();
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.55f, 0.55f, 0.55f, 1f));
-            ImGui.TextUnformatted($"  ({(relation.Actor == Actor ? "Self" : relation.Actor?.Name ?? "Unknown")})");
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+            ImGui.TextUnformatted($"  (in {Relation?.Name ?? "Unknown"})");
             ImGui.PopStyleColor();
         }
 

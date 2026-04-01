@@ -184,15 +184,16 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         if (!actor.IsVisible) IsVisible = false;
     }
 
-    internal override string Icon => "\ue4e2";
+    public override string Icon => "\ue4e2";
 
     private int _sectionIndex;
     private int _materialIndex;
     public override void DrawControls()
     {
         base.DrawControls();
+        return;
 
-        if (ImGui.CollapsingHeader(Header, ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader("Mesh", ImGuiTreeNodeFlags.DefaultOpen))
         {
             EditorUI.SharedTreeNode("Descriptor", ImGuiTreeNodeFlags.DefaultOpen, Id, () =>
             {

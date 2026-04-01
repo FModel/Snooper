@@ -11,19 +11,23 @@ public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
     protected Actor? SelectedActor { get; private set; }
     protected ActorComponent? SelectedComponent { get; private set; }
 
-    protected void SelectActor(Actor? actor) => Select(actor, null);
-    protected void SelectComponent(ActorComponent? component) => Select(null, component);
+    public void SelectActor(Actor? actor) => Select(actor, null);
+    public void SelectComponent(ActorComponent? component, bool scrollTo = true) => Select(null, component, scrollTo);
 
-    private void Select(Actor? actor, ActorComponent? component)
+    private void Select(Actor? actor, ActorComponent? component, bool scrollTo = true)
     {
         if (SelectedActor == actor && SelectedComponent == component) return;
 
-        SelectedActor?.IsSelected = false;
+        SelectedActor?.Selected = false;
+        SelectedActor?.IsOutlined = false;
+        SelectedActor?.RootComponent?.OnJsonRequested -= OnComponentJsonRequested;
+
         if (SelectedComponent is not null)
         {
-            SelectedComponent.IsSelected = false;
+            SelectedComponent.Selected = false;
             SelectedComponent.OnJsonRequested -= OnComponentJsonRequested;
-            SelectedComponent.Actor?._isSelected = false;
+            SelectedComponent.Actor?.Selected = false;
+            SelectedComponent.Actor?.IsOutlined = false;
         }
 
         SelectedActor = actor;
@@ -32,14 +36,27 @@ public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
         if (SelectedActor is not null)
         {
             Log.Debug("Selected Actor: {ActorName}", SelectedActor.Name);
-            SelectedActor.IsSelected = true;
+            SelectedActor.Selected = true;
+            SelectedActor.IsOutlined = true;
+            SelectedActor.RootComponent?.OnJsonRequested += OnComponentJsonRequested;
         }
+
         if (SelectedComponent is not null)
         {
             Log.Debug("Selected Component ID: {ComponentId}", SelectedComponent.Id);
-            SelectedComponent.IsSelected = true;
+            SelectedComponent.Selected = true;
             SelectedComponent.OnJsonRequested += OnComponentJsonRequested;
-            SelectedComponent.Actor?._isSelected = true;
+            SelectedComponent.Actor?.Selected = true;
+        }
+
+        if (SelectedComponent is not null && SelectedActor is null)
+        {
+            SelectedComponent.Actor?.ScrollToMe = true;
+            if (scrollTo) SelectedComponent.ScrollToMe = true;
+        }
+        if (SelectedComponent is null && SelectedActor is not null)
+        {
+            SelectedActor.RootComponent?.ScrollToMe = true;
         }
 
         OnSelectionChanged(SelectedActor, SelectedComponent);

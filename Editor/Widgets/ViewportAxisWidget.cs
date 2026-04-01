@@ -25,12 +25,12 @@ public class ViewportAxisWidget
 
     private static readonly AxisInfo[] _axes =
     [
-        new(0xFF_55_3E_E9, Vector3.UnitX, "X", true),
-        new(0xFF_55_3E_E9, -Vector3.UnitX, "-X", false),
-        new(0xFF_28_CE_8C, Vector3.UnitY, "Y", true),
-        new(0xFF_28_CE_8C, -Vector3.UnitY, "-Y", false),
-        new(0xFF_F9_9B_31, Vector3.UnitZ, "Z", true),
-        new(0xFF_F9_9B_31, -Vector3.UnitZ, "-Z", false),
+        new(Settings.AxisColorX, Vector3.UnitX, "X", true),
+        new(Settings.AxisColorX, -Vector3.UnitX, "-X", false),
+        new(Settings.AxisColorY, Vector3.UnitY, "Y", true),
+        new(Settings.AxisColorY, -Vector3.UnitY, "-Y", false),
+        new(Settings.AxisColorZ, Vector3.UnitZ, "Z", true),
+        new(Settings.AxisColorZ, -Vector3.UnitZ, "-Z", false),
     ];
 
     private readonly float[] _hoverFade = new float[6];

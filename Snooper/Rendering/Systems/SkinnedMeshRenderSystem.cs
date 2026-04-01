@@ -6,9 +6,10 @@ namespace Snooper.Rendering.Systems;
 public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
 {
     public override uint Order => 23;
-    // protected override bool IsCulled => false;
+    protected override bool IsCulled => DirtyComponentsCount > 0;
 
     // TODO: move IndirectResources._poseData here
+    // TODO: convert to a gpu driven system
 
     protected override void OnLoad()
     {
