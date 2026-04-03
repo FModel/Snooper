@@ -149,9 +149,9 @@ public class WorldActor : Actor
         }
     }
 
-    internal override void DrawInterface()
+    public override void DrawControls()
     {
-        base.DrawInterface();
+        base.DrawControls();
 
         ImGui.SeparatorText("Data Layers");
         if (_dataLayers.Count == 0)

@@ -10,7 +10,7 @@ namespace Snooper.Rendering.Actors;
 
 public class LevelActor : UnrealActor
 {
-    private readonly FPackageIndex?[] _textureData = [];
+    private readonly FPackageIndex?[] _textureData;
 
     public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components) : base(actor)
     {

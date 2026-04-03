@@ -1,57 +1,59 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using Snooper.UI;
 
 namespace Editor.Widgets;
 
-public class JsonViewerWidget
+public static class JsonViewerWidget
 {
-    private bool _isOpen;
-    private string _title = "JSON###JsonViewer";
-    private string[] _layers = [];
+    private static readonly Dictionary<int, TreeNode> _openWindows = [];
 
-    public void Open(string componentName, string[] jsonStrings)
+    public static void Open(TreeNode node)
     {
-        _layers = jsonStrings;
-        _title  = $"\uf1c9  {componentName}###JsonViewer";
-        _isOpen = true;
+        _openWindows.TryAdd(node.Id, node);
     }
 
-    public void Close() => _isOpen = false;
-    public bool IsOpen  => _isOpen;
-
-    public void Draw()
+    public static void DrawAll()
     {
-        if (!_isOpen) return;
+        if (_openWindows.Count == 0) return;
 
-        ImGui.SetNextWindowSize(new Vector2(600, 560), ImGuiCond.FirstUseEver);
-        if (!ImGui.Begin(_title, ref _isOpen, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking))
-        {
-            ImGui.End();
-            return;
-        }
+        var toClose = new List<int>();
 
-        if (_layers.Length == 0)
+        foreach (var (id, node) in _openWindows)
         {
-            ImGui.TextDisabled("No JSON data.");
-            ImGui.End();
-            return;
-        }
-
-        if (ImGui.BeginTabBar("##layers"))
-        {
-            for (var i = 0; i < _layers.Length; i++)
+            var open = true;
+            ImGui.SetNextWindowSize(new Vector2(600, 560), ImGuiCond.FirstUseEver);
+            if (!ImGui.Begin($"\uf1c9  {node.Name}##JsonViewer{id}", ref open, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking))
             {
-                var label = i == 0 ? "\uf1c9  Component" : $"\uf0e8  Template {i}";
-                if (ImGui.BeginTabItem($"{label}##t{i}"))
-                {
-                    DrawTextArea(_layers[i], i);
-                    ImGui.EndTabItem();
-                }
+                ImGui.End();
+                if (!open) toClose.Add(id);
+                continue;
             }
-            ImGui.EndTabBar();
+
+            if (node.JsonProperties == null || node.JsonProperties.Length == 0)
+            {
+                ImGui.TextDisabled("No JSON data.");
+            }
+            else if (ImGui.BeginTabBar($"##layers{id}"))
+            {
+                for (var i = 0; i < node.JsonProperties.Length; i++)
+                {
+                    var label = i == 0 ? "\uf1c9  Object" : $"\uf0e8  Template {i}";
+                    if (ImGui.BeginTabItem($"{label}##t{i}"))
+                    {
+                        DrawTextArea(node.JsonProperties[i], id * 1000 + i);
+                        ImGui.EndTabItem();
+                    }
+                }
+                ImGui.EndTabBar();
+            }
+
+            ImGui.End();
+            if (!open) toClose.Add(id);
         }
 
-        ImGui.End();
+        foreach (var id in toClose)
+            _openWindows.Remove(id);
     }
 
     private static void DrawTextArea(string text, int id)

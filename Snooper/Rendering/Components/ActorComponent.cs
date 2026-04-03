@@ -1,6 +1,5 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
-using Newtonsoft.Json;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
@@ -9,25 +8,16 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components;
 
-public abstract partial class ActorComponent(string? name = null, string? exportType = null) : IControllable
+public abstract class ActorComponent : TreeNode
 {
-    private static int _nextId = 1;
-    public int Id { get; } = _nextId++;
-    public string Name { get; internal set; } = name ?? Settings.NoName;
-    public string? ExportType { get; } = exportType;
-    public string? ObjectPath { get; protected init; }
-    public readonly string[]? JsonProperties;
-
-    public bool IsOutlined
+    protected ActorComponent(string? name = null) : base(name ?? Settings.NoName)
     {
-        get;
-        private set
-        {
-            if (field == value) return;
 
-            field = value;
-            MarkDirty(DirtyFlags.Outline);
-        }
+    }
+
+    protected ActorComponent(UActorComponent component) : base(component)
+    {
+
     }
 
     private DebugComponent? _visualization;
@@ -55,25 +45,6 @@ public abstract partial class ActorComponent(string? name = null, string? export
     }
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;
-    public event Action<ActorComponent, string[]>? OnJsonRequested;
-
-    public void FireJsonRequested() => OnJsonRequested?.Invoke(this, JsonProperties ?? []);
-
-    protected ActorComponent(UActorComponent component) : this(component.Name, component.ExportType)
-    {
-        ObjectPath = component.GetPathName();
-
-        var jsonProperties = new List<string> { JsonConvert.SerializeObject(component, Formatting.Indented) };
-
-        var templatePtr = component.Template;
-        while (templatePtr?.TryLoad(out var template) == true)
-        {
-            jsonProperties.Add(JsonConvert.SerializeObject(template, Formatting.Indented));
-            templatePtr = template.Template;
-        }
-
-        JsonProperties = jsonProperties.ToArray();
-    }
 
     public Actor? Actor
     {
@@ -117,13 +88,11 @@ public abstract partial class ActorComponent(string? name = null, string? export
     {
         actor.OnAttachedToScene += OnActorAttachedToScene;
         actor.OnDetachedFromScene += OnActorDetachedFromScene;
-        actor.OnOutlinedChanged += UpdateIsOutlined;
     }
     protected virtual void OnActorDetached(Actor actor)
     {
         actor.OnAttachedToScene -= OnActorAttachedToScene;
         actor.OnDetachedFromScene -= OnActorDetachedFromScene;
-        actor.OnOutlinedChanged -= UpdateIsOutlined;
     }
 
     protected virtual void OnActorAttachedToScene(IGameSystem scene)
@@ -135,47 +104,28 @@ public abstract partial class ActorComponent(string? name = null, string? export
 
     }
 
-    private void UpdateIsOutlined()
+    private static int _nextId = 1;
+    public override int Id { get; } = _nextId++;
+    public override string Icon => "\uf111";
+    public override void SetOutlined(bool state)
     {
-        IsOutlined = Selected || Actor is { IsOutlined: true };
+        IsOutlined = state;
+        // TODO: we could get rid of the backing field, if we trigger a mask buffer clear another way
     }
+    public override bool ShouldScrollHere { get; set; }
+    public bool IsOutlined
+    {
+        get;
+        private set
+        {
+            if (field == value) return;
 
-    public virtual void DrawControls()
+            field = value;
+            MarkDirty(DirtyFlags.Outline);
+        }
+    }
+    public override void DrawControls()
     {
         ImGui.SeparatorText($"{Name} Details");
     }
-
-    [System.Text.RegularExpressions.GeneratedRegex("(?<!^)([A-Z])")]
-    private partial System.Text.RegularExpressions.Regex UpperCaseToSpace();
-
-    public static bool operator ==(ActorComponent? left, ActorComponent? right)
-    {
-        if (left is null && right is null) return true;
-        if (left is null || right is null) return false;
-        return left.Id == right.Id;
-    }
-    public static bool operator !=(ActorComponent? left, ActorComponent? right) => !(left == right);
-
-    public virtual string Icon => "\uf111";
-    public bool Open { get; set; }
-    public bool Selected
-    {
-        get;
-        set
-        {
-            field = value;
-            UpdateIsOutlined();
-        }
-    }
-    public virtual bool ScrollToMe
-    {
-        get;
-        set
-        {
-            field = value;
-            if (field) Open = true;
-        }
-    }
-    public int Depth { get; set; }
-    public int Index { get; set; }
 }

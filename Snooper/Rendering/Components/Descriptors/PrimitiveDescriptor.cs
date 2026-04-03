@@ -40,7 +40,7 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
 
     private PrimitiveDescriptor(UStaticMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
-        Path = owner.Name;
+        Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
         Guid = owner.LightingGuid;
 
         if (!owner.TryConvert(out var mesh))
@@ -62,7 +62,7 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
 
     private PrimitiveDescriptor(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
-        Path = owner.Name;
+        Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
         Guid = new FGuid((uint)owner.Name.GetHashCode());
 
         if (!owner.TryConvert(out var mesh))
@@ -97,7 +97,7 @@ public class PrimitiveDescriptor<TVertex> where TVertex : unmanaged
 
     private PrimitiveDescriptor(USkeleton owner, Func<TPrimitiveData<TVertex>> factory)
     {
-        Path = owner.Name;
+        Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
         Guid = owner.Guid;
 
         if (!owner.TryConvert(out _, out var boundingBox))

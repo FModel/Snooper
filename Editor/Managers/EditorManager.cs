@@ -22,7 +22,6 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
     private bool _test = true;
     private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
     private readonly ProfilerWidget _profiler = new();
-    private readonly JsonViewerWidget _jsonViewer = new();
     private readonly SkeletonOverlayWidget _skeletonOverlay = new();
     private readonly SplineOverlayWidget _splineOverlay = new();
     private readonly ViewportAxisWidget _axisWidget = new();
@@ -179,6 +178,7 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 
         SceneHierarchyWidget.Draw(RootActor);
         InspectorWidget.Draw(SelectedActor, SelectedComponent);
+        JsonViewerWidget.DrawAll();
 
         if (ImGui.Begin("\uf013 Render World Settings"))
         {
@@ -342,8 +342,6 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
             }
         }
         ImGui.End();
-
-        _jsonViewer.Draw();
     }
 
     private void GizmoButton(string icon, OPERATION operation)
@@ -367,10 +365,5 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
     {
         _skeletonOverlay.Reset();
         _splineOverlay.Reset();
-    }
-
-    protected override void OnComponentJsonRequested(ActorComponent component, string[] properties)
-    {
-        _jsonViewer.Open(component.Name, properties);
     }
 }

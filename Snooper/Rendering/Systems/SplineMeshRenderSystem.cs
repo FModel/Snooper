@@ -7,7 +7,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class SplineMeshRenderSystem : StaticMeshRenderSystem
+public class SplineMeshRenderSystem : MeshRenderSystem<SplineMeshComponent>
 {
     public override uint Order => 24;
     protected override bool IsCulled => false; // TODO: alter the bounding box based on the spline params, then restore culling
@@ -31,18 +31,18 @@ public class SplineMeshRenderSystem : StaticMeshRenderSystem
         _params.Allocate(EnqueuedComponentsCount);
     }
 
-    protected override void OnComponentUpdate(StaticMeshComponent component, float delta)
+    protected override void OnComponentUpdate(SplineMeshComponent component, float delta)
     {
-        if (component is SplineMeshComponent spline && spline.IsDirty(DirtyFlags.Spline))
+        if (component.IsDirty(DirtyFlags.Spline))
         {
-            if (spline._allocation is null)
+            if (component._allocation is null)
             {
-                spline._allocation = _params.Add(spline.SplineParams);
-                _mapping.Upsert((int) spline.Id, (uint)spline._allocation.Value.StartIndex);
+                component._allocation = _params.Add(component.SplineParams);
+                _mapping.Upsert(component.Id, (uint)component._allocation.Value.StartIndex);
             }
             else
             {
-                _params.Update(spline._allocation.Value, spline.SplineParams);
+                _params.Update(component._allocation.Value, component.SplineParams);
             }
         }
 
@@ -58,21 +58,15 @@ public class SplineMeshRenderSystem : StaticMeshRenderSystem
     }
 
     private int _maxComponentId;
-    protected override void OnActorComponentEnqueued(StaticMeshComponent component)
+    protected override void OnActorComponentEnqueued(SplineMeshComponent component)
     {
         base.OnActorComponentEnqueued(component);
-
-        if (component is not SplineMeshComponent) return;
 
         if (component.Id > _maxComponentId)
         {
             _maxComponentId = component.Id;
         }
     }
-
-    public override bool Accepts(Type type) => type == typeof(SplineMeshComponent);
-
-    protected override bool CanEnqueueActorComponent(StaticMeshComponent component) => true;
 
     public override long Allocated => base.Allocated + _mapping.Allocated + _params.Allocated;
     public override long Used => base.Used + _mapping.Used + _params.Used;

@@ -1,24 +1,16 @@
 ﻿using System.Collections.Specialized;
 using CUE4Parse.UE4.Assets.Exports;
-using CUE4Parse.UE4.Assets.Exports.Actor;
-using ImGuiNET;
-using Newtonsoft.Json;
 using Snooper.Core.Managers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Actors;
 
-public class Actor
+public class Actor : TreeNode
 {
-    public string Name { get; }
-    public string? ExportType { get; }
-    public string? PackagePath { get; }
-    public string? ObjectPath { get; }
-    public string? JsonProperties { get; }
-
     public bool IsVisible
     {
         get;
@@ -27,59 +19,30 @@ public class Actor
             if (field == value) return;
 
             field = value;
-            foreach (var component in Components.OfType<IPrimitiveComponent>())
-            {
-                component.IsVisible = field;
-            }
 
+            foreach (var component in Components.OfType<IPrimitiveComponent>())
+                component.IsVisible = field;
             foreach (var child in Children)
-            {
                 child.IsVisible = field;
-            }
         }
     } = true;
 
-    public bool IsOutlined
+    public Actor(string name) : base(name)
     {
-        get;
-        internal set
-        {
-            if (field == value) return;
-
-            field = value;
-            OnOutlinedChanged?.Invoke();
-
-            foreach (var child in Children)
-            {
-                child.IsOutlined = field;
-            }
-        }
-    }
-
-    internal event Action? OnOutlinedChanged;
-
-    public Actor(string name)
-    {
-        Name = name;
-
         Components = new ActorComponentCollection(this);
-        Children = [];
-
         Components.CollectionChanged += OnComponentsCollectionChanged;
+
+        Children = [];
         Children.CollectionChanged += OnChildrenCollectionChanged;
     }
 
-    protected Actor(UObject actor) : this(actor.Name)
+    protected Actor(UObject actor) : base(actor)
     {
-        if (actor is AActor a && !string.IsNullOrEmpty(a.ActorLabel))
-        {
-            Name = a.ActorLabel;
-        }
+        Components = new ActorComponentCollection(this);
+        Components.CollectionChanged += OnComponentsCollectionChanged;
 
-        ExportType = actor.ExportType;
-        PackagePath = actor.Owner?.Provider?.FixPath(actor.Owner.Name);
-        ObjectPath = actor.Owner?.Provider?.FixPath(actor.GetPathName());
-        JsonProperties = JsonConvert.SerializeObject(actor, Formatting.Indented);
+        Children = [];
+        Children.CollectionChanged += OnChildrenCollectionChanged;
     }
 
     public ActorComponentCollection Components { get; }
@@ -119,24 +82,15 @@ public class Actor
             if (field == value) return;
 
             field = value;
-            field?.Open = true;
+            field?.IsNodeOpen = true;
 
-            Icon = field?.Icon ?? Icon;
+            SetIcon(field?.Icon ?? Icon);
         }
     }
 
     public void ToggleVisibility()
     {
         IsVisible = !IsVisible;
-    }
-
-    public void TeleportTo()
-    {
-        if (RootComponent == null || ActorManager is not SceneManager { MainViewport.Camera: { } camera })
-            return;
-
-        var (center, distance) = RootComponent.GetTeleportPosition(camera);
-        camera.TeleportTo(center + camera.Forward * distance);
     }
 
     public event Action<IGameSystem>? OnAttachedToScene;
@@ -246,38 +200,34 @@ public class Actor
         }
     }
 
-    public int Id { get; } = Random.Shared.Next();
-    public virtual string Icon { get; private set; } = "\uf1b2";
-    public bool Open { get; set; }
-    public bool Selected { get; set; }
-    public bool ScrollToMe
+    public override int Id { get; } = Random.Shared.Next();
+    public override void SetOutlined(bool state)
+    {
+        foreach (var c in Components)
+            c.SetOutlined(state);
+
+        foreach (var child in Children)
+            child.SetOutlined(state);
+    }
+    public override bool ShouldScrollHere
     {
         get;
         set
         {
             field = value;
-            Parent?.ScrollToMe = field;
+            Parent?.ShouldScrollHere = field;
 
-            if (field) Open = true;
+            if (field) IsNodeOpen = true;
         }
     }
-    public int Depth { get; set; }
-    public int Index { get; set; }
     private void UpdateHierarchyDepth()
     {
-        Depth = (_parent?.Depth ?? -1) + 1;
+        NodeDepth = (_parent?.NodeDepth ?? -1) + 1;
         foreach (var child in Children)
             child.UpdateHierarchyDepth();
     }
-
-    internal virtual void DrawInterface()
+    public override void DrawControls()
     {
-        // ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int)EFondIndex.SegoeuiBold]);
-        ImGui.TextUnformatted(Name);
-        // ImGui.PopFont();
-        if (ExportType != null)
-        {
-            ImGui.Text($"Export Type: {ExportType}");
-        }
+
     }
 }

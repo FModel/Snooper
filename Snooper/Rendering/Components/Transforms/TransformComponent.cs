@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Snooper.Core;
+using Snooper.Core.Managers;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Systems;
@@ -11,7 +12,7 @@ using Snooper.UI;
 namespace Snooper.Rendering.Components.Transforms;
 
 [DefaultActorSystem(typeof(TransformSystem))]
-public class SpatialComponent : ActorComponent, IControllable
+public class SpatialComponent : ActorComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Transform;
 
@@ -164,7 +165,7 @@ public class SpatialComponent : ActorComponent, IControllable
 
     public virtual Matrix4x4[] GetWorldMatrices(int index = -1) => [WorldMatrix];
 
-    public virtual (Vector3, float) GetTeleportPosition(CameraComponent camera)
+    protected virtual (Vector3, float) GetTeleportPosition(CameraComponent camera)
     {
         var matrices = GetWorldMatrices();
         if (matrices.Length == 0) return (Vector3.Zero, 1.0f);
@@ -175,6 +176,15 @@ public class SpatialComponent : ActorComponent, IControllable
             center += matrix.Translation;
         }
         return (center / matrices.Length, 2.50f);
+    }
+
+    public void TeleportTo()
+    {
+        if (Actor?.ActorManager is not SceneManager { MainViewport.Camera: { } camera })
+            return;
+
+        var (center, distance) = GetTeleportPosition(camera);
+        camera.TeleportTo(center + camera.Forward * distance);
     }
 
     public void UpdateWorldMatrix(bool recursive = true)
@@ -222,17 +232,26 @@ public class SpatialComponent : ActorComponent, IControllable
     }
 
     public override string Icon => "\uf601";
-    public override bool ScrollToMe
+    public override bool ShouldScrollHere
     {
         get;
         set
         {
             field = value;
-            Relation?.ScrollToMe = field;
+            Relation?.ShouldScrollHere = field;
 
-            if (field) Open = true;
+            if (field) IsNodeOpen = true;
         }
     }
+
+    private HeaderButtons HeaderButtons => field ??= new HeaderButtons()
+        .Add(
+            () => "\uf0e2",
+            () => IsLocalTransformDirty(_instanceIndex) ? "Reset to original transform" : "No changes to reset",
+            () => ResetLocalTransform(_instanceIndex),
+            () => IsLocalTransformDirty(_instanceIndex),
+            () => IsLocalTransformDirty(_instanceIndex) ? Settings.OrangeColor : null
+        );
 
     private int _instanceIndex = -1; // -1 = pivot, 0..N-1 = instance index
     public override void DrawControls()
@@ -240,38 +259,13 @@ public class SpatialComponent : ActorComponent, IControllable
         base.DrawControls();
 
         var open = ImGui.CollapsingHeader("Transform", ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
-
-        var isPivot = _instanceIndex < 0;
-        var isDirty = IsLocalTransformDirty(_instanceIndex);
-
-        // ── Reset button ──────────────────────────────────────────────────────
-        var btnSize  = new Vector2(ImGui.GetFrameHeight());
-        var resetPos = new Vector2(ImGui.GetItemRectMin().X + ImGui.GetItemRectSize().X - btnSize.X - ImGui.GetStyle().FramePadding.X, ImGui.GetItemRectMin().Y);
-        ImGui.SetCursorScreenPos(resetPos);
-
-        if (!isDirty) ImGui.BeginDisabled();
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
-        ImGui.PushStyleColor(ImGuiCol.Button,        new Vector4(0f, 0f, 0f, 0f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 1f, 1f, 0.08f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive,  new Vector4(1f, 1f, 1f, 0.15f));
-        if (isDirty) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.55f, 0.20f, 1f));
-
-        if (ImGui.Button("\uf0e2##ResetTransform", btnSize))
-        {
-            ResetLocalTransform(_instanceIndex);
-        }
-
-        if (isDirty) ImGui.PopStyleColor();
-        ImGui.PopStyleColor(3);
-        ImGui.PopStyleVar(2);
-        if (!isDirty) ImGui.EndDisabled();
-
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip(isDirty ? "Reset to original transform" : "No changes to reset");
+        HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
         if (!open) return;
         ImGui.Indent();
+
+        var isPivot = _instanceIndex < 0;
+        var btnSize = new Vector2(ImGui.GetFrameHeight());
 
         // ── Transform table ───────────────────────────────────────────────────
         if (!ImGui.BeginTable("TransformControlsTable", 3, ImGuiTableFlags.SizingStretchProp))

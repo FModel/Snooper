@@ -63,9 +63,9 @@ public class HierarchicalActor : Actor
         }
     }
 
-    internal override void DrawInterface()
+    public override void DrawControls()
     {
-        base.DrawInterface();
+        base.DrawControls();
 
         ImGui.SeparatorText("HLOD Cells");
 

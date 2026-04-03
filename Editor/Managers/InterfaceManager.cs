@@ -11,55 +11,87 @@ public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
     protected Actor? SelectedActor { get; private set; }
     protected ActorComponent? SelectedComponent { get; private set; }
 
-    public void SelectActor(Actor? actor) => Select(actor, null);
-    public void SelectComponent(ActorComponent? component, bool scrollTo = true) => Select(null, component, scrollTo);
-
-    private void Select(Actor? actor, ActorComponent? component, bool scrollTo = true)
+    public void SelectActor(Actor? actor, bool scrollTo = true)
     {
-        if (SelectedActor == actor && SelectedComponent == component) return;
+        if (SelectedActor == actor && SelectedComponent == null) return;
 
-        SelectedActor?.Selected = false;
-        SelectedActor?.IsOutlined = false;
-        SelectedActor?.RootComponent?.OnJsonRequested -= OnComponentJsonRequested;
-
-        if (SelectedComponent is not null)
-        {
-            SelectedComponent.Selected = false;
-            SelectedComponent.OnJsonRequested -= OnComponentJsonRequested;
-            SelectedComponent.Actor?.Selected = false;
-            SelectedComponent.Actor?.IsOutlined = false;
-        }
+        Deselect();
 
         SelectedActor = actor;
-        SelectedComponent = component;
+        if (actor == null) return;
 
-        if (SelectedActor is not null)
+        actor.IsNodeSelected = true;
+        if (scrollTo) actor.ShouldScrollHere = true;
+
+        // select and scroll to the root component so the inspector tree highlights it.
+        if (actor.RootComponent is { } root)
         {
-            Log.Debug("Selected Actor: {ActorName}", SelectedActor.Name);
-            SelectedActor.Selected = true;
-            SelectedActor.IsOutlined = true;
-            SelectedActor.RootComponent?.OnJsonRequested += OnComponentJsonRequested;
+            root.IsNodeSelected = true;
+            if (scrollTo) root.ShouldScrollHere = true;
         }
 
-        if (SelectedComponent is not null)
-        {
-            Log.Debug("Selected Component ID: {ComponentId}", SelectedComponent.Id);
-            SelectedComponent.Selected = true;
-            SelectedComponent.OnJsonRequested += OnComponentJsonRequested;
-            SelectedComponent.Actor?.Selected = true;
-        }
+        actor.SetOutlined(true);
 
-        if (SelectedComponent is not null && SelectedActor is null)
-        {
-            SelectedComponent.Actor?.ScrollToMe = true;
-            if (scrollTo) SelectedComponent.ScrollToMe = true;
-        }
-        if (SelectedComponent is null && SelectedActor is not null)
-        {
-            SelectedActor.RootComponent?.ScrollToMe = true;
-        }
-
+        Log.Debug("Selected Actor: {ActorName}", actor.Name);
         OnSelectionChanged(SelectedActor, SelectedComponent);
+    }
+
+    public void SelectComponent(ActorComponent? component, bool scrollTo = true)
+    {
+        if (SelectedComponent == component && SelectedActor == null) return;
+
+        Deselect();
+
+        SelectedComponent = component;
+        if (component == null) return;
+
+        component.IsNodeSelected = true;
+        if (scrollTo) component.ShouldScrollHere = true;
+        component.SetOutlined(true);
+
+        // select the owning actor so the scene hierarchy highlights it.
+        if (component.Actor is { } actor)
+        {
+            actor.IsNodeSelected = true;
+            if (scrollTo) actor.ShouldScrollHere = true;
+        }
+
+        Log.Debug("Selected Component ID: {ComponentId}", component.Id);
+        OnSelectionChanged(SelectedActor, SelectedComponent);
+    }
+
+    private void Deselect()
+    {
+        if (SelectedActor != null)
+        {
+            SelectedActor.IsNodeSelected = false;
+            SelectedActor.ShouldScrollHere = false;
+
+            if (SelectedActor.RootComponent is { } root)
+            {
+                root.IsNodeSelected = false;
+                root.ShouldScrollHere = false;
+            }
+
+            SelectedActor.SetOutlined(false);
+            SelectedActor = null;
+        }
+
+        if (SelectedComponent != null)
+        {
+            SelectedComponent.IsNodeSelected = false;
+            SelectedComponent.ShouldScrollHere = false;
+            SelectedComponent.SetOutlined(false);
+
+            // actor was marked selected by SelectComponent
+            if (SelectedComponent.Actor is { } actor)
+            {
+                actor.IsNodeSelected = false;
+                actor.ShouldScrollHere = false;
+            }
+
+            SelectedComponent = null;
+        }
     }
 
     protected sealed override void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
@@ -68,11 +100,6 @@ public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
     }
 
     protected virtual void OnSelectionChanged(Actor? actor, ActorComponent? component)
-    {
-
-    }
-
-    protected virtual void OnComponentJsonRequested(ActorComponent component, string[] properties)
     {
 
     }

@@ -31,8 +31,15 @@ public static class Settings
     public const uint AxisColorZ = 0xFF_F9_9B_31;
     public const uint AxisColorW = 0xFF_8A_8A_8A;
 
+    public static readonly Vector4 RedColor = new(1f, 0.4f, 0.4f, 1f);
+    public static readonly Vector4 OrangeColor = new(1f, 0.5f, 0f, 1f);
+    public static readonly Vector4 YellowColor = new(1f, 1f, 0.4f, 1f);
+    public static readonly Vector4 GreenColor = new(0.4f, 1f, 0.4f, 1f);
+
     public const string TrashIcon = "\uf1f8";
     public const string AddIcon = "\uf055";
+    public const string EyeIcon = "\uf06e";
+    public const string EyeSlashIcon = "\uf070";
 
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";

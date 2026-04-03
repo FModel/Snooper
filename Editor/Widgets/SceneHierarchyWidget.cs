@@ -12,8 +12,6 @@ public static class SceneHierarchyWidget
     private const string Title           = "Scene Hierarchy";
     private const string SearchIcon      = "\uf002";
     private const string CollapseAllIcon = "\uf066";
-    private const string EyeIcon         = "\uf06e";
-    private const string EyeSlashIcon    = "\uf070";
 
     private static int _lastActorCount = -1;
 
@@ -81,7 +79,7 @@ public static class SceneHierarchyWidget
         {
             foreach (var a in _flatNodes)
             {
-                a.Open = false;
+                a.IsNodeOpen = false;
             }
             _dirty = true;
         }
@@ -97,19 +95,19 @@ public static class SceneHierarchyWidget
         }
 
         Actor? scrollTarget = null;
-        if (actor.ScrollToMe)
+        if (actor.ShouldScrollHere)
         {
             scrollTarget = FindScrollTarget(children);
             if (scrollTarget != null)
             {
                 _dirty = true;
-                scrollTarget.ScrollToMe = false;
+                scrollTarget.ShouldScrollHere = false;
                 Log.Verbose("Found actor scroll target: {ActorName}", scrollTarget.Name);
             }
             else
             {
                 Log.Warning("Actor scroll target not found in hierarchy");
-                actor.ScrollToMe = false;
+                actor.ShouldScrollHere = false;
             }
         }
 
@@ -125,9 +123,9 @@ public static class SceneHierarchyWidget
         if (ImGui.BeginChild("##ActorTreeScroll", Vector2.Zero, ImGuiChildFlags.None, ImGuiWindowFlags.NoBackground))
         {
             var frameHeightWithSpacing = ImGui.GetFrameHeightWithSpacing();
-            if (scrollTarget is { Index: >= 0 })
+            if (scrollTarget is { NodeIndex: >= 0 })
             {
-                var itemY = scrollTarget.Index * frameHeightWithSpacing;
+                var itemY = scrollTarget.NodeIndex * frameHeightWithSpacing;
                 var centered = itemY - ImGui.GetWindowHeight() * 0.5f + frameHeightWithSpacing * 0.5f;
                 ImGui.SetScrollY(MathF.Max(0f, centered));
             }
@@ -202,18 +200,18 @@ public static class SceneHierarchyWidget
         ImGui.PushID(actor.Id);
 
         var style = ImGui.GetStyle();
-        var indent = isSearching ? 0f : (actor.Depth - 1) * style.IndentSpacing * 0.5f;
+        var indent = isSearching ? 0f : (actor.NodeDepth - 1) * style.IndentSpacing * 0.5f;
         ImGui.SetCursorPosX(style.WindowPadding.X + indent);
         var rightEdge = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X;
 
         var hasChildren = actor.Children.Count > 0 && !isSearching;
         var flags = ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.AllowOverlap |
                     ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.FramePadding;
-        if (actor.Selected) flags |= ImGuiTreeNodeFlags.Selected;
+        if (actor.IsNodeSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (!hasChildren) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
-        else ImGui.SetNextItemOpen(actor.Open, ImGuiCond.Always);
+        else ImGui.SetNextItemOpen(actor.IsNodeOpen, ImGuiCond.Always);
 
-        actor.Open = ImGui.TreeNodeEx("##Actor", flags, $"{actor.Icon}  {actor.Name}");
+        actor.IsNodeOpen = ImGui.TreeNodeEx("##Actor", flags, $"{actor.Icon}  {actor.Name}");
         var toggledOpen = ImGui.IsItemToggledOpen();
 
         ImGui.PushStyleVar(ImGuiStyleVar.PopupBorderSize, 1f);
@@ -222,14 +220,14 @@ public static class SceneHierarchyWidget
             ImGui.TextDisabled(actor.Name);
             ImGui.Separator();
 
-            if (ImGui.MenuItem($"{EyeIcon}  Toggle Visibility")) actor.ToggleVisibility();
-            if (ImGui.MenuItem("\uf13d  Teleport To")) actor.TeleportTo();
-            if (ImGui.MenuItem("\uf1c9  Open JSON")) { }
+            if (ImGui.MenuItem($"{Settings.EyeIcon}  Toggle Visibility")) actor.ToggleVisibility();
+            if (ImGui.MenuItem("\uf13d  Teleport To")) actor.RootComponent?.TeleportTo();
+            if (ImGui.MenuItem("\uf1c9  Open JSON")) JsonViewerWidget.Open(actor);
             if (ImGui.MenuItem("\uf24d  Clone")) { }
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
-                if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(actor.PackagePath);
-                if (ImGui.MenuItem("Object Path")) ImGui.SetClipboardText(actor.ObjectPath);
+                if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(actor.OwnerPath);
+                if (ImGui.MenuItem("Object Path")) ImGui.SetClipboardText(actor.Path);
                 ImGui.EndMenu();
             }
 
@@ -245,7 +243,7 @@ public static class SceneHierarchyWidget
             {
 
             }
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.4f, 0.4f, 1f));
+            ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))
             {
                 actor.Parent?.Children.Remove(actor);
@@ -259,25 +257,26 @@ public static class SceneHierarchyWidget
 
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !toggledOpen && actor.ActorManager is InterfaceManager manager)
         {
-            manager.SelectActor(actor);
+            manager.SelectActor(actor, scrollTo: false);
         }
         if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
         {
-            actor.TeleportTo();
+            actor.RootComponent?.TeleportTo();
         }
 
         if (hasChildren)
         {
             if (toggledOpen) _dirty = true;
-            if (actor.Open) ImGui.TreePop();
+            if (actor.IsNodeOpen) ImGui.TreePop();
         }
 
-        var btnW = ImGui.CalcTextSize(EyeIcon).X + style.FramePadding.X * 2;
+        var btnW = ImGui.CalcTextSize(Settings.EyeIcon).X + style.FramePadding.X * 2;
         ImGui.SameLine(rightEdge - btnW);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
         ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        if (ImGui.Button(actor.IsVisible ? EyeIcon : EyeSlashIcon)) actor.ToggleVisibility();
-        ImGui.PopStyleColor();
+        if (!actor.IsVisible) ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
+        if (ImGui.Button(actor.IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon)) actor.ToggleVisibility();
+        ImGui.PopStyleColor(!actor.IsVisible ? 2 : 1);
         ImGui.PopStyleVar();
 
         ImGui.PopID();
@@ -290,11 +289,11 @@ public static class SceneHierarchyWidget
             var matches = !isSearching || actor.Name.Contains(search, StringComparison.OrdinalIgnoreCase);
             if (matches)
             {
-                actor.Index = _flatNodes.Count;
+                actor.NodeIndex = _flatNodes.Count;
                 _flatNodes.Add(actor);
             }
 
-            if (actor.Children.Count > 0 && (isSearching || actor.Open))
+            if (actor.Children.Count > 0 && (isSearching || actor.IsNodeOpen))
                 BuildFlatList(actor.Children, isSearching, search);
         }
     }
@@ -303,8 +302,8 @@ public static class SceneHierarchyWidget
     {
         foreach (var actor in actors)
         {
-            if (!actor.ScrollToMe) continue;
-            if (actor.Selected) return actor;
+            if (!actor.ShouldScrollHere) continue;
+            if (actor.IsNodeSelected) return actor;
 
             if (FindScrollTarget(actor.Children) is { } found)
                 return found;

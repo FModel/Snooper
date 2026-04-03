@@ -49,7 +49,7 @@ public static class InspectorWidget
 
             DrawSearchBar();
 
-            ImGui.SeparatorText($"{actor.Name} ({actor.ExportType ?? "N/A"} - {componentCount} Component{(componentCount != 1 ? "s" : "")})");
+            ImGui.SeparatorText($"{actor.Name} ({actor.Class ?? "N/A"} - {componentCount} Component{(componentCount != 1 ? "s" : "")})");
             DrawClippedTree(actor);
 
             (selectedComponent ?? actor.RootComponent)?.DrawControls();
@@ -82,13 +82,13 @@ public static class InspectorWidget
         }
 
         ActorComponent? scrollTarget = null;
-        if (actor.Components.Any(c => c.ScrollToMe))
+        if (actor.Components.Any(c => c.ShouldScrollHere))
         {
             scrollTarget = FindScrollTarget(actor);
             if (scrollTarget != null)
             {
                 _dirty = true;
-                scrollTarget.ScrollToMe = false;
+                scrollTarget.ShouldScrollHere = false;
                 Log.Verbose("Found component scroll target: {Name}", scrollTarget.Name);
             }
         }
@@ -109,9 +109,9 @@ public static class InspectorWidget
 
         if (ImGui.BeginChild("##ComponentTreeScroll", new Vector2(-1, treeH), ImGuiChildFlags.FrameStyle))
         {
-            if (scrollTarget is { Index: >= 0 })
+            if (scrollTarget is { NodeIndex: >= 0 })
             {
-                var itemY = scrollTarget.Index * frameH;
+                var itemY = scrollTarget.NodeIndex * frameH;
                 var centered = itemY - ImGui.GetWindowHeight() * 0.5f + frameH * 0.5f;
                 ImGui.SetScrollY(MathF.Max(0f, centered));
             }
@@ -140,7 +140,7 @@ public static class InspectorWidget
         ImGui.PushID(component.Id);
 
         var style = ImGui.GetStyle();
-        var indent = isSearching ? 0f : component.Depth * style.IndentSpacing * 0.5f;
+        var indent = isSearching ? 0f : component.NodeDepth * style.IndentSpacing * 0.5f;
         ImGui.SetCursorPosX(style.WindowPadding.X + indent);
         var rightEdge = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X;
 
@@ -150,13 +150,13 @@ public static class InspectorWidget
 
         var flags = ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.AllowOverlap |
                     ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.FramePadding;
-        if (component.Selected) flags |= ImGuiTreeNodeFlags.Selected;
+        if (component.IsNodeSelected) flags |= ImGuiTreeNodeFlags.Selected;
         if (!hasChildren) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
-        else ImGui.SetNextItemOpen(component.Open, ImGuiCond.Always);
+        else ImGui.SetNextItemOpen(component.IsNodeOpen, ImGuiCond.Always);
 
         if (warn) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0f, 1f));
         var nodeOpen = ImGui.TreeNodeEx("##Component", flags, $"{(warn ? $"{WarnIcon}  " : "")}{component.Icon}  {component.Name}");
-        component.Open = nodeOpen;
+        component.IsNodeOpen = nodeOpen;
         if (warn) ImGui.PopStyleColor();
 
         var toggledOpen = ImGui.IsItemToggledOpen();
@@ -167,12 +167,13 @@ public static class InspectorWidget
             ImGui.TextDisabled(component.Name);
             ImGui.Separator();
 
-            if (ImGui.MenuItem("\uf1c9  Open JSON")) { }
+            if (ImGui.MenuItem("\uf13d  Teleport To") && component is SpatialComponent spatial) spatial.TeleportTo();
+            if (ImGui.MenuItem("\uf1c9  Open JSON")) JsonViewerWidget.Open(component);
             if (ImGui.MenuItem("\uf24d  Clone")) { }
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
-                if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(component.Actor?.PackagePath);
-                if (ImGui.MenuItem("Object Path")) ImGui.SetClipboardText(component.ObjectPath);
+                if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(component.OwnerPath);
+                if (ImGui.MenuItem("Object Path")) ImGui.SetClipboardText(component.Path);
                 ImGui.EndMenu();
             }
 
@@ -187,7 +188,7 @@ public static class InspectorWidget
             {
 
             }
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.4f, 0.4f, 1f));
+            ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))
             {
                 component.Actor?.Components.Remove(component);
@@ -199,37 +200,44 @@ public static class InspectorWidget
         }
         ImGui.PopStyleVar();
 
-        if (ImGui.IsItemHovered() && ImGui.BeginTooltip())
+        if (ImGui.IsItemHovered())
         {
-            if (warn)
+            if (ImGui.BeginTooltip())
             {
-                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0f, 1f));
-                ImGui.TextUnformatted($"{WarnIcon}  Orphaned — not attached to the component tree.");
-                ImGui.PopStyleColor();
-                ImGui.Separator();
+                if (warn)
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0f, 1f));
+                    ImGui.TextUnformatted($"{WarnIcon}  Orphaned — not attached to the component tree.");
+                    ImGui.PopStyleColor();
+                    ImGui.Separator();
+                }
+
+                if (ImGui.BeginTable("##CompTooltipMeta", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.BordersInner))
+                {
+                    MetaRow("Type", component.Type);
+                    MetaRow("Class", component.Class ?? "N/A");
+                    ImGui.EndTable();
+                }
+
+                var lineH = ImGui.GetFrameHeight() * 0.1f;
+                var wPos = ImGui.GetWindowPos();
+                var wSize = ImGui.GetWindowSize();
+
+                var color = component.Type == component.Class
+                    ? new Vector4(0.35f, 0.65f, 1f,  1f)
+                    : new Vector4(0.55f, 0.55f, 0.55f, 0.6f);
+
+                var solid = ImGui.ColorConvertFloat4ToU32(color);
+                var fade = ImGui.ColorConvertFloat4ToU32(color with { W = 0f });
+                ImGui.GetForegroundDrawList().AddRectFilledMultiColor(wPos, new Vector2(wPos.X + wSize.X, wPos.Y + lineH), solid, fade, fade, solid);
+
+                ImGui.EndTooltip();
             }
 
-            var typeName = component.GetType().Name;
-            if (ImGui.BeginTable("##CompTooltipMeta", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.BordersInner))
+            if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && component is SpatialComponent spatial)
             {
-                MetaRow("Type", typeName);
-                MetaRow("Class", component.ExportType ?? "N/A");
-                ImGui.EndTable();
+                spatial.TeleportTo();
             }
-
-            var lineH = ImGui.GetFrameHeight() * 0.1f;
-            var wPos = ImGui.GetWindowPos();
-            var wSize = ImGui.GetWindowSize();
-
-            var color = typeName == component.ExportType
-                ? new Vector4(0.35f, 0.65f, 1f,  1f)
-                : new Vector4(0.55f, 0.55f, 0.55f, 0.6f);
-
-            var solid = ImGui.ColorConvertFloat4ToU32(color);
-            var fade = ImGui.ColorConvertFloat4ToU32(color with { W = 0f });
-            ImGui.GetForegroundDrawList().AddRectFilledMultiColor(wPos, new Vector2(wPos.X + wSize.X, wPos.Y + lineH), solid, fade, fade, solid);
-
-            ImGui.EndTooltip();
         }
 
         // TODO: drag and drop
@@ -249,7 +257,7 @@ public static class InspectorWidget
         ImGui.SameLine(rightEdge - btnW);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
         ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        if (ImGui.Button(FileIcon)) component.FireJsonRequested();
+        if (ImGui.Button(FileIcon)) JsonViewerWidget.Open(component);
         ImGui.PopStyleColor();
         ImGui.PopStyleVar();
 
@@ -289,8 +297,8 @@ public static class InspectorWidget
             var matches = !isSearching || component.Name.Contains(search, StringComparison.OrdinalIgnoreCase);
             if (!matches) continue;
 
-            component.Depth = 0;
-            component.Index = _flatNodes.Count;
+            component.NodeDepth = 0;
+            component.NodeIndex = _flatNodes.Count;
             _flatNodes.Add(new FlatEntry(component, component is SpatialComponent));
         }
     }
@@ -301,17 +309,17 @@ public static class InspectorWidget
     /// </summary>
     private static void BuildSpatialNodes(SpatialComponent component, int actorId, int depth, bool isSearching, string search)
     {
-        component.Depth = depth;
+        component.NodeDepth = depth;
 
         var matches = !isSearching || component.Name.Contains(search, StringComparison.OrdinalIgnoreCase);
         if (matches)
         {
-            component.Index = _flatNodes.Count;
+            component.NodeIndex = _flatNodes.Count;
             _flatNodes.Add(new FlatEntry(component, false));
         }
 
         var hasChildren = component.Children.Any(c => c.Actor?.Id == actorId);
-        if (hasChildren && (isSearching || component.Open))
+        if (hasChildren && (isSearching || component.IsNodeOpen))
         {
             foreach (var child in component.Children)
             {
@@ -331,7 +339,7 @@ public static class InspectorWidget
 
         foreach (var component in actor.Components)
         {
-            if (component.ScrollToMe) return component;
+            if (component.ShouldScrollHere) return component;
         }
 
         return null;
@@ -339,7 +347,7 @@ public static class InspectorWidget
 
     private static ActorComponent? FindScrollTargetInTree(SpatialComponent component, int actorId)
     {
-        if (component.ScrollToMe) return component;
+        if (component.ShouldScrollHere) return component;
 
         foreach (var child in component.Children)
         {

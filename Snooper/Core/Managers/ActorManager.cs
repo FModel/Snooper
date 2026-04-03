@@ -283,7 +283,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     {
         get
         {
-            long total = 0;
+            long total = TextureCache.Allocated;
             foreach (var system in Systems.Values)
             {
                 if (system is IMemorySizeProvider provider)
@@ -297,7 +297,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     {
         get
         {
-            long total = 0;
+            long total = TextureCache.Used;
             foreach (var system in Systems.Values)
             {
                 if (system is IMemorySizeProvider provider)

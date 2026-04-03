@@ -123,7 +123,7 @@ provider.PostMount();
 provider.LoadVirtualPaths();
 
 var snooper = new EditorWindow(144, 1500, 900, false);
-var scene = new Actor("Scene");
+var scene = new Actor("Example Scene");
 scene.Components.Add(new BoxComponent(Vector3.Zero, Vector3.One));
 
 var camera = new CameraActor("Camera");
@@ -198,16 +198,9 @@ switch (provider.ProjectName)
          * Stealth
         */
 
-        const string Character = "Sarge";
-        var actor = new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C"));
-        // var cameraRig = actor.Components.OfType<SpatialComponent>().FirstOrDefault(x => x.Name == "CameraRig");
-        // if (cameraRig != null && camera.RootComponent is { } spatial)
-        // {
-        //     spatial.SetLocalTransform(Transform.Identity);
-        //     spatial.Relation = cameraRig;
-        //     spatial.AttachSocketName = "Camera";
-        // }
-        scene.Children.Add(actor);
+        // const string Character = "Sarge";
+        // var actor = new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C"));
+        // scene.Children.Add(actor);
 
         // var actor = new Actor("Skeleton");
         // var anim = provider.LoadPackageObject<UAnimMontage>("ShooterGame/Content/Characters/Sarge/S0/CharSelect/3P/Anims/CS_Sarge_S0_CharSelect_Anim_Montage.CS_Sarge_S0_CharSelect_Anim_Montage");
@@ -221,10 +214,11 @@ switch (provider.ProjectName)
         // mesh.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Deadeye/S0/Ability_4/3P/Anims/TP_Deadeye_S0_4_Card_Equip_Montage.TP_Deadeye_S0_4_Card_Equip_Montage"));
         // actor.Components.Add(mesh);
         // scene.Children.Add(actor);
-        break;
+        // break;
 
         // Ascent
         // Bonsai
+        // Canyon
         // Duality
         // FoxTrot
         // Infinity
@@ -234,7 +228,7 @@ switch (provider.ProjectName)
         // Port
         // Rook
         // Triad
-        const string Map = "Bonsai";
+        const string Map = "Canyon";
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>($"ShooterGame/Content/Maps/{Map}/{Map}.{Map}")));
         break;
     }
@@ -258,7 +252,7 @@ switch (provider.ProjectName)
     }
     case "ContentExamples":
     {
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/ExampleProjectWelcome.ExampleProjectWelcome")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/ExampleProjectWelcome.ExampleProjectWelcome")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Landscape.Level_Landscape")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_WorldPartitionStreaming.Level_WorldPartitionStreaming")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Streaming.Level_Streaming")));
@@ -266,7 +260,7 @@ switch (provider.ProjectName)
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Geometry/StaticMeshes.StaticMeshes")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Lighting/Lighting_Realtime.Lighting_Realtime")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/AI/AI_NavMesh.AI_NavMesh")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Animation/Animation_ControlRig.Animation_ControlRig")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Animation/Animation_ControlRig.Animation_ControlRig")));
         break;
     }
     case "Marvel":

@@ -23,10 +23,8 @@ public abstract class SkinnedMeshComponent : MeshComponent
 
     protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, USkinnedMeshComponent component) : base(skeletalMesh.Materials, component)
     {
-        ObjectPath = skeletalMesh.GetPathName();
-
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 
-    public sealed override string Icon => "\uf5d7";
+    public override string Icon => "\uf5d7";
 }

@@ -137,28 +137,6 @@ public static class EditorUI
         ImGui.Unindent();
     }
 
-    /// <summary>
-    /// Creates a tree node with shared state.
-    /// Temporarily pops the current ID scope so the tree node state is global,
-    /// then pushes it back for the content inside.
-    /// </summary>
-    public static bool SharedTreeNode(string label, ImGuiTreeNodeFlags flags, int id, Action content)
-    {
-        ImGui.PopID();
-        var isOpen = ImGui.TreeNodeEx(label, flags);
-
-        if (isOpen)
-        {
-            ImGui.PushID(id);
-            content.Invoke();
-            ImGui.PopID();
-            ImGui.TreePop();
-        }
-
-        ImGui.PushID(id);
-        return isOpen;
-    }
-
     public static void TogglableTreeNode(string label, ref bool enabled, Action? content = null, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth)
     {
         var local = enabled;

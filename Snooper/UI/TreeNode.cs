@@ -1,0 +1,67 @@
+﻿using CUE4Parse.UE4.Assets.Exports;
+using CUE4Parse.UE4.Assets.Exports.Actor;
+using Newtonsoft.Json;
+
+namespace Snooper.UI;
+
+public abstract class TreeNode : IControllable, IEquatable<TreeNode>
+{
+    public string Name { get; internal set; }
+    public string Type { get; }
+    public string? Class { get; }
+    public string? Path { get; }
+    public string? OwnerPath { get; }
+    public string[]? JsonProperties { get; }
+
+    public virtual string Icon { get; private set; } = "\uf550";
+
+    public bool IsNodeOpen { get; set; }
+    public bool IsNodeSelected { get; set; }
+    public int NodeDepth { get; set; }
+    public int NodeIndex { get; set; }
+
+    protected TreeNode(string name)
+    {
+        Name = name;
+        Type = GetType().Name;
+    }
+
+    protected TreeNode(UObject obj) : this(obj.Name)
+    {
+        if (obj is AActor a && !string.IsNullOrEmpty(a.ActorLabel))
+        {
+            Name = a.ActorLabel;
+        }
+
+        Class = obj.ExportType;
+        Path = obj.Owner?.Provider?.FixPath(obj.GetPathName());
+        OwnerPath = obj.Owner?.Provider?.FixPath(obj.Owner.Name);
+
+        var jsonProperties = new List<string> { JsonConvert.SerializeObject(obj, Formatting.Indented) };
+        var templatePtr = obj.Template;
+        while (templatePtr?.TryLoad(out var template) == true)
+        {
+            jsonProperties.Add(JsonConvert.SerializeObject(template, Formatting.Indented));
+            templatePtr = template.Template;
+        }
+        JsonProperties = jsonProperties.ToArray();
+    }
+
+    protected void SetIcon(string icon) => Icon = icon;
+
+    public abstract int Id { get; }
+    public abstract void SetOutlined(bool state);
+    public abstract bool ShouldScrollHere { get; set; }
+    public abstract void DrawControls();
+
+    public static bool operator ==(TreeNode? left, TreeNode? right)
+    {
+        if (left is null && right is null) return true;
+        if (left is null || right is null) return false;
+        return left.Id == right.Id;
+    }
+    public static bool operator !=(TreeNode? left, TreeNode? right) => !(left == right);
+    public bool Equals(TreeNode? other) => this == other;
+    public override int GetHashCode() => Id.GetHashCode();
+    public override bool Equals(object? obj) => obj is TreeNode node && this == node;
+}
