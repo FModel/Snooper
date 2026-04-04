@@ -184,7 +184,7 @@ public class SpatialComponent : ActorComponent
             return;
 
         var (center, distance) = GetTeleportPosition(camera);
-        camera.TeleportTo(center + camera.Forward * distance);
+        camera.TeleportTo(center, distance);
     }
 
     public void UpdateWorldMatrix(bool recursive = true)

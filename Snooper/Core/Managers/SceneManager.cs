@@ -13,7 +13,7 @@ namespace Snooper.Core.Managers;
 
 public class SceneManager : ActorManager
 {
-    protected GameWindow Window { get; }
+    public GameWindow Window { get; }
     public Viewport? MainViewport { get; private set; }
 
     public Actor? RootActor
@@ -30,7 +30,7 @@ public class SceneManager : ActorManager
     }
 
     protected readonly ObservableCollection<Viewport> Viewports = [];
-    protected readonly RenderPipeline Pipeline = new();
+    public readonly RenderPipeline Pipeline = new();
 
     private readonly HashSet<CameraComponent> _cameras = [];
 

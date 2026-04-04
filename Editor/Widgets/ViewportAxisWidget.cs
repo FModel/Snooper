@@ -65,8 +65,10 @@ public class ViewportAxisWidget
         }
     }
 
-    public bool Draw(ImDrawListPtr drawList, IViewProjectionProvider camera, Vector2 position)
+    public bool Draw(IViewProjectionProvider camera, Vector2 position)
     {
+        var drawList = ImGui.GetWindowDrawList();
+
         var center = new Vector2(position.X - BigCircleRadius - Margin, position.Y + BigCircleRadius + Margin);
         var right = new Vector3(camera.InverseViewMatrix.M11, camera.InverseViewMatrix.M12, camera.InverseViewMatrix.M13);
         var up = new Vector3(camera.InverseViewMatrix.M21, camera.InverseViewMatrix.M22, camera.InverseViewMatrix.M23);

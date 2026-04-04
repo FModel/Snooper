@@ -30,7 +30,6 @@ public class SkeletonOverlayWidget
     private const uint ColSocket   = 0xFF_80_FF_80; // green for sockets
 
     public int  SelectedBoneIndex { get; private set; } = -1;
-    public bool IsUsing           { get; private set; }
 
     private int     _hoveredBoneIndex  = -1;
     private int     _contextBoneIndex  = -1; // bone targeted by the open context menu
@@ -41,7 +40,7 @@ public class SkeletonOverlayWidget
     /// Call once per frame inside the Scene window after the Image call.
     /// Returns what action occurred this frame (if any).
     /// </summary>
-    public void Draw(ImDrawListPtr drawList, MeshComponent mesh, Matrix4x4 meshWorldMatrix, IViewProjectionProvider camera, Vector2 viewportMin, Vector2 viewportSize)
+    public bool Draw(ImDrawListPtr drawList, MeshComponent mesh, Matrix4x4 meshWorldMatrix, IViewProjectionProvider camera, Vector2 viewportMin, Vector2 viewportSize)
     {
         var vp = camera.ViewMatrix * camera.ProjectionMatrix;
         var mousePos = ImGui.GetMousePos();
@@ -184,7 +183,7 @@ public class SkeletonOverlayWidget
             }
         }
 
-        IsUsing = _hoveredBoneIndex >= 0 || ImGui.IsPopupOpen("##BoneCtx");
+        return _hoveredBoneIndex >= 0 || ImGui.IsPopupOpen("##BoneCtx");
     }
 
     public void Reset() => SelectedBoneIndex = -1;

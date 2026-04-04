@@ -8,8 +8,8 @@ namespace Editor.Managers;
 
 public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
 {
-    protected Actor? SelectedActor { get; private set; }
-    protected ActorComponent? SelectedComponent { get; private set; }
+    public Actor? SelectedActor { get; private set; }
+    public ActorComponent? SelectedComponent { get; private set; }
 
     public void SelectActor(Actor? actor, bool scrollTo = true)
     {
@@ -94,7 +94,7 @@ public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
         }
     }
 
-    protected sealed override void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
+    public override void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize)
     {
         SelectComponent(GetComponentById(GetComponentId(mousePos, windowPos, windowSize)));
     }

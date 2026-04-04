@@ -4,16 +4,16 @@ using Snooper.UI;
 
 namespace Editor.Widgets;
 
-public static class JsonViewerWidget
+public class JsonViewerWidget
 {
-    private static readonly Dictionary<int, TreeNode> _openWindows = [];
+    private readonly Dictionary<int, TreeNode> _openWindows = [];
 
-    public static void Open(TreeNode node)
+    public void Open(TreeNode node)
     {
         _openWindows.TryAdd(node.Id, node);
     }
 
-    public static void DrawAll()
+    public void DrawAll()
     {
         if (_openWindows.Count == 0) return;
 
@@ -56,7 +56,7 @@ public static class JsonViewerWidget
             _openWindows.Remove(id);
     }
 
-    private static void DrawTextArea(string text, int id)
+    private void DrawTextArea(string text, int id)
     {
         var style = ImGui.GetStyle();
         var avail = ImGui.GetContentRegionAvail();

@@ -48,7 +48,6 @@ public class SplineOverlayWidget
     private readonly List<Handle>     _handles    = new(64);
     private readonly List<SplineMeshComponent> _chain = new(16);
 
-    public  bool              IsUsing              { get; private set; }
     public  Matrix4x4         SelectedHandleMatrix { get; private set; } = Matrix4x4.Identity;
     public  SplineMeshComponent? SelectedSpline    { get; private set; }
 
@@ -79,7 +78,6 @@ public class SplineOverlayWidget
 
     public void BeginFrame()
     {
-        IsUsing = false;
         _handles.Clear();
         _chain.Clear();
         _hasHover = false;
@@ -272,7 +270,6 @@ public class SplineOverlayWidget
             ImGui.EndPopup();
         }
 
-        IsUsing = _hasHover || ImGui.IsPopupOpen("##SplineCtx");
         return action;
     }
 

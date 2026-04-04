@@ -1,36 +1,32 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 using OpenTK.Windowing.Desktop;
-using ImGuizmoNET;
-using OpenTK.Windowing.Common;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Transforms;
 using Editor.Widgets;
 using Snooper.Core.Containers;
 using Snooper.Extensions;
-using Snooper.Rendering.Components.Light;
-using Snooper.Rendering.Components.Mesh;
-using Snooper.Rendering.Components.Skybox;
 using Snooper.UI;
 
 namespace Editor.Managers;
 
 public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
 {
-    private bool _test = true;
-    private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
+    private readonly InspectorWidget _inspector = new();
+    private readonly SceneHierarchyWidget _sceneHierarchy = new();
+    private readonly ViewportWidget _viewport = new();
     private readonly ProfilerWidget _profiler = new();
-    private readonly SkeletonOverlayWidget _skeletonOverlay = new();
-    private readonly SplineOverlayWidget _splineOverlay = new();
-    private readonly ViewportAxisWidget _axisWidget = new();
+
+    internal readonly ViewportAxisWidget _viewportAxis = new();
+    internal readonly JsonViewerWidget _jsonViewer = new();
+    internal readonly SkeletonOverlayWidget _skeletonOverlay = new();
+    internal readonly SplineOverlayWidget _splineOverlay = new();
 
     public override void Update(float delta)
     {
         base.Update(delta);
 
-        _axisWidget.Update(delta);
+        _viewportAxis.Update(delta);
     }
 
     protected override void RenderInterface()
@@ -38,147 +34,6 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
         base.RenderInterface();
 
         ImGui.ShowDemoWindow();
-
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 1.0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 6.0f);
-        if (ImGui.Begin("\ue209 Scene", ref _test))
-        {
-            GizmoButton("\uf047", OPERATION.TRANSLATE); ImGui.SameLine();
-            GizmoButton("\uf2f1", OPERATION.ROTATE); ImGui.SameLine();
-            GizmoButton("\uf424", OPERATION.SCALE);
-
-            var size = ImGui.GetContentRegionAvail();
-            size.X -= ImGui.GetScrollX();
-            size.Y -= ImGui.GetScrollY();
-
-            MainViewport?.Camera.Resize((int) size.X, (int) size.Y);
-
-            var texture = Pipeline.GetFinalTexture();
-            ImGui.Image(texture.GetPointer(), size, Vector2.UnitY, Vector2.UnitX);
-            var itemMin = ImGui.GetItemRectMin();
-            var drawList = ImGui.GetWindowDrawList();
-
-            ImGuizmo.SetDrawlist(drawList);
-            ImGuizmo.SetRect(itemMin.X, itemMin.Y, size.X, size.Y);
-
-            if (MainViewport?.Camera is { } camera)
-            {
-                if (_axisWidget.Draw(drawList, camera, itemMin with { X = itemMin.X + size.X }))
-                {
-                    camera.SnapRotationTo(_axisWidget.SnapRotations[_axisWidget.HoveredAxis]);
-                }
-
-                var component = SelectedComponent ?? SelectedActor?.RootComponent;
-                if (component is SpatialComponent s)
-                {
-                    var view = camera.ViewMatrix;
-                    var proj = camera.ProjectionMatrix;
-                    var matrix = s.GizmoMatrix;
-
-                    switch (s)
-                    {
-                        case SplineMeshComponent { Actor: { } splineActor }:
-                        {
-                            _splineOverlay.BeginFrame();
-                            foreach (var sm in splineActor.Components.OfType<SplineMeshComponent>())
-                                _splineOverlay.Feed(sm);
-                            _splineOverlay.DrawOverlay(drawList, camera, itemMin, size);
-                            var overlayAction = _splineOverlay.EndFrame(drawList, itemMin, size);
-                            if (overlayAction is SplineOverlayAction.Changed)
-                                _splineOverlay.SelectedSpline?.MarkDirty(DirtyFlags.Spline);
-
-                            if (_splineOverlay.SelectedHandle != -1 && _splineOverlay.SelectedSpline is not null)
-                            {
-                                var handleMatrix = _splineOverlay.SelectedHandleMatrix;
-                                if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.TRANSLATE, MODE.WORLD, ref handleMatrix.M11))
-                                {
-                                    _splineOverlay.ApplyGizmoMatrix(handleMatrix);
-                                    _splineOverlay.SelectedSpline.MarkDirty(DirtyFlags.Spline);
-                                }
-                            }
-
-                            break;
-                        }
-                        case MeshComponent mesh when mesh.Descriptor.Sockets.Length > 0 || mesh.Descriptor.Skeleton != null:
-                        {
-                            _skeletonOverlay.Draw(drawList, mesh, s.WorldMatrix, camera, itemMin, size);
-
-                            var boneIndex = _skeletonOverlay.SelectedBoneIndex;
-                            if (boneIndex >= 0 && mesh.Descriptor.Skeleton is { } skeleton)
-                            {
-                                matrix = skeleton.BoneMatrices[boneIndex] * s.GizmoMatrix;
-
-                                if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
-                                {
-                                    Matrix4x4.Invert(s.GizmoMatrix, out var invGizmo);
-                                    skeleton.MoveBone(boneIndex, matrix * invGizmo);
-                                    mesh.MarkDirty(DirtyFlags.Animation);
-                                }
-                            }
-
-                            break;
-                        }
-                        case DirectionalLightComponent:
-                        {
-                            if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.ROTATE_X | OPERATION.ROTATE_Y | OPERATION.ROTATE_SCREEN, MODE.LOCAL, ref matrix.M11))
-                            {
-                                s.ApplyGizmoMatrix(matrix);
-                            }
-                            break;
-                        }
-                        case GridComponent or AtmosphericComponent: break;
-                        default:
-                        {
-                            if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
-                            {
-                                s.ApplyGizmoMatrix(matrix);
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (ImGui.IsItemHovered() && !ImGuizmo.IsUsing() && !_skeletonOverlay.IsUsing && !_splineOverlay.IsUsing)
-            {
-                if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
-                {
-                    Window.CursorState = CursorState.Grabbed;
-                }
-
-                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
-                {
-                    OnViewportLeftClick(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), size);
-                }
-            }
-
-            ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold]);
-
-            const float margin = 7.5f;
-            var frameHeight = ImGui.GetFrameHeight();
-
-            var framerate = ImGui.GetIO().Framerate;
-            drawList.AddText(
-                new Vector2(itemMin.X + margin, itemMin.Y + size.Y - frameHeight),
-                ImGui.GetColorU32(ImGuiCol.Text),
-                $"FPS: {framerate:0} ({1000.0f / framerate:0.##} ms) ({texture.Width} x {texture.Height} px)"
-            );
-
-            const string label = "\uf06a Previewed content may differ from final version saved or used in-game.";
-            drawList.AddText(
-                new Vector2(itemMin.X + size.X - ImGui.CalcTextSize(label).X - margin, itemMin.Y + size.Y - frameHeight),
-                ImGui.GetColorU32(new Vector4(1.00f, 1.00f, 1.00f, 0.50f)),
-                label
-            );
-
-            ImGui.PopFont();
-        }
-        ImGui.PopStyleVar(2);
-        ImGui.End();
-
-        SceneHierarchyWidget.Draw(RootActor);
-        InspectorWidget.Draw(SelectedActor, SelectedComponent);
-        JsonViewerWidget.DrawAll();
 
         if (ImGui.Begin("\uf013 Render World Settings"))
         {
@@ -342,23 +197,12 @@ public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
             }
         }
         ImGui.End();
-    }
 
-    private void GizmoButton(string icon, OPERATION operation)
-    {
-        var isActive = _gizmoOperation == operation;
-        if (isActive)
-        {
-            var col = ImGui.GetColorU32(ImGuiCol.ButtonActive);
-            ImGui.PushStyleColor(ImGuiCol.Button, col);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, col);
-        }
+        _inspector.Draw(SelectedActor, SelectedComponent);
+        _sceneHierarchy.Draw(RootActor);
+        _viewport.Draw(MainViewport);
 
-        if (ImGui.Button(icon))
-            _gizmoOperation = operation;
-
-        if (isActive)
-            ImGui.PopStyleColor(2);
+        _jsonViewer.DrawAll();
     }
 
     protected override void OnSelectionChanged(Actor? actor, ActorComponent? component)

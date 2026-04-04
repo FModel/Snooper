@@ -9,7 +9,7 @@ using Snooper;
 
 namespace Editor.Widgets;
 
-public static class InspectorWidget
+public class InspectorWidget
 {
     private const string Title      = "Inspector";
     private const string WarnIcon   = "\uf071";
@@ -18,15 +18,15 @@ public static class InspectorWidget
 
     private readonly record struct FlatEntry(ActorComponent Component, bool Warn);
 
-    private static int    _lastActorId        = -1;
-    private static int    _lastComponentCount = -1;
-    private static string _search             = "";
-    private static bool   _dirty              = true;
+    private int    _lastActorId        = -1;
+    private int    _lastComponentCount = -1;
+    private string _search             = "";
+    private bool   _dirty              = true;
 
-    private static readonly List<FlatEntry>  _flatNodes = [];
-    private static readonly HashSet<int>     _reachable = [];
+    private readonly List<FlatEntry>  _flatNodes = [];
+    private readonly HashSet<int>     _reachable = [];
 
-    public static void Draw(Actor? selectedActor, ActorComponent? selectedComponent)
+    public void Draw(Actor? selectedActor, ActorComponent? selectedComponent)
     {
         if (ImGui.Begin(Title))
         {
@@ -57,7 +57,7 @@ public static class InspectorWidget
         ImGui.End();
     }
 
-    private static void DrawSearchBar()
+    private void DrawSearchBar()
     {
         var style = ImGui.GetStyle();
         var iconWidth = ImGui.CalcTextSize(SearchIcon).X;
@@ -73,7 +73,7 @@ public static class InspectorWidget
         }
     }
 
-    private static void DrawClippedTree(Actor actor)
+    private void DrawClippedTree(Actor actor)
     {
         if (actor.Components.Count == 0)
         {
@@ -135,7 +135,7 @@ public static class InspectorWidget
         ImGui.EndChild();
     }
 
-    private static void DrawFlatNode(ActorComponent component, bool warn, bool isSearching)
+    private void DrawFlatNode(ActorComponent component, bool warn, bool isSearching)
     {
         ImGui.PushID(component.Id);
 
@@ -168,7 +168,11 @@ public static class InspectorWidget
             ImGui.Separator();
 
             if (ImGui.MenuItem("\uf13d  Teleport To") && component is SpatialComponent spatial) spatial.TeleportTo();
-            if (ImGui.MenuItem("\uf1c9  Open JSON")) JsonViewerWidget.Open(component);
+            if (ImGui.MenuItem("\uf1c9  Open JSON"))
+            {
+                if (component.Actor?.ActorManager is EditorManager manager)
+                    manager._jsonViewer.Open(component);
+            }
             if (ImGui.MenuItem("\uf24d  Clone")) { }
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
@@ -207,7 +211,7 @@ public static class InspectorWidget
                 if (warn)
                 {
                     ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0f, 1f));
-                    ImGui.TextUnformatted($"{WarnIcon}  Orphaned — not attached to the component tree.");
+                    ImGui.TextUnformatted($"{WarnIcon}  Orphaned component not attached to the tree.");
                     ImGui.PopStyleColor();
                     ImGui.Separator();
                 }
@@ -242,9 +246,10 @@ public static class InspectorWidget
 
         // TODO: drag and drop
 
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !toggledOpen && component.Actor?.ActorManager is InterfaceManager manager)
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !toggledOpen)
         {
-            manager.SelectComponent(component, scrollTo: false);
+            if (component.Actor?.ActorManager is InterfaceManager manager)
+                manager.SelectComponent(component, scrollTo: false);
         }
 
         if (hasChildren)
@@ -257,21 +262,25 @@ public static class InspectorWidget
         ImGui.SameLine(rightEdge - btnW);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
         ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        if (ImGui.Button(FileIcon)) JsonViewerWidget.Open(component);
+        if (ImGui.Button(FileIcon))
+        {
+            if (component.Actor?.ActorManager is EditorManager manager)
+                manager._jsonViewer.Open(component);
+        }
         ImGui.PopStyleColor();
         ImGui.PopStyleVar();
 
         ImGui.PopID();
     }
 
-    private static void MetaRow(string label, string value)
+    private void MetaRow(string label, string value)
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0); ImGui.TextDisabled(label);
         ImGui.TableSetColumnIndex(1); ImGui.TextUnformatted(value);
     }
 
-    private static void BuildFlatList(Actor actor, bool isSearching, string search)
+    private void BuildFlatList(Actor actor, bool isSearching, string search)
     {
         _flatNodes.Clear();
         _reachable.Clear();
@@ -307,7 +316,7 @@ public static class InspectorWidget
     /// Recursively adds visible spatial nodes to the flat list.
     /// Children are added only when the parent node is open (or a search is active).
     /// </summary>
-    private static void BuildSpatialNodes(SpatialComponent component, int actorId, int depth, bool isSearching, string search)
+    private void BuildSpatialNodes(SpatialComponent component, int actorId, int depth, bool isSearching, string search)
     {
         component.NodeDepth = depth;
 
@@ -329,7 +338,7 @@ public static class InspectorWidget
         }
     }
 
-    private static ActorComponent? FindScrollTarget(Actor actor)
+    private ActorComponent? FindScrollTarget(Actor actor)
     {
         if (actor.RootComponent != null)
         {
@@ -345,7 +354,7 @@ public static class InspectorWidget
         return null;
     }
 
-    private static ActorComponent? FindScrollTargetInTree(SpatialComponent component, int actorId)
+    private ActorComponent? FindScrollTargetInTree(SpatialComponent component, int actorId)
     {
         if (component.ShouldScrollHere) return component;
 

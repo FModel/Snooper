@@ -15,12 +15,6 @@ public enum CameraMode : byte
     Orthographic
 }
 
-public enum CameraType : byte
-{
-    Free,
-    Orbital,
-}
-
 /// <summary>
 /// just a fixed camera
 /// </summary>

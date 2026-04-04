@@ -170,9 +170,12 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         }
         overallCenter /= matrices.Length;
 
-        var extents = Descriptor.Bounds.Extents;
-        var maxExtent = MathF.Max(extents.X, MathF.Max(extents.Y, extents.Z));
-        var distance = maxExtent * 1.25f / MathF.Tan(camera.FieldOfViewRadians / 2f);
+        var vHalfFov = camera.FieldOfViewRadians / 2f;
+        var hHalfFov = MathF.Atan(MathF.Tan(vHalfFov) * camera.AspectRatio);
+        var limitingHalfFov = MathF.Min(vHalfFov, hHalfFov);
+
+        var sphereRadius = Descriptor.Bounds.Extents.Length();
+        var distance = sphereRadius / MathF.Tan(limitingHalfFov) * 1.25f;
 
         return (overallCenter, MathF.Max(distance, 0.1f));
     }

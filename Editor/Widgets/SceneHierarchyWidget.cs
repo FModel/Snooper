@@ -7,23 +7,23 @@ using Snooper;
 
 namespace Editor.Widgets;
 
-public static class SceneHierarchyWidget
+public class SceneHierarchyWidget
 {
     private const string Title           = "Scene Hierarchy";
     private const string SearchIcon      = "\uf002";
     private const string CollapseAllIcon = "\uf066";
 
-    private static int _lastActorCount = -1;
+    private int _lastActorCount = -1;
 
-    private static string _newActorName = "";
-    private static Actor? _newActorParent;
-    private static bool _pendingAddModal;
+    private string _newActorName = "";
+    private Actor? _newActorParent;
+    private bool _pendingAddModal;
 
-    private static string _search = "";
-    private static bool _dirty = true;
-    private static readonly List<Actor> _flatNodes = [];
+    private string _search = "";
+    private bool _dirty = true;
+    private readonly List<Actor> _flatNodes = [];
 
-    public static void Draw(Actor? actor)
+    public void Draw(Actor? actor)
     {
         if (ImGui.Begin(Title))
         {
@@ -50,7 +50,7 @@ public static class SceneHierarchyWidget
         ImGui.End();
     }
 
-    private static void DrawSearchBar()
+    private void DrawSearchBar()
     {
         var style = ImGui.GetStyle();
         var addBtnWidth = ImGui.CalcTextSize(Settings.AddIcon).X + style.FramePadding.X * 2;
@@ -86,7 +86,7 @@ public static class SceneHierarchyWidget
         ImGui.PopStyleVar();
     }
 
-    private static void DrawClippedTree(Actor? actor)
+    private void DrawClippedTree(Actor? actor)
     {
         if (actor is not { Children: { Count: > 0 } children })
         {
@@ -149,7 +149,7 @@ public static class SceneHierarchyWidget
         ImGui.EndChild();
     }
 
-    private static void DrawAddModal(Actor? actor)
+    private void DrawAddModal(Actor? actor)
     {
         var viewport = ImGui.GetMainViewport();
         ImGui.SetNextWindowSize(new Vector2(viewport.Size.X * 0.2f, 0), ImGuiCond.Always);
@@ -195,7 +195,7 @@ public static class SceneHierarchyWidget
         }
     }
 
-    private static void DrawFlatNode(Actor actor, bool isSearching = false)
+    private void DrawFlatNode(Actor actor, bool isSearching = false)
     {
         ImGui.PushID(actor.Id);
 
@@ -222,7 +222,11 @@ public static class SceneHierarchyWidget
 
             if (ImGui.MenuItem($"{Settings.EyeIcon}  Toggle Visibility")) actor.ToggleVisibility();
             if (ImGui.MenuItem("\uf13d  Teleport To")) actor.RootComponent?.TeleportTo();
-            if (ImGui.MenuItem("\uf1c9  Open JSON")) JsonViewerWidget.Open(actor);
+            if (ImGui.MenuItem("\uf1c9  Open JSON"))
+            {
+                if (actor.ActorManager is EditorManager manager)
+                    manager._jsonViewer.Open(actor);
+            }
             if (ImGui.MenuItem("\uf24d  Clone")) { }
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
@@ -255,9 +259,10 @@ public static class SceneHierarchyWidget
         }
         ImGui.PopStyleVar();
 
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !toggledOpen && actor.ActorManager is InterfaceManager manager)
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !toggledOpen)
         {
-            manager.SelectActor(actor, scrollTo: false);
+            if (actor.ActorManager is InterfaceManager manager)
+                manager.SelectActor(actor, scrollTo: false);
         }
         if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
         {
@@ -274,15 +279,16 @@ public static class SceneHierarchyWidget
         ImGui.SameLine(rightEdge - btnW);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
         ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        if (!actor.IsVisible) ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
+        var isHidden = !actor.IsVisible;
+        if (isHidden) ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
         if (ImGui.Button(actor.IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon)) actor.ToggleVisibility();
-        ImGui.PopStyleColor(!actor.IsVisible ? 2 : 1);
+        ImGui.PopStyleColor(isHidden ? 2 : 1);
         ImGui.PopStyleVar();
 
         ImGui.PopID();
     }
 
-    private static void BuildFlatList(IEnumerable<Actor> actors, bool isSearching = false, string search = "")
+    private void BuildFlatList(IEnumerable<Actor> actors, bool isSearching = false, string search = "")
     {
         foreach (var actor in actors)
         {
@@ -298,7 +304,7 @@ public static class SceneHierarchyWidget
         }
     }
 
-    private static Actor? FindScrollTarget(IEnumerable<Actor> actors)
+    private Actor? FindScrollTarget(IEnumerable<Actor> actors)
     {
         foreach (var actor in actors)
         {

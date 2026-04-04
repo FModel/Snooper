@@ -228,7 +228,7 @@ switch (provider.ProjectName)
         // Port
         // Rook
         // Triad
-        const string Map = "Canyon";
+        const string Map = "Bonsai";
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>($"ShooterGame/Content/Maps/{Map}/{Map}.{Map}")));
         break;
     }
@@ -399,10 +399,10 @@ switch (provider.ProjectName)
         grid.Parent?.Children.Remove(grid);
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_Terrain.Hera_Terrain")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/DelMarGame/Content/Environments/Desert/Levels/Level_DM_NeonCity_SmallBuilding_A.Level_DM_NeonCity_SmallBuilding_A")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/1x1/Artemis_1x1_BusStation_a.Artemis_1x1_BusStation_a")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/3x3/Artemis_3x3_Generic_House_a.Artemis_3x3_Generic_House_a")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/3x3/Artemis_3x3_Generic_House_a.Artemis_3x3_Generic_House_a")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/3x3/Artemis_3x3_Generic_House_c.Artemis_3x3_Generic_House_c")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/3x3/Artemis_3x3_IOBorderTower_PTY_02.Artemis_3x3_IOBorderTower_PTY_02")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/5x5/Artemis_SUB_5x5_House_m3.Artemis_SUB_5x5_House_m3")));

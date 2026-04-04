@@ -259,7 +259,7 @@ public abstract class ImGuiManager : SceneManager
     }
 
     protected virtual void RenderInterface() => ImGui.DockSpaceOverViewport();
-    protected abstract void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize);
+    public abstract void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize);
 
     public void TextInput(char c) => _controller.TextInput(c);
 
