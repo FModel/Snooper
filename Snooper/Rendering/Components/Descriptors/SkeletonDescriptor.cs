@@ -1,7 +1,10 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Animation;
+using CUE4Parse.UE4.Objects.Core.Misc;
+using ImGuiNET;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
@@ -27,8 +30,12 @@ public readonly struct BoneDescriptor
     }
 }
 
-public class SkeletonDescriptor
+public class SkeletonDescriptor : IControllable
 {
+    public string Name { get; private set; }
+    public string Path { get; private set; }
+    public FGuid Guid { get; private set; }
+
     internal BufferAllocation? _poseAllocation;
 
     /// <summary>
@@ -73,6 +80,13 @@ public class SkeletonDescriptor
         RecalculateBoneMatrices();
     }
 
+    internal void SetOwner(USkeleton skeleton)
+    {
+        Name = skeleton.Name;
+        Path = skeleton.Owner?.Provider?.FixPath(skeleton.GetPathName()) ?? "N/A";
+        Guid = skeleton.Guid;
+    }
+
     public string GetBoneName(int index) => BoneDescriptors[index].Name;
     public int GetBoneParentIndex(int index) => BoneDescriptors[index].ParentIndex;
 
@@ -114,6 +128,124 @@ public class SkeletonDescriptor
         {
             var pi = BoneDescriptors[i].ParentIndex;
             BoneMatrices[i] = pi < 0 ? BoneLocalMatrices[i] : BoneLocalMatrices[i] * BoneMatrices[pi];
+        }
+    }
+
+    public void DrawControls()
+    {
+        var rowH = ImGui.GetTextLineHeightWithSpacing();
+        var tblH = 8 * rowH + ImGui.GetFrameHeightWithSpacing();
+        var tableW = ImGui.GetContentRegionAvail().X - tblH - ImGui.GetStyle().ItemSpacing.X;
+        var flags = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY;
+
+        if (ImGui.BeginTable("##SkeletonBoneTable", 3, flags, new Vector2(tableW, tblH)))
+        {
+            ImGui.TableSetupScrollFreeze(0, 1);
+            ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, 34f);
+            ImGui.TableSetupColumn("Bone", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+            ImGui.TableSetupColumn("Parent", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+            ImGui.TableHeadersRow();
+
+            for (var i = 0; i < BoneCount; i++)
+            {
+                var bone = BoneDescriptors[i];
+                ImGui.TableNextRow();
+
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted($"{i}");
+
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(bone.Name);
+
+                ImGui.TableNextColumn();
+                if (bone.IsRoot) ImGui.TextDisabled("None");
+                else ImGui.TextUnformatted($"[{bone.ParentIndex}] {BoneDescriptors[bone.ParentIndex].Name}");
+            }
+            ImGui.EndTable();
+        }
+
+        ImGui.SameLine();
+        DrawCanvas(tblH);
+    }
+
+    private void DrawCanvas(float size)
+    {
+        var canvasPos  = ImGui.GetCursorScreenPos();
+        var canvasSize = new Vector2(size, size);
+        ImGui.InvisibleButton("##SkeletonCanvas", canvasSize);
+        var isHovered = ImGui.IsItemHovered();
+        var mousePos = ImGui.GetMousePos();
+
+        var pts  = new Vector2[BoneCount];
+        var minX = float.MaxValue; var maxX = float.MinValue;
+        var minY = float.MaxValue; var maxY = float.MinValue;
+        for (var i = 0; i < pts.Length; i++)
+        {
+            var m = BoneMatrices[i];
+            var p = new Vector2(m.M41, -m.M42);
+            pts[i] = p;
+
+            if (p.X < minX) minX = p.X;
+            if (p.X > maxX) maxX = p.X;
+            if (p.Y < minY) minY = p.Y;
+            if (p.Y > maxY) maxY = p.Y;
+        }
+
+        var range = MathF.Max(maxX - minX, maxY - minY);
+        if (range < 0.0001f) range = 1f;
+
+        const float canvasPad = 24f;
+        var fitScale = (MathF.Min(canvasSize.X, canvasSize.Y) - canvasPad * 2f) / range;
+        var cx = (minX + maxX) * 0.5f;
+        var cy = (minY + maxY) * 0.5f;
+
+        Vector2 ToScreen(Vector2 p) => new(canvasPos.X + canvasSize.X * 0.5f + (p.X - cx) * fitScale, canvasPos.Y + canvasSize.Y * 0.5f + (p.Y - cy) * fitScale);
+
+        var dl = ImGui.GetWindowDrawList();
+        dl.AddRectFilled(canvasPos, canvasPos + canvasSize, 0xFF_14_14_14);
+        dl.AddRect(canvasPos, canvasPos + canvasSize, 0xFF_32_32_32);
+
+        // bone connections
+        for (var i = 0; i < BoneCount; i++)
+        {
+            var pi = BoneDescriptors[i].ParentIndex;
+            if (pi < 0) continue;
+            dl.AddLine(ToScreen(pts[pi]), ToScreen(pts[i]), 0xFF_50_50_50, 1f);
+        }
+
+        // joints + hover detection
+        var hoveredBone = -1;
+        var bestDist    = 9f;
+        for (var i = 0; i < BoneCount; i++)
+        {
+            var sp = ToScreen(pts[i]);
+            var isRoot = BoneDescriptors[i].IsRoot;
+            dl.AddCircleFilled(sp, isRoot ? 4.5f : 2.5f, isRoot ? 0xFF_00_AA_FF : 0xFF_80_C0_FF);
+
+            if (isHovered)
+            {
+                var d = Vector2.Distance(mousePos, sp);
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    hoveredBone = i;
+                }
+            }
+        }
+
+        if (hoveredBone >= 0)
+        {
+            var sp = ToScreen(pts[hoveredBone]);
+            var bone = BoneDescriptors[hoveredBone];
+            dl.AddCircle(sp, 6f, 0xFF_00_FF_CC, 0, 1.5f);
+
+            ImGui.BeginTooltip();
+            ImGui.TextUnformatted($"[{hoveredBone}] {bone.Name}");
+            if (!bone.IsRoot)
+            {
+                ImGui.TextUnformatted($"Parent: [{bone.ParentIndex}] {BoneDescriptors[bone.ParentIndex].Name}");
+            }
+            ImGui.EndTooltip();
         }
     }
 }

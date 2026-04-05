@@ -244,7 +244,8 @@ public class SpatialComponent : ActorComponent
         }
     }
 
-    private HeaderButtons HeaderButtons => field ??= new HeaderButtons()
+    private const string HeaderLabel = "Transform";
+    private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
         .Add(
             () => "\uf0e2",
             () => IsLocalTransformDirty(_instanceIndex) ? "Reset to original transform" : "No changes to reset",
@@ -258,7 +259,7 @@ public class SpatialComponent : ActorComponent
     {
         base.DrawControls();
 
-        var open = ImGui.CollapsingHeader("Transform", ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+        var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
         HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
         if (!open) return;

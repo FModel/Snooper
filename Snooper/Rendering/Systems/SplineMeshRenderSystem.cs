@@ -44,6 +44,8 @@ public class SplineMeshRenderSystem : MeshRenderSystem<SplineMeshComponent>
             {
                 _params.Update(component._allocation.Value, component.SplineParams);
             }
+
+            component.MarkClean(DirtyFlags.Spline);
         }
 
         base.OnComponentUpdate(component, delta);

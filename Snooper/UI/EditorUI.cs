@@ -221,7 +221,6 @@ public static class EditorUI
     {
         var size = new Vector2(ImGui.GetFrameHeight());
 
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 1.0f);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4.0f);
 
         if (value)
@@ -238,7 +237,7 @@ public static class EditorUI
         if (value) ImGui.PopStyleColor(2);
         value = changed ? !value : value;
 
-        ImGui.PopStyleVar(2);
+        ImGui.PopStyleVar();
         return changed;
     }
 

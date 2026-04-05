@@ -25,7 +25,7 @@ public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
     {
         base.OnComponentUpdate(component, delta);
 
-        if (component is SkeletalMeshComponent { IsVisible: true, Descriptor.Skeleton: { } skeleton, Animation: { Sequences.Length: > 0 } animation } skeletal)
+        if (component is SkeletalMeshComponent { IsPlayingAnimation: true, Descriptor.Skeleton: { } skeleton, Animation: { Sequences.Length: > 0 } animation } skeletal)
         {
             float time = ActorManager?.Time ?? delta;
             time = (time * animation.PlayRate + animation.StartTime) % skeletal.MaxAnimationDuration;

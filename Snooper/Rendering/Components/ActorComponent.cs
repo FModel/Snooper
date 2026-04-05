@@ -1,4 +1,5 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.Utils;
 using ImGuiNET;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
@@ -67,12 +68,25 @@ public abstract class ActorComponent : TreeNode
     protected virtual DirtyFlags SupportedDirtyFlags => DirtyFlags.None;
 
     private DirtyFlags _dirtyFlags = DirtyFlags.All;
+#if DEBUG
+    private DirtyFlags _lastDirtyFlags = DirtyFlags.None;
+    private readonly Dictionary<DirtyFlags, long> _timestamps = new();
+#endif
     internal bool IsDirty(DirtyFlags flags) => (_dirtyFlags & flags) != 0;
     internal void MarkDirty(DirtyFlags flags)
     {
         var supportedFlags = flags & SupportedDirtyFlags;
         if (supportedFlags == DirtyFlags.None) return;
 
+#if DEBUG
+        for (var i = 0; i < 32; i++)
+        {
+            var bit = (DirtyFlags)(1 << i);
+            if ((supportedFlags & bit) != DirtyFlags.None)
+                _timestamps[bit] = Environment.TickCount64;
+        }
+        _lastDirtyFlags |= supportedFlags;
+#endif
         _dirtyFlags |= supportedFlags;
         OnRequestSystemUpdate?.Invoke(this);
     }
@@ -126,6 +140,50 @@ public abstract class ActorComponent : TreeNode
     }
     public override void DrawControls()
     {
+#if DEBUG
+        const long dirtyDisplayMs = 1500;
+        var now = Environment.TickCount64;
+        var mostRecentTs = long.MinValue;
+        for (var i = 0; i < 32; i++)
+        {
+            var bit = (DirtyFlags)(1 << i);
+            if ((_lastDirtyFlags & bit) == DirtyFlags.None) continue;
+
+            if (!_timestamps.TryGetValue(bit, out var ts) || now - ts > dirtyDisplayMs)
+                _lastDirtyFlags &= ~bit;
+            else if (ts > mostRecentTs)
+                mostRecentTs = ts;
+        }
+        var remaining = mostRecentTs != long.MinValue ? Math.Max(0.0, (dirtyDisplayMs - (now - mostRecentTs)) / 1000.0) : 0.0;
+
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+        ImGui.SeparatorText("\uf188  Debug");
+        ImGui.PopStyleColor();
+
+        ImGui.TextDisabled("ID:");
+        ImGui.SameLine();
+        ImGui.Text($"{Id}");
+
+        ImGui.TextDisabled("Dirty:");
+        ImGui.SameLine();
+        ImGui.PushStyleColor(ImGuiCol.Text, _lastDirtyFlags != 0 ? ImGui.GetColorU32(ImGuiCol.Text) : ImGui.GetColorU32(ImGuiCol.TextDisabled));
+        ImGui.TextUnformatted(_lastDirtyFlags.ToStringBitfield());
+        ImGui.PopStyleColor();
+        ImGui.SameLine();
+        ImGui.TextDisabled($"({remaining:F1}s)");
+
+        ImGui.TextDisabled("Systems:");
+        if (OnRequestSystemUpdate == null)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled("None");
+        }
+        else foreach (var d in OnRequestSystemUpdate.GetInvocationList())
+        {
+            ImGui.SameLine();
+            ImGui.TextUnformatted($"{d.Target?.GetType().Name ?? "N/A"}");
+        }
+#endif
         ImGui.SeparatorText($"{Name} Details");
     }
 }

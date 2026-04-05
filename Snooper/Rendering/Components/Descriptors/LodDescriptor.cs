@@ -1,11 +1,14 @@
 ﻿using CUE4Parse_Conversion.Meshes.PSK;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
+using ImGuiNET;
 using Snooper.Rendering.Primitives;
+using Snooper.UI;
+using System.Numerics;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public class LodDescriptor<TVertex> where TVertex : unmanaged
+public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
 {
     public uint IndexCount { get; }
     public uint VertexCount { get; }
@@ -92,5 +95,41 @@ public class LodDescriptor<TVertex> where TVertex : unmanaged
 
         _primitive = _factory();
         return _primitive;
+    }
+
+    public void DrawControls()
+    {
+        if (Sections.Length > 0)
+        {
+            var rowH = ImGui.GetTextLineHeightWithSpacing();
+            var tblH = Math.Min(Sections.Length, 8) * rowH + ImGui.GetFrameHeightWithSpacing();
+            var flags = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY;
+
+            if (ImGui.BeginTable("##LodSectionTable", 5, flags, new Vector2(0, tblH)))
+            {
+                ImGui.TableSetupScrollFreeze(0, 1);
+                ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, 24f);
+                ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+                ImGui.TableSetupColumn("Idx Count", ImGuiTableColumnFlags.WidthStretch, 0.7f);
+                ImGui.TableSetupColumn("Material", ImGuiTableColumnFlags.WidthFixed, 58f);
+                ImGui.TableSetupColumn("Shadow", ImGuiTableColumnFlags.WidthFixed, 58f);
+                ImGui.TableHeadersRow();
+
+                for (var i = 0; i < Sections.Length; i++)
+                {
+                    var sec = Sections[i]; ImGui.TableNextRow();
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted($"{i}");
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted(sec.Name);
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted($"{sec.IndexCount:N0}");
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted($"Slot {sec.MaterialIndex}");
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted(sec.CastShadow ? "\uf00c" : "\uf00d");
+                }
+                ImGui.EndTable();
+            }
+        }
+        else
+        {
+            ImGui.TextDisabled("No sections");
+        }
     }
 }

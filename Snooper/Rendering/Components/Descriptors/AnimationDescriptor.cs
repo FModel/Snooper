@@ -5,6 +5,9 @@ namespace Snooper.Rendering.Components.Descriptors;
 
 public sealed class AnimationDescriptor
 {
+    public string Name { get; }
+    public string Path { get; }
+
     public readonly SkeletonDescriptor Skeleton;
     public readonly SequenceDescriptor[] Sequences;
     public readonly float Duration;
@@ -14,6 +17,9 @@ public sealed class AnimationDescriptor
 
     public AnimationDescriptor(UAnimationAsset animToPlay, float startTime = 0f, float playRate = 1f)
     {
+        Name = animToPlay.Name;
+        Path = animToPlay.Owner?.Provider?.FixPath(animToPlay.GetPathName()) ?? "N/A";
+
         var animation = animToPlay.ConvertAnims();
 
         Skeleton = new SkeletonDescriptor(animation.Skeleton.ReferenceSkeleton);

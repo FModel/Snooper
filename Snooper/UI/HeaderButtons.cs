@@ -3,7 +3,7 @@ using ImGuiNET;
 
 namespace Snooper.UI;
 
-public sealed class HeaderButtons
+public sealed class HeaderButtons(string headerLabel)
 {
     private readonly record struct Entry(Func<string> Icon, Func<string> Tooltip, Action OnClick, Func<bool>? Enabled = null, Func<Vector4?>? TextColor = null);
 
@@ -50,7 +50,7 @@ public sealed class HeaderButtons
             ImGui.SetCursorScreenPos(itemMin with { X = x });
             ImGui.BeginDisabled(!isEnabled);
             if (tint.HasValue) ImGui.PushStyleColor(ImGuiCol.Text, tint.Value);
-            if (ImGui.Button($"{entry.Icon()}##{i}", btnSize)) entry.OnClick();
+            if (ImGui.Button($"{entry.Icon()}##{headerLabel}_{i}", btnSize)) entry.OnClick();
             if (tint.HasValue) ImGui.PopStyleColor();
             ImGui.EndDisabled();
 

@@ -361,7 +361,7 @@ public static class MaterialCache
 
             EditorUI.Text("Roughness", $"Min: {layer.Roughness.X:F2}, Max: {layer.Roughness.Y:F2}");
             EditorUI.Text("Blend Mode", ((byte) blendMode).ToString());
-            EditorUI.Text("Translucent", IsTranslucent ? "Yes" : "No");
+            EditorUI.Text("Translucent", IsTranslucent ? "\uf00c" : "\uf00d");
 
             EditorUI.Property("GPU Status");
             if (Raw is PerMaterialMeshData { IsReady: true } gpuData)

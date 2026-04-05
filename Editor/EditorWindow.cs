@@ -81,30 +81,24 @@ public partial class EditorWindow : GameWindow
 
     private void DoUpdate(FrameEventArgs args)
     {
-        if (!IsFocused) return;
-
-        var delta = (float) args.Time;
-        Manager.Update(delta);
+        Manager.Update((float) args.Time);
     }
 
     private void DoRender(FrameEventArgs args)
     {
-        if (!IsFocused) return;
-
         Manager.Render();
-
         SwapBuffers();
     }
 
     private void DoTextInput(TextInputEventArgs e)
     {
         if (!IsFocused) return;
-
         Manager.TextInput((char) e.Unicode);
     }
 
     private void DoResize(FramebufferResizeEventArgs e)
     {
+        if (!IsFocused) return;
         Manager.Resize(e.Width, e.Height);
     }
 

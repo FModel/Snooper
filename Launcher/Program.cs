@@ -317,15 +317,25 @@ switch (provider.ProjectName)
     }
     case "CosmicShake":
     {
-        // camera.CameraComponent.FarPlaneDistance = 1000f;
+        // camera.CameraComponent.FarClipPlane = 1000f;
         // grid.Components.Clear();
         // grid.Components.Add(new OpaqueGridComponent());
         //
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/SpongeBob/SK_SpongeBob_RoboSpongeBob.SK_SpongeBob_RoboSpongeBob"), new FTransform(new FVector(-100, 0, 0))));
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/Patrick/SK_Patrick_Default.SK_Patrick_Default"), new FTransform(new FVector(100, 0, 0))));
+        // var bob = new Actor("Bob");
+        // var meshB = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/SpongeBob/SK_SpongeBob_PREVIEW.SK_SpongeBob_PREVIEW"), new FTransform(new FVector(-100, 0, 0)));
+        // meshB.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("CosmicShake/Content/CS/Characters/SpongeBob/Animations/Montages/AM_SpongeBob_Waiting_Idle_03.AM_SpongeBob_Waiting_Idle_03"));
+        // bob.Components.Add(meshB);
+        //
+        // var patrick = new Actor("Patrick");
+        // var meshP = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/Patrick/SK_Patrick_Default.SK_Patrick_Default"), new FTransform(new FVector(100, 0, 0)));
+        // meshP.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("CosmicShake/Content/CS/Characters/Patrick/Animations/Montages/AM_Patrick_Waiting_Idle_04.AM_Patrick_Waiting_Idle_04"));
+        // patrick.Components.Add(meshP);
+        //
+        // scene.Children.Add(bob);
+        // scene.Children.Add(patrick);
         // break;
 
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/Global/BB_P_Background.BB_P_Background")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_P.BB_P")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z11_HUB10/BB_Z11_HUB10_Geo.BB_Z11_HUB10_Geo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z09_HUB9/BB_Z09_HUB9_Geo.BB_Z09_HUB9_Geo")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z08_HUB8/BB_Z08_HUB8_Geo.BB_Z08_HUB8_Geo")));

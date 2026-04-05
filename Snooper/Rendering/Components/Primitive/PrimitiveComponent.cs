@@ -189,11 +189,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public override string Icon => "\ue4e2";
 
-    private HeaderButtons HeaderButtons => field ??= new HeaderButtons()
-        .Add("\uf0c5", "Copy Path", () => ImGui.SetClipboardText(Descriptor.Path))
+    private const string HeaderLabel = "Mesh";
+    private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
         .Add(() => IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, () => "Toggle Visibility",
             () => { IsVisible = !IsVisible; }, null,
-            () => IsVisible ? null : Settings.RedColor);
+            () => IsVisible ? null : Settings.RedColor)
+        .Add("\uf0c5", "Copy Path", () => ImGui.SetClipboardText(Descriptor.Path))
+        .Add("\uf05a", "Primitive Info", () => ImGui.OpenPopup("##PrimitiveInfo"));
 
     private int _sectionIndex;
     private int _materialIndex;
@@ -201,8 +203,10 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     {
         base.DrawControls();
 
-        var open = ImGui.CollapsingHeader("Mesh", ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+        var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
         HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
+
+        DrawInfoPopup();
 
         if (!open) return;
 
@@ -325,6 +329,32 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 ImGui.TextColored(new Vector4(1f, 0.5f, 0f, 1f), "No resources allocated");
             }
             ImGui.TreePop();
+        }
+    }
+
+    private void DrawInfoPopup()
+    {
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowSize(viewport.WorkSize * 0.75f, ImGuiCond.Appearing);
+        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f));
+
+        var open = true;
+        var flags = ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.ChildMenu;
+        if (ImGui.BeginPopupModal("##PrimitiveInfo", ref open, flags))
+        {
+            if (ImGui.BeginChild("##PrimitiveInfoBody", Vector2.Zero, ImGuiChildFlags.FrameStyle))
+            {
+                Descriptor.DrawControls();
+
+                if (Metadata is { } metadata)
+                {
+                    ImGui.Spacing();
+                    ImGui.SeparatorText("GPU Resources");
+                    metadata.DrawControls();
+                }
+            }
+            ImGui.EndChild();
+            ImGui.EndPopup();
         }
     }
 }

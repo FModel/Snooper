@@ -8,7 +8,7 @@ namespace Snooper.Rendering.Components.Descriptors;
 public interface ISocketDescriptor
 {
     public string Name { get; }
-    public Matrix4x4 LocalMatrix  { get; }
+    public Matrix4x4 LocalMatrix { get; }
 }
 
 public class StaticMeshSocketDescriptor(UStaticMeshSocket socket) : ISocketDescriptor
