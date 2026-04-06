@@ -7,6 +7,7 @@ namespace Snooper.Rendering.Components.Descriptors;
 
 public sealed class SequenceDescriptor(CAnimSequence sequence)
 {
+    public readonly string Name = sequence.Name;
     public readonly float StartTime = sequence.StartPos;
     public readonly float Duration = sequence.AnimEndTime * sequence.OriginalSequence.RateScale;
     public readonly int FrameCount = sequence.NumFrames;

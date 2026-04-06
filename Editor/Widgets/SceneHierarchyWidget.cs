@@ -4,6 +4,7 @@ using System.Numerics;
 using Editor.Managers;
 using Serilog;
 using Snooper;
+using Snooper.Rendering.Components.Mesh;
 
 namespace Editor.Widgets;
 
@@ -220,14 +221,18 @@ public class SceneHierarchyWidget
             ImGui.TextDisabled(actor.Name);
             ImGui.Separator();
 
+            if (actor.RootComponent is SkeletalMeshComponent sk && ImGui.MenuItem("\uf04b  Set Animation"))
+            {
+                sk.SetAnimation(null); // TODO
+            }
             if (ImGui.MenuItem($"{Settings.EyeIcon}  Toggle Visibility")) actor.ToggleVisibility();
-            if (ImGui.MenuItem("\uf13d  Teleport To")) actor.RootComponent?.TeleportTo();
+            if (ImGui.MenuItem("\uf124  Teleport To")) actor.RootComponent?.TeleportTo();
             if (ImGui.MenuItem("\uf1c9  Open JSON"))
             {
                 if (actor.ActorManager is EditorManager manager)
                     manager._jsonViewer.Open(actor);
             }
-            if (ImGui.MenuItem("\uf24d  Clone")) { }
+            if (ImGui.MenuItem("\uf24d  Clone")) actor.Parent?.Children.Add((Actor) actor.Clone());
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
                 if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(actor.OwnerPath);

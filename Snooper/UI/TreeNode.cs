@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace Snooper.UI;
 
-public abstract class TreeNode : IControllable, IEquatable<TreeNode>
+public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
 {
     public string Name { get; internal set; }
     public string Type { get; }
@@ -19,6 +19,16 @@ public abstract class TreeNode : IControllable, IEquatable<TreeNode>
     public bool IsNodeSelected { get; set; }
     public int NodeDepth { get; set; }
     public int NodeIndex { get; set; }
+
+    protected TreeNode(TreeNode other)
+    {
+        Name = other.Name + " (Copy)";
+        Type = other.Type;
+        Class = other.Class;
+        Path = other.Path;
+        OwnerPath = other.OwnerPath;
+        JsonProperties = other.JsonProperties;
+    }
 
     protected TreeNode(string name)
     {
@@ -53,6 +63,8 @@ public abstract class TreeNode : IControllable, IEquatable<TreeNode>
     public abstract void SetOutlined(bool state);
     public abstract bool ShouldScrollHere { get; set; }
     public abstract void DrawControls();
+
+    public abstract object Clone();
 
     public static bool operator ==(TreeNode? left, TreeNode? right)
     {

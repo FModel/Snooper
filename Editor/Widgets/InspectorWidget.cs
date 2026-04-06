@@ -6,6 +6,7 @@ using System.Numerics;
 using Snooper.Rendering.Actors;
 using Serilog;
 using Snooper;
+using Snooper.Rendering.Components.Mesh;
 
 namespace Editor.Widgets;
 
@@ -53,6 +54,17 @@ public class InspectorWidget
             DrawClippedTree(actor);
 
             (selectedComponent ?? actor.RootComponent)?.DrawControls();
+
+            ImGui.SeparatorText("");
+            ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.Header));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGui.GetColorU32(ImGuiCol.HeaderHovered));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGui.GetColorU32(ImGuiCol.ButtonActive));
+            var width = ImGui.GetContentRegionAvail().X;
+            if (ImGui.Button($"{Settings.AddIcon}  Add Component", new Vector2(width, 0)))
+            {
+
+            }
+            ImGui.PopStyleColor(3);
         }
         ImGui.End();
     }
@@ -167,13 +179,17 @@ public class InspectorWidget
             ImGui.TextDisabled(component.Name);
             ImGui.Separator();
 
-            if (ImGui.MenuItem("\uf13d  Teleport To") && component is SpatialComponent spatial) spatial.TeleportTo();
+            if (component is SkeletalMeshComponent sk && ImGui.MenuItem("\uf04b  Set Animation"))
+            {
+                sk.SetAnimation(null); // TODO
+            }
+            if (ImGui.MenuItem("\uf124  Teleport To") && component is SpatialComponent spatial) spatial.TeleportTo();
             if (ImGui.MenuItem("\uf1c9  Open JSON"))
             {
                 if (component.Actor?.ActorManager is EditorManager manager)
                     manager._jsonViewer.Open(component);
             }
-            if (ImGui.MenuItem("\uf24d  Clone")) { }
+            if (ImGui.MenuItem("\uf24d  Clone")) component.Actor?.Components.Add((ActorComponent) component.Clone());
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
                 if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(component.OwnerPath);

@@ -11,21 +11,24 @@ namespace Snooper.Rendering.Actors;
 
 public class Actor : TreeNode
 {
-    public bool IsVisible
+    private Actor(Actor other) : base(other)
     {
-        get;
-        set
+        Components = new ActorComponentCollection(this);
+        Components.CollectionChanged += OnComponentsCollectionChanged;
+
+        Children = [];
+        Children.CollectionChanged += OnChildrenCollectionChanged;
+
+        foreach (var component in other.Components)
         {
-            if (field == value) return;
-
-            field = value;
-
-            foreach (var component in Components.OfType<IPrimitiveComponent>())
-                component.IsVisible = field;
-            foreach (var child in Children)
-                child.IsVisible = field;
+            Components.Add((ActorComponent) component.Clone());
         }
-    } = true;
+
+        foreach (var child in other.Children)
+        {
+            Children.Add((Actor) child.Clone());
+        }
+    }
 
     public Actor(string name) : base(name)
     {
@@ -87,6 +90,22 @@ public class Actor : TreeNode
             SetIcon(field?.Icon ?? Icon);
         }
     }
+
+    public bool IsVisible
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+
+            field = value;
+
+            foreach (var component in Components.OfType<IPrimitiveComponent>())
+                component.IsVisible = field;
+            foreach (var child in Children)
+                child.IsVisible = field;
+        }
+    } = true;
 
     public void ToggleVisibility()
     {
@@ -230,4 +249,6 @@ public class Actor : TreeNode
     {
 
     }
+
+    public sealed override object Clone() => new Actor(this);
 }

@@ -73,6 +73,17 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     /// </summary>
     protected virtual bool SupportsOpaquePass => false;
 
+    protected PrimitiveComponent(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> other) : base(other)
+    {
+        if (other.Descriptor != null)
+        {
+            Descriptor = (PrimitiveDescriptor<TVertex>) other.Descriptor.Clone();
+        }
+        IsOpaque = other.IsOpaque;
+        IsVisible = other.IsVisible;
+        CastShadow = other.CastShadow;
+    }
+
     protected PrimitiveComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
 
@@ -210,9 +221,9 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
         if (!open) return;
 
-        EditorUI.PropertyValueTable("Descriptor", () =>
+        EditorUI.PropertyValueTable(HeaderLabel, () =>
         {
-            EditorUI.Text("Guid", Descriptor.Guid.ToString(EGuidFormats.UniqueObjectGuid));
+            EditorUI.Text("Name", Descriptor.Name ?? Settings.NoName);
 
             EditorUI.Property($"LODs ({Descriptor.Lods.Length})");
             ImGui.BeginGroup();
@@ -317,19 +328,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 ImGui.TextColored(Settings.OrangeColor, "No material data container assigned");
             }
         });
-
-        if (ImGui.TreeNodeEx("Metadata", ImGuiTreeNodeFlags.None))
-        {
-            if (Metadata is { } metadata)
-            {
-                metadata.DrawControls();
-            }
-            else
-            {
-                ImGui.TextColored(new Vector4(1f, 0.5f, 0f, 1f), "No resources allocated");
-            }
-            ImGui.TreePop();
-        }
     }
 
     private void DrawInfoPopup()
@@ -339,7 +337,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f));
 
         var open = true;
-        var flags = ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.ChildMenu;
+        var flags = ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;
         if (ImGui.BeginPopupModal("##PrimitiveInfo", ref open, flags))
         {
             if (ImGui.BeginChild("##PrimitiveInfoBody", Vector2.Zero, ImGuiChildFlags.FrameStyle))
@@ -366,6 +364,11 @@ public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<
     where TVertex : unmanaged
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
+    protected PrimitiveComponent(PrimitiveComponent<TVertex, TPerMaterialData> other) : base(other)
+    {
+        Materials = other.Materials;
+    }
+
     protected PrimitiveComponent(TPrimitiveData<TVertex> primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(transform, name)
     {
         Descriptor = new PrimitiveDescriptor<TVertex>(bounds, () => primitive);
@@ -382,12 +385,19 @@ public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<
     }
 
     public sealed override MaterialSection[] Materials { get; } = [new(0)];
+
+    public override object Clone() => new PrimitiveComponent<TVertex, TPerMaterialData>(this);
 }
 
 /// <inheritdoc />
 public class PrimitiveComponent<TPerMaterialData> : PrimitiveComponent<Vector3, TPerMaterialData>
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
+    protected PrimitiveComponent(PrimitiveComponent<TPerMaterialData> other) : base(other)
+    {
+
+    }
+
     protected PrimitiveComponent(PrimitiveData primitive, CullingBounds bounds, Transform? transform = null, string? name = null) : base(primitive, bounds, transform, name)
     {
 
@@ -408,6 +418,11 @@ public class PrimitiveComponent<TPerMaterialData> : PrimitiveComponent<Vector3, 
 [DefaultActorSystem(typeof(PrimitiveSystem))]
 public class PrimitiveComponent : PrimitiveComponent<PerMaterialData>
 {
+    protected PrimitiveComponent(PrimitiveComponent other) : base(other)
+    {
+
+    }
+
     public PrimitiveComponent(PrimitiveData primitive, Transform? transform = null, string? name = null) : base(primitive, new FBox(), transform, name)
     {
 

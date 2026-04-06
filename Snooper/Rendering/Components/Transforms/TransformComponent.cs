@@ -16,6 +16,21 @@ public class SpatialComponent : ActorComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Transform;
 
+    protected SpatialComponent(SpatialComponent other) : base(other)
+    {
+        LocalTransform = (Transform) other.LocalTransform.Clone();
+        AttachSocketName = other.AttachSocketName;
+
+        _absPosition = other._absPosition;
+        _absRotation = other._absRotation;
+        _absScale = other._absScale;
+
+        _originalAbsPosition = other._originalAbsPosition;
+        _originalAbsRotation = other._originalAbsRotation;
+        _originalAbsScale = other._originalAbsScale;
+        _originalTransform = (Transform) other._originalTransform.Clone();
+    }
+
     public SpatialComponent(Transform? transform = null, string? name = null) : base(name)
     {
         LocalTransform = transform ?? Transform.Identity;
@@ -372,7 +387,7 @@ public class SpatialComponent : ActorComponent
             ImGui.TextUnformatted(AttachSocketName);
             ImGui.SameLine();
             ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
-            ImGui.TextUnformatted($"  (in {Relation?.Name ?? "Unknown"})");
+            ImGui.TextUnformatted($"(in {Relation?.Name ?? "Unknown"})");
             ImGui.PopStyleColor();
         }
 
@@ -385,4 +400,6 @@ public class SpatialComponent : ActorComponent
 
         ImGui.Unindent();
     }
+
+    public override object Clone() => new SpatialComponent(this);
 }

@@ -283,12 +283,12 @@ switch (provider.ProjectName)
     }
     case "FarFarWest":
     {
-        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Characters/BP_NPC_RailwayWorker.BP_NPC_RailwayWorker_C")));
+        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Characters/BP_NPC_RailwayWorker.BP_NPC_RailwayWorker_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Quests/Assets/BP_GatlingAntenna.BP_GatlingAntenna_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/GPE/Assets/Train/BP_TrainExtraction.BP_TrainExtraction_C")));
 
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Area41.L_Map_Area41"))); // TODO: not a big map but lags a lot, maybe something to do with the number of instances
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Tuto.L_Map_Tuto")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Tuto.L_Map_Tuto")));
         break;
     }
     case "Denshattack_Proto":
@@ -317,23 +317,23 @@ switch (provider.ProjectName)
     }
     case "CosmicShake":
     {
-        // camera.CameraComponent.FarClipPlane = 1000f;
-        // grid.Components.Clear();
-        // grid.Components.Add(new OpaqueGridComponent());
-        //
-        // var bob = new Actor("Bob");
-        // var meshB = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/SpongeBob/SK_SpongeBob_PREVIEW.SK_SpongeBob_PREVIEW"), new FTransform(new FVector(-100, 0, 0)));
-        // meshB.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("CosmicShake/Content/CS/Characters/SpongeBob/Animations/Montages/AM_SpongeBob_Waiting_Idle_03.AM_SpongeBob_Waiting_Idle_03"));
-        // bob.Components.Add(meshB);
-        //
-        // var patrick = new Actor("Patrick");
-        // var meshP = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/Patrick/SK_Patrick_Default.SK_Patrick_Default"), new FTransform(new FVector(100, 0, 0)));
-        // meshP.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("CosmicShake/Content/CS/Characters/Patrick/Animations/Montages/AM_Patrick_Waiting_Idle_04.AM_Patrick_Waiting_Idle_04"));
-        // patrick.Components.Add(meshP);
-        //
-        // scene.Children.Add(bob);
-        // scene.Children.Add(patrick);
-        // break;
+        camera.CameraComponent.FarClipPlane = 1000f;
+        grid.Components.Clear();
+        grid.Components.Add(new OpaqueGridComponent());
+
+        var bob = new Actor("Bob");
+        var meshB = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/SpongeBob/SK_SpongeBob_PREVIEW.SK_SpongeBob_PREVIEW"), new FTransform(new FVector(-100, 0, 0)));
+        meshB.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("CosmicShake/Content/CS/Characters/SpongeBob/Animations/Montages/AM_SpongeBob_Waiting_Idle_03.AM_SpongeBob_Waiting_Idle_03"));
+        bob.Components.Add(meshB);
+
+        var patrick = new Actor("Patrick");
+        var meshP = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/Patrick/SK_Patrick_Default.SK_Patrick_Default"), new FTransform(new FVector(100, 0, 0)));
+        meshP.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("CosmicShake/Content/CS/Characters/Patrick/Animations/Montages/AM_Patrick_Waiting_Idle_04.AM_Patrick_Waiting_Idle_04"));
+        patrick.Components.Add(meshP);
+
+        scene.Children.Add(bob);
+        scene.Children.Add(patrick);
+        break;
 
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_P.BB_P")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CosmicShake/Content/CS/Maps/BikiniBottom/BB_Z11_HUB10/BB_Z11_HUB10_Geo.BB_Z11_HUB10_Geo")));

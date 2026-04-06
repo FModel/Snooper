@@ -11,6 +11,11 @@ namespace Snooper.Rendering.Components.Mesh;
 [DefaultActorSystem(typeof(SkinnedMeshRenderSystem))]
 public abstract class SkinnedMeshComponent : MeshComponent
 {
+    protected SkinnedMeshComponent(SkinnedMeshComponent other) : base(other)
+    {
+
+    }
+
     protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh.Materials, transform, skeletalMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));

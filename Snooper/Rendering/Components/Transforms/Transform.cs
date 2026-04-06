@@ -3,13 +3,20 @@ using CUE4Parse.UE4.Objects.Core.Math;
 
 namespace Snooper.Rendering.Components.Transforms;
 
-public class Transform()
+public class Transform() : ICloneable
 {
     public static Transform Identity => new();
 
     public Vector3 Position = Vector3.Zero;
     public Quaternion Rotation = Quaternion.Identity;
     public Vector3 Scale = Vector3.One;
+
+    private Transform(Transform other) : this()
+    {
+        Position = other.Position;
+        Rotation = other.Rotation;
+        Scale = other.Scale;
+    }
 
     public Transform(Vector3 position, Quaternion rotation) : this()
     {
@@ -56,4 +63,5 @@ public class Transform()
     public static implicit operator Transform(FTransform transform) => new(transform);
     public static implicit operator Transform(Vector3 position) => new(position);
     public static implicit operator Transform(Quaternion rotation) => new(rotation);
+    public object Clone() => new Transform(this);
 }

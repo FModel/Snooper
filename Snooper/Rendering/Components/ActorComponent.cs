@@ -11,6 +11,11 @@ namespace Snooper.Rendering.Components;
 
 public abstract class ActorComponent : TreeNode
 {
+    protected ActorComponent(ActorComponent other) : base(other)
+    {
+
+    }
+
     protected ActorComponent(string? name = null) : base(name ?? Settings.NoName)
     {
 

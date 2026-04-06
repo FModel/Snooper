@@ -4,17 +4,24 @@ using CUE4Parse.UE4.Objects.Core.Math;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public readonly struct CullingBounds
+public readonly struct CullingBounds : ICloneable
 {
     public readonly Vector3 Center;
     public readonly Vector3 Extents;
     public readonly string BoundsFormatted;
 
+    private CullingBounds(CullingBounds other)
+    {
+        Center = other.Center;
+        Extents = other.Extents;
+        BoundsFormatted = other.BoundsFormatted;
+    }
+
     public CullingBounds(Vector3 center, Vector3 extents)
     {
         Center = center;
         Extents = extents;
-        BoundsFormatted = GetSizeFormatted();
+        BoundsFormatted = GetBoundsFormatted();
     }
 
     public CullingBounds(Vector3 extents) : this(Vector3.Zero, extents)
@@ -34,10 +41,10 @@ public readonly struct CullingBounds
 
         Center = new Vector3(center.X, center.Z, center.Y);
         Extents = new Vector3(extents.X, extents.Z, extents.Y);
-        BoundsFormatted = GetSizeFormatted();
+        BoundsFormatted = GetBoundsFormatted();
     }
 
-    private string GetSizeFormatted()
+    private string GetBoundsFormatted()
     {
         var size = Extents * 2;
         var absX = Math.Abs(size.X);
@@ -52,4 +59,5 @@ public readonly struct CullingBounds
     public static implicit operator CullingBounds(FBox box) => new(box);
 
     public override string ToString() => $"Center: {Center}, Extents: {Extents}";
+    public object Clone() => new CullingBounds(this);
 }

@@ -10,6 +10,11 @@ namespace Snooper.Rendering.Components.Mesh;
 [DefaultActorSystem(typeof(StaticMeshRenderSystem))]
 public class StaticMeshComponent : MeshComponent
 {
+    protected StaticMeshComponent(StaticMeshComponent other) : base(other)
+    {
+
+    }
+
     public StaticMeshComponent(UStaticMesh staticMesh, Transform? transform = null) : base(staticMesh.Materials, transform, staticMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
@@ -23,4 +28,6 @@ public class StaticMeshComponent : MeshComponent
     }
 
     public override string Icon => "\uf1b2";
+
+    public override object Clone() => new StaticMeshComponent(this);
 }

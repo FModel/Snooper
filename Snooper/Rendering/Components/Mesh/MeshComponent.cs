@@ -78,12 +78,17 @@ public unsafe struct PerMaterialMeshData : IPerMaterialData
 
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>
 {
-    private readonly ResolvedObject?[] _materials;
+    private readonly ResolvedObject?[] _materials = [];
     private readonly List<UBuildingTextureData?> _textureData = [];
 
     public sealed override MaterialSection[] Materials { get; }
 
     protected override bool SupportsOpaquePass => true;
+
+    protected MeshComponent(MeshComponent other) : base(other)
+    {
+        Materials = other.Materials;
+    }
 
     protected MeshComponent(ResolvedObject?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {

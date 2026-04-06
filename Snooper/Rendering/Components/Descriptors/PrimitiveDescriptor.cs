@@ -15,7 +15,7 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public class PrimitiveDescriptor<TVertex> : IControllable where TVertex : unmanaged
+public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVertex : unmanaged
 {
     public string? Name { get; }
     public string? Path { get; }
@@ -24,6 +24,17 @@ public class PrimitiveDescriptor<TVertex> : IControllable where TVertex : unmana
     public LodDescriptor<TVertex>[] Lods { get; }
     public SkeletonDescriptor? Skeleton { get; }
     public ISocketDescriptor?[] Sockets { get; }
+
+    private PrimitiveDescriptor(PrimitiveDescriptor<TVertex> other)
+    {
+        Name = other.Name;
+        Path = other.Path;
+        Guid = other.Guid;
+        Bounds = (CullingBounds) other.Bounds.Clone();
+        Lods = [];
+        Skeleton = null;
+        Sockets = [];
+    }
 
     public PrimitiveDescriptor(CullingBounds bounds, Func<TPrimitiveData<TVertex>> factory)
     {
@@ -305,4 +316,6 @@ public class PrimitiveDescriptor<TVertex> : IControllable where TVertex : unmana
             ImGui.EndTable();
         }
     }
+
+    public object Clone() => new PrimitiveDescriptor<TVertex>(this);
 }
