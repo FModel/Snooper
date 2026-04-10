@@ -8,7 +8,6 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
-using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Cache;
@@ -17,7 +16,6 @@ using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Primitives;
-using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Components.Mesh;
 

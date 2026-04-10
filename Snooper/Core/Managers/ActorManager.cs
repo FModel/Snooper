@@ -1,5 +1,6 @@
 ﻿using System.Collections.Specialized;
 using System.Reflection;
+using CUE4Parse.FileProvider;
 using ImGuiNET;
 using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
@@ -13,7 +14,7 @@ using Snooper.UI;
 
 namespace Snooper.Core.Managers;
 
-public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IControllable, IResizable
+public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IMemoryDetailsProvider, IControllable, IResizable
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
@@ -25,6 +26,7 @@ public abstract class ActorManager : IGameSystem, IMemoryDetailsProvider, IContr
     public float Time { get; private set; }
     public RendererInfo Renderer { get; } = new();
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
+    public IFileProvider FileProvider { get; } = fileProvider;
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 
     public int ActorCount => _actors.Count;

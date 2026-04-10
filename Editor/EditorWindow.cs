@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Assets.Exports;
+﻿using CUE4Parse.FileProvider;
+using CUE4Parse.UE4.Assets.Exports;
 using Editor.Managers;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
@@ -13,7 +14,7 @@ public partial class EditorWindow : GameWindow
 {
     public readonly ImGuiManager Manager;
 
-    public EditorWindow(double fps, int width, int height, bool startVisible = true) : base(
+    public EditorWindow(double fps, int width, int height, IFileProvider fileProvider, bool startVisible = true) : base(
         new GameWindowSettings { UpdateFrequency = fps },
         new NativeWindowSettings
         {
@@ -47,7 +48,7 @@ public partial class EditorWindow : GameWindow
         };
         Unload += DoUnload; // right after the game loop ends
 
-        Manager = new EditorManager(this);
+        Manager = new EditorManager(this, fileProvider);
     }
 
     protected override void OnLoad()

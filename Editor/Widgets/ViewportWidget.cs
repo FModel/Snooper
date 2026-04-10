@@ -232,7 +232,7 @@ public class ViewportWidget
     private void DrawOrbitCircle(InteractiveCameraComponent camera, ActorComponent? component, Vector2 contentPos, Vector2 contentSize)
     {
         var orbitCenter = camera.LocalTransform.Position - camera.Forward * camera.OrbitDistance;
-        var circleY = component is SpatialComponent spatial ? spatial.WorldMatrix.Translation.Y : 0f;
+        var circleY = component is SpatialComponent spatial ? spatial.GizmoMatrix.Translation.Y : 0f;
         var viewProj = camera.ViewMatrix * camera.ProjectionMatrix;
 
         var drawList = ImGui.GetWindowDrawList();

@@ -173,7 +173,6 @@ public class InspectorWidget
 
         var toggledOpen = ImGui.IsItemToggledOpen();
 
-        ImGui.PushStyleVar(ImGuiStyleVar.PopupBorderSize, 1f);
         if (ImGui.BeginPopupContextItem("##ComponentContext"))
         {
             ImGui.TextDisabled(component.Name);
@@ -218,7 +217,6 @@ public class InspectorWidget
 
             ImGui.EndPopup();
         }
-        ImGui.PopStyleVar();
 
         if (ImGui.IsItemHovered())
         {

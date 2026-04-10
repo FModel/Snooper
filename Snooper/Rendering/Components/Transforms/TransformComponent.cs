@@ -180,18 +180,7 @@ public class SpatialComponent : ActorComponent
 
     public virtual Matrix4x4[] GetWorldMatrices(int index = -1) => [WorldMatrix];
 
-    protected virtual (Vector3, float) GetTeleportPosition(CameraComponent camera)
-    {
-        var matrices = GetWorldMatrices();
-        if (matrices.Length == 0) return (Vector3.Zero, 1.0f);
-
-        var center = Vector3.Zero;
-        foreach (var matrix in matrices)
-        {
-            center += matrix.Translation;
-        }
-        return (center / matrices.Length, 2.50f);
-    }
+    protected virtual (Vector3, float) GetTeleportPosition(CameraComponent camera) => (GizmoMatrix.Translation, 2.50f);
 
     public void TeleportTo()
     {
@@ -246,6 +235,7 @@ public class SpatialComponent : ActorComponent
         }
     }
 
+    #region UI
     public override string Icon => "\uf601";
     public override bool ShouldScrollHere
     {
@@ -269,6 +259,45 @@ public class SpatialComponent : ActorComponent
             () => IsLocalTransformDirty(_instanceIndex) ? Settings.OrangeColor : null
         );
 
+    private PropertyToggleButton[] InstanceNavButtons => field ??= [
+        new PropertyToggleButton(
+            () => "\uf104",
+            () => { _instanceIndex = _instanceIndex < 0 ? InstanceCount - 1 : _instanceIndex - 1; TeleportTo(); },
+            () => "Previous"
+        ),
+        new PropertyToggleButton(
+            () => "\uf105",
+            () => { _instanceIndex = _instanceIndex >= InstanceCount - 1 ? -1 : _instanceIndex + 1; TeleportTo(); },
+            () => "Next"
+        )
+    ];
+    private PropertyToggleButton[] PositionButtons => field ??= [
+        new PropertyToggleButton(
+            () => _absPosition ? "\uf023" : "\uf3c1",
+            () => { _absPosition = !_absPosition; _isTransformDirty = true; MarkDirty(DirtyFlags.Transform); },
+            () => _absPosition ? "Absolute Position\nClick to make relative" : "Relative Position\nClick to make absolute"
+        )
+    ];
+    private PropertyToggleButton[] RotationButtons => field ??= [
+        new PropertyToggleButton(
+            () => _absRotation ? "\uf023" : "\uf3c1",
+            () => { _absRotation = !_absRotation; _isTransformDirty = true; MarkDirty(DirtyFlags.Transform); },
+            () => _absRotation ? "Absolute Rotation\nClick to make relative" : "Relative Rotation\nClick to make absolute"
+        )
+    ];
+    private PropertyToggleButton[] ScaleButtons => field ??= [
+        new PropertyToggleButton(
+            () => _uniformScale ? "\uf0c1" : "\uf127",
+            () => _uniformScale = !_uniformScale,
+            () => _uniformScale ? "Uniform Scale\nClick to allow non-uniform" : "Non-Uniform Scale\nClick to link axes"
+        ),
+        new PropertyToggleButton(
+            () => _absScale ? "\uf023" : "\uf3c1",
+            () => { _absScale = !_absScale; _isTransformDirty = true; MarkDirty(DirtyFlags.Transform); },
+            () => _absScale ? "Absolute Scale\nClick to make relative" : "Relative Scale\nClick to make absolute"
+        )
+    ];
+
     private int _instanceIndex = -1; // -1 = pivot, 0..N-1 = instance index
     public override void DrawControls()
     {
@@ -278,128 +307,60 @@ public class SpatialComponent : ActorComponent
         HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
         if (!open) return;
-        ImGui.Indent();
 
-        var isPivot = _instanceIndex < 0;
-        var btnSize = new Vector2(ImGui.GetFrameHeight());
-
-        // ── Transform table ───────────────────────────────────────────────────
-        if (!ImGui.BeginTable("TransformControlsTable", 3, ImGuiTableFlags.SizingStretchProp))
+        EditorUI.PropertyValueTable(HeaderLabel, () =>
         {
-            ImGui.Unindent();
-            return;
-        }
+            var isPivot = _instanceIndex < 0;
 
-        ImGui.TableSetupColumn("Property", ImGuiTableColumnFlags.WidthStretch, 1.0f);
-        ImGui.TableSetupColumn("Value",    ImGuiTableColumnFlags.WidthStretch, 2.0f);
-        ImGui.TableSetupColumn("Flags",    ImGuiTableColumnFlags.WidthFixed,   btnSize.X * 2.2f);
+            if (InstanceCount > 1)
+            {
+                EditorUI.PropertyWithToggle($"Instance ({InstanceCount})", InstanceNavButtons);
 
-        // ── Target selector (only shown when instanced) ───────────────────────
-        if (InstanceCount > 1)
-        {
-            EditorUI.Property($"Instances ({InstanceCount})");
+                var displayVal = _instanceIndex < 0 ? 0 : _instanceIndex + 1;
+                if (ImGui.InputInt("##InstInput", ref displayVal, 0, 0))
+                {
+                    displayVal = Math.Clamp(displayVal, 0, InstanceCount);
+                    _instanceIndex = displayVal == 0 ? -1 : displayVal - 1;
+                }
 
-            var arrowW  = ImGui.GetFrameHeight();
-            var spacing = ImGui.GetStyle().ItemSpacing.X;
-            var inputW  = ImGui.CalcTextSize($"{InstanceCount}").X + ImGui.GetStyle().FramePadding.X * 2f + 20f;
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.BeginTooltip();
+                    ImGui.TextUnformatted($"0 = Pivot\n1..{InstanceCount} = Instance Index");
+                    ImGui.SetWindowFontScale(0.85f);
+                    ImGui.Spacing();
+                    ImGui.TextDisabled("Changes to pivot transform will affect all instances");
+                    ImGui.SetWindowFontScale(1.0f);
+                    ImGui.EndTooltip();
+                }
+            }
 
-            ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
+            var edited  = false;
+            var t = GetLocalTransform(_instanceIndex);
 
-            if (ImGui.Button("\uf060##InstPrev", new Vector2(arrowW, arrowW)))
-                _instanceIndex = _instanceIndex <= -1 ? InstanceCount - 1 : _instanceIndex - 1;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Previous");
+            EditorUI.PropertyWithToggle("Position", PositionButtons);
+            edited |= EditorUI.DragAxes("Position", ref t.Position);
 
-            ImGui.SameLine(0, spacing);
+            EditorUI.PropertyWithToggle("Rotation", RotationButtons);
+            edited |= EditorUI.DragAxes("Rotation", ref t.Rotation);
 
-            // InputInt — display: -1 = Pivot, 1..N = Instance 1..N (1-based)
-            // internal: _instanceIndex = -1 (Pivot), 0..N-1 (instances)
-            var isDirtyInst  = IsLocalTransformDirty(_instanceIndex);
-            var displayVal   = _instanceIndex < 0 ? -1 : _instanceIndex + 1; // 0-based → 1-based
-            ImGui.SetNextItemWidth(inputW);
-            if (isDirtyInst) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0.2f, 1f));
-            if (ImGui.InputInt("##InstInput", ref displayVal, 0, 0))
-                _instanceIndex = displayVal < 0 ? -1 : Math.Clamp(displayVal - 1, 0, InstanceCount - 1);
-            if (isDirtyInst) ImGui.PopStyleColor();
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(_instanceIndex < 0 ? "Pivot" : $"Instance {_instanceIndex + 1} of {InstanceCount}");
+            EditorUI.PropertyWithToggle("Scale", ScaleButtons);
+            edited |= EditorUI.DragAxes("Scale", ref t.Scale, _uniformScale, out _, 0.01f, 0.0001f);
 
-            ImGui.SameLine(0, spacing);
+            if (isPivot && !string.IsNullOrEmpty(AttachSocketName))
+            {
+                EditorUI.Property("Attached To");
+                ImGui.TextUnformatted(AttachSocketName);
+                ImGui.SameLine();
+                ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+                ImGui.TextUnformatted($"(in {Relation?.Name ?? "Unknown"})");
+                ImGui.PopStyleColor();
+            }
 
-            if (ImGui.Button("\uf061##InstNext", new Vector2(arrowW, arrowW)))
-                _instanceIndex = _instanceIndex >= InstanceCount - 1 ? -1 : _instanceIndex + 1;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Next");
-
-            ImGui.PopStyleVar();
-        }
-
-        // Resolve which transform we're editing
-        var t = GetLocalTransform(_instanceIndex);
-        var edited  = false;
-
-        // ── Position ──────────────────────────────────────────────────────────
-        EditorUI.Property("Position");
-        edited |= EditorUI.DragFloat3Axes("Pos", ref t.Position);
-        ImGui.TableSetColumnIndex(2);
-        ImGui.BeginDisabled(!isPivot);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(2f, ImGui.GetStyle().ItemSpacing.Y));
-        edited |= EditorUI.ToggleButtonSquare("AbsPos", "\uf05b", ref _absPosition, new Vector4(0.20f, 0.55f, 0.85f, 1f));
-        ImGui.PopStyleVar();
-        ImGui.EndDisabled();
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip(isPivot ? "Absolute Position" + (_absPosition ? " (ON)" : " (OFF)") : "Only available for Pivot");
-
-        // ── Rotation ──────────────────────────────────────────────────────────
-        EditorUI.Property("Rotation");
-        edited |= EditorUI.DragFloat4Axes("Rot", ref t.Rotation);
-        ImGui.TableSetColumnIndex(2);
-        ImGui.BeginDisabled(!isPivot);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(2f, ImGui.GetStyle().ItemSpacing.Y));
-        edited |= EditorUI.ToggleButtonSquare("AbsRot", "\uf2f1", ref _absRotation, new Vector4(0.20f, 0.55f, 0.85f, 1f));
-        ImGui.PopStyleVar();
-        ImGui.EndDisabled();
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip(isPivot ? "Absolute Rotation" + (_absRotation ? " (ON)" : " (OFF)") : "Only available for Pivot");
-
-        // ── Scale ─────────────────────────────────────────────────────────────
-        EditorUI.Property("Scale");
-        edited |= EditorUI.DragFloat3AxesLinked("Scale", ref t.Scale, _uniformScale, out _, 0.01f, 0.0001f);
-        ImGui.TableSetColumnIndex(2);
-        ImGui.BeginDisabled(!isPivot);
-        edited |= EditorUI.ToggleButtonSquare("AbsScale", "\uf065", ref _absScale, new Vector4(0.20f, 0.55f, 0.85f, 1f));
-        ImGui.EndDisabled();
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip(isPivot ? "Absolute Scale" + (_absScale ? " (ON)" : " (OFF)") : "Only available for Pivot");
-        ImGui.SameLine(0, 2f);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(2f, ImGui.GetStyle().ItemSpacing.Y));
-        EditorUI.ToggleButtonSquare("LinkScale", _uniformScale ? "\uf0c1" : "\uf127", ref _uniformScale);
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(_uniformScale ? "Uniform Scale" : "Non-Uniform Scale");
-        ImGui.PopStyleVar();
-
-        // ── Relation info (pivot only) ────────────────────────────────────────
-        if (isPivot && !string.IsNullOrEmpty(AttachSocketName))
-        {
-            ImGui.TableNextRow();
-            ImGui.TableSetColumnIndex(0);
-            ImGui.AlignTextToFramePadding();
-            ImGui.TextUnformatted("Attached To");
-            ImGui.TableSetColumnIndex(1);
-            ImGui.AlignTextToFramePadding();
-            ImGui.TextUnformatted(AttachSocketName);
-            ImGui.SameLine();
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
-            ImGui.TextUnformatted($"(in {Relation?.Name ?? "Unknown"})");
-            ImGui.PopStyleColor();
-        }
-
-        ImGui.EndTable();
-
-        if (edited)
-        {
-            SetLocalTransform(t, _instanceIndex);
-        }
-
-        ImGui.Unindent();
+            if (edited) SetLocalTransform(t, _instanceIndex);
+        });
     }
+    #endregion
 
     public override object Clone() => new SpatialComponent(this);
 }

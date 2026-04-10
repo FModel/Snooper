@@ -122,7 +122,7 @@ provider.SubmitKey(new FGuid(), new FAesKey(key));
 provider.PostMount();
 provider.LoadVirtualPaths();
 
-var snooper = new EditorWindow(144, 1500, 900, false);
+var snooper = new EditorWindow(144, 1500, 900, provider, false);
 var scene = new Actor("Example Scene");
 scene.Components.Add(new BoxComponent(Vector3.Zero, Vector3.One));
 

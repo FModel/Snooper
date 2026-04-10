@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse.FileProvider;
 using OpenTK.Windowing.Desktop;
 using Serilog;
 using Snooper.Rendering.Actors;
@@ -6,7 +7,7 @@ using Snooper.Rendering.Components;
 
 namespace Editor.Managers;
 
-public abstract class InterfaceManager(GameWindow wnd) : ImGuiManager(wnd)
+public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvider) : ImGuiManager(wnd, fileProvider)
 {
     public Actor? SelectedActor { get; private set; }
     public ActorComponent? SelectedComponent { get; private set; }

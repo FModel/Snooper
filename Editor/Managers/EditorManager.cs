@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse.FileProvider;
 using ImGuiNET;
 using OpenTK.Windowing.Desktop;
 using Snooper.Rendering.Actors;
@@ -10,7 +11,7 @@ using Snooper.UI;
 
 namespace Editor.Managers;
 
-public class EditorManager(GameWindow wnd) : InterfaceManager(wnd)
+public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : InterfaceManager(wnd, fileProvider)
 {
     private readonly InspectorWidget _inspector = new();
     private readonly SceneHierarchyWidget _sceneHierarchy = new();

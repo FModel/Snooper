@@ -114,6 +114,70 @@ public static class EditorUI
         ImGui.SetNextItemWidth(-1);
     }
 
+    public static void PropertyWithToggle(string label, params PropertyToggleButton[] buttons)
+    {
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
+        ImGui.AlignTextToFramePadding();
+
+        var style = ImGui.GetStyle();
+        var frameHeight = ImGui.GetFrameHeight();
+        var startX = ImGui.GetCursorPosX();
+        var colW = ImGui.GetContentRegionAvail().X;
+        var labelEndX = startX + ImGui.CalcTextSize(label).X + style.ItemSpacing.X;
+        var firstBtnX = startX + colW - frameHeight * buttons.Length;
+
+        ImGui.TextUnformatted(label);
+
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
+        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 1f, 1f, 0.08f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(1f, 1f, 1f, 0.15f));
+
+        for (var i = 0; i < buttons.Length; i++)
+        {
+            var btnX = firstBtnX + frameHeight * i;
+            if (btnX < labelEndX) continue; // not enough space – skip rather than overlap the label
+
+            var btn = buttons[i];
+            var isEnabled = btn.Enabled?.Invoke() ?? true;
+            var tint = btn.TextColor?.Invoke();
+
+            ImGui.SameLine(btnX);
+            ImGui.BeginDisabled(!isEnabled);
+            if (tint.HasValue) ImGui.PushStyleColor(ImGuiCol.Text, tint.Value);
+            if (ImGui.Button(btn.Icon() + "##Tog_" + label + "_" + i, new Vector2(frameHeight)))
+                btn.OnClick();
+            if (tint.HasValue) ImGui.PopStyleColor();
+            ImGui.EndDisabled();
+
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && btn.Tooltip is not null)
+            {
+                ImGui.BeginTooltip();
+                var parts = btn.Tooltip().Split(['\n'], StringSplitOptions.RemoveEmptyEntries);
+                ImGui.TextUnformatted(parts[0]);
+                if (parts.Length > 1)
+                {
+                    ImGui.Spacing();
+                    ImGui.SetWindowFontScale(0.85f);
+                    for (var j = 1; j < parts.Length; j++)
+                    {
+                        ImGui.TextDisabled(parts[j]);
+                    }
+                    ImGui.SetWindowFontScale(1f);
+                }
+                ImGui.EndTooltip();
+            }
+        }
+
+        ImGui.PopStyleColor(3);
+        ImGui.PopStyleVar(2);
+
+        ImGui.TableSetColumnIndex(1);
+        ImGui.SetNextItemWidth(-1);
+    }
+
     public static void CollapsingTable(string label, ImGuiTreeNodeFlags flags, Action draws)
     {
         if (ImGui.CollapsingHeader(label, flags))
@@ -214,160 +278,71 @@ public static class EditorUI
         }
     }
 
-    /// <summary>
-    /// Renders a compact square toggle button that is DPI-aware (sized to frame height).
-    /// </summary>
-    public static bool ToggleButtonSquare(string id, string label, ref bool value, Vector4? activeColor = null)
+    private static bool DragAxesCore(string id, Span<float> values, ReadOnlySpan<uint> colors, bool linked, out int changedAxis, float speed, float min, float max, string format)
     {
-        var size = new Vector2(ImGui.GetFrameHeight());
-
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4.0f);
-
-        if (value)
-        {
-            var col = activeColor.HasValue
-                ? ImGui.ColorConvertFloat4ToU32(activeColor.Value)
-                : ImGui.GetColorU32(ImGuiCol.ButtonActive);
-            ImGui.PushStyleColor(ImGuiCol.Button, col);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, col);
-        }
-
-        var changed = ImGui.Button(label + "##" + id, size);
-
-        if (value) ImGui.PopStyleColor(2);
-        value = changed ? !value : value;
-
-        ImGui.PopStyleVar();
-        return changed;
-    }
-
-    /// <summary>
-    /// Renders per-axis X/Y/Z drag floats with coloured axis labels inside the current table value column.
-    /// Returns true if any component changed.
-    /// </summary>
-    public static bool DragFloat3Axes(string id, ref Vector3 value, float speed = 0.01f, float min = float.MinValue, float max = float.MaxValue, string? format = null)
-    {
-        var changed = false;
-        var availW  = ImGui.GetContentRegionAvail().X;
-        var labelW  = 2.0f;
-        var spacing = ImGui.GetStyle().ItemSpacing.X;
-        var dragW   = (availW - (labelW + spacing) * 3) / 3.0f;
-        if (dragW < 1f) dragW = 1f;
-
-        // X
-        AxisLabel(Settings.AxisColorX, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##X_" + id, ref value.X, speed, min, max, format ?? "%.3f")) changed = true;
-
-        ImGui.SameLine(0, spacing);
-
-        // Y
-        AxisLabel(Settings.AxisColorY, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##Y_" + id, ref value.Y, speed, min, max, format ?? "%.3f")) changed = true;
-
-        ImGui.SameLine(0, spacing);
-
-        // Z
-        AxisLabel(Settings.AxisColorZ, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##Z_" + id, ref value.Z, speed, min, max, format ?? "%.3f")) changed = true;
-
-        return changed;
-    }
-
-    /// <summary>
-    /// Renders per-axis X/Y/Z drag floats with scale-link support.
-    /// When linked, editing one axis uniformly scales all axes proportionally.
-    /// Returns true if any component changed, and sets changedAxis to the index that changed (0/1/2 or -1).
-    /// </summary>
-    public static bool DragFloat3AxesLinked(string id, ref Vector3 value, bool linked, out int changedAxis,
-        float speed = 0.01f, float min = float.MinValue, float max = float.MaxValue)
-    {
+        var n = values.Length;
         changedAxis = -1;
         var changed = false;
-        var availW  = ImGui.GetContentRegionAvail().X;
-        var labelW  = 2.0f;
+
+        var availW = ImGui.GetContentRegionAvail().X;
         var spacing = ImGui.GetStyle().ItemSpacing.X;
-        var dragW   = (availW - (labelW + spacing) * 3) / 3.0f;
+        var labelW = MathF.Floor(spacing * 0.5f);
+        var totalDrW = availW - labelW * n - spacing * (n - 1);
+        var dragW = MathF.Floor(totalDrW / n);
         if (dragW < 1f) dragW = 1f;
 
-        // X
-        AxisLabel(Settings.AxisColorX, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##X_" + id, ref value.X, speed, min, max, "%.3f")) { changed = true; changedAxis = 0; }
-
-        ImGui.SameLine(0, spacing);
-
-        // Y
-        AxisLabel(Settings.AxisColorY, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##Y_" + id, ref value.Y, speed, min, max, "%.3f")) { changed = true; changedAxis = 1; }
-
-        ImGui.SameLine(0, spacing);
-
-        // Z
-        AxisLabel(Settings.AxisColorZ, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##Z_" + id, ref value.Z, speed, min, max, "%.3f")) { changed = true; changedAxis = 2; }
+        for (var i = 0; i < n; i++)
+        {
+            if (i > 0) ImGui.SameLine(0, spacing);
+            AxisLabel(colors[i], labelW);
+            ImGui.SameLine(0, 0);
+            ImGui.SetNextItemWidth(i < n - 1 ? dragW : -1);
+            if (ImGui.DragFloat($"##Ax{i}_{id}", ref values[i], speed, min, max, format))
+            {
+                changed = true;
+                changedAxis = i;
+            }
+        }
 
         if (changed && linked && changedAxis >= 0)
         {
-            var newVal = changedAxis switch { 0 => value.X, 1 => value.Y, _ => value.Z };
-            value = new Vector3(newVal);
+            values.Fill(values[changedAxis]);
         }
 
         return changed;
     }
 
-    /// <summary>
-    /// Renders per-axis X/Y/Z/W drag floats for a Quaternion with coloured axis labels.
-    /// </summary>
-    public static bool DragFloat4Axes(string id, ref Quaternion value, float speed = 0.01f)
+    /// <summary>Renders per-axis X/Y/Z drag floats with coloured axis labels, filling the table cell exactly.</summary>
+    public static bool DragAxes(string id, ref Vector3 value, float speed = 0.01f, float min = float.MinValue, float max = float.MaxValue, string? format = null)
     {
-        var changed = false;
-        var availW  = ImGui.GetContentRegionAvail().X;
-        var labelW  = 2.0f;
-        var spacing = ImGui.GetStyle().ItemSpacing.X;
-        var dragW   = (availW - (labelW + spacing) * 4) / 4.0f;
-        if (dragW < 1f) dragW = 1f;
+        Span<float> tmp = [value.X, value.Y, value.Z];
+        Span<uint> colors = [Settings.AxisColorX, Settings.AxisColorY, Settings.AxisColorZ];
+        var changed = DragAxesCore(id, tmp, colors, false, out _, speed, min, max, format ?? "%.3f");
+        if (changed) value = new Vector3(tmp[0], tmp[1], tmp[2]);
+        return changed;
+    }
 
-        // X
-        AxisLabel(Settings.AxisColorX, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##QX_" + id, ref value.X, speed, -1f, 1f, "%.3f")) changed = true;
+    /// <summary>
+    /// Renders per-axis X/Y/Z drag floats with optional uniform-scale linking.
+    /// When <paramref name="linked"/> is true, editing any axis sets all three to the same value.
+    /// Returns true if any component changed; <paramref name="changedAxis"/> is 0/1/2 or -1.
+    /// </summary>
+    public static bool DragAxes(string id, ref Vector3 value, bool linked, out int changedAxis, float speed = 0.01f, float min = float.MinValue, float max = float.MaxValue)
+    {
+        Span<float> tmp = [value.X, value.Y, value.Z];
+        Span<uint> colors = [Settings.AxisColorX, Settings.AxisColorY, Settings.AxisColorZ];
+        var changed = DragAxesCore(id, tmp, colors, linked, out changedAxis, speed, min, max, "%.3f");
+        if (changed) value = new Vector3(tmp[0], tmp[1], tmp[2]);
+        return changed;
+    }
 
-        ImGui.SameLine(0, spacing);
-
-        // Y
-        AxisLabel(Settings.AxisColorY, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##QY_" + id, ref value.Y, speed, -1f, 1f, "%.3f")) changed = true;
-
-        ImGui.SameLine(0, spacing);
-
-        // Z
-        AxisLabel(Settings.AxisColorZ, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##QZ_" + id, ref value.Z, speed, -1f, 1f, "%.3f")) changed = true;
-
-        ImGui.SameLine(0, spacing);
-
-        // W
-        AxisLabel(Settings.AxisColorW, labelW);
-        ImGui.SameLine(0, 0);
-        ImGui.SetNextItemWidth(dragW);
-        if (ImGui.DragFloat("##QW_" + id, ref value.W, speed, -1f, 1f, "%.3f")) changed = true;
-
+    /// <summary>Renders per-component X/Y/Z/W drag floats for a quaternion, clamped to [-1, 1].</summary>
+    public static bool DragAxes(string id, ref Quaternion value, float speed = 0.01f)
+    {
+        Span<float> tmp = [value.X, value.Y, value.Z, value.W];
+        Span<uint> colors = [Settings.AxisColorX, Settings.AxisColorY, Settings.AxisColorZ, Settings.AxisColorW];
+        var changed = DragAxesCore(id, tmp, colors, false, out _, speed, -1f, 1f, "%.3f");
+        if (changed) value = new Quaternion(tmp[0], tmp[1], tmp[2], tmp[3]);
         return changed;
     }
 }

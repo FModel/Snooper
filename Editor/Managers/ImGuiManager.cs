@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Numerics;
+using CUE4Parse.FileProvider;
 using ImGuiNET;
 using ImGuizmoNET;
 using ImPlotNET;
@@ -16,7 +17,7 @@ public abstract class ImGuiManager : SceneManager
     private bool _show = true;
     private readonly ImGuiController _controller;
 
-    protected ImGuiManager(GameWindow wnd) : base(wnd)
+    protected ImGuiManager(GameWindow wnd, IFileProvider fileProvider) : base(wnd, fileProvider)
     {
         var context = ImGui.CreateContext();
         ImGui.SetCurrentContext(context);
@@ -114,7 +115,7 @@ public abstract class ImGuiManager : SceneManager
         style.GrabMinSize = 8f;
         style.WindowBorderSize = 0f;
         style.ChildBorderSize = 0f;
-        style.PopupBorderSize = 0f;
+        style.PopupBorderSize = 1f;
         style.FrameBorderSize = 0f;
         style.TabBorderSize = 0f;
         style.WindowRounding = 0f;

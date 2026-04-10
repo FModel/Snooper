@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Numerics;
+using CUE4Parse.FileProvider;
 using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
@@ -34,7 +35,7 @@ public class SceneManager : ActorManager
 
     private readonly HashSet<CameraComponent> _cameras = [];
 
-    protected SceneManager(GameWindow wnd)
+    protected SceneManager(GameWindow wnd, IFileProvider fileProvider) : base(fileProvider)
     {
         Window = wnd;
     }

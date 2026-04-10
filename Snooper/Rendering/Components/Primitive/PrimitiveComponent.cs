@@ -170,25 +170,15 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     protected override (Vector3, float) GetTeleportPosition(CameraComponent camera)
     {
-        var matrices = GetWorldMatrices();
-        if (matrices.Length == 0) return (Vector3.Zero, 1.0f);
-
-        var overallCenter = Vector3.Zero;
-        foreach (var matrix in matrices)
-        {
-            var worldCenter = Vector3.Transform(Descriptor.Bounds.Center, matrix);
-            overallCenter += worldCenter;
-        }
-        overallCenter /= matrices.Length;
-
         var vHalfFov = camera.FieldOfViewRadians / 2f;
         var hHalfFov = MathF.Atan(MathF.Tan(vHalfFov) * camera.AspectRatio);
         var limitingHalfFov = MathF.Min(vHalfFov, hHalfFov);
 
         var sphereRadius = Descriptor.Bounds.Extents.Length();
         var distance = sphereRadius / MathF.Tan(limitingHalfFov) * 1.25f;
+        var center = Vector3.Transform(Descriptor.Bounds.Center, GizmoMatrix);
 
-        return (overallCenter, MathF.Max(distance, 0.1f));
+        return (center, MathF.Max(distance, 0.1f));
     }
 
     protected override void OnActorAttached(Actor actor)
@@ -289,44 +279,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 ImGui.TextDisabled("No Sections?");
             }
             ImGui.EndGroup();
-        });
-
-        EditorUI.PropertyValueTable("Materials", () =>
-        {
-            EditorUI.Property($"Materials ({Materials.Length})");
-            ImGui.BeginGroup();
-
-            MaterialSection? material = null;
-            if (Materials.Length > 0)
-            {
-                var maxMaterial = Materials.Length - 1;
-
-                if (maxMaterial == 0) ImGui.BeginDisabled();
-                ImGui.SliderInt("##MaterialSlider", ref _materialIndex, 0, maxMaterial);
-                if (maxMaterial == 0) ImGui.EndDisabled();
-
-                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
-                ImGui.SetWindowFontScale(0.85f);
-
-                material = Materials[_materialIndex];
-                ImGui.TextUnformatted($"{material.MaterialDataContainer?.Name ?? Settings.NoName} (offset {material.Allocation?.StartIndex ?? -1})");
-
-                ImGui.SetWindowFontScale(1.0f);
-                ImGui.PopStyleVar();
-                ImGui.Spacing();
-            }
-
-            ImGui.EndGroup();
-
-            if (material?.MaterialDataContainer != null)
-            {
-                material.MaterialDataContainer.DrawControls();
-            }
-            else
-            {
-                EditorUI.Property("Data Container");
-                ImGui.TextColored(Settings.OrangeColor, "No material data container assigned");
-            }
         });
     }
 

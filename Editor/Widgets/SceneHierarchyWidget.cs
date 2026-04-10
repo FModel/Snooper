@@ -215,7 +215,6 @@ public class SceneHierarchyWidget
         actor.IsNodeOpen = ImGui.TreeNodeEx("##Actor", flags, $"{actor.Icon}  {actor.Name}");
         var toggledOpen = ImGui.IsItemToggledOpen();
 
-        ImGui.PushStyleVar(ImGuiStyleVar.PopupBorderSize, 1f);
         if (ImGui.BeginPopupContextItem("##ActorContext"))
         {
             ImGui.TextDisabled(actor.Name);
@@ -262,7 +261,6 @@ public class SceneHierarchyWidget
 
             ImGui.EndPopup();
         }
-        ImGui.PopStyleVar();
 
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !toggledOpen)
         {
