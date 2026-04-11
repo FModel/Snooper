@@ -7,7 +7,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class SplineMeshRenderSystem : MeshRenderSystem<SplineMeshComponent>
+public class SplineMeshRenderSystem() : MeshRenderSystem<SplineMeshComponent>(["SPLINE_VERTEX"])
 {
     public override uint Order => 24;
     protected override bool IsCulled => false; // TODO: alter the bounding box based on the spline params, then restore culling
@@ -17,11 +17,6 @@ public class SplineMeshRenderSystem : MeshRenderSystem<SplineMeshComponent>
 
     protected override void OnLoad()
     {
-        foreach (var shader in Shaders.Values)
-        {
-            shader.Vertex = "spline.vert";
-        }
-
         base.OnLoad();
 
         _mapping.Generate();

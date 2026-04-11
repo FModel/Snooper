@@ -9,6 +9,11 @@ uniform int uFragmentColorMode;
 
 #include "Buffers/PerDrawCommand.glsl"
 #include "Buffers/PerInstanceData.glsl"
+#if defined(SPLINE_VERTEX)
+#include "Buffers/PerSplineData.glsl"
+#elif defined(SKINNED_MESH_VERTEX)
+#include "Buffers/PerSkinningData.glsl"
+#endif
 
 layout(std430, binding = 5) buffer PerVertexColorBuffer
 {

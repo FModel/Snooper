@@ -48,13 +48,3 @@ vec3 heatmap(float t)
     float b = 1.0 - clamp(s - 1.0, 0.0, 1.0);
     return vec3(r, g, b);
 }
-
-#define SKINNED_MESH_VERTEX
-#include "Buffers/CommonMesh.vert"
-#include "Buffers/common.vert"
-
-void main()
-{
-    SetCommonVSOut();
-    CommonMeshMain();
-}

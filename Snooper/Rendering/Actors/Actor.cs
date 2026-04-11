@@ -46,6 +46,11 @@ public class Actor : TreeNode
 
         Children = [];
         Children.CollectionChanged += OnChildrenCollectionChanged;
+
+        if (actor.TryGetValue(out bool hidden, "bHidden"))
+        {
+            IsVisible = !hidden;
+        }
     }
 
     public ActorComponentCollection Components { get; }

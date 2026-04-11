@@ -3,23 +3,13 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class SkinnedMeshRenderSystem : MeshRenderSystem<SkinnedMeshComponent>
+public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(["SKINNED_MESH_VERTEX"])
 {
     public override uint Order => 23;
     protected override bool IsCulled => DirtyComponentsCount > 0;
 
     // TODO: move IndirectResources._poseData here
     // TODO: convert to a gpu driven system
-
-    protected override void OnLoad()
-    {
-        foreach (var shader in Shaders.Values)
-        {
-            shader.Vertex = "skinned_mesh.vert";
-        }
-
-        base.OnLoad();
-    }
 
     protected override void OnComponentUpdate(SkinnedMeshComponent component, float delta)
     {

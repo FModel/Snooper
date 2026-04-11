@@ -15,8 +15,8 @@ void main()
     SetCommonVSOut();
     
 #ifdef USE_GEOMETRY_SHADER
-    vDrawID = gDrawID;
+    vDrawID = gl_DrawID;
 #endif
-    
-    gl_Position = uProjectionMatrix * uViewMatrix * uInstanceDataBuffer[gBaseInstance + gInstanceID].Matrix * vec4(aPos, 1.0);
+
+    gl_Position = uProjectionMatrix * uViewMatrix * uInstanceDataBuffer[gl_BaseInstance + gl_InstanceID].Matrix * vec4(aPos, 1.0);
 }

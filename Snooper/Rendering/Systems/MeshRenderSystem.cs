@@ -13,17 +13,18 @@ public interface IMeshRenderSystem
     public void RenderShadows(IViewProjectionProvider[] cascades);
 }
 
-public abstract class MeshRenderSystem<TComponent> : PrimitiveSystem<Vertex, TComponent, PerInstanceData, PerMaterialMeshData>, IMeshRenderSystem where TComponent : MeshComponent
+public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : PrimitiveSystem<Vertex, TComponent, PerInstanceData, PerMaterialMeshData>, IMeshRenderSystem where TComponent : MeshComponent
 {
     protected override bool AllowDerivation => true;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {
-        [CommandBufferType.Transparent] = new EmbeddedShader("mesh"),
-        [CommandBufferType.Opaque] = new EmbeddedShader("mesh.vert", "geometry.frag")
+        [CommandBufferType.Transparent] = new EmbeddedShader("mesh") { Defines = defines },
+        [CommandBufferType.Opaque] = new EmbeddedShader("mesh.vert", "geometry.frag") { Defines = defines }
     };
 
     private readonly ShaderProgram _shadowShader = new EmbeddedShader("Shadows/shadow_cascade.vert", "empty.frag")
     {
+        Defines = defines,
         Geometry = "Shadows/shadow_cascade.geom"
     };
 

@@ -15,7 +15,7 @@ void main()
 
     int id = gl_BaseInstance + gl_InstanceID;
     mat4 matrix = uInstanceDataBuffer[id].Matrix;
-    
+
     gl_Position = uProjectionMatrix * uViewMatrix * matrix * vec4(aPos.x, 0.0, aPos.y, 1.0);
     vTexCoord = aTexCoords;
 }

@@ -249,7 +249,10 @@ public class SceneHierarchyWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-
+                // foreach (var exporter in actor.GetExporters())
+                // {
+                //     if (exporter is null) continue;
+                // }
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))

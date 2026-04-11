@@ -361,9 +361,9 @@ switch (provider.ProjectName)
     }
     case "Sandfall":
     {
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/CleasTower/CleasTower_GroundFloorEntrance.CleasTower_GroundFloorEntrance")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/CleasTower/CleasTower_GroundFloorEntrance.CleasTower_GroundFloorEntrance")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/WorldMap/Level_WorldMap_Main_V2.Level_WorldMap_Main_V2")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/Lumiere/Level_Lumiere_Main_V2.Level_Lumiere_Main_V2")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/Lumiere/Level_Lumiere_Main_V2.Level_Lumiere_Main_V2")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/RedForest/Level_RedForest_Main.Level_RedForest_Main")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/CleasTower/Level_Side_CleasTower.Level_Side_CleasTower")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/Goblu/Level_Goblu_Main_V5.Level_Goblu_Main_V5")));

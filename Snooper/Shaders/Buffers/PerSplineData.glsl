@@ -214,13 +214,3 @@ mat4 CalcSliceTransformAtSplineOffset(SplineMeshParams params, vec3 computed)
 
     return sliceTransform * scaleMatrix;
 }
-
-#define SPLINE_VERTEX
-#include "Buffers/CommonMesh.vert"
-#include "Buffers/common.vert"
-
-void main()
-{
-    SetCommonVSOut();
-    CommonMeshMain();
-}
