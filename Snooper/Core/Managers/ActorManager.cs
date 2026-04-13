@@ -253,6 +253,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         {
             light?.IsEnabled = toggle;
             light?.GetDirectionalLight()?.IsEnabled = !toggle;
+            // TODO: auto disable shadows
         });
         ImGui.EndDisabled();
 

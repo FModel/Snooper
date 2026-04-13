@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Assets.Exports;
+﻿using CUE4Parse_Conversion.V2;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using Newtonsoft.Json;
 
@@ -56,6 +57,8 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
         }
         JsonProperties = jsonProperties.ToArray();
     }
+
+    public abstract void Export(ExportSession session, CancellationToken ct = default);
 
     protected void SetIcon(string icon) => Icon = icon;
 

@@ -1,7 +1,9 @@
 ﻿using ImGuiNET;
 using Snooper.Rendering.Actors;
 using System.Numerics;
+using CUE4Parse_Conversion;
 using Editor.Managers;
+using Editor.Modals;
 using Serilog;
 using Snooper;
 using Snooper.Rendering.Components.Mesh;
@@ -47,6 +49,7 @@ public class SceneHierarchyWidget
             }
 
             DrawAddModal(actor);
+            ExportModal.Instance.Draw();
         }
         ImGui.End();
     }
@@ -153,8 +156,8 @@ public class SceneHierarchyWidget
     private void DrawAddModal(Actor? actor)
     {
         var viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowSize(new Vector2(viewport.Size.X * 0.2f, 0), ImGuiCond.Always);
-        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(viewport.WorkSize.X * 0.2f, 0), ImGuiCond.Always);
+        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
 
         if (ImGui.BeginPopupModal("New Actor", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove))
         {
@@ -220,6 +223,10 @@ public class SceneHierarchyWidget
             ImGui.TextDisabled(actor.Name);
             ImGui.Separator();
 
+            if (actor is StreamableActor { IsLoaded: false } sa && ImGui.MenuItem("\uf019  Load Actor"))
+            {
+                sa.Load();
+            }
             if (actor.RootComponent is SkeletalMeshComponent sk && ImGui.MenuItem("\uf04b  Set Animation"))
             {
                 sk.SetAnimation(null); // TODO
@@ -249,10 +256,7 @@ public class SceneHierarchyWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-                // foreach (var exporter in actor.GetExporters())
-                // {
-                //     if (exporter is null) continue;
-                // }
+                ExportModal.Instance.Export(actor, "./exports_v2", new ExporterOptions());
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))
@@ -281,15 +285,28 @@ public class SceneHierarchyWidget
             if (actor.IsNodeOpen) ImGui.TreePop();
         }
 
-        var btnW = ImGui.CalcTextSize(Settings.EyeIcon).X + style.FramePadding.X * 2;
-        ImGui.SameLine(rightEdge - btnW);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
         ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        var isHidden = !actor.IsVisible;
-        if (isHidden) ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
-        if (ImGui.Button(actor.IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon)) actor.ToggleVisibility();
-        ImGui.PopStyleColor(isHidden ? 2 : 1);
+        if (actor is StreamableActor { IsLoaded: false } sa2)
+        {
+            var icon = sa2.IsLoading ? "\uf110" : "\uf019";
+            var btnW = ImGui.CalcTextSize(icon).X + style.FramePadding.X * 2;
+            ImGui.SameLine(rightEdge - btnW);
+            ImGui.BeginDisabled(sa2.IsLoading);
+            if (ImGui.Button(icon)) sa2.Load();
+            ImGui.EndDisabled();
+        }
+        else
+        {
+            var btnW = ImGui.CalcTextSize(Settings.EyeIcon).X + style.FramePadding.X * 2;
+            ImGui.SameLine(rightEdge - btnW);
+            var isHidden = !actor.IsVisible;
+            if (isHidden) ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
+            if (ImGui.Button(actor.IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon)) actor.ToggleVisibility();
+            if (isHidden) ImGui.PopStyleColor();
+        }
         ImGui.PopStyleVar();
+        ImGui.PopStyleColor();
 
         ImGui.PopID();
     }

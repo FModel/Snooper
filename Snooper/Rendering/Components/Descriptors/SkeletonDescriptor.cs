@@ -158,7 +158,7 @@ public class SkeletonDescriptor : IControllable
                 ImGui.TextUnformatted(bone.Name);
 
                 ImGui.TableNextColumn();
-                if (bone.IsRoot) ImGui.TextDisabled("None");
+                if (bone.IsRoot) ImGui.TextDisabled("-");
                 else ImGui.TextUnformatted($"[{bone.ParentIndex}] {BoneDescriptors[bone.ParentIndex].Name}");
             }
             ImGui.EndTable();
@@ -170,7 +170,7 @@ public class SkeletonDescriptor : IControllable
 
     private void DrawCanvas(float size)
     {
-        var canvasPos  = ImGui.GetCursorScreenPos();
+        var canvasPos = ImGui.GetCursorScreenPos();
         var canvasSize = new Vector2(size, size);
         ImGui.InvisibleButton("##SkeletonCanvas", canvasSize);
         var isHovered = ImGui.IsItemHovered();

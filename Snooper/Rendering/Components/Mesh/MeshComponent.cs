@@ -1,10 +1,12 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
 using CUE4Parse_Conversion.Meshes.PSK;
+using CUE4Parse_Conversion.V2;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
@@ -152,6 +154,31 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
                 Materials[index].CacheKey = key;
             });
+        }
+    }
+
+    public override void Export(ExportSession session, CancellationToken ct = default)
+    {
+        base.Export(session, ct);
+        if (Actor?.ActorManager is not { } manager || string.IsNullOrEmpty(Descriptor.Path) || string.IsNullOrEmpty(Descriptor.Name))
+            return;
+
+        try
+        {
+            session.Add(manager.FileProvider.LoadPackageObject($"{Descriptor.Path}.{Descriptor.Name}"));
+
+            foreach (var ptr in _materials)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (ptr?.TryLoad<UMaterialInterface>(out var material) == true)
+                {
+                    session.Add(material);
+                }
+            }
+        }
+        catch
+        {
+            //
         }
     }
 

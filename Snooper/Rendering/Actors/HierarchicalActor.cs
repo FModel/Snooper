@@ -67,11 +67,9 @@ public class HierarchicalActor : Actor
     {
         base.DrawControls();
 
-        ImGui.SeparatorText("HLOD Cells");
-
         var cells = Children.OfType<CellActor>().ToArray();
         var visible = cells.Where(x => x.IsVisible).ToArray();
-        var loadable = visible.Where(x => x is { CanLoad: true, IsLoaded: false, IsLoading: false }).ToArray();
+        var loadable = visible.Where(x => x is { CanLoad: true }).ToArray();
 
         var availWidth = ImGui.GetContentRegionAvail().X;
         var spacing = ImGui.GetStyle().ItemSpacing.X;
@@ -80,14 +78,14 @@ public class HierarchicalActor : Actor
         ImGui.BeginDisabled(loadable.Length == 0);
         if (ImGui.Button($"Load {loadable.Length} Visible Cells", buttonSize))
         {
-            ActorManager?.ThreadManager.EnqueueBatch(loadable.Select(cell => cell.GetLoadJob()).OfType<Action>().ToList());
+            ActorManager?.ThreadManager.EnqueueBatch(loadable.Select(cell => cell.GetLoadAction()).OfType<Action>().ToList());
         }
         ImGui.EndDisabled();
         ImGui.SameLine();
         ImGui.BeginDisabled(cells.Length > 50);
         if (ImGui.Button($"Load All {cells.Length} Cells", buttonSize))
         {
-            ActorManager?.ThreadManager.EnqueueBatch(cells.Select(cell => cell.GetLoadJob()).OfType<Action>().ToList());
+            ActorManager?.ThreadManager.EnqueueBatch(cells.Select(cell => cell.GetLoadAction()).OfType<Action>().ToList());
         }
         ImGui.EndDisabled();
     }

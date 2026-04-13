@@ -1,4 +1,5 @@
 ﻿using System.Collections.Specialized;
+using CUE4Parse_Conversion.V2;
 using CUE4Parse.UE4.Assets.Exports;
 using Snooper.Core.Managers;
 using Snooper.Core.Systems;
@@ -115,6 +116,21 @@ public class Actor : TreeNode
     public void ToggleVisibility()
     {
         IsVisible = !IsVisible;
+    }
+
+    public override void Export(ExportSession session, CancellationToken ct = default)
+    {
+        foreach (var component in Components)
+        {
+            ct.ThrowIfCancellationRequested();
+            component.Export(session, ct);
+        }
+
+        foreach (var child in Children)
+        {
+            ct.ThrowIfCancellationRequested();
+            child.Export(session, ct);
+        }
     }
 
     public event Action<IGameSystem>? OnAttachedToScene;

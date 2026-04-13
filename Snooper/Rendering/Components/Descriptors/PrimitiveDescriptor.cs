@@ -310,7 +310,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
                 }
                 else
                 {
-                    ImGui.TextDisabled("None");
+                    ImGui.TextDisabled("-");
                 }
             }
             ImGui.EndTable();

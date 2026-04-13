@@ -153,7 +153,6 @@ public class WorldActor : Actor
     {
         base.DrawControls();
 
-        ImGui.SeparatorText("Data Layers");
         if (_dataLayers.Count == 0)
         {
             ImGui.TextUnformatted("No data layers found");

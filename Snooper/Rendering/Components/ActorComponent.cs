@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Assets.Exports.Component;
+﻿using CUE4Parse_Conversion.V2;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.Utils;
 using ImGuiNET;
 using Snooper.Core.Systems;
@@ -68,6 +69,11 @@ public abstract class ActorComponent : TreeNode
                 spatial.Relation = field?.RootComponent;
             }
         }
+    }
+
+    public override void Export(ExportSession session, CancellationToken ct = default)
+    {
+
     }
 
     protected virtual DirtyFlags SupportedDirtyFlags => DirtyFlags.None;

@@ -285,12 +285,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     private void DrawInfoPopup()
     {
         var viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowSize(viewport.WorkSize * 0.75f, ImGuiCond.Appearing);
-        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f));
+        ImGui.SetNextWindowSize(viewport.WorkSize * 0.75f, ImGuiCond.Always);
+        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Always, new Vector2(0.5f));
 
         var open = true;
-        var flags = ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;
-        if (ImGui.BeginPopupModal("##PrimitiveInfo", ref open, flags))
+        if (ImGui.BeginPopupModal("##PrimitiveInfo", ref open, ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize))
         {
             if (ImGui.BeginChild("##PrimitiveInfoBody", Vector2.Zero, ImGuiChildFlags.FrameStyle))
             {

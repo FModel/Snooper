@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse_Conversion.V2;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
@@ -86,6 +87,22 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
         Animation = animToPlay != null ? new AnimationDescriptor(animToPlay, startTime, playRate) : null;
     }
 
+    public override void Export(ExportSession session, CancellationToken ct = default)
+    {
+        base.Export(session, ct);
+        if (Actor?.ActorManager is not { } manager || Animation is null)
+            return;
+
+        try
+        {
+            session.Add(manager.FileProvider.LoadPackageObject($"{Animation.Path}.{Animation.Name}"));
+        }
+        catch
+        {
+            //
+        }
+    }
+
     private const string HeaderLabel = "Animation";
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
         .Add(() => IsPlayingAnimation ? "\uf04c" : "\uf04b", "Play/Pause", () => IsPlayingAnimation = !IsPlayingAnimation)
@@ -135,8 +152,8 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     private void DrawInfoPopup()
     {
         var viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowSize(viewport.WorkSize * 0.75f, ImGuiCond.Appearing);
-        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f));
+        ImGui.SetNextWindowSize(viewport.WorkSize * 0.75f, ImGuiCond.Always);
+        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Always, new Vector2(0.5f));
 
         var open = true;
         var flags = ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;

@@ -9,20 +9,14 @@ using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
 
-public class CellActor : Actor
+public class CellActor : StreamableActor
 {
     public bool IsNonSpatiallyLoaded { get; }
     public string[] DataLayers { get; }
 
-    public bool IsLoaded { get; private set; }
-    public bool IsLoading { get; private set; }
-    public bool CanLoad { get; }
-
-    private readonly FSoftObjectPath? _worldAsset;
-
     public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool isNonSpatiallyLoaded = false) : base(cell)
     {
-        IsVisible = IsNonSpatiallyLoaded = isNonSpatiallyLoaded;
+        IsNonSpatiallyLoaded = isNonSpatiallyLoaded;
         DataLayers = cell.DataLayers?.DataLayers.Select(x => x.Text).ToArray() ?? [];
 
         if (cell.RuntimeCellData?.TryLoad<UWorldPartitionRuntimeCellData>(out var data) == true)
@@ -62,8 +56,7 @@ public class CellActor : Actor
                 color ??= new Vector3(cell.CellDebugColor.R, cell.CellDebugColor.G, cell.CellDebugColor.B);
             }
 
-            Components.Add(new SpatialComponent(new Transform(new Vector3(center.X, center.Z, center.Y)), "CellRoot"));
-            Components.Add(new BoxComponent(new Vector3(extents.X, extents.Z, extents.Y), color.Value, 5.0f, name: "CellBounds"));
+            Components.Add(new BoxComponent(new Vector3(extents.X, extents.Z, extents.Y), color.Value, 5.0f, new Transform(new Vector3(center.X, center.Z, center.Y)), "CellBounds"));
 
             var spanX = extents.X * 2;
             var spanY = extents.Y * 2;
@@ -87,54 +80,19 @@ public class CellActor : Actor
             streaming.LevelStreaming?.TryLoad<ULevelStreaming>(out var level) == true &&
             level.WorldAsset is { } world)
         {
+            OnLoad += () => AddWorld(world);
             if (IsNonSpatiallyLoaded)
             {
-                AddWorld(world);
-            }
-            else
-            {
-                _worldAsset = world;
-                CanLoad = true;
+                Load();
             }
         }
     }
 
     public CellActor(FSoftObjectPath worldAsset, UWorld world) : base(world)
     {
-        IsVisible = false;
         DataLayers = [];
 
-        _worldAsset = worldAsset;
-        CanLoad = true;
-    }
-
-    public Action? GetLoadJob()
-    {
-        if (!CanLoad || IsLoaded || IsLoading || _worldAsset == null)
-            return null;
-
-        return () =>
-        {
-            IsLoading = true;
-            try
-            {
-                AddWorld(_worldAsset.Value);
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        };
-    }
-
-    public void EnqueueLoad()
-    {
-        var action = GetLoadJob();
-        if (action == null)
-            return;
-
-        IsLoading = true;
-        ActorManager?.ThreadManager.Enqueue(action);
+        OnLoad += () => AddWorld(worldAsset);
     }
 
     private void AddWorld(FSoftObjectPath world)
@@ -146,6 +104,5 @@ public class CellActor : Actor
         }
 
         Children.Add(w);
-        IsLoaded = true;
     }
 }
