@@ -1,5 +1,6 @@
 ﻿using CUE4Parse_Conversion.V2;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using ImGuiNET;
 using Snooper.Core.Systems;
@@ -73,7 +74,27 @@ public abstract class ActorComponent : TreeNode
 
     public override void Export(ExportSession session, CancellationToken ct = default)
     {
+        return; // TODO: this is presumably too expensive atm
+        if (Actor?.ActorManager is not { } manager || string.IsNullOrEmpty(Path))
+            return;
 
+        // generic exporter, entirely based on what C4P supports
+        // override this in specific components for more control
+
+        try
+        {
+            // Path may contain subobjects that needs to be resolved, currently only FSoftObjectPath supports that
+            var parts = Path.Split(':');
+            var softObject = new FSoftObjectPath(new FName(parts[0]), parts.Length > 1 ? parts[1] : string.Empty);
+            if (softObject.TryLoad(manager.FileProvider, out var export))
+            {
+                session.Add(export);
+            }
+        }
+        catch
+        {
+            //
+        }
     }
 
     protected virtual DirtyFlags SupportedDirtyFlags => DirtyFlags.None;

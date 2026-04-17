@@ -29,11 +29,11 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
         var data = ptr.Load();
         switch (data)
         {
-            case USceneComponent sceneComponent:
+            case USceneComponent scene:
             {
-                parent = sceneComponent.GetOrDefault<FPackageIndex?>("AttachParent");
+                parent = scene.GetOrDefault<FPackageIndex?>("AttachParent");
 
-                component = sceneComponent switch
+                component = scene switch
                 {
                     // Get.*Mesh() is not being used because it ignores null fields, null meaning discard the mesh for this component (ig?)
                     UStaticMeshComponent sm when sm.TryGetValue<UStaticMesh>(out var mesh, "StaticMesh") => sm switch
@@ -43,36 +43,36 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                         _ => new StaticMeshComponent(mesh, sm)
                     },
                     USkeletalMeshComponent sk when sk.TryGetValue<USkeletalMesh>(out var mesh, "SkeletalMesh", "SkinnedAsset") => new SkeletalMeshComponent(mesh, sk),
-                    ULandscapeComponent landscapeComponent => new LandscapeMeshComponent(landscapeComponent),
-                    ULandscapeSplinesComponent landscapeSplinesComponent => new LandscapeSplinesComponent(landscapeSplinesComponent),
-                    UBillboardComponent billboardComponent => new BillboardComponent(billboardComponent),
-                    UArrowComponent arrowComponent => new ArrowComponent(arrowComponent),
+                    ULandscapeComponent landscape => new LandscapeMeshComponent(landscape),
+                    ULandscapeSplinesComponent landscapeSplines => new LandscapeSplinesComponent(landscapeSplines),
+                    UBillboardComponent billboard => new BillboardComponent(billboard),
+                    UArrowComponent arrow => new ArrowComponent(arrow),
                     UBrushComponent brushComponent when brushComponent.GetBrush() is { } brush => new BrushComponent(brushComponent, brush),
                     UShapeComponent shape when shape.Outer?.Object?.Value is not ALevelBounds => shape switch // exclude level bounds because their scale looks weird and overall they provide little value
                     {
-                        UBoxComponent boxComponent => new BoxComponent(boxComponent),
-                        USphereComponent sphereComponent => new SphereComponent(sphereComponent),
-                        UCapsuleComponent capsuleComponent => new CapsuleComponent(capsuleComponent),
+                        UBoxComponent box => new BoxComponent(box),
+                        USphereComponent sphere => new SphereComponent(sphere),
+                        UCapsuleComponent capsule => new CapsuleComponent(capsule),
                         _ => new SpatialComponent(shape)
                     },
                     ULightComponentBase light => light switch
                     {
-                        USpotLightComponent spotLightComponent => new SpotLightComponent(spotLightComponent),
-                        UPointLightComponent pointLightComponent => new PointLightComponent(pointLightComponent),
-                        URectLightComponent rectLightComponent => new RectLightComponent(rectLightComponent),
-                        UDirectionalLightComponent directionalLightComponent => new DirectionalLightComponent(directionalLightComponent),
+                        USpotLightComponent spotLight => new SpotLightComponent(spotLight),
+                        UPointLightComponent pointLight => new PointLightComponent(pointLight),
+                        URectLightComponent rectLight => new RectLightComponent(rectLight),
+                        UDirectionalLightComponent directionalLight => new DirectionalLightComponent(directionalLight),
                         _ => new SpatialComponent(light)
                     },
-                    UAudioComponent audioComponent => new AudioComponent(audioComponent),
-                    UTextRenderComponent textComponent => new TextRenderComponent(textComponent),
-                    UCameraComponent cameraComponent => new CameraComponent(cameraComponent),
-                    _ => new SpatialComponent(sceneComponent)
+                    UAudioComponent audio => new AudioComponent(audio),
+                    UTextRenderComponent text => new TextRenderComponent(text),
+                    UCameraComponent camera => new CameraComponent(camera),
+                    _ => new SpatialComponent(scene)
                 };
                 break;
             }
-            case UActorComponent actorComponent:
+            case UActorComponent actor:
             {
-                component = new SpatialComponent(actorComponent);
+                component = new SpatialComponent(actor);
                 break;
             }
             default: // uobject

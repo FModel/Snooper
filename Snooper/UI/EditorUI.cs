@@ -165,7 +165,7 @@ public static class EditorUI
                     {
                         ImGui.TextDisabled(parts[j]);
                     }
-                    ImGui.SetWindowFontScale(1f);
+                    ImGui.SetWindowFontScale(1.0f);
                 }
                 ImGui.EndTooltip();
             }

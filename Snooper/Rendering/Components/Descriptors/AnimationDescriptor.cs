@@ -79,7 +79,7 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
         ImGui.SetWindowFontScale(0.85f);
         ImGui.TextUnformatted($"Animation: {Path}");
         ImGui.TextUnformatted($"Skeleton: {Skeleton.Path}");
-        ImGui.SetWindowFontScale(1f);
+        ImGui.SetWindowFontScale(1.0f);
         ImGui.PopStyleColor();
     }
 

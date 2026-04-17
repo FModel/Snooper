@@ -1,8 +1,5 @@
-﻿using CUE4Parse.UE4.Assets.Exports;
-using CUE4Parse.UE4.Assets.Exports.Component;
-using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
+﻿using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
-using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
 
@@ -14,13 +11,11 @@ public class LandscapeSplinesComponent : SpatialComponent
 
     public LandscapeSplinesComponent(ULandscapeSplinesComponent component) : base(component)
     {
-        var ptrs = component.GetOrDefault<FPackageIndex?[]>("Segments", []);
-        foreach (var ptr in ptrs)
+        foreach (var ptr in component.Segments)
         {
-            if (ptr?.TryLoad<UObject>(out var segment) == true)
+            if (ptr?.TryLoad<ULandscapeSplineSegment>(out var segment) == true)
             {
-                var meshPtrs = segment.GetOrDefault<FPackageIndex?[]>("LocalMeshComponents", []);
-                foreach (var meshPtr in meshPtrs)
+                foreach (var meshPtr in segment.LocalMeshComponents)
                 {
                     if (meshPtr?.TryLoad<USplineMeshComponent>(out var splineMesh) == true)
                     {

@@ -89,6 +89,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 
     public override void Export(ExportSession session, CancellationToken ct = default)
     {
+        // export the mesh then export whatever animation was set to this component, if any
         base.Export(session, ct);
         if (Actor?.ActorManager is not { } manager || Animation is null)
             return;

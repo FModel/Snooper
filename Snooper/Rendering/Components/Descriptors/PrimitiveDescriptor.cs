@@ -96,8 +96,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
 
         Skeleton = new SkeletonDescriptor(owner.ReferenceSkeleton);
 
-        var sockets = new List<FPackageIndex>();
-        sockets.AddRange(owner.Sockets);
+        var sockets = new List<FPackageIndex>(owner.Sockets);
         if (owner.Skeleton.TryLoad<USkeleton>(out var skeleton))
         {
             Skeleton.SetOwner(skeleton);
@@ -216,7 +215,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         ImGui.SetWindowFontScale(0.85f);
         ImGui.TextUnformatted($"Mesh: {Path}");
         if (Skeleton != null) ImGui.TextUnformatted($"Skeleton: {Skeleton.Path}");
-        ImGui.SetWindowFontScale(1f);
+        ImGui.SetWindowFontScale(1.0f);
         ImGui.PopStyleColor();
     }
 

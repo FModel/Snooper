@@ -18,7 +18,7 @@ public sealed class ExportModal
 
     private const string Title = "Export Progress";
     private const string IconXMark = "\uf057";
-    private const string IconFolder = "\uf07b";
+    private const string IconFolder = "\uf08e";
 
     private readonly Vector4[] _pieColors =
     [
@@ -35,14 +35,20 @@ public sealed class ExportModal
     private bool _openPopup;
     private bool _modalOpen;
     private bool _inProgress;
-    private IReadOnlyList<ExportResult>? _exportResults;
     private CancellationTokenSource? _cts;
+    private IReadOnlyList<ExportResult>? _exportResults;
 
     private ExportProgress _currentProgress;
     private readonly IProgress<ExportProgress> _progress;
     private readonly Stopwatch _stopwatch = new();
     private readonly ConcurrentQueue<LogEvent> _pendingLogs = new();
     private readonly List<ClassGroup> _classGroups = [];
+
+    private const int MaxGraphSamples = 4096;
+    private const float GraphSampleIntervalSec = 0.25f;
+    private readonly List<float> _graphSamples = [];
+    private float _graphNextSampleAt;
+    private int _graphLastCompleted;
 
     private ExportModal()
     {
@@ -55,16 +61,14 @@ public sealed class ExportModal
         Reset();
         _openPopup = true;
         _inProgress = true;
+        _cts = new CancellationTokenSource();
         _stopwatch.Restart();
 
-        _cts = new CancellationTokenSource();
         var token = _cts.Token;
-
         _ = Task.Run(async () =>
         {
             try
             {
-                options.ExportMaterials = false; // we manually add materials
                 var session = new ExportSession(exportDirectory, options);
                 node.Export(session, token);
                 _exportResults = await session.RunAsync(_progress, token);
@@ -108,6 +112,10 @@ public sealed class ExportModal
                 DrawProgressBar();
 
                 ImGui.Spacing();
+                ImGui.SeparatorText("Throughput");
+                DrawThroughputGraph();
+
+                ImGui.Spacing();
                 ImGui.SeparatorText("Export Log");
                 DrawExportLog();
             }
@@ -131,18 +139,33 @@ public sealed class ExportModal
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
+
+        _graphSamples.Clear();
+        _graphNextSampleAt = 0f;
+        _graphLastCompleted = 0;
     }
 
     private void DrawProgressBar()
     {
         var e = _stopwatch.Elapsed;
-        ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
-        ImGui.TextUnformatted("\uf017");
-        ImGui.PopStyleColor();
+        ImGui.TextDisabled("\uf2f2");
         ImGui.SameLine();
         ImGui.TextUnformatted($"{e.Minutes:D2}:{e.Seconds:D2}.{e.Milliseconds / 10:D2}");
 
-        if (!_inProgress && _exportResults is { Count: > 0 })
+        if (_inProgress && _currentProgress is { Total: > 0, Completed: > 1 })
+        {
+            var rate = _currentProgress.Completed / e.TotalSeconds;
+            if (rate > 0)
+            {
+                var remaining = (_currentProgress.Total - _currentProgress.Completed) / rate;
+                var eta = TimeSpan.FromSeconds(remaining);
+                ImGui.SameLine();
+                ImGui.TextDisabled("\uf017");
+                ImGui.SameLine();
+                ImGui.TextUnformatted($"ETA {eta.Minutes:D2}:{eta.Seconds:D2}");
+            }
+        }
+        else if (!_inProgress && _exportResults is { Count: > 0 })
         {
             ImGui.SameLine();
             ImGui.TextColored(Settings.GreenColor, "\uf058");
@@ -186,11 +209,113 @@ public sealed class ExportModal
         }
     }
 
+    private void DrawThroughputGraph()
+    {
+        var elapsedSec = (float)_stopwatch.Elapsed.TotalSeconds;
+        if (_inProgress && _currentProgress.Completed > 0 && elapsedSec >= _graphNextSampleAt && _graphSamples.Count < MaxGraphSamples)
+        {
+            var completed = _currentProgress.Completed;
+            var rate = (completed - _graphLastCompleted) / GraphSampleIntervalSec;
+            _graphSamples.Add(MathF.Max(rate, 0f));
+            _graphLastCompleted = completed;
+            _graphNextSampleAt = elapsedSec + GraphSampleIntervalSec;
+        }
+
+        var graphPos = ImGui.GetCursorScreenPos();
+        var graphW = ImGui.GetContentRegionAvail().X;
+        var graphH = ImGui.GetFrameHeight() * 3f;
+        var graphSize = new Vector2(graphW, graphH);
+        ImGui.InvisibleButton("##ThroughputGraph", graphSize);
+        var dl = ImGui.GetWindowDrawList();
+
+        dl.AddRectFilled(graphPos, graphPos + graphSize, 0xFF_14_14_14);
+
+        var count = _graphSamples.Count;
+        switch (count)
+        {
+            case 0 when !_inProgress:
+            {
+                dl.AddRect(graphPos, graphPos + graphSize, 0xFF_2A_2A_2A);
+                return;
+            }
+            case < 2:
+            {
+                if (_inProgress)
+                {
+                    const string msg = "Collecting data...";
+                    var msgSz = ImGui.CalcTextSize(msg);
+                    dl.AddText(graphPos + (graphSize - msgSz) * 0.5f, 0x44_FF_FF_FF, msg);
+                }
+                dl.AddRect(graphPos, graphPos + graphSize, 0xFF_2A_2A_2A);
+                return;
+            }
+        }
+
+        // Y scale
+        var maxVal = 0f;
+        for (var i = 0; i < count; i++) maxVal = MathF.Max(maxVal, _graphSamples[i]);
+        if (maxVal < 0.01f) maxVal = 1f;
+        maxVal *= 1.15f; // top headroom
+
+        dl.PushClipRect(graphPos, graphPos + graphSize, true);
+
+        // Horizontal grid lines at 25 / 50 / 75 %
+        for (var g = 1; g < 4; g++)
+        {
+            var gy = graphPos.Y + graphH * g / 4f;
+            dl.AddLine(new Vector2(graphPos.X, gy), new Vector2(graphPos.X + graphW, gy), 0x18_FF_FF_FF, 0.5f);
+        }
+
+        var lineColor = ImGui.GetColorU32(new Vector4(0.22f, 0.52f, 0.90f, 1f));
+        var fillColor = ImGui.GetColorU32(new Vector4(0.22f, 0.52f, 0.90f, 0.15f));
+
+        // xStep shrinks as samples accumulate → graph zooms out naturally.
+        // Oldest sample is always at x=0, newest at x=graphW.
+        var xStep = graphW / (count - 1f);
+
+        // Filled area (series of convex quads)
+        for (var i = 0; i < count - 1; i++)
+        {
+            var t0 = Math.Clamp(_graphSamples[i] / maxVal, 0f, 1f);
+            var t1 = Math.Clamp(_graphSamples[i + 1] / maxVal, 0f, 1f);
+            var x0 = graphPos.X + xStep * i;
+            var x1 = graphPos.X + xStep * (i + 1);
+            var y0 = graphPos.Y + graphH - graphH * t0;
+            var y1 = graphPos.Y + graphH - graphH * t1;
+            var bot = graphPos.Y + graphH;
+            dl.AddQuadFilled(new Vector2(x0, y0), new Vector2(x1, y1), new Vector2(x1, bot), new Vector2(x0, bot), fillColor);
+        }
+
+        // Line
+        for (var i = 0; i < count - 1; i++)
+        {
+            var t0 = Math.Clamp(_graphSamples[i] / maxVal, 0f, 1f);
+            var t1 = Math.Clamp(_graphSamples[i + 1] / maxVal, 0f, 1f);
+            var x0 = graphPos.X + xStep * i;
+            var x1 = graphPos.X + xStep * (i + 1);
+            var y0 = graphPos.Y + graphH - graphH * t0;
+            var y1 = graphPos.Y + graphH - graphH * t1;
+            dl.AddLine(new Vector2(x0, y0), new Vector2(x1, y1), lineColor, 1.5f);
+        }
+
+        // Dot on the newest sample (always at the right edge)
+        var newestT = Math.Clamp(_graphSamples[count - 1] / maxVal, 0f, 1f);
+        var newestY = graphPos.Y + graphH - graphH * newestT;
+        dl.AddCircleFilled(new Vector2(graphPos.X + graphW, newestY), 3f, lineColor);
+
+        var rateStr = $"{_graphSamples[count - 1]:F1} items/s";
+        dl.AddText(new Vector2(graphPos.X + 4, graphPos.Y + 3), 0xCC_FF_FF_FF, rateStr);
+
+        dl.PopClipRect();
+
+        dl.AddRect(graphPos, graphPos + graphSize, 0xFF_2A_2A_2A);
+    }
+
     private void DrawExportLog()
     {
         var avail = ImGui.GetContentRegionAvail();
         var rowH = ImGui.GetTextLineHeightWithSpacing();
-        var canvasSize = 12 * rowH + ImGui.GetFrameHeightWithSpacing();
+        var canvasSize = 15 * rowH + ImGui.GetFrameHeightWithSpacing();
         var treeW = avail.X - canvasSize - ImGui.GetStyle().ItemSpacing.X;
 
         DrainPendingLogs();
@@ -209,13 +334,43 @@ public sealed class ExportModal
         ImGui.EndChild();
 
         ImGui.SameLine();
-        DrawPieCanvas(canvasSize);
+        if (ImGui.BeginChild("##RightPanel", new Vector2(canvasSize, -1), ImGuiChildFlags.FrameStyle))
+        {
+            DrawPieCanvas();
+
+            if (_classGroups.Count == 0)
+            {
+                ImGui.TextDisabled(_inProgress ? "Waiting for data..." : "No export data.");
+            }
+            else
+            {
+                var total = _classGroups.Sum(cg => cg.Objects.Count);
+                for (var i = 0; i < _classGroups.Count; i++)
+                {
+                    var cg = _classGroups[i];
+                    ImGui.PushStyleColor(ImGuiCol.Text, _pieColors[i % _pieColors.Length]);
+                    ImGui.TextUnformatted("\uf111");
+                    ImGui.PopStyleColor();
+                    ImGui.SameLine();
+                    ImGui.TextUnformatted(cg.Name);
+                    ImGui.SameLine();
+                    ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+                    ImGui.TextUnformatted($"({(float) cg.Objects.Count / total * 100f:F1}%)");
+                    ImGui.PopStyleColor();
+                }
+            }
+        }
+
+        ImGui.EndChild();
     }
 
-    private void DrawPieCanvas(float size)
+    private void DrawPieCanvas()
     {
+        const int segments = 64;
+
         var canvasPos = ImGui.GetCursorScreenPos();
-        var canvasVec = new Vector2(size, size);
+        var size = ImGui.GetContentRegionAvail().X;
+        var canvasVec = new Vector2(size);
         ImGui.InvisibleButton("##PieCanvas", canvasVec);
         var isHovered = ImGui.IsItemHovered();
         var mousePos = ImGui.GetMousePos();
@@ -225,13 +380,13 @@ public sealed class ExportModal
         dl.AddRect(canvasPos, canvasPos + canvasVec, 0xFF_32_32_32);
 
         var total = _classGroups.Sum(cg => cg.Objects.Count);
-        const float pad = 12f;
-        var radius = size * 0.5f - pad;
-        var center = canvasPos + new Vector2(size * 0.5f, size * 0.5f);
+        var padding = ImGui.GetFrameHeight() * 0.5f;
+        var radius = size * 0.5f - padding;
+        var center = canvasPos + new Vector2(size * 0.5f);
 
         if (total == 0 || radius <= 0)
         {
-            dl.AddCircleFilled(center, MathF.Max(radius, 1f), 0xFF_1F_1F_1F, 64);
+            dl.AddCircleFilled(center, MathF.Max(radius, 1f), 0xFF_1F_1F_1F, segments);
             return;
         }
 
@@ -262,7 +417,7 @@ public sealed class ExportModal
             var ratio = (float) cg.Objects.Count / total;
             var sliceAngle = ratio * MathF.PI * 2f;
             var col = ImGui.GetColorU32(_pieColors[i % _pieColors.Length]);
-            var r = i == hoveredSlice ? radius + 5f : radius;
+            var r = i == hoveredSlice ? radius + padding * 0.25f : radius;
             dl.PathLineTo(center);
             dl.PathArcTo(center, r, startAngle, startAngle + sliceAngle);
             dl.PathFillConvex(col);
@@ -275,7 +430,7 @@ public sealed class ExportModal
             startAngle += sliceAngle;
         }
 
-        dl.AddCircle(center, radius, 0xAA_00_00_00, 64, 1.5f);
+        dl.AddCircle(center, radius, 0xAA_00_00_00, segments, 1.5f);
 
         if (hoveredSlice >= 0)
         {
@@ -294,7 +449,7 @@ public sealed class ExportModal
 
     private void DrawClassGroup(int index, ClassGroup cg)
     {
-        var open = ImGui.CollapsingHeader($"{cg.Name}  ({cg.Objects.Count})##class_{cg.Name}");
+        var open = ImGui.CollapsingHeader($"{cg.Name} ({cg.Objects.Count})##class_{cg.Name}");
         var headerMin = ImGui.GetItemRectMin();
         var headerMax = ImGui.GetItemRectMax();
 
@@ -333,8 +488,9 @@ public sealed class ExportModal
             ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
             if (ImGui.Button($"{IconFolder}##obj_{className}_{og.Name}"))
             {
-                OpenFileInExplorer(first.FilePath!);
+                OpenInExplorer(first.FilePath!);
             }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Open In Explorer");
             ImGui.PopStyleColor();
             ImGui.PopStyleVar();
         }
@@ -364,26 +520,33 @@ public sealed class ExportModal
     {
         ImGui.BeginTooltip();
         ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
-        ImGui.TextUnformatted(ex.Message);
+        ImGui.TextUnformatted(ex.GetType().ToString());
         ImGui.PopStyleColor();
+        ImGui.SameLine(0, 0);
+        ImGui.TextDisabled(":");
+        ImGui.SameLine();
+        ImGui.TextUnformatted(ex.Message);
         if (!string.IsNullOrEmpty(ex.StackTrace))
         {
-            ImGui.Separator();
-            ImGui.TextWrapped(ex.StackTrace);
+            ImGui.SetWindowFontScale(0.85f);
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+            ImGui.TextUnformatted(ex.StackTrace);
+            ImGui.PopStyleColor();
+            ImGui.SetWindowFontScale(1.0f);
         }
         ImGui.EndTooltip();
     }
 
-    private void OpenFileInExplorer(string filePath)
+    private void OpenInExplorer(string path)
     {
         try
         {
-            if (File.Exists(filePath)) Process.Start("explorer.exe", $"/select,\"{filePath}\"");
-            else Log.Warning("File not found: {FilePath}", filePath);
+            if (File.Exists(path) || Directory.Exists(path)) Process.Start("explorer.exe", $"/select, \"{path}\"");
+            else Log.Warning("File or directory does not exist: {Path}", path);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to open file in Explorer: {FilePath}", filePath);
+            Log.Error(ex, "Failed to open in explorer: {Path}", path);
         }
     }
 
@@ -441,7 +604,6 @@ public sealed class ExportModal
         {
             LogEventLevel.Error or LogEventLevel.Fatal => Settings.RedColor,
             LogEventLevel.Warning => Settings.YellowColor,
-            LogEventLevel.Information => Settings.GreenColor,
             _ => new Vector4(0.5f, 0.5f, 0.5f, 1f)
         };
         public string Message { get; } = $"[{log.Timestamp:HH:mm:ss.fff}] {log.RenderMessage()}";

@@ -101,13 +101,14 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
     {
         _materials = materials;
 
-        var overrideMaterials = component.GetOrDefault<FPackageIndex[]>("OverrideMaterials", []);
+        var overrideMaterials = component.OverrideMaterials;
         for (var i = 0; i < overrideMaterials.Length; i++)
         {
             if (i >= _materials.Length) break;
-            if (overrideMaterials[i].IsNull) continue;
-
-            _materials[i] = overrideMaterials[i].ResolvedObject;
+            if (overrideMaterials[i] is { IsNull: false } overrideMaterial)
+            {
+                _materials[i] = overrideMaterial.ResolvedObject;
+            }
         }
 
         if (_materials.Length == 0)
@@ -159,20 +160,30 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     public override void Export(ExportSession session, CancellationToken ct = default)
     {
-        base.Export(session, ct);
         if (Actor?.ActorManager is not { } manager || string.IsNullOrEmpty(Descriptor.Path) || string.IsNullOrEmpty(Descriptor.Name))
+        {
+            // this is a mesh but we don't have enough info to export it, fallback to a component export and pray that C4P can find the mesh
+            base.Export(session, ct);
             return;
+        }
 
         try
         {
             session.Add(manager.FileProvider.LoadPackageObject($"{Descriptor.Path}.{Descriptor.Name}"));
 
-            foreach (var ptr in _materials)
+            // TODO: conflict here
+            // no material export in options means skip exporting materials referenced by actual meshes
+            // but what about the materials from the component??? (OverrideMaterials or user settable <- not implemented yet)
+            // ig we should let the exporter handle that by exporting the component? but still, user settable?
+            if (session.Options.ExportMaterials)
             {
-                ct.ThrowIfCancellationRequested();
-                if (ptr?.TryLoad<UMaterialInterface>(out var material) == true)
+                foreach (var ptr in _materials)
                 {
-                    session.Add(material);
+                    ct.ThrowIfCancellationRequested();
+                    if (ptr?.TryLoad<UMaterialInterface>(out var material) == true)
+                    {
+                        session.Add(material);
+                    }
                 }
             }
         }

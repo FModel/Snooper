@@ -35,7 +35,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         Sections = [new SectionDescriptor(0, IndexCount, 0)];
     }
 
-    public LodDescriptor(CBaseMeshLod lod, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    public LodDescriptor(CMeshLod lod, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         var vertices = lod switch
         {
