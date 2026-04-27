@@ -1,10 +1,10 @@
-﻿using CUE4Parse_Conversion.Meshes.PSK;
-using CUE4Parse.UE4.Objects.Core.Math;
+﻿using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using ImGuiNET;
 using Snooper.Rendering.Primitives;
 using Snooper.UI;
 using System.Numerics;
+using CUE4Parse_Conversion.V2.Dto;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
@@ -35,54 +35,62 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         Sections = [new SectionDescriptor(0, IndexCount, 0)];
     }
 
-    public LodDescriptor(CMeshLod lod, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    private LodDescriptor(uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>>? factory)
     {
-        var vertices = lod switch
-        {
-            CStaticMeshLod staticLod => staticLod.Verts,
-            CSkelMeshLod skelLod => skelLod.Verts,
-            _ => throw new NotSupportedException($"Unsupported mesh type: {lod.GetType().Name}")
-        };
+        IndexCount = indexCount;
+        VertexCount = vertexCount;
+        ScreenSize = screenSize;
+        LayerCount = layerCount;
+        HasColoredVertices = hasColoredVertices;
+        HasSkinnedVertices = hasSkinnedVertices;
+        Sections = sections;
+        _factory = factory;
+    }
 
-        if (vertices is not { Length: > 0 })
+    internal static LodDescriptor<TVertex> FromLod<TMeshVertex>(MeshLod<TMeshVertex> lod, Func<TMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) where TMeshVertex : struct, IMeshVertex
+    {
+        if (lod.Vertices is not { Length: > 0 } vertices)
             throw new ArgumentException("LOD does not contain valid vertices.", nameof(lod));
-        if (lod.Indices?.Value is not { Length: > 0 } indices)
+        if (lod.Indices is not { Length: > 0 } indices)
             throw new ArgumentException("LOD does not contain valid indices.", nameof(lod));
-        if (lod.Sections?.Value is not { Length: > 0 } sections)
+        if (lod.Sections is not { Length: > 0 } sections)
             throw new ArgumentException("LOD does not contain valid sections.", nameof(lod));
 
-        IndexCount = (uint)indices.Length;
-        VertexCount = (uint)vertices.Length;
-        ScreenSize = lod.ScreenSize;
-        LayerCount = (uint)Math.Max(1, lod.NumTexCoords);
+        // capture vertices and indices for lazy factory creation
+        var cVertices = (TMeshVertex[])vertices.Clone();
+        var cIndices = (uint[])indices.Clone();
 
-        Sections = new SectionDescriptor[sections.Length];
-        for (var i = 0; i < Sections.Length; i++)
+        var cSections = new SectionDescriptor[sections.Length];
+        for (var i = 0; i < cSections.Length; i++)
         {
             var section = sections[i];
-            Sections[i] = new SectionDescriptor((uint)section.FirstIndex, (uint)section.NumFaces * 3, (uint)section.MaterialIndex, section.CastShadow, section.MaterialName);
+            cSections[i] = new SectionDescriptor(
+                (uint) section.FirstIndex, (uint) section.NumFaces * 3,
+                (uint) section.MaterialIndex, section.CastShadow,
+                lod.Owner.GetMaterial(section)?.SlotName);
         }
-
-        // capture vertices and indices for lazy factory creation
-        var cVertices = (CMeshVertex[])vertices.Clone();
-        var cIndices = (uint[])indices.Clone();
 
         FColor[]? cColors = null;
         if (lod.VertexColors is { Length: > 0 } colors)
         {
-            cColors = (FColor[])colors.Clone();
+            cColors = (FColor[])colors[0].Colors.Clone();
         }
 
         FMeshUVFloat[]? cExtraUvs = null;
-        if (lod.ExtraUV?.Value is { Length: > 0 } extraUvs && extraUvs[0] is { Length: > 0 } extraUv1)
+        if (lod.ExtraUvs is { Length: > 0 } extraUvs && extraUvs[0] is { Length: > 0 } extraUv1)
         {
             cExtraUvs = (FMeshUVFloat[])extraUv1.Clone();
         }
 
-        HasColoredVertices = cColors != null;
-        HasSkinnedVertices = lod is CSkelMeshLod;
-
-        _factory = () => factory(cVertices, cIndices, cColors, cExtraUvs);
+        return new LodDescriptor<TVertex>(
+            (uint) indices.Length,
+            (uint) vertices.Length,
+            lod.ScreenSize,
+            (uint) lod.ExtraUvs.Length + 1,
+            cColors != null,
+            vertices is SkinnedMeshVertex[],
+            cSections,
+            () => factory(cVertices, cIndices, cColors, cExtraUvs));
     }
 
     internal TPrimitiveData<TVertex> CreatePrimitive()
@@ -108,11 +116,11 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
             if (ImGui.BeginTable("##LodSectionTable", 5, flags, new Vector2(0, tblH)))
             {
                 ImGui.TableSetupScrollFreeze(0, 1);
-                ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, 24f);
-                ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, 1.0f);
+                ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthStretch, 0.05f);
+                ImGui.TableSetupColumn("Slot Name", ImGuiTableColumnFlags.WidthStretch, 1.0f);
                 ImGui.TableSetupColumn("Idx Count", ImGuiTableColumnFlags.WidthStretch, 0.7f);
-                ImGui.TableSetupColumn("Material", ImGuiTableColumnFlags.WidthFixed, 58f);
-                ImGui.TableSetupColumn("Shadow", ImGuiTableColumnFlags.WidthFixed, 58f);
+                ImGui.TableSetupColumn("Material Idx", ImGuiTableColumnFlags.WidthStretch, 0.2f);
+                ImGui.TableSetupColumn("Shadow", ImGuiTableColumnFlags.WidthStretch, 0.2f);
                 ImGui.TableHeadersRow();
 
                 for (var i = 0; i < Sections.Length; i++)
@@ -121,7 +129,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
                     ImGui.TableNextColumn(); ImGui.TextUnformatted($"{i}");
                     ImGui.TableNextColumn(); ImGui.TextUnformatted(sec.Name);
                     ImGui.TableNextColumn(); ImGui.TextUnformatted($"{sec.IndexCount:N0}");
-                    ImGui.TableNextColumn(); ImGui.TextUnformatted($"Slot {sec.MaterialIndex}");
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted($"{sec.MaterialIndex:N0}");
                     ImGui.TableNextColumn(); ImGui.TextUnformatted(sec.CastShadow ? "\uf00c" : "\uf00d");
                 }
                 ImGui.EndTable();

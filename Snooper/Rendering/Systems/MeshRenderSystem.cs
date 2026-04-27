@@ -11,6 +11,7 @@ namespace Snooper.Rendering.Systems;
 public interface IMeshRenderSystem
 {
     public void RenderShadows(IViewProjectionProvider[] cascades);
+    public IEnumerable<MeshComponent> GetMeshComponents();
 }
 
 public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : PrimitiveSystem<Vertex, TComponent, PerInstanceData, PerMaterialMeshData>, IMeshRenderSystem where TComponent : MeshComponent
@@ -66,6 +67,8 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
         Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
         _shadowShader.Unuse();
     }
+
+    public IEnumerable<MeshComponent> GetMeshComponents() => GetComponents<TComponent>();
 
     public override long Allocated => base.Allocated + _shadowShader.Allocated;
     public override long Used => base.Used + _shadowShader.Used;

@@ -78,6 +78,7 @@ public abstract class ActorComponent : TreeNode
         if (Actor?.ActorManager is not { } manager || string.IsNullOrEmpty(Path))
             return;
 
+        // this only works for components created from UActorComponent, not those manual
         // generic exporter, entirely based on what C4P supports
         // override this in specific components for more control
 

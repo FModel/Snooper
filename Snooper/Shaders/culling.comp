@@ -168,7 +168,7 @@ void main()
                 float screenRadius = primitive.sphereRadius * uProjectionMatrix[1][1] / sClosestDist[0];
                 float screenSize = screenRadius * 2.0;
 
-                for (uint i = 1u; i <= primitive.maxLod; ++i)
+                for (uint i = 0u; i <= primitive.maxLod; ++i)
                 {
                     float threshold = primitive.screenSize[i / 4u][i % 4u];
                     if (screenSize < threshold)

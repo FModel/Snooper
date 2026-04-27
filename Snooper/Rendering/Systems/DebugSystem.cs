@@ -9,6 +9,7 @@ using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.UI;
 using System.Numerics;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Visualization;
 
 namespace Snooper.Rendering.Systems;
@@ -44,16 +45,22 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
 
     public void DrawControls()
     {
-        if (ActorManager?.GetSystem<StaticMeshRenderSystem>() is { } meshSystem)
+        if (ActorManager?.GetSystemsInternal<IMeshRenderSystem>() is { } systems)
         {
-            if (ImGui.Checkbox("Show Visible Static Mesh Bounds", ref _showVisibleMeshBounds))
+            if (ImGui.Checkbox("Show Visible Mesh Bounds", ref _showVisibleMeshBounds))
             {
-                Toggle(meshSystem.GetComponents<StaticMeshComponent>().Where(x => x.IsVisible), _showVisibleMeshBounds);
+                foreach (var system in systems)
+                {
+                    Toggle(system.GetMeshComponents().Where(x => x.IsVisible), _showVisibleMeshBounds);
+                }
             }
 
-            if (ImGui.Checkbox("Show Hidden Static Mesh Bounds", ref _showHiddenMeshBounds))
+            if (ImGui.Checkbox("Show Hidden Mesh Bounds", ref _showHiddenMeshBounds))
             {
-                Toggle(meshSystem.GetComponents<StaticMeshComponent>().Where(x => !x.IsVisible), _showHiddenMeshBounds);
+                foreach (var system in systems)
+                {
+                    Toggle(system.GetMeshComponents().Where(x => !x.IsVisible), _showHiddenMeshBounds);
+                }
             }
         }
 

@@ -1,5 +1,4 @@
-﻿using CUE4Parse.UE4.Assets;
-using CUE4Parse.UE4.Assets.Exports.Material;
+﻿using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using ImGuiNET;
@@ -11,6 +10,7 @@ using Snooper.Extensions;
 using Snooper.UI;
 using System.Collections.Concurrent;
 using System.Numerics;
+using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Cache;
@@ -34,11 +34,11 @@ public static class MaterialCache
     /// without blocking on the actual container creation.
     /// The container is created on first call to <see cref="Resolve"/>.
     /// </summary>
-    public static string GetOrCreateKey(ResolvedObject? materialObject, uint layerCount)
+    public static string GetOrCreateKey(FPackageIndex? materialObject, uint layerCount)
     {
         if (materialObject == null) return string.Empty;
 
-        var path = materialObject.GetPathName();
+        var path = materialObject.ResolvedObject?.GetPathName();
         var newLazy = new Lazy<IMaterialDataContainer?>(() =>
         {
             Log.Debug("Cache miss for material {Path}, creating data container", path);
@@ -54,11 +54,11 @@ public static class MaterialCache
         return path;
     }
 
-    public static string GetOrCreateKeyFromTextureData(UBuildingTextureData?[] textureDataLayers, ResolvedObject? materialObject, uint layerCount)
+    public static string GetOrCreateKeyFromTextureData(UBuildingTextureData?[] textureDataLayers, FPackageIndex? materialObject, uint layerCount)
     {
         if (materialObject == null) return string.Empty;
 
-        var path = materialObject.GetPathName();
+        var path = materialObject.ResolvedObject?.GetPathName();
         var dataHash = string.Join("|", textureDataLayers.Select(t => t?.GetPathName() ?? "null"));
         var key = $"__texdata__{path}__{dataHash}";
 

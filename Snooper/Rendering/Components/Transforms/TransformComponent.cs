@@ -94,17 +94,18 @@ public class SpatialComponent : ActorComponent
         {
             if (this == value || field == value) return;
 
-            field?.Children.Remove(this);
+            field?._children.Remove(this);
             field = value;
 
-            if (field != null && !field.Children.Contains(this))
-                field.Children.Add(this);
+            if (field != null && !field._children.Contains(this))
+                field._children.Add(this);
 
             MarkDirty(DirtyFlags.Transform);
         }
     }
 
-    public readonly List<SpatialComponent> Children = [];
+    private readonly List<SpatialComponent> _children = [];
+    public IReadOnlyList<SpatialComponent> Children => _children;
 
     public Matrix4x4 WorldMatrix { get; private set; } = Matrix4x4.Identity;
 

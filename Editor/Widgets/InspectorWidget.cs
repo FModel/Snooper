@@ -3,6 +3,8 @@ using ImGuiNET;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Transforms;
 using System.Numerics;
+using CUE4Parse_Conversion;
+using Editor.Modals;
 using Snooper.Rendering.Actors;
 using Serilog;
 using Snooper;
@@ -205,7 +207,7 @@ public class InspectorWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-
+                ExportModal.Instance.Export(component, "./exports_v2", new ExporterOptions());
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))

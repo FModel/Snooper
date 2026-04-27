@@ -233,8 +233,9 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
             system.Resize(newWidth, newHeight);
     }
 
-    public IEnumerable<T> GetSystems<T>() where T : ActorSystem => Systems.Values.OfType<T>();
     public T? GetSystem<T>() where T : ActorSystem => GetSystems<T>().FirstOrDefault();
+    public IEnumerable<T> GetSystems<T>() where T : ActorSystem => GetSystemsInternal<T>();
+    internal IEnumerable<T> GetSystemsInternal<T>() => Systems.Values.OfType<T>();
 
     public virtual void DrawControls()
     {

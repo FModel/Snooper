@@ -84,6 +84,11 @@ public class InteractiveCameraComponent : CameraComponent
         if (keyboard.IsKeyDown(Keys.E)) input.Y += 1;
         if (keyboard.IsKeyDown(Keys.Q)) input.Y -= 1;
 
+        if (input.X != 0 && ViewType == CameraType.Orbital)
+        {
+            ViewType = CameraType.Free; // disable orbital if we move left or right
+        }
+
         const float smoothing = 12f; // higher = snappier
         var speed = MovementSpeed * (keyboard.IsKeyDown(Keys.LeftShift) ? 2f : 1f);
 

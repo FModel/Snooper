@@ -95,7 +95,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             },
             PostPass = _ =>
             {
-                GL.Enable(EnableCap.Blend);
+                GL.Disable(EnableCap.Blend);
 
                 _forward.Unbind();
             }

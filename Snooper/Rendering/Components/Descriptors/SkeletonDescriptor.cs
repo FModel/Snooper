@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse_Conversion.V2.Dto;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
@@ -32,8 +33,8 @@ public readonly struct BoneDescriptor
 
 public class SkeletonDescriptor : IControllable
 {
-    public string Name { get; private set; }
-    public string Path { get; private set; }
+    public string? Name { get; private set; }
+    public string? Path { get; private set; }
     public FGuid Guid { get; private set; }
 
     internal BufferAllocation? _poseAllocation;
@@ -71,6 +72,27 @@ public class SkeletonDescriptor : IControllable
             var info = reference.FinalRefBoneInfo[boneIndex];
             var matrix = new Transform(reference.FinalRefBonePose[boneIndex]).ToMatrix();
             var descriptor = new BoneDescriptor(info.Name.Text, info.ParentIndex, matrix);
+
+            BoneLocalMatrices[boneIndex] = descriptor.BindPoseLocalMatrix;
+            BoneDescriptors[boneIndex] = descriptor;
+            _boneNameToIndex.Add(descriptor.Name, boneIndex);
+        }
+
+        RecalculateBoneMatrices();
+    }
+
+    public SkeletonDescriptor(IReadOnlyList<MeshBone> bones)
+    {
+        BoneLocalMatrices = new Matrix4x4[bones.Count];
+        BoneDescriptors = new BoneDescriptor[BoneCount];
+        BoneMatrices = new Matrix4x4[BoneCount];
+        _boneNameToIndex = new Dictionary<string, uint>(BoneCount, StringComparer.OrdinalIgnoreCase);
+
+        for (var boneIndex = 0u; boneIndex < BoneCount; boneIndex++)
+        {
+            var bone = bones[(int) boneIndex];
+            var matrix = new Transform(bone.Transform).ToMatrix();
+            var descriptor = new BoneDescriptor(bone.Name, bone.ParentIndex, matrix);
 
             BoneLocalMatrices[boneIndex] = descriptor.BindPoseLocalMatrix;
             BoneDescriptors[boneIndex] = descriptor;

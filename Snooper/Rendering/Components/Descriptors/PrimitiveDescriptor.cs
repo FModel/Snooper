@@ -1,13 +1,12 @@
 ﻿using System.Numerics;
-using CUE4Parse_Conversion.Meshes;
 using CUE4Parse_Conversion.Meshes.PSK;
+using CUE4Parse_Conversion.V2.Dto;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Meshes;
-using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Primitives;
@@ -52,61 +51,52 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Sockets = [];
     }
 
-    private PrimitiveDescriptor(UStaticMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    private PrimitiveDescriptor(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
         Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
         Guid = owner.LightingGuid;
 
-        if (!owner.TryConvert(out var mesh))
-            throw new ArgumentException("Failed to convert static mesh.", nameof(owner));
-
-        using (mesh)
+        using var dto = new StaticMesh(owner);
+        Bounds = new CullingBounds(dto.Bounds);
+        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
+        for (var i = 0; i < Lods.Length; i++)
         {
-            Bounds = new CullingBounds(mesh.BoundingBox);
-            Lods = (from lod in mesh.LODs where lod.NumVerts > 0 select new LodDescriptor<TVertex>(lod, factory)).ToArray();
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
         }
 
-        Sockets = new ISocketDescriptor[owner.Sockets.Length];
+        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
         for (var i = 0; i < Sockets.Length; i++)
         {
-            if (!owner.Sockets[i].TryLoad<UStaticMeshSocket>(out var socket)) continue;
+            if (!dto.Sockets[i].TryLoad<UStaticMeshSocket>(out var socket)) continue;
             Sockets[i] = new StaticMeshSocketDescriptor(socket);
         }
     }
 
-    private PrimitiveDescriptor(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    private PrimitiveDescriptor(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
         Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
         Guid = new FGuid((uint)owner.Name.GetHashCode());
 
-        if (!owner.TryConvert(out var mesh))
-            throw new ArgumentException("Failed to convert skeletal mesh.", nameof(owner));
-
-        using (mesh)
+        using var dto = new SkeletalMesh(owner);
+        Bounds = new CullingBounds(dto.Bounds);
+        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
+        for (var i = 0; i < Lods.Length; i++)
         {
-            Bounds = new CullingBounds(mesh.BoundingBox);
-            Lods = new LodDescriptor<TVertex>[mesh.LODs.Count];
-            for (var i = 0; i < Lods.Length; i++)
-            {
-                Lods[i] = new LodDescriptor<TVertex>(mesh.LODs[i], factory);
-            }
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
         }
 
-        Skeleton = new SkeletonDescriptor(owner.ReferenceSkeleton);
-
-        var sockets = new List<FPackageIndex>(owner.Sockets);
+        Skeleton = new SkeletonDescriptor(dto.RefSkeleton);
         if (owner.Skeleton.TryLoad<USkeleton>(out var skeleton))
         {
             Skeleton.SetOwner(skeleton);
-            sockets.AddRange(skeleton.Sockets);
         }
 
-        Sockets = new ISocketDescriptor[sockets.Count];
+        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
         for (var i = 0; i < Sockets.Length; i++)
         {
-            if (!sockets[i].TryLoad<USkeletalMeshSocket>(out var socket)) continue;
+            if (!dto.Sockets[i].TryLoad<USkeletalMeshSocket>(out var socket)) continue;
             Sockets[i] = new SkeletalMeshSocketDescriptor(socket);
         }
     }
@@ -117,19 +107,17 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
         Guid = owner.Guid;
 
-        if (!owner.TryConvert(out _, out var boundingBox))
-            throw new ArgumentException("Failed to convert skeleton.", nameof(owner));
-
-        Bounds = new CullingBounds(boundingBox);
+        using var dto = new Skeleton(owner);
+        Bounds = new CullingBounds(dto.Bounds);
         Lods = [new LodDescriptor<TVertex>(factory())];
 
-        Skeleton = new SkeletonDescriptor(owner.ReferenceSkeleton);
+        Skeleton = new SkeletonDescriptor(dto.RefSkeleton);
         Skeleton.SetOwner(owner);
 
-        Sockets = new ISocketDescriptor[owner.Sockets.Length];
+        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
         for (var i = 0; i < Sockets.Length; i++)
         {
-            if (!owner.Sockets[i].TryLoad<USkeletalMeshSocket>(out var socket)) continue;
+            if (!dto.Sockets[i].TryLoad<USkeletalMeshSocket>(out var socket)) continue;
             Sockets[i] = new SkeletalMeshSocketDescriptor(socket);
         }
     }
@@ -154,24 +142,17 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     }
 
     /// <summary>
-    /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> based on the provided ID.
-    /// The factory function is used to generate the primitive data if it doesn't already exist in the cache.
-    /// </summary>
-    public static PrimitiveDescriptor<TVertex> GetOrCreate(uint id, CullingBounds bounds, Func<uint, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(new FGuid(id), () => new PrimitiveDescriptor<TVertex>(id, bounds, factory));
-
-    /// <summary>
     /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> for the given static mesh.
     /// The factory function is used to generate the primitive data if it doesn't already exist in the cache.
     /// </summary>
-    public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.LightingGuid, () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
     /// <summary>
     /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> for the given skeletal mesh.
     /// The factory function is used to generate the primitive data if it doesn't already exist in the
     /// </summary>
-    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<CMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(FGuid.Random(), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeleton owner, Func<TPrimitiveData<TVertex>> factory)

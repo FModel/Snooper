@@ -1,6 +1,6 @@
 ﻿layout (location = 0) in uvec2 aPosHalf;       // half2(pos.xy) | half2(pos.zw)
-layout (location = 1) in uint  aNormalPacked;  // RGB10A2: bits 0-9=nx, 10-19=ny, 20-29=nz, 30-31=texLayer
-layout (location = 2) in uint  aTangentPacked; // RGB10A2: bits 0-9=tx, 10-19=ty, 20-29=tz, 30-31=unused
+layout (location = 1) in uint  aNormalPacked;  // RGB10A2: bits 0-9=nx, 10-19=ny, 20-29=nz, 30-31=nw
+layout (location = 2) in uint  aTangentPacked; // RGB10A2: bits 0-9=tx, 10-19=ty, 20-29=tz, 30-31=texLayer
 layout (location = 3) in uint  aTexCoordsHalf; // half2(uv.xy) packed
 
 uniform mat4 uViewMatrix;
@@ -63,15 +63,16 @@ void CommonMeshMain()
     vec2 posZW = unpackHalf2x16(aPosHalf.y);
     vec4 aPos  = vec4(posXY, posZW);
 
-    vec3 aNormal  = normalize(vec3(
+    vec4 aNormal  = normalize(vec4(
         Unpack10Snorm(aNormalPacked),
         Unpack10Snorm(aNormalPacked >> 10u),
-        Unpack10Snorm(aNormalPacked >> 20u)));
+        Unpack10Snorm(aNormalPacked >> 20u),
+        Unpack10Snorm(aNormalPacked >> 30u)));
     vec3 aTangent = normalize(vec3(
         Unpack10Snorm(aTangentPacked),
         Unpack10Snorm(aTangentPacked >> 10u),
         Unpack10Snorm(aTangentPacked >> 20u)));
-    uint texLayer = (aNormalPacked >> 30u) & 3u; // 2-bit texLayer from normal.w
+    uint texLayer = (aTangentPacked >> 30u) & 3u; // 2-bit texLayer from tangent.w
 
     vec2 aTexCoords = unpackHalf2x16(aTexCoordsHalf);
 
@@ -93,7 +94,7 @@ void CommonMeshMain()
     uint count = packedInfluenceOffset & 0xFFu;
 
     vec4 uePos = vec4(0.0);
-    vec3 ueNormal = vec3(0.0);
+    vec4 ueNormal = vec4(0.0);
     vec3 ueTangent = vec3(0.0);
 
     for (uint i = 0u; i < count; i++)
@@ -104,7 +105,7 @@ void CommonMeshMain()
 
         mat4 skinningMatrix = uPoseBuffer[cmd.BasePose + boneIndex] * uInverseBindBuffer[cmd.BaseBone + boneIndex];
         uePos += skinningMatrix * aPos * weight;
-        ueNormal += mat3(skinningMatrix) * aNormal * weight;
+        ueNormal += skinningMatrix * aNormal * weight;
         ueTangent += mat3(skinningMatrix) * aTangent * weight;
     }
 
@@ -118,17 +119,13 @@ void CommonMeshMain()
 
     mat3 nMatrix = transpose(inverse(mat3(matrix)));
     vec3 T = normalize(nMatrix * aTangent);
-    if (determinant(nMatrix) < 0.0) // flipped normals
-    {
-        T = -T;
-    }
-    vec3 N = normalize(nMatrix * aNormal);
+    vec3 N = normalize(nMatrix * aNormal.xyz);
     T = normalize(T - dot(T, N) * N); // Gram-Schmidt orthogonalization
 
     vTexLayer = texLayer;
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
-    vs_out.TBN = mat3(T, cross(N, T), N);
+    vs_out.TBN = mat3(T, cross(N, T) * aNormal.w, N);
     vs_out.vFragColor = vec3(0.5); // Clay
 
     int mode = uFragmentColorMode;

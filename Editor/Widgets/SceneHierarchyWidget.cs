@@ -49,7 +49,6 @@ public class SceneHierarchyWidget
             }
 
             DrawAddModal(actor);
-            ExportModal.Instance.Draw();
         }
         ImGui.End();
     }

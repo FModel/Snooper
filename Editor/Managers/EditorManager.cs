@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.FileProvider;
+using Editor.Modals;
 using ImGuiNET;
 using OpenTK.Windowing.Desktop;
 using Snooper.Rendering.Actors;
@@ -204,6 +205,8 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         _viewport.Draw(MainViewport);
 
         _jsonViewer.DrawAll();
+
+        ExportModal.Instance.Draw();
     }
 
     protected override void OnSelectionChanged(Actor? actor, ActorComponent? component)
