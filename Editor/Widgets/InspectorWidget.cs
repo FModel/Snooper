@@ -3,7 +3,7 @@ using ImGuiNET;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Transforms;
 using System.Numerics;
-using CUE4Parse_Conversion;
+using CUE4Parse_Conversion.V2.Options;
 using Editor.Modals;
 using Snooper.Rendering.Actors;
 using Serilog;
@@ -193,8 +193,8 @@ public class InspectorWidget
             if (ImGui.MenuItem("\uf24d  Clone")) component.Actor?.Components.Add((ActorComponent) component.Clone());
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
-                if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(component.OwnerPath);
-                if (ImGui.MenuItem("Object Path")) ImGui.SetClipboardText(component.Path);
+                if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(component.Path);
+                if (ImGui.MenuItem("Object Name")) ImGui.SetClipboardText(component.Name);
                 ImGui.EndMenu();
             }
 
@@ -207,7 +207,7 @@ public class InspectorWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-                ExportModal.Instance.Export(component, "./exports_v2", new ExporterOptions());
+                ExportModal.Instance.Export(component, "./exports_v2", new ExportOptions());
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))

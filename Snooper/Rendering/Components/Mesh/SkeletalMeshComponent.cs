@@ -96,7 +96,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 
         try
         {
-            session.Add(manager.FileProvider.LoadPackageObject($"{Animation.Path}.{Animation.Name}"));
+            session.Add(manager.FileProvider.LoadPackageObject(Animation.Path, Animation.Name));
         }
         catch
         {

@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Numerics;
-using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.V2;
+using CUE4Parse_Conversion.V2.Options;
 using Editor.Extensions;
 using ImGuiNET;
 using Serilog;
@@ -56,7 +56,7 @@ public sealed class ExportModal
         _progress = new Progress<ExportProgress>(p => _currentProgress = p);
     }
 
-    public void Export(TreeNode node, string exportDirectory, ExporterOptions options)
+    public void Export(TreeNode node, string exportDirectory, ExportOptions options)
     {
         Reset();
         _openPopup = true;

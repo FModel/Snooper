@@ -102,11 +102,11 @@ public class SkeletonDescriptor : IControllable
         RecalculateBoneMatrices();
     }
 
-    internal void SetOwner(USkeleton skeleton)
+    internal void SetOwner(USkeleton owner)
     {
-        Name = skeleton.Name;
-        Path = skeleton.Owner?.Provider?.FixPath(skeleton.GetPathName()) ?? "N/A";
-        Guid = skeleton.Guid;
+        Name = owner.Name;
+        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
+        Guid = owner.Guid;
     }
 
     public string GetBoneName(int index) => BoneDescriptors[index].Name;

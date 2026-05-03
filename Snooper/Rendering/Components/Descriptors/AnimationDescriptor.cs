@@ -31,12 +31,12 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
         PlayRate = other.PlayRate;
     }
 
-    public AnimationDescriptor(UAnimationAsset animToPlay, float startTime = 0f, float playRate = 1f)
+    public AnimationDescriptor(UAnimationAsset owner, float startTime = 0f, float playRate = 1f)
     {
-        Name = animToPlay.Name;
-        Path = animToPlay.Owner?.Provider?.FixPath(animToPlay.GetPathName()) ?? "N/A";
+        Name = owner.Name;
+        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName()) ?? "N/A";
 
-        var animation = animToPlay.ConvertAnims();
+        var animation = owner.ConvertAnims();
 
         Skeleton = new SkeletonDescriptor(animation.Skeleton.ReferenceSkeleton);
         Skeleton.SetOwner(animation.Skeleton);

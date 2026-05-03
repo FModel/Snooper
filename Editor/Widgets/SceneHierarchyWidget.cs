@@ -1,7 +1,7 @@
 ﻿using ImGuiNET;
 using Snooper.Rendering.Actors;
 using System.Numerics;
-using CUE4Parse_Conversion;
+using CUE4Parse_Conversion.V2.Options;
 using Editor.Managers;
 using Editor.Modals;
 using Serilog;
@@ -240,8 +240,8 @@ public class SceneHierarchyWidget
             if (ImGui.MenuItem("\uf24d  Clone")) actor.Parent?.Children.Add((Actor) actor.Clone());
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
-                if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(actor.OwnerPath);
-                if (ImGui.MenuItem("Object Path")) ImGui.SetClipboardText(actor.Path);
+                if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(actor.Path);
+                if (ImGui.MenuItem("Object Name")) ImGui.SetClipboardText(actor.Name);
                 ImGui.EndMenu();
             }
 
@@ -255,7 +255,7 @@ public class SceneHierarchyWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-                ExportModal.Instance.Export(actor, "./exports_v2", new ExporterOptions());
+                ExportModal.Instance.Export(actor, "./exports_v2", new ExportOptions());
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))

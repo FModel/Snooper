@@ -11,7 +11,6 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
     public string Type { get; }
     public string? Class { get; }
     public string? Path { get; }
-    public string? OwnerPath { get; }
     public string[]? JsonProperties { get; }
 
     public virtual string Icon { get; private set; } = "\uf550";
@@ -27,7 +26,6 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
         Type = other.Type;
         Class = other.Class;
         Path = other.Path;
-        OwnerPath = other.OwnerPath;
         JsonProperties = other.JsonProperties;
     }
 
@@ -37,19 +35,18 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
         Type = GetType().Name;
     }
 
-    protected TreeNode(UObject obj) : this(obj.Name)
+    protected TreeNode(UObject owner) : this(owner.Name)
     {
-        if (obj is AActor a && !string.IsNullOrEmpty(a.ActorLabel))
+        if (owner is AActor a && !string.IsNullOrEmpty(a.ActorLabel))
         {
             Name = a.ActorLabel;
         }
 
-        Class = obj.ExportType;
-        Path = obj.Owner?.Provider?.FixPath(obj.GetPathName());
-        OwnerPath = obj.Owner?.Provider?.FixPath(obj.Owner.Name);
+        Class = owner.ExportType;
+        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
 
-        var jsonProperties = new List<string> { JsonConvert.SerializeObject(obj, Formatting.Indented) };
-        var templatePtr = obj.Template;
+        var jsonProperties = new List<string> { JsonConvert.SerializeObject(owner, Formatting.Indented) };
+        var templatePtr = owner.Template;
         while (templatePtr?.TryLoad(out var template) == true)
         {
             jsonProperties.Add(JsonConvert.SerializeObject(template, Formatting.Indented));

@@ -54,7 +54,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     private PrimitiveDescriptor(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
-        Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
+        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
         Guid = owner.LightingGuid;
 
         using var dto = new StaticMesh(owner);
@@ -76,7 +76,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     private PrimitiveDescriptor(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
-        Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
+        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
         Guid = new FGuid((uint)owner.Name.GetHashCode());
 
         using var dto = new SkeletalMesh(owner);
@@ -87,7 +87,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
             Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
         }
 
-        Skeleton = new SkeletonDescriptor(dto.RefSkeleton);
+        Skeleton = new SkeletonDescriptor(dto.Bones);
         if (owner.Skeleton.TryLoad<USkeleton>(out var skeleton))
         {
             Skeleton.SetOwner(skeleton);
@@ -104,14 +104,14 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     private PrimitiveDescriptor(USkeleton owner, Func<TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
-        Path = owner.Owner?.Provider?.FixPath(owner.GetPathName());
+        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
         Guid = owner.Guid;
 
         using var dto = new Skeleton(owner);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = [new LodDescriptor<TVertex>(factory())];
 
-        Skeleton = new SkeletonDescriptor(dto.RefSkeleton);
+        Skeleton = new SkeletonDescriptor(dto.Bones);
         Skeleton.SetOwner(owner);
 
         Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];

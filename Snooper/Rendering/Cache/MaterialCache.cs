@@ -95,7 +95,7 @@ public static class MaterialCache
     private static MaterialDataContainer? ParseMaterialParameters(UUnrealMaterial material, uint layerCount, UBuildingTextureData?[]? textureDataLayers)
     {
         var parameters = new CMaterialParams2();
-        material.GetParams(parameters, EMaterialFormat.FirstLayer);
+        material.GetParams(parameters, EMaterialDepth.TopLayerOnly);
 
         // whatever we will probably remove this Switch thing later
         var maxLayers = Math.Min(4, layerCount);

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse_Conversion.V2;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
@@ -146,6 +147,21 @@ public class WorldActor : Actor
                 }
                 break;
             }
+        }
+    }
+
+    public override void Export(ExportSession session, CancellationToken ct = default)
+    {
+        if (ActorManager is not { } manager || string.IsNullOrEmpty(Path))
+            return;
+
+        try
+        {
+            session.Add(manager.FileProvider.LoadPackageObject(Path, Name));
+        }
+        catch
+        {
+            //
         }
     }
 

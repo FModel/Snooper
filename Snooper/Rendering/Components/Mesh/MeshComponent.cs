@@ -162,7 +162,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
         try
         {
-            session.Add(manager.FileProvider.LoadPackageObject($"{Descriptor.Path}.{Descriptor.Name}"));
+            session.Add(manager.FileProvider.LoadPackageObject(Descriptor.Path, Descriptor.Name));
 
             // TODO: conflict here
             // no material export in options means skip exporting materials referenced by actual meshes
