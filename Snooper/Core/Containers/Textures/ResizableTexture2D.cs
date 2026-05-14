@@ -7,7 +7,7 @@ public class ResizableTexture2D(int width, int height,
     SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
-    string? name = null) : Texture2D(width, height, internalFormat, format, type, name), IResizable, IBind
+    string? name = null) : Texture2D(width, height, internalFormat, format, type, name: name), IResizable, IBind
 {
     public GetPName PName => GetPName.TextureBinding2D;
     public int PreviousHandle { get; private set; }

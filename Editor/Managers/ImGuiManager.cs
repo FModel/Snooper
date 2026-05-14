@@ -25,6 +25,7 @@ public abstract class ImGuiManager : SceneManager
         ImPlot.SetImGuiContext(context);
         imnodesNET.imnodes.SetImGuiContext(context);
 
+        ImGuizmo.AllowAxisFlip(false);
         imnodesNET.imnodes.SetCurrentContext(imnodesNET.imnodes.CreateContext());
         ImPlot.SetCurrentContext(ImPlot.CreateContext());
 

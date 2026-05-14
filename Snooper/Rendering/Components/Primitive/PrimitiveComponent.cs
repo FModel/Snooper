@@ -106,6 +106,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         }
     }
 
+    protected PrimitiveComponent(USceneComponent component) : base(component)
+    {
+
+    }
+
     public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources)
     {
         if (Metadata is null)
@@ -203,6 +208,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     public override void DrawControls()
     {
         base.DrawControls();
+        if (string.IsNullOrEmpty(Descriptor.Name))
+            return;
 
         var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
         HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
@@ -213,7 +220,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
         EditorUI.PropertyValueTable(HeaderLabel, () =>
         {
-            EditorUI.Text("Name", Descriptor.Name ?? Settings.NoName);
+            EditorUI.Text("Name", Descriptor.Name);
 
             EditorUI.Property($"LODs ({Descriptor.Lods.Length})");
             ImGui.BeginGroup();
@@ -331,6 +338,11 @@ public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<
     }
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
+    {
+
+    }
+
+    protected PrimitiveComponent(USceneComponent component) : base(component)
     {
 
     }

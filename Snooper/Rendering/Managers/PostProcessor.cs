@@ -251,7 +251,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             y = Height - 1 - y;
         else
         {
-            y += 4; // don't ask me why
+            y -= 4; // don't ask me why
             y = -y;
         }
 

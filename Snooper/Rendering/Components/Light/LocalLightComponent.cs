@@ -1,4 +1,5 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+using ImGuiNET;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
@@ -6,9 +7,9 @@ namespace Snooper.Rendering.Components.Light;
 
 public abstract class LocalLightComponent : LightComponent
 {
-    public readonly float AttenuationRadius;
+    public float AttenuationRadius;
 
-    public LocalLightComponent(ULocalLightComponent component) : base(component)
+    public LocalLightComponent(ULocalLightComponent component, string sprite) : base(component, sprite)
     {
         AttenuationRadius = component.AttenuationRadius * Settings.GlobalScale;
     }
@@ -21,10 +22,11 @@ public abstract class LocalLightComponent : LightComponent
         lightData.Range = AttenuationRadius;
     }
 
-    protected override void DrawLightControls()
+    protected override bool DrawLightControls()
     {
         base.DrawLightControls();
 
-        EditorUI.Text("Attenuation Radius", $"{AttenuationRadius:F}");
+        EditorUI.Property("Attenuation Radius");
+        return ImGui.DragFloat("##AttenuationRadius", ref AttenuationRadius, 0.1f, 0f, float.MaxValue, "%.1f");
     }
 }

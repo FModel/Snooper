@@ -13,7 +13,7 @@ public class RectLightComponent : LocalLightComponent
     public readonly float BarnDoorLength;
     public readonly float LightFunctionConeAngle;
 
-    public RectLightComponent(URectLightComponent component) : base(component)
+    public RectLightComponent(URectLightComponent component) : base(component, "S_LightRect")
     {
         Width = component.SourceWidth * Settings.GlobalScale;
         Height = component.SourceHeight * Settings.GlobalScale;

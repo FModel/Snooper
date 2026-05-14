@@ -7,7 +7,7 @@ public class Texture2DArray(int width, int height, int depth,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
     string? name = null)
-    : Texture(width, height, TextureTarget.Texture2DArray, internalFormat, format, type, name)
+    : Texture(width, height, TextureTarget.Texture2DArray, internalFormat, format, type, name: name)
 {
     public int Depth { get; } = depth;
 

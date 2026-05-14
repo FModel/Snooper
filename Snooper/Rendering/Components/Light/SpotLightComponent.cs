@@ -10,7 +10,7 @@ public class SpotLightComponent : PointLightComponent
     public readonly float InnerConeAngle;
     public readonly float OuterConeAngle;
 
-    public SpotLightComponent(USpotLightComponent component) : base(component)
+    public SpotLightComponent(USpotLightComponent component) : base(component, "S_LightSpot")
     {
         InnerConeAngle = component.InnerConeAngle;
         OuterConeAngle = component.OuterConeAngle;

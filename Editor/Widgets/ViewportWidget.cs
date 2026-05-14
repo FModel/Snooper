@@ -211,12 +211,10 @@ public class ViewportWidget
             case DirectionalLightComponent light:
             {
                 var matrix = light.GizmoMatrix;
-                ImGuizmo.AllowAxisFlip(false);
                 if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.ROTATE_X | OPERATION.ROTATE_Y | OPERATION.ROTATE_SCREEN | OPERATION.TRANSLATE_Z, MODE.LOCAL, ref matrix.M11))
                 {
                     light.ApplyGizmoMatrix(matrix);
                 }
-                ImGuizmo.AllowAxisFlip(true);
                 break;
             }
             case SpatialComponent spatial when !_selectMode:

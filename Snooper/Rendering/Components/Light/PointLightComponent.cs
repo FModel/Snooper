@@ -12,7 +12,7 @@ public class PointLightComponent : LocalLightComponent
     public readonly float SourceLength;
     public readonly bool UseInverseSquaredFalloff;
 
-    public PointLightComponent(UPointLightComponent component) : base(component)
+    public PointLightComponent(UPointLightComponent component, string sprite = "S_LightPoint") : base(component, sprite)
     {
         LightFalloffExponent = component.LightFalloffExponent;
         SourceRadius = component.SourceRadius * Settings.GlobalScale;

@@ -32,10 +32,10 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
 
     public float OrthoWidth { get; } = 15.0f;
     public float OrthoNearClipPlane { get; private set; } = 0.1f;
-    public float OrthoFarClipPlane { get; private set; } = 10000.0f;
+    public float OrthoFarClipPlane { get; private set; } = 20000.0f;
 
     public float PerspectiveNearClipPlane { get; private set; } = 0.1f;
-    public float PerspectiveFarClipPlane { get; private set; } = 10000.0f;
+    public float PerspectiveFarClipPlane { get; private set; } = 20000.0f;
 
     public CameraMode ProjectionMode { get; } = CameraMode.Perspective;
 

@@ -29,25 +29,25 @@ public class ArrowComponent : DebugComponent
             var coneHeight = length * 0.25f;
             var coneRadius = length * 0.1f;
             var shaftLength = length - coneHeight;
-            var shaftEnd = center + new Vector3(0, 0, shaftLength);
-            var arrowTip = center + new Vector3(0, 0, length);
+            var shaftEnd = center + new Vector3(shaftLength, 0, 0);
+            var arrowTip = center + new Vector3(length, 0, 0);
 
             var vertices = new List<Vector3>
             {
                 center,
-                center + new Vector3(axisLength, 0, 0),
-                center,
                 center + new Vector3(0, axisLength, 0),
+                center,
+                center + new Vector3(0, 0, axisLength),
                 center,
                 shaftEnd
             };
 
             var coneBasePoints = new[]
             {
-                shaftEnd + new Vector3(coneRadius, 0, 0),
                 shaftEnd + new Vector3(0, coneRadius, 0),
-                shaftEnd + new Vector3(-coneRadius, 0, 0),
-                shaftEnd + new Vector3(0, -coneRadius, 0)
+                shaftEnd + new Vector3(0, 0, coneRadius),
+                shaftEnd + new Vector3(0, -coneRadius, 0),
+                shaftEnd + new Vector3(0, 0, -coneRadius)
             };
 
             foreach (var point in coneBasePoints)

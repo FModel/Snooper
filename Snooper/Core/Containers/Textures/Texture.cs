@@ -13,10 +13,11 @@ public abstract class Texture(
     SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
+    FGuid? guid = null,
     string? name = null) : HandledObject, IMemorySizeProvider, IControllable
 {
     public string Name { get; } = name ?? Settings.NoName;
-    public FGuid Guid { get; protected init; }
+    public FGuid Guid { get; } = guid ?? FGuid.Random();
     public TextureTarget Target { get; } = target;
 
     public int Width { get; protected set; } = width;
@@ -75,6 +76,9 @@ public abstract class Texture(
     {
         var pixel = default(T);
         var stride = Marshal.SizeOf<T>();
+        x = Math.Clamp(x, 0, Width - 1);
+        y = Math.Clamp(y, 0, Height - 1);
+
         switch (FormatInfo)
         {
             case TextureFormatInfo info:

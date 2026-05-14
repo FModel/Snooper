@@ -2,14 +2,14 @@
 using CUE4Parse.UE4.Assets.Exports.Sound;
 using ImGuiNET;
 using Snooper.Core;
-using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Audio;
 
 [DefaultActorSystem(typeof(AudioSystem))]
-public class AudioComponent : SpatialComponent
+public class AudioComponent : BillboardComponent
 {
     public readonly USoundBase? Sound;
     public readonly float VolumeMultiplier = 1.0f;
@@ -17,7 +17,7 @@ public class AudioComponent : SpatialComponent
 
     public bool ShouldPlay;
 
-    public AudioComponent(UAudioComponent component) : base(component)
+    public AudioComponent(UAudioComponent component) : base(component, "S_AudioComponent")
     {
         Sound = component.Sound;
         VolumeMultiplier = component.GetOrDefault(nameof(VolumeMultiplier), VolumeMultiplier);

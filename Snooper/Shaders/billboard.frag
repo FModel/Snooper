@@ -25,7 +25,7 @@ void main()
 {
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
     PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
-    
+
     vec4 color = vec4(1.0);
     if (materialData.IsReady)
     {
@@ -37,6 +37,6 @@ void main()
     }
 
     FragColor = pow(color, vec4(1.0 / 2.2));
-    
+
     gPicking = cmd.PickingId;
 }

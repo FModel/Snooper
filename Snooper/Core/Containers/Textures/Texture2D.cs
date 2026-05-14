@@ -1,5 +1,6 @@
 ﻿using CUE4Parse_Conversion.Textures;
 using CUE4Parse.UE4.Assets.Exports.Texture;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Extensions;
@@ -10,16 +11,15 @@ public class Texture2D(int width, int height,
     SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
+    FGuid? guid = null,
     string? name = null)
-    : Texture(width, height, TextureTarget.Texture2D, internalFormat, format, type, name)
+    : Texture(width, height, TextureTarget.Texture2D, internalFormat, format, type, guid, name)
 {
     private UTexture? _owner;
 
-    public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, name: texture.Name)
+    public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, guid: texture.LightingGuid, name: texture.Name)
     {
         _owner = texture;
-
-        Guid = _owner.LightingGuid;
     }
 
     public override void Generate()

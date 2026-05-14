@@ -4,6 +4,7 @@ using CUE4Parse.UE4.Objects.Engine;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
+using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -11,19 +12,19 @@ using Snooper.UI;
 namespace Snooper.Rendering.Components.Light;
 
 [DefaultActorSystem(typeof(ClusteredLightSystem))]
-public abstract class LightComponent : SpatialComponent
+public abstract class LightComponent : BillboardComponent
 {
     public readonly float Intensity;
     public readonly ELightUnits IntensityUnits;
-    public readonly float IntensityNits;
-    public readonly Vector3 Color;
+    public float IntensityNits;
+    public Vector3 Color;
     public readonly bool CastShadows;
 
     internal BufferAllocation? _allocation;
 
     public bool IsEnabled { get; internal set; }
 
-    public LightComponent(ULightComponent component) : base(component)
+    public LightComponent(ULightComponent component, string sprite) : base(component, sprite)
     {
         Intensity = component.Intensity;
         IntensityUnits = component.GetLightUnits();
@@ -33,7 +34,7 @@ public abstract class LightComponent : SpatialComponent
         CastShadows = component.CastShadows != 0;
     }
 
-    public LightComponent(float intensity, Vector3 color, Transform? transform = null, string? name = null) : base(transform, name)
+    public LightComponent(float intensity, Vector3 color, string sprite, Transform? transform = null, string? name = null) : base(sprite, transform, name)
     {
         Intensity = intensity;
         Color = color;
@@ -51,7 +52,7 @@ public abstract class LightComponent : SpatialComponent
     {
         lightData.Position = WorldMatrix.Translation;
         lightData.Color = Color;
-        lightData.Intensity = IntensityNits;
+        lightData.Intensity = IntensityNits > 0 ? IntensityNits : Intensity;
     }
 
     public override string Icon => "\uf0eb";
@@ -63,15 +64,24 @@ public abstract class LightComponent : SpatialComponent
         EditorUI.CollapsingTable("Light", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Text("Intensity", $"{Intensity:F} {IntensityUnits}");
-            EditorUI.Text("Intensity (nits)", $"{IntensityNits:F} nits");
-            EditorUI.Property("Color");
-            ImGui.ColorButton("##Color", new Vector4(Color, 1.0f), ImGuiColorEditFlags.NoAlpha | ImGuiColorEditFlags.NoTooltip);
 
-            DrawLightControls();
+            EditorUI.Property("Intensity (nits)");
+            var edited = ImGui.DragFloat("##IntensityNits", ref IntensityNits, 1.0f, 0.0f, float.MaxValue, "%.1f nits");
+
+            edited |= DrawLightControls();
+
+            EditorUI.Property("Color");
+            edited |= ImGui.ColorEdit3("##Color", ref Color, ImGuiColorEditFlags.Float | ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoLabel);
+
+            if (edited)
+            {
+                MarkDirty(DirtyFlags.Transform); // transform is fine
+            }
         });
     }
 
-    protected virtual void DrawLightControls()
+    protected virtual bool DrawLightControls()
     {
+        return false;
     }
 }

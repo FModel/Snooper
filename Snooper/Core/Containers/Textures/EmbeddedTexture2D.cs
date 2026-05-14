@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -9,7 +10,7 @@ public class EmbeddedTexture2D(string file,
     int width = 24, int height = 24, bool mipmapped = false,
     SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
-    PixelType type = PixelType.UnsignedByte) : Texture2D(width, height, internalFormat, format, type, Path.GetFileName(file))
+    PixelType type = PixelType.UnsignedByte) : Texture2D(width, height, internalFormat, format, type, new FGuid((uint)file.GetHashCode()), Path.GetFileName(file))
 {
     private readonly Assembly _assembly = Assembly.GetExecutingAssembly();
 
@@ -25,6 +26,8 @@ public class EmbeddedTexture2D(string file,
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapR, (int) TextureWrapMode.ClampToEdge);
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+
+        OnTextureReadyForBindless();
     }
 
     private void ProcessPixels(TextureFormatInfo info)

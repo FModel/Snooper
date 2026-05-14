@@ -135,7 +135,7 @@ void CommonMeshMain()
     }
     else if (mode == 3) // InstanceId
     {
-        vs_out.vFragColor = hashColor(uint(gl_BaseInstance + gl_InstanceID));
+        vs_out.vFragColor = hashColor(uint(id));
     }
     else if (mode == 4) // DrawId
     {

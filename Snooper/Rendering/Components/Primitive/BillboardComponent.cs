@@ -1,9 +1,11 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Texture;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
 
@@ -29,9 +31,21 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
         }
     }
 
+    protected BillboardComponent(string sprite, Transform? transform = null, string? name = null) : base(transform, name)
+    {
+        Descriptor = new PrimitiveDescriptor<Vector2>(new CullingBounds(Vector3.Zero, Vector3.One / 4), () => new Geometry());
+        Materials[0].InlineContainer = new MaterialDataContainer(new EmbeddedTexture2D($"Rendering.Resources.{sprite}.png"));
+    }
+
+    protected BillboardComponent(USceneComponent component, string sprite) : base(component)
+    {
+        Descriptor = new PrimitiveDescriptor<Vector2>(new CullingBounds(Vector3.Zero, Vector3.One / 4), () => new Geometry());
+        Materials[0].InlineContainer = new MaterialDataContainer(new EmbeddedTexture2D($"Rendering.Resources.{sprite}.png"));
+    }
+
     public override string Icon => "\uf51b";
 
-    private class MaterialDataContainer(Texture sprite, float opacityMask) : IMaterialDataContainer
+    private class MaterialDataContainer(Texture sprite, float opacityMask = 0.5f) : IMaterialDataContainer
     {
         private BindlessTexture? _sprite;
 
