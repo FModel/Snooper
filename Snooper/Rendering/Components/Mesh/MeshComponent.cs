@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
-using CUE4Parse_Conversion.V2;
-using CUE4Parse_Conversion.V2.Dto;
+using CUE4Parse_Conversion;
+using CUE4Parse_Conversion.Dto;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component;

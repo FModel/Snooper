@@ -4,7 +4,7 @@ using ImGuiNET;
 using Snooper.Rendering.Primitives;
 using Snooper.UI;
 using System.Numerics;
-using CUE4Parse_Conversion.V2.Dto;
+using CUE4Parse_Conversion.Dto;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
@@ -47,7 +47,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         _factory = factory;
     }
 
-    internal static LodDescriptor<TVertex> FromLod<TMeshVertex>(MeshLod<TMeshVertex> lod, Func<TMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) where TMeshVertex : struct, IMeshVertex
+    internal static LodDescriptor<TVertex> FromLod<TMeshVertex>(MeshLodDto<TMeshVertex> lod, Func<TMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) where TMeshVertex : struct, IMeshVertex
     {
         if (lod.Vertices is not { Length: > 0 } vertices)
             throw new ArgumentException("LOD does not contain valid vertices.", nameof(lod));

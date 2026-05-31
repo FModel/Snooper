@@ -1,5 +1,5 @@
 ﻿using System.Collections.Specialized;
-using CUE4Parse_Conversion.V2;
+using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports;
 using Snooper.Core.Managers;
 using Snooper.Core.Systems;

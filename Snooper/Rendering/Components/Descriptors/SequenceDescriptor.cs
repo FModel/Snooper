@@ -1,5 +1,5 @@
 ﻿using System.Numerics;
-using CUE4Parse_Conversion.Animations.PSA;
+using CUE4Parse_Conversion.Writers.ActorX.Structs.Animations;
 using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Rendering.Components.Transforms;
 

@@ -14,7 +14,7 @@ namespace Snooper.Rendering.Components.Light;
 [DefaultActorSystem(typeof(ClusteredLightSystem))]
 public abstract class LightComponent : BillboardComponent
 {
-    public readonly float Intensity;
+    public float Intensity;
     public readonly ELightUnits IntensityUnits;
     public float IntensityNits;
     public Vector3 Color;
@@ -29,6 +29,11 @@ public abstract class LightComponent : BillboardComponent
         Intensity = component.Intensity;
         IntensityUnits = component.GetLightUnits();
         IntensityNits = component.GetNitIntensity();
+
+        if (IntensityUnits == ELightUnits.Unitless)
+        {
+            Intensity *= Settings.GlobalScale;
+        }
 
         Color = component.GetLightColor();
         CastShadows = component.CastShadows != 0;
@@ -63,10 +68,15 @@ public abstract class LightComponent : BillboardComponent
 
         EditorUI.CollapsingTable("Light", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
-            EditorUI.Text("Intensity", $"{Intensity:F} {IntensityUnits}");
+            const float speed = 0.5f;
+
+            EditorUI.Property("Intensity");
+            ImGui.BeginDisabled(IntensityNits > 0);
+            var edited = ImGui.DragFloat("##Intensity", ref Intensity, speed, 0.0f, float.MaxValue, $"%.1f {IntensityUnits}");
+            ImGui.EndDisabled();
 
             EditorUI.Property("Intensity (nits)");
-            var edited = ImGui.DragFloat("##IntensityNits", ref IntensityNits, 1.0f, 0.0f, float.MaxValue, "%.1f nits");
+            edited |= ImGui.DragFloat("##IntensityNits", ref IntensityNits, speed, 0.0f, float.MaxValue, "%.1f nits");
 
             edited |= DrawLightControls();
 

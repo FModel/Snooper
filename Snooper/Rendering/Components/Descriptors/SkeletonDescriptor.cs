@@ -1,5 +1,5 @@
 ﻿using System.Numerics;
-using CUE4Parse_Conversion.V2.Dto;
+using CUE4Parse_Conversion.Dto;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
@@ -81,7 +81,7 @@ public class SkeletonDescriptor : IControllable
         RecalculateBoneMatrices();
     }
 
-    public SkeletonDescriptor(IReadOnlyList<MeshBone> bones)
+    public SkeletonDescriptor(IReadOnlyList<MeshBoneDto> bones)
     {
         BoneLocalMatrices = new Matrix4x4[bones.Count];
         BoneDescriptors = new BoneDescriptor[BoneCount];

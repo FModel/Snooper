@@ -97,7 +97,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         {
             if (!allocation.LayerInfo.TryLoad(out ULandscapeLayerInfoObject info)) continue;
 
-            Layers.Add(info.LayerName.Text, new LayerMapping
+            Layers.TryAdd(info.LayerName.Text, new LayerMapping
             {
                 ChannelIndex = allocation.WeightmapTextureChannel,
                 TextureIndex = allocation.WeightmapTextureIndex,

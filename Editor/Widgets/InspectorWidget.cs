@@ -3,7 +3,7 @@ using ImGuiNET;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Transforms;
 using System.Numerics;
-using CUE4Parse_Conversion.V2.Options;
+using CUE4Parse_Conversion.Options;
 using Editor.Modals;
 using Snooper.Rendering.Actors;
 using Serilog;

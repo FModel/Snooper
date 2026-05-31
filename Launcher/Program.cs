@@ -50,7 +50,7 @@ const string key = "0x17BA95ED0A977EDBCAAB719C0B92D9EDCF9E745B982A6E836DE00E9B8E
 var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\VALORANT_12.01_zs.usmap";
+const string mapping = "D:\\FModel\\.data\\VALORANT_12.10_zs.usmap";
 const string key = "0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6";
 var version = new VersionContainer(EGame.GAME_Valorant);
 #elif GTA
@@ -254,11 +254,11 @@ switch (provider.ProjectName)
     case "ContentExamples":
     {
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/ExampleProjectWelcome.ExampleProjectWelcome")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Landscape.Level_Landscape")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Landscape.Level_Landscape")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_WorldPartitionStreaming.Level_WorldPartitionStreaming")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Streaming.Level_Streaming")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Volumes.Level_Volumes")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Geometry/StaticMeshes.StaticMeshes")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Geometry/StaticMeshes.StaticMeshes")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Lighting/Lighting_Realtime.Lighting_Realtime")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/AI/AI_NavMesh.AI_NavMesh")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Animation/Animation_ControlRig.Animation_ControlRig")));
@@ -284,12 +284,14 @@ switch (provider.ProjectName)
     }
     case "FarFarWest":
     {
-        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Characters/BP_NPC_RailwayWorker.BP_NPC_RailwayWorker_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Characters/BP_NPC_RailwayWorker.BP_NPC_RailwayWorker_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Quests/Assets/BP_GatlingAntenna.BP_GatlingAntenna_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/GPE/Assets/Train/BP_TrainExtraction.BP_TrainExtraction_C")));
 
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Area41.L_Map_Area41"))); // TODO: not a big map but lags a lot, maybe something to do with the number of instances
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Tuto.L_Map_Tuto")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_Tuto.L_Map_Tuto")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Lobby.L_Lobby")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FarFarWest/Content/Levels/L_Map_FarWest.L_Map_FarWest")));
         break;
     }
     case "Denshattack_Proto":
@@ -323,7 +325,7 @@ switch (provider.ProjectName)
         grid.Components.Add(new OpaqueGridComponent());
 
         var bob = new Actor("Bob");
-        var meshB = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/SpongeBob/SK_SpongeBob_PREVIEW.SK_SpongeBob_PREVIEW"), new FTransform(new FVector(-100, 0, 0)));
+        var meshB = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("CosmicShake/Content/CS/Characters/SpongeBob/SK_SpongeBob_Default.SK_SpongeBob_Default"), new FTransform(new FVector(-100, 0, 0)));
         meshB.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("CosmicShake/Content/CS/Characters/SpongeBob/Animations/Montages/AM_SpongeBob_Waiting_Idle_03.AM_SpongeBob_Waiting_Idle_03"));
         bob.Components.Add(meshB);
 

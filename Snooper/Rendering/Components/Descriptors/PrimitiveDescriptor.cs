@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
-using CUE4Parse_Conversion.Meshes.PSK;
-using CUE4Parse_Conversion.V2.Dto;
+using CUE4Parse_Conversion.Dto;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
@@ -57,7 +56,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
         Guid = owner.LightingGuid;
 
-        using var dto = new StaticMesh(owner);
+        using var dto = new StaticMeshDto(owner);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)
@@ -79,7 +78,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
         Guid = new FGuid((uint)owner.Name.GetHashCode());
 
-        using var dto = new SkeletalMesh(owner);
+        using var dto = new SkeletalMeshDto(owner);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)
@@ -107,7 +106,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
         Guid = owner.Guid;
 
-        using var dto = new Skeleton(owner);
+        using var dto = new SkeletonDto(owner);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = [new LodDescriptor<TVertex>(factory())];
 

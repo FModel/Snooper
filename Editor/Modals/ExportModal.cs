@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Numerics;
-using CUE4Parse_Conversion.V2;
-using CUE4Parse_Conversion.V2.Options;
+using CUE4Parse_Conversion;
+using CUE4Parse_Conversion.Options;
 using Editor.Extensions;
 using ImGuiNET;
 using Serilog;
