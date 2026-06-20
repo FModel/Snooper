@@ -286,6 +286,17 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 ImGui.TextDisabled("No Sections?");
             }
             ImGui.EndGroup();
+
+            if (Descriptor.MorphTargets is { Count: > 0 })
+            {
+                EditorUI.Property($"Morph Targets ({Descriptor.MorphTargets.Count})");
+                ImGui.BeginGroup();
+                foreach (var morphTarget in Descriptor.MorphTargets)
+                {
+                    ImGui.TextUnformatted(morphTarget.Name);
+                }
+                ImGui.EndGroup();
+            }
         });
     }
 

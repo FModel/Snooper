@@ -50,7 +50,7 @@ const string key = "0x17BA95ED0A977EDBCAAB719C0B92D9EDCF9E745B982A6E836DE00E9B8E
 var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\VALORANT_12.10_zs.usmap";
+const string mapping = "D:\\FModel\\.data\\VALORANT_12.11_zs.usmap";
 const string key = "0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6";
 var version = new VersionContainer(EGame.GAME_Valorant);
 #elif GTA
@@ -113,6 +113,11 @@ const string dir = "D:\\Games\\UE Projects\\ContentExamples\\Saved\\StagedBuilds
 const string mapping = "D:\\FModel\\.data\\507_ContentExamples.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_7);
+#elif OAR
+const string dir = "D:\\CSGO\\steamapps\\common\\One-armed robber\\OAR\\Content\\Paks";
+const string mapping = "";
+const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
+var version = new VersionContainer(EGame.GAME_UE4_27);
 #endif
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version, StringComparer.OrdinalIgnoreCase);
@@ -300,6 +305,14 @@ switch (provider.ProjectName)
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/WorldMap.WorldMap")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/3-Shikoku/3-2-2_KochiTrickpark_Art.3-2-2_KochiTrickpark_Art")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Denshattack_Proto/Content/Denshattack/Levels/3-Shikoku/3-2-2_KochiTrickpark_Design.3-2-2_KochiTrickpark_Design")));
+        break;
+    }
+    case "OAR":
+    {
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("OAR/Content/Maps/Bank.Bank")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("OAR/Content/Maps/BankCutInHalf.BankCutInHalf")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("OAR/Content/Maps/HighRise.HighRise")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("OAR/Content/Maps/Small_Map_Presset.Small_Map_Presset")));
         break;
     }
     case "DEADLINE_DELIVERY":

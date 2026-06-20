@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Numerics;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Options;
+using CUE4Parse.Utils;
 using Editor.Extensions;
 using ImGuiNET;
 using Serilog;
@@ -69,9 +70,9 @@ public sealed class ExportModal
         {
             try
             {
-                var session = new ExportSession(exportDirectory, options);
+                var session = new ExportSession();
                 node.Export(session, token);
-                _exportResults = await session.RunAsync(_progress, token);
+                _exportResults = await session.RunAsync(exportDirectory, options, _progress, token);
             }
             catch (OperationCanceledException)
             {
@@ -555,11 +556,11 @@ public sealed class ExportModal
         while (_pendingLogs.TryDequeue(out var log))
         {
             var className = log.GetContext("ClassName");
-            var objectName = log.GetContext("ObjectName");
+            var objectPath = log.GetContext("ObjectPath");
             var filePath = log.GetContext("FilePath");
 
             var cg = FindOrCreateClass(className);
-            var og = FindOrCreateObject(cg, objectName);
+            var og = FindOrCreateObject(cg, objectPath);
             var entry = new LogEntry(log, filePath);
             if (entry.Icon == IconXMark)
             {
@@ -580,12 +581,12 @@ public sealed class ExportModal
         return n;
     }
 
-    private static ObjectGroup FindOrCreateObject(ClassGroup cg, string name)
+    private static ObjectGroup FindOrCreateObject(ClassGroup cg, string path)
     {
         foreach (var og in cg.Objects)
-            if (og.Name == name) return og;
+            if (og.Path == path) return og;
 
-        var n = new ObjectGroup(name);
+        var n = new ObjectGroup(path);
         cg.Objects.Add(n);
         return n;
     }
@@ -611,9 +612,10 @@ public sealed class ExportModal
         public Exception? Exception { get; } = log.Exception;
     }
 
-    private sealed class ObjectGroup(string name)
+    private sealed class ObjectGroup(string path)
     {
-        public string Name { get; } = name;
+        public string Path { get; } = path;
+        public string Name { get; } = path.SubstringAfterLast('.');
         public List<LogEntry> Entries { get; } = [];
         public int ErrorCount { get; set; }
     }

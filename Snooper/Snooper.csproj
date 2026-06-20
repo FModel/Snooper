@@ -10,7 +10,6 @@
     <ItemGroup>
         <PackageReference Include="Twizzle.ImGui-Bundle.NET" Version="1.91.5.2" />
         <PackageReference Include="OpenTK" Version="4.9.4" />
-        <PackageReference Include="Serilog" Version="4.3.0" />
     </ItemGroup>
 
     <ItemGroup>

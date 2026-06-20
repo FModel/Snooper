@@ -168,17 +168,17 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             // no material export in options means skip exporting materials referenced by actual meshes
             // but what about the materials from the component??? (OverrideMaterials or user settable <- not implemented yet)
             // ig we should let the exporter handle that by exporting the component? but still, user settable?
-            if (session.Options.ExportMaterials)
-            {
-                foreach (var ptr in _materials)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    if (ptr?.TryLoad<UMaterialInterface>(out var material) == true)
-                    {
-                        session.Add(material);
-                    }
-                }
-            }
+            // if (session.Options.ExportMaterials)
+            // {
+            //     foreach (var ptr in _materials)
+            //     {
+            //         ct.ThrowIfCancellationRequested();
+            //         if (ptr?.TryLoad<UMaterialInterface>(out var material) == true)
+            //         {
+            //             session.Add(material);
+            //         }
+            //     }
+            // }
         }
         catch
         {
