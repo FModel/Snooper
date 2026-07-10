@@ -68,10 +68,9 @@ public class SceneManager : ActorManager
         var renderSystems = Systems.Values.OfType<IRenderSystem>().ToArray();
         var meshSystems = renderSystems.OfType<IMeshRenderSystem>().ToArray();
         var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
-        var directionalLight = lightSystem?.GetDirectionalLight();
 
         var camera = MainViewport.Camera;
-        Pipeline.RenderScene(camera, meshSystems, renderSystems, directionalLight);
+        Pipeline.RenderScene(camera, meshSystems, renderSystems, lightSystem?.DirectionalLight);
         Pipeline.PostProcessScene(camera, lightSystem);
     }
 

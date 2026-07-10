@@ -45,12 +45,12 @@ DetexHelper.Initialize("D:\\FModel\\.data\\Detex.dll");
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-40.20-CL-52463280_br.usmap";
-const string key = "0x17BA95ED0A977EDBCAAB719C0B92D9EDCF9E745B982A6E836DE00E9B8EF72104";
+const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-41.00-CL-54618515_br.usmap";
+const string key = "0x0A2416572EECAE9561E2384EC6EC5D7C830BB5AEC4D90B5BE756648B2E9AB41A";
 var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\VALORANT_12.11_zs.usmap";
+const string mapping = "D:\\FModel\\.data\\VALORANT_13.00_zs.usmap";
 const string key = "0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6";
 var version = new VersionContainer(EGame.GAME_Valorant);
 #elif GTA
@@ -215,12 +215,12 @@ switch (provider.ProjectName)
         // actor.Components.Add(skeleton);
         // scene.Children.Add(actor);
 
-        var actor = new Actor("Actor");
-        var mesh = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Deadeye/S0/3P/Models/TP_Deadeye_S0_Skelmesh.TP_Deadeye_S0_Skelmesh"));
-        mesh.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Deadeye/S0/Ability_4/3P/Anims/TP_Deadeye_S0_4_Card_Equip_Montage.TP_Deadeye_S0_4_Card_Equip_Montage"));
-        actor.Components.Add(mesh);
-        scene.Children.Add(actor);
-        break;
+        // var actor = new Actor("Actor");
+        // var mesh = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Deadeye/S0/3P/Models/TP_Deadeye_S0_Skelmesh.TP_Deadeye_S0_Skelmesh"));
+        // mesh.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Deadeye/S0/Ability_4/3P/Anims/TP_Deadeye_S0_4_Card_Equip_Montage.TP_Deadeye_S0_4_Card_Equip_Montage"));
+        // actor.Components.Add(mesh);
+        // scene.Children.Add(actor);
+        // break;
 
         // Ascent
         // Bonsai
@@ -231,6 +231,7 @@ switch (provider.ProjectName)
         // Jam
         // Juliett
         // Pitt
+        // Plummet
         // Port
         // Rook
         // Triad
@@ -425,7 +426,12 @@ switch (provider.ProjectName)
         grid.Parent?.Children.Remove(grid);
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_Terrain.Hera_Terrain")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Juno/JunoTabascoPOI_Monastery/Content/POI/JunoTabascoPOI_Monastery.JunoTabascoPOI_Monastery")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Juno/JunoTabascoPOI_LightningTemple/Content/POIs/JunoTabasco_LightningTemple_02.JunoTabasco_LightningTemple_02")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Hera_Map/Content/Maps/Hera_V2_Terrain.Hera_V2_Terrain")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/POI/POI_Manor_01.POI_Manor_01")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Figment/Figment_S08_Doofy/Content/Levels/Athena_POI_Lake_004.Athena_POI_Lake_004")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/CloudberryMapContent/Content/Athena/Apollo/Maps/POI/Apollo_POI_Agency.Apollo_POI_Agency")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/DelMar/DelMarGame/Content/Environments/Desert/Levels/Level_DM_NeonCity_SmallBuilding_A.Level_DM_NeonCity_SmallBuilding_A")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/1x1/Artemis_1x1_BusStation_a.Artemis_1x1_BusStation_a")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Content/Athena/Artemis/Maps/Buildings/3x3/Artemis_3x3_Generic_House_a.Artemis_3x3_Generic_House_a")));

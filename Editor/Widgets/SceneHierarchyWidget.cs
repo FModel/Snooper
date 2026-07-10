@@ -6,7 +6,9 @@ using Editor.Managers;
 using Editor.Modals;
 using Serilog;
 using Snooper;
+using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
+using Snooper.Rendering.Systems;
 
 namespace Editor.Widgets;
 
@@ -229,6 +231,13 @@ public class SceneHierarchyWidget
             if (actor.RootComponent is SkeletalMeshComponent sk && ImGui.MenuItem("\uf04b  Set Animation"))
             {
                 sk.SetAnimation(null); // TODO
+            }
+            if (actor.RootComponent is DirectionalLightComponent dirLight)
+            {
+                var lightSystem = actor.ActorManager?.GetSystem<ClusteredLightSystem>();
+                ImGui.BeginDisabled(lightSystem == null || lightSystem.DirectionalLight == dirLight);
+                if (ImGui.MenuItem("\uf185  Make Sun Light")) lightSystem!.DirectionalLight = dirLight;
+                ImGui.EndDisabled();
             }
             if (ImGui.MenuItem($"{Settings.EyeIcon}  Toggle Visibility")) actor.ToggleVisibility();
             if (ImGui.MenuItem("\uf124  Teleport To")) actor.RootComponent?.TeleportTo();

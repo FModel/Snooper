@@ -75,7 +75,19 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     private int _screenHeight = 1;
 
     private BufferAllocation? _globalIndexCountAllocation;
-    private DirectionalLightComponent? _cachedDirectionalLight;
+
+    internal DirectionalLightComponent? DirectionalLight
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+
+            if (field != null) field.IsEnabled = false;
+            field = value;
+            if (field != null) field.IsEnabled = true;
+        }
+    }
 
     protected override void OnLoad()
     {
@@ -176,8 +188,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
         if (component is DirectionalLightComponent { CastShadows: true } dirLight)
         {
-            _cachedDirectionalLight = dirLight;
-            _cachedDirectionalLight.IsEnabled = true;
+            DirectionalLight = dirLight;
         }
     }
 
@@ -190,10 +201,9 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
             _lightDataBuffer.Remove(allocation);
         }
 
-        if (component == _cachedDirectionalLight)
+        if (component == DirectionalLight)
         {
-            _cachedDirectionalLight.IsEnabled = false;
-            _cachedDirectionalLight = null;
+            DirectionalLight = null;
         }
     }
 
@@ -228,8 +238,6 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         _clusterDataBuffer.Bind(1);
         _lightIndexListBuffer.Bind(2);
     }
-    internal DirectionalLightComponent? GetDirectionalLight() => _cachedDirectionalLight;
-
     public override void Dispose()
     {
         base.Dispose();
@@ -246,10 +254,9 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     {
         EditorUI.PropertyValueTable("Lighting Table", () =>
         {
-            var sun = GetDirectionalLight();
-            ImGui.BeginDisabled(sun == null);
-            var check = sun?.IsEnabled ?? false;
-            if (EditorUI.Checkbox("Sun Light", ref check)) sun?.IsEnabled = check;
+            ImGui.BeginDisabled(DirectionalLight == null);
+            var check = DirectionalLight?.IsEnabled ?? false;
+            if (EditorUI.Checkbox("Sun Light", ref check)) DirectionalLight?.IsEnabled = check;
             ImGui.EndDisabled();
 
             EditorUI.Text("Lights", $"{ComponentsCount}/{Capacity}");

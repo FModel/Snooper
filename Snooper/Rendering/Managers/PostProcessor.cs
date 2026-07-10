@@ -101,14 +101,14 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 }
                 else shader.SetUniform("useLighting", false);
 
-                if (ctx.LightSystem?.GetDirectionalLight() is { IsEnabled: true } light)
+                if (ctx.LightSystem?.DirectionalLight is { IsEnabled: true } light)
                 {
                     Matrix4x4.Decompose(light.WorldMatrix, out _, out var rotation, out _);
 
                     shader.SetUniform("useSunLight", true);
                     shader.SetUniform("uSunDirection", Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation)));
                     shader.SetUniform("uSunColor", light.Color);
-                    shader.SetUniform("uSunIntensity", light.Intensity);
+                    shader.SetUniform("uSunIntensity", light.GetFinalIntensity());
 
                     if (ctx.ShadowContext is { } shadows)
                     {

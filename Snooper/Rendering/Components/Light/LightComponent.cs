@@ -57,8 +57,10 @@ public abstract class LightComponent : BillboardComponent
     {
         lightData.Position = WorldMatrix.Translation;
         lightData.Color = Color;
-        lightData.Intensity = IntensityNits > 0 ? IntensityNits : Intensity;
+        lightData.Intensity = GetFinalIntensity();
     }
+
+    public float GetFinalIntensity() => IntensityNits > 0 ? IntensityNits : Intensity;
 
     public override string Icon => "\uf0eb";
 
