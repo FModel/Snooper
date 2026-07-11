@@ -19,6 +19,7 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadow
     public readonly float[] CascadePlaneDistances = new float[cascadeCount];
     public readonly Matrix4x4[] CascadeMatrices = new Matrix4x4[cascadeCount];
 
+    // TODO: could be further improved by downscaling the shadow map for cascades that are further away
     private readonly Texture2DArray _cascades = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent16, PixelFormat.DepthComponent, PixelType.Float, "Shadow - Depth");
     private float _lambda = 0.85f;
     private float _maxFarPlane = 150.0f;
@@ -40,12 +41,14 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadow
         GL.TextureParameter(_cascades, TextureParameterName.TextureBorderColor, [1.0f, 1.0f, 1.0f, 1.0f]);
 
         base.Generate();
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.DepthAttachment, _cascades, 0);
+        BindLayer(0);
         GL.NamedFramebufferDrawBuffer(Handle, DrawBufferMode.None);
         GL.NamedFramebufferReadBuffer(Handle, ReadBufferMode.None);
 
         CheckStatus();
     }
+
+    public void BindLayer(int layer) => GL.NamedFramebufferTextureLayer(Handle, FramebufferAttachment.DepthAttachment, _cascades, 0, layer);
 
     public IViewProjectionProvider[] UpdateCascades(CameraComponent camera, DirectionalLightComponent light)
     {

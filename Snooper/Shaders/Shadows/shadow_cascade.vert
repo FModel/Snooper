@@ -1,5 +1,7 @@
 ﻿layout (location = 0) in uvec2 aPosHalf;
 
+uniform mat4 uViewProjection;
+
 #include "Buffers/PerInstanceData.glsl"
 #include "Buffers/PerDrawCommand.glsl"
 #if defined(SPLINE_VERTEX)
@@ -44,5 +46,5 @@ void main()
     aPos = uePos;
 #endif
 
-    gl_Position = uInstanceDataBuffer[gl_BaseInstance + gl_InstanceID].Matrix * aPos;
+    gl_Position = uViewProjection * (uInstanceDataBuffer[gl_BaseInstance + gl_InstanceID].Matrix * aPos);
 }

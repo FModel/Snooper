@@ -32,9 +32,15 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             Execute = ctx =>
             {
                 var shadowCameras = _shadow.UpdateCascades(ctx.Camera, ctx.Light);
-                foreach (var system in ctx.Systems)
+                for (var cascadeIndex = 0; cascadeIndex < shadowCameras.Length; cascadeIndex++)
                 {
-                    system.RenderShadows(shadowCameras);
+                    _shadow.BindLayer(cascadeIndex);
+                    GL.Clear(ClearBufferMask.DepthBufferBit);
+
+                    foreach (var system in ctx.Systems)
+                    {
+                        system.RenderShadowCascade(shadowCameras[cascadeIndex]);
+                    }
                 }
             },
             PostPass = _ =>

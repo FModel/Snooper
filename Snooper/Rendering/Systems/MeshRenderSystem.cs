@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -10,7 +11,7 @@ namespace Snooper.Rendering.Systems;
 
 public interface IMeshRenderSystem
 {
-    public void RenderShadows(IViewProjectionProvider[] cascades);
+    public void RenderShadowCascade(IViewProjectionProvider cascade);
     public IEnumerable<MeshComponent> GetMeshComponents();
 }
 
@@ -25,8 +26,7 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
 
     private readonly ShaderProgram _shadowShader = new EmbeddedShader("Shadows/shadow_cascade.vert", "empty.frag")
     {
-        Defines = defines,
-        Geometry = "Shadows/shadow_cascade.geom"
+        Defines = defines
     };
 
     protected override Action<uint> VertexLayout { get; } = vao =>
@@ -53,18 +53,17 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
         _shadowShader.Link();
     }
 
-    public void RenderShadows(IViewProjectionProvider[] cascades)
+    public void RenderShadowCascade(IViewProjectionProvider cascade)
     {
-        Resources.Cull(cascades[^1], CommandBufferType.Opaque, true); // use the farthest cascade camera for culling
+        using (Profiler.Gpu("Cull"))
+            Resources.Cull(cascade, CommandBufferType.Opaque, true); // cull against this cascade's own frustum
 
         _shadowShader.Use();
-        for (int i = 0; i < cascades.Length; i++)
-        {
-            _shadowShader.SetUniform($"uViewMatrices[{i}]", cascades[i].ViewMatrix);
-            _shadowShader.SetUniform($"uProjectionMatrices[{i}]", cascades[i].ProjectionMatrix);
-        }
+        _shadowShader.SetUniform("uViewProjection", cascade.ViewMatrix * cascade.ProjectionMatrix);
 
-        Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
+        using (Profiler.Gpu("Draw"))
+            Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
+
         _shadowShader.Unuse();
     }
 
