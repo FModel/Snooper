@@ -20,8 +20,6 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
 
     private readonly List<StagePass> _passes = [];
 
-    private int _frameCount;
-
     public override void Generate()
     {
         Generate(_ssao);
@@ -44,10 +42,9 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("gPosition", 0);
                 shader.SetUniform("gNormal", 1);
                 shader.SetUniform("uProjectionMatrix", ctx.Camera.ProjectionMatrix);
-                shader.SetUniform("radius", 1.5f);
-                shader.SetUniform("uDirectionCount", ctx.DirectionCount);
-                shader.SetUniform("uStepsPerDirection", ctx.StepsPerDirection);
-                shader.SetUniform("uFrameCount", ++_frameCount);
+                shader.SetUniform("radius", ctx.Radius);
+                shader.SetUniform("uIntensity", ctx.Intensity);
+                shader.SetUniform("uMaxDistance", ctx.MaxDistance);
 
                 ctx.Geometry.Bind(EDeferredTexture.Position, 0);
                 ctx.Geometry.Bind(EDeferredTexture.Normal, 1);
@@ -59,10 +56,14 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             SetupBindings = (ctx, shader) =>
             {
                 shader.SetUniform("inputTexture", 0);
+                shader.SetUniform("gPosition", 1);
+                shader.SetUniform("gNormal", 2);
                 shader.SetUniform("texelSize", Vector2.One / new Vector2(_ssao.Width, _ssao.Height));
                 shader.SetUniform("blurRadius", ctx.Radius);
 
                 _ssao.Bind(0);  // Read from attachment 1, write to attachment 2
+                ctx.Geometry.Bind(EDeferredTexture.Position, 1);
+                ctx.Geometry.Bind(EDeferredTexture.Normal, 2);
             }
         });
 

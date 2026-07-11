@@ -21,8 +21,9 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 
     // ao
     private bool _ambientOcclusion = true;
-    private int _directionCount = 6;
-    private int _stepsPerDirection = 6;
+    private float _aoRadius = 1.0f;
+    private float _aoIntensity = 1.0f;
+    private float _aoMaxDistance = 80f;
     private int _blurRadius = 2;
 
     private bool _debug;
@@ -52,8 +53,8 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     {
         if (_ambientOcclusion)
         {
-            _postProcess.DoStagePass("AO Pass", new AmbientOcclusionStageContext(camera, _geometry, _directionCount, _stepsPerDirection));
-            _postProcess.DoStagePass("AO Blur Pass", new BlurStageContext(_blurRadius));
+            _postProcess.DoStagePass("AO Pass", new AmbientOcclusionStageContext(camera, _geometry, _aoRadius, _aoIntensity, _aoMaxDistance));
+            _postProcess.DoStagePass("AO Blur Pass", new BlurStageContext(_blurRadius, _geometry));
         }
 
         var geometryContext = new GeometryStageContext(_geometry);
@@ -106,11 +107,14 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         {
             EditorUI.PropertyValueTable("Ambient Occlusion", () =>
             {
-                EditorUI.Property("Direction Count");
-                ImGui.DragInt("##Direction Count", ref _directionCount, 0.05f, 1, 6);
+                EditorUI.Property("Radius");
+                ImGui.DragFloat("##AO Radius", ref _aoRadius, 0.01f, 0.05f, 10f, "%.2f");
 
-                EditorUI.Property("Steps Per Direction");
-                ImGui.DragInt("##Steps Per Direction", ref _stepsPerDirection, 0.05f, 1, 6);
+                EditorUI.Property("Intensity");
+                ImGui.DragFloat("##AO Intensity", ref _aoIntensity, 0.01f, 0.1f, 4f, "%.2f");
+
+                EditorUI.Property("Max Distance");
+                ImGui.DragFloat("##AO Max Distance", ref _aoMaxDistance, 1f, 1f, 20000f, "%.0f");
 
                 EditorUI.Property("Blur Radius");
                 ImGui.DragInt("##Blur Radius", ref _blurRadius, 0.05f, 0, 10);

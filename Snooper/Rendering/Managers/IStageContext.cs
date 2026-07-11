@@ -14,17 +14,19 @@ public readonly struct GeometryStageContext(GeometryRenderer geometry) : IStageC
     public readonly GeometryRenderer Geometry = geometry;
 }
 
-public readonly struct AmbientOcclusionStageContext(CameraComponent camera, GeometryRenderer geometry, int directionCount = 6, int stepsPerDirection = 6) : IStageContext
+public readonly struct AmbientOcclusionStageContext(CameraComponent camera, GeometryRenderer geometry, float radius, float intensity, float maxDistance) : IStageContext
 {
     public readonly CameraComponent Camera = camera;
     public readonly GeometryRenderer Geometry = geometry;
-    public readonly int DirectionCount = directionCount;
-    public readonly int StepsPerDirection = stepsPerDirection;
+    public readonly float Radius = radius;
+    public readonly float Intensity = intensity;
+    public readonly float MaxDistance = maxDistance;
 }
 
-public readonly struct BlurStageContext(int radius) : IStageContext
+public readonly struct BlurStageContext(int radius, GeometryRenderer geometry) : IStageContext
 {
     public readonly int Radius = radius;
+    public readonly GeometryRenderer Geometry = geometry;
 }
 
 public readonly struct LitStageContext(CameraComponent camera, GeometryRenderer geometry, ClusteredLightSystem? lightSystem, bool ambientOcclusion = true, ShadowStageContext? shadowContext = null) : IStageContext
