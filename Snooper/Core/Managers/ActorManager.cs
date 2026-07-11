@@ -44,9 +44,12 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         DequeueSystems(1);
         TextureCache.Update();
 
-        foreach (var system in Systems.Values)
+        using (Profiler.Cpu("Update"))
         {
-            system.Update(delta);
+            foreach (var system in Systems.Values)
+            {
+                system.Update(delta);
+            }
         }
     }
 

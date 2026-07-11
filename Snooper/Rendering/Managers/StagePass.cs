@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 
@@ -35,6 +36,8 @@ public sealed class StagePass<TContext>(string name, ShaderProgram shader, Textu
     {
         if (ctx is not TContext context)
             throw new InvalidOperationException($"StagePass '{Name}' expected context of type {typeof(TContext).Name} but received {ctx.GetType().Name}.");
+
+        using var _ = Profiler.Sample(Name);
 
         var drawBuffer = DrawBufferMode.ColorAttachment0;
         if (output != null)

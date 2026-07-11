@@ -36,7 +36,7 @@ public abstract class LightComponent : BillboardComponent
         }
 
         Color = component.GetLightColor();
-        CastShadows = component.CastShadows != 0;
+        CastShadows = component.CastShadows;
     }
 
     public LightComponent(float intensity, Vector3 color, string sprite, Transform? transform = null, string? name = null) : base(sprite, transform, name)

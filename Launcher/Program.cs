@@ -205,21 +205,21 @@ switch (provider.ProjectName)
         */
 
         // const string Character = "Sarge";
-        // var actor = new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C"));
-        // scene.Children.Add(actor);
+        // var actor1 = new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"ShooterGame/Content/Characters/{Character}/FXC_CharacterSelect_{Character}.FXC_CharacterSelect_{Character}_C"));
+        // scene.Children.Add(actor1);
 
-        // var actor = new Actor("Skeleton");
+        // var actor2 = new Actor("Skeleton");
         // var anim = provider.LoadPackageObject<UAnimMontage>("ShooterGame/Content/Characters/Sarge/S0/CharSelect/3P/Anims/CS_Sarge_S0_CharSelect_Anim_Montage.CS_Sarge_S0_CharSelect_Anim_Montage");
         // var skeleton = new SkeletalMeshComponent(anim.Skeleton.Load<USkeleton>());
         // skeleton.SetAnimation(anim);
-        // actor.Components.Add(skeleton);
-        // scene.Children.Add(actor);
+        // actor2.Components.Add(skeleton);
+        // scene.Children.Add(actor2);
 
-        // var actor = new Actor("Actor");
+        // var actor3 = new Actor("Actor");
         // var mesh = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Deadeye/S0/3P/Models/TP_Deadeye_S0_Skelmesh.TP_Deadeye_S0_Skelmesh"));
         // mesh.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Deadeye/S0/Ability_4/3P/Anims/TP_Deadeye_S0_4_Card_Equip_Montage.TP_Deadeye_S0_4_Card_Equip_Montage"));
-        // actor.Components.Add(mesh);
-        // scene.Children.Add(actor);
+        // actor3.Components.Add(mesh);
+        // scene.Children.Add(actor3);
         // break;
 
         // Ascent

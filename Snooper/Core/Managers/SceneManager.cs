@@ -70,8 +70,17 @@ public class SceneManager : ActorManager
         var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
 
         var camera = MainViewport.Camera;
-        Pipeline.RenderScene(camera, meshSystems, renderSystems, lightSystem?.DirectionalLight);
-        Pipeline.PostProcessScene(camera, lightSystem);
+
+        Profiler.BeginFrame();
+        try
+        {
+            Pipeline.RenderScene(camera, meshSystems, renderSystems, lightSystem?.DirectionalLight);
+            Pipeline.PostProcessScene(camera, lightSystem);
+        }
+        finally
+        {
+            Profiler.EndFrame();
+        }
     }
 
     protected uint GetComponentId(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => Pipeline.GetComponentId(mousePos, windowPos, windowSize);

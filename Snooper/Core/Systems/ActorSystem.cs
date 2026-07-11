@@ -23,7 +23,6 @@ public abstract class ActorSystem : IGameSystem
 {
     public readonly string DisplayName;
     public readonly Type ComponentType;
-    public readonly SystemProfiler Profiler;
 
     public bool IsEnabled = true;
     public bool ShowWireframe = false;
@@ -40,22 +39,21 @@ public abstract class ActorSystem : IGameSystem
     {
         DisplayName = GetType().Name;
         ComponentType = componentType;
-        Profiler = new SystemProfiler();
     }
 
     public void Load()
     {
         if (!IsEnabled) return;
-        Profiler.Time(ProfilerMetric.Load, OnLoad);
+        OnLoad();
     }
 
     public void Update(float delta)
     {
         if (!IsEnabled) return;
-        Profiler.Time(ProfilerMetric.Update, () =>
+        using (Profiler.Cpu(DisplayName))
         {
             OnUpdate(delta);
-        });
+        }
     }
 
     protected abstract void OnLoad();
@@ -72,7 +70,6 @@ public abstract class ActorSystem : IGameSystem
 
     public virtual void Dispose()
     {
-        Profiler.Dispose();
         ActorManager = null;
     }
 }
@@ -109,16 +106,12 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public void Render(CameraComponent camera, CommandBufferType type)
     {
         if (!IsEnabled) return;
-        Profiler.Time(ProfilerMetric.CpuRender, () =>
+        using (Profiler.Sample(DisplayName))
         {
-            Profiler.BeginQuery(QueryTarget.TimeElapsed, QueryTarget.PrimitivesGenerated);
-
             if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
             OnRender(camera, type);
             if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
-
-            Profiler.EndQuery();
-        });
+        }
     }
     protected abstract void OnRender(CameraComponent camera, CommandBufferType type);
 

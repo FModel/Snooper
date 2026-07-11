@@ -25,6 +25,7 @@ public class ViewportWidget
     private const string LocalIcon     = "\uf5a0"; // object-group
     private const string FreeIcon      = "\uf48b"; // street-view
     private const string OrbitalIcon   = "\uf140"; // bullseye
+    private const string ProfilerIcon  = "\uf201"; // chart-line
 
     private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
     private bool _localSpace = true;
@@ -71,6 +72,9 @@ public class ViewportWidget
         DrawToolbar(viewport.Camera, contentPos);
         var clicked = DrawAxisOverlay(viewport.Camera, contentPos, contentSize);
         DrawStatsOverlay(contentPos, contentSize);
+
+        if (manager is EditorManager editorManager)
+            editorManager._profilerOverlay.Draw(drawList, contentPos, contentSize);
 
         if (imageHovered && !ImGui.IsAnyItemActive() && !ImGuizmo.IsUsing() && !clicked)
         {
@@ -126,6 +130,11 @@ public class ViewportWidget
         {
             camera.ViewType = isOrbital ? CameraType.Orbital : CameraType.Free;
         }
+
+        ImGui.SameLine();
+        VerticalSeparator(style.FramePadding.Y);
+        ImGui.SameLine();
+        ToggleButton(ProfilerIcon, ref Snooper.Core.Profiler.Enabled, "Profiler");
 
         ImGui.PopStyleVar();
     }

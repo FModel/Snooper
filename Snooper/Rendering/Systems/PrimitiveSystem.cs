@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -67,11 +68,19 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
 
         // this trigger a shader use, do it before pre-rendering to avoid conflicts
         if (IsCulled)
-            Resources.Cull(camera, type);
+        {
+            using (Profiler.Gpu("Cull"))
+            {
+                Resources.Cull(camera, type);
+            }
+        }
 
-        PreRender(camera, shader);
-        base.OnRender(camera, type);
-        PostRender(camera, shader);
+        using (Profiler.Gpu("Draw"))
+        {
+            PreRender(camera, shader);
+            base.OnRender(camera, type);
+            PostRender(camera, shader);
+        }
     }
 
     protected virtual void PostRender(CameraComponent camera, ShaderProgram shader)

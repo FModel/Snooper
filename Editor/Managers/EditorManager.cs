@@ -20,6 +20,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     private readonly ProfilerWidget _profiler = new();
 
     internal readonly ViewportAxisWidget _viewportAxis = new();
+    internal readonly ProfilerOverlayWidget _profilerOverlay = new();
     internal readonly JsonViewerWidget _jsonViewer = new();
     internal readonly SkeletonOverlayWidget _skeletonOverlay = new();
     internal readonly SplineOverlayWidget _splineOverlay = new();
@@ -157,10 +158,6 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
                                 ImGui.Spacing();
                                 ImGui.TextDisabled("Dirty Components");
                                 ImGui.TextUnformatted($"{system.DirtyComponentsCount:N0} {system.ComponentType.Name}{(system.DirtyComponentsCount > 1 ? "s" : "")}");
-                                ImGui.Spacing();
-                                system.Profiler.PollResults();
-                                ImGui.TextDisabled("Primitives");
-                                ImGui.TextUnformatted($"{system.Profiler.PrimitivesGenerated:N0}");
                                 ImGui.NextColumn();
                                 ImGui.TextDisabled("Show Wireframe");
                                 ImGui.Checkbox($"##ShowWireframe{system.Order}", ref system.ShowWireframe);
@@ -173,11 +170,6 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
                             {
                                 ImGui.Spacing();
                                 _profiler.DrawMemorySummary(provider);
-                            }
-                            if (ImGui.TreeNode($"Performance Metrics##SysMetrics{system.Order}"))
-                            {
-                                _profiler.DrawPerformanceMetrics(system.Profiler, system.Order.ToString());
-                                ImGui.TreePop();
                             }
                             if (system is IControllable controllable)
                             {
