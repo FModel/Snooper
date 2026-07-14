@@ -10,7 +10,7 @@ public static class FragmentColorMode
     public const int VertexColor = 5;
     public const int Normals = 6;
     public const int BoneWeightPainting = 7;
-    // public const int LODLevel          = 9;
+    public const int LODLevel = 8;
     // public const int LightInfluence    = 10;
     // public const int ShadowCascades    = 11;
 
@@ -24,5 +24,6 @@ public static class FragmentColorMode
         "Show Vertex Colors",
         "Show Normals",
         "Bone Weight Painting",
+        "LOD Level",
     ];
 }

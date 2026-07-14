@@ -1,7 +1,7 @@
 ﻿layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
-#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerDrawData.glsl"
 
 struct PerMaterialData
 {
@@ -10,7 +10,7 @@ struct PerMaterialData
     vec3 LineColor;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
+layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
 {
     PerMaterialData uMaterialDataBuffer[];
 };
@@ -27,8 +27,8 @@ void main()
 {
     gDrawID = vDrawID[0];
 
-    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
+    PerDrawData draw = uDrawDataBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
     float thickness = materialData.LineThickness;
 
     // Get the two line endpoints in clip space

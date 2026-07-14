@@ -5,21 +5,14 @@ shared uint sMaxVisible[32];
 shared float sClosestDist[32];
 shared uint sAnyVisible[32];
 
-struct PrimitiveDescriptor
+struct PrimitiveDescriptor // per-LOD data only, mesh-wide data lives in PerMeshData
 {
-    vec3 center;
-    float sphereRadius;
-    vec3 extents;
-    uint maxLod;
-    vec2 drawDistances; // min and max draw distances
-    int overrideLod; // -1 for automatic LOD selection, >= 0 to force a specific LOD
     uvec4 firstIndex[2]; // EBO offsets for each LOD
     uvec4 baseVertex[2]; // VBO offsets for each LOD
     vec4 screenSize[2];
     uvec4 sectionCount[2]; // number of sections for each LOD
     uvec4 sectionOffset[2]; // section offsets for each LOD in SectionDescriptorsBuffer
     uvec4 baseColor[2]; // Color buffer offsets for each LOD
-    uvec4 baseBoneInfluence[2]; // bone influence offset buffer offsets for each LOD
 };
 
 struct SectionDescriptor
@@ -30,14 +23,16 @@ struct SectionDescriptor
 };
 
 #include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerDrawData.glsl"
 #include "Buffers/PerInstanceData.glsl"
+#include "Buffers/PerMeshData.glsl"
 
-layout(std430, binding = 2) readonly buffer PrimitiveDescriptorsBuffer
+layout(std430, binding = BINDING_CULL_LOD_DATA) readonly buffer PrimitiveDescriptorsBuffer
 {
     PrimitiveDescriptor uPrimitiveDescriptors[];
 };
 
-layout(std430, binding = 3) buffer SectionDescriptorsBuffer
+layout(std430, binding = BINDING_CULL_SECTIONS) buffer SectionDescriptorsBuffer
 {
     SectionDescriptor uSectionDescriptors[];
 };
@@ -79,10 +74,7 @@ bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
         a.InstanceCount == b.InstanceCount &&
         a.IndexCount == b.IndexCount &&
         a.FirstIndex == b.FirstIndex &&
-        a.BaseVertex == b.BaseVertex &&
-        a.BaseColor == b.BaseColor &&
-        a.BaseBoneInfluence == b.BaseBoneInfluence &&
-        a.MaterialIndex == b.MaterialIndex;
+        a.BaseVertex == b.BaseVertex;
 }
 
 void main()
@@ -94,15 +86,17 @@ void main()
     if (drawId >= uDrawCommandBuffer.length()) return;
 
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[drawId];
-    if (uShadowPass && cmd.CastShadow == 0u)
+    PerDrawData draw = uDrawDataBuffer[drawId];
+    if (uShadowPass && draw.CastShadow == 0u)
     {
         uDrawCommandBuffer[drawId].InstanceCount = 0;
         return;
     }
 
-    PrimitiveDescriptor primitive = uPrimitiveDescriptors[cmd.BaseGeometry];
-    uint instanceCount = cmd.OriginalInstanceCount;
-    uint baseInstance = cmd.OriginalBaseInstance;
+    PerMeshData mesh = uMeshDataBuffer[draw.MeshIndex];
+    PrimitiveDescriptor primitive = uPrimitiveDescriptors[draw.MeshIndex];
+    uint instanceCount = draw.OriginalInstanceCount;
+    uint baseInstance = draw.OriginalBaseInstance;
 
     uint localMin = 0xFFFFFFFFu;
     uint localMax = 0;
@@ -113,16 +107,16 @@ void main()
     {
         mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].Matrix;
 
-        vec3 worldCenter = (modelMatrix * vec4(primitive.center, 1.0)).xyz;
+        vec3 worldCenter = (modelMatrix * vec4(mesh.Center, 1.0)).xyz;
         mat3 m = mat3(modelMatrix);
         vec3 worldExtents = vec3(
-            dot(abs(m[0]), primitive.extents),
-            dot(abs(m[1]), primitive.extents),
-            dot(abs(m[2]), primitive.extents)
+            dot(abs(m[0]), mesh.Extents),
+            dot(abs(m[1]), mesh.Extents),
+            dot(abs(m[2]), mesh.Extents)
         );
 
         float dist = length(uCameraPosition - worldCenter);
-        if (isVisible(worldCenter, worldExtents) && isWithinDrawDistance(primitive.drawDistances, dist))
+        if (isVisible(worldCenter, worldExtents) && isWithinDrawDistance(mesh.DrawDistances, dist))
         {
             localMin = min(localMin, j);
             localMax = max(localMax, j);
@@ -156,58 +150,65 @@ void main()
     }
 
     DrawElementsIndirectCommand newCmd = cmd;
+    uint newLod = draw.Lod;
+    uint newMaterialIndex = draw.MaterialIndex;
+    uint newBaseColor = draw.BaseColor;
     if (sAnyVisible[0] == 1u)
     {
         newCmd.BaseInstance = baseInstance + sMinVisible[0];
         newCmd.InstanceCount = sMaxVisible[0] - sMinVisible[0] + 1;
 
         // if primitive has at least 2 lods, switch based on screen size or override
-        if (primitive.maxLod > 0)
+        if (mesh.MaxLOD > 0)
         {
             uint chosenLod = 0u;
 
             // Check if LOD override is set (>= 0)
-            if (primitive.overrideLod >= 0)
+            if (mesh.OverrideLod >= 0)
             {
-                chosenLod = uint(primitive.overrideLod);
+                chosenLod = uint(mesh.OverrideLod);
             }
             else
             {
                 // Automatic LOD selection based on screen size
-                float screenRadius = primitive.sphereRadius * uProjectionMatrix[1][1] / sClosestDist[0];
+                float screenRadius = mesh.SphereRadius * uProjectionMatrix[1][1] / sClosestDist[0];
                 float screenSize = screenRadius * 2.0;
 
-                for (uint i = 0u; i <= primitive.maxLod; ++i)
+                for (uint i = 1u; i <= mesh.MaxLOD; ++i)
                 {
                     float threshold = primitive.screenSize[i / 4u][i % 4u];
                     if (screenSize < threshold)
                     {
-                        chosenLod = i;
+                        chosenLod = i; // keep advancing while it still qualifies
+                    }
+                    else
+                    {
                         break;
                     }
                 }
             }
 
-            uint lod = clamp(chosenLod, 0u, primitive.maxLod);
+            uint lod = clamp(chosenLod, 0u, mesh.MaxLOD);
             uint lodGroup = lod / 4u;
             uint lodSub = lod % 4u;
 
             uint sectionCount = primitive.sectionCount[lodGroup][lodSub];
-            if (cmd.SectionId >= sectionCount)
+            if (draw.SectionId >= sectionCount)
             {
                 newCmd.InstanceCount = 0;
             }
             else
             {
-                uint sectionOffset = primitive.sectionOffset[lodGroup][lodSub] + cmd.SectionId;
+                uint sectionOffset = primitive.sectionOffset[lodGroup][lodSub] + draw.SectionId;
                 SectionDescriptor section = uSectionDescriptors[sectionOffset];
 
                 newCmd.IndexCount = section.count;
                 newCmd.FirstIndex = primitive.firstIndex[lodGroup][lodSub] + section.firstIndex;
                 newCmd.BaseVertex = primitive.baseVertex[lodGroup][lodSub];
-                newCmd.BaseColor = primitive.baseColor[lodGroup][lodSub];
-                newCmd.BaseBoneInfluence = primitive.baseBoneInfluence[lodGroup][lodSub];
-                newCmd.MaterialIndex = section.materialIndex;
+
+                newLod = lod;
+                newMaterialIndex = section.materialIndex;
+                newBaseColor = primitive.baseColor[lodGroup][lodSub];
             }
         }
     }
@@ -223,8 +224,12 @@ void main()
         uDrawCommandBuffer[drawId].FirstIndex    = newCmd.FirstIndex;
         uDrawCommandBuffer[drawId].BaseVertex    = newCmd.BaseVertex;
         uDrawCommandBuffer[drawId].BaseInstance  = newCmd.BaseInstance;
-        uDrawCommandBuffer[drawId].BaseColor     = newCmd.BaseColor;
-        uDrawCommandBuffer[drawId].BaseBoneInfluence = newCmd.BaseBoneInfluence;
-        uDrawCommandBuffer[drawId].MaterialIndex = newCmd.MaterialIndex;
+    }
+
+    if (newLod != draw.Lod || newMaterialIndex != draw.MaterialIndex || newBaseColor != draw.BaseColor)
+    {
+        uDrawDataBuffer[drawId].Lod           = newLod;
+        uDrawDataBuffer[drawId].MaterialIndex = newMaterialIndex;
+        uDrawDataBuffer[drawId].BaseColor     = newBaseColor;
     }
 }

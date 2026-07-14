@@ -55,8 +55,13 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
 
     public void RenderShadowCascade(IViewProjectionProvider cascade)
     {
-        using (Profiler.Gpu("Cull"))
-            Resources.Cull(cascade, CommandBufferType.Opaque, true); // cull against this cascade's own frustum
+        if (IsCulled)
+        {
+            using (Profiler.Gpu("Cull"))
+            {
+                Resources.Cull(cascade, CommandBufferType.Opaque, true); // cull against this cascade's own frustum
+            }
+        }
 
         _shadowShader.Use();
         _shadowShader.SetUniform("uViewProjection", cascade.ViewMatrix * cascade.ProjectionMatrix);

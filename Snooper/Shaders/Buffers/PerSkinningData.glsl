@@ -1,22 +1,50 @@
-﻿layout(std430, binding = 3) buffer PerBonePoseBuffer
+layout(std430, binding = BINDING_SKIN_POSES) buffer PerBonePoseBuffer
 {
     mat4 uPoseBuffer[]; // current pose matrices (bind pose or animated pose)
 };
 
-layout(std430, binding = 4) buffer PerBoneInverseBindBuffer
+layout(std430, binding = BINDING_SKIN_INVERSE_BIND) buffer PerBoneInverseBindBuffer
 {
     mat4 uInverseBindBuffer[]; // inverse bind pose matrices
 };
 
-layout(std430, binding = 6) buffer PerVertexBoneInfluenceBuffer
+layout(std430, binding = BINDING_SKIN_BONE_INFLUENCES) buffer PerVertexBoneInfluenceBuffer
 {
     uint uVertexBoneInfluenceBuffer[]; // upper 16 bits = boneId, lower 16 bits = rawWeight
 };
 
-layout(std430, binding = 7) buffer PerVertexBoneInfluenceOffsetBuffer
+layout(std430, binding = BINDING_SKIN_BONE_INFLUENCE_OFFSETS) buffer PerVertexBoneInfluenceOffsetBuffer
 {
     uint uVertexBoneInfluenceOffsetBuffer[];
 };
+
+struct PerMeshSkinningData // one entry per unique mesh, index-aligned with PerMeshData
+{
+    uint BaseBone; // offset of this mesh's bones in the inverse bind buffer
+    uint LOD_BaseBoneInfluence[8]; // Settings.MaxNumberOfLods
+    uint Pad0;
+    uint Pad1;
+    uint Pad2;
+};
+
+layout(std430, binding = BINDING_SKIN_MESH_DATA) readonly buffer PerMeshSkinningDataBuffer
+{
+    PerMeshSkinningData uSkinMeshDataBuffer[];
+};
+
+layout(std430, binding = BINDING_SKIN_POSE_MAPPING) readonly buffer PerComponentPoseOffsetBuffer
+{
+    uint uPoseOffsetByComponent[]; // componentId -> base pose index
+};
+
+// requires Buffers/PerDrawData.glsl to be included first
+void getSkinningBases(PerDrawData draw, out uint baseBone, out uint basePose, out uint baseInfluence)
+{
+    PerMeshSkinningData skin = uSkinMeshDataBuffer[draw.MeshIndex];
+    baseBone = skin.BaseBone;
+    basePose = uPoseOffsetByComponent[draw.PickingId];
+    baseInfluence = skin.LOD_BaseBoneInfluence[draw.Lod];
+}
 
 uvec2 unpackBoneInfluence(uint boneInfluence)
 {

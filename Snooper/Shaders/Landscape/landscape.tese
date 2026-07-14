@@ -2,7 +2,7 @@
 
 layout (quads, fractional_odd_spacing, ccw) in;
 
-#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerDrawData.glsl"
 #include "Buffers/PerInstanceData.glsl"
 
 struct PerMaterialData
@@ -22,12 +22,12 @@ struct PerMaterialData
     uint VisibilityChannelIndex;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
+layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
 {
     PerMaterialData uMaterialDataBuffer[];
 };
 
-layout(std430, binding = 8) restrict readonly buffer LandscapeScales
+layout(std430, binding = BINDING_LANDSCAPE_SCALES) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };
@@ -69,8 +69,8 @@ void main()
 
     mat4 matrix = uInstanceDataBuffer[tcInstanceID[0]].Matrix;
 
-    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
+    PerDrawData draw = uDrawDataBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
     if (!materialData.IsReady)
     {
         te_out.vViewPos = vec3(0.0);

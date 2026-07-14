@@ -50,8 +50,8 @@ public class SplineMeshRenderSystem() : MeshRenderSystem<SplineMeshComponent>(["
     {
         base.PreRender(camera, shader);
 
-        _mapping.Bind(8);
-        _params.Bind(9);
+        _mapping.Bind(BindingPoints.SplineMapping);
+        _params.Bind(BindingPoints.SplineParams);
     }
 
     private int _maxComponentId;

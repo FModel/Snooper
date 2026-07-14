@@ -7,7 +7,7 @@ layout (location = 1) out uint gPicking;
 uniform int uFragmentColorMode;
 
 #include "pbr.glsl"
-#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerDrawData.glsl"
 #include "Buffers/common.frag"
 
 flat in uint vTexLayer;
@@ -22,8 +22,8 @@ out vec4 FragColor;
 
 void main()
 {
-    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
+    PerDrawData draw = uDrawDataBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
 
     vec4 color = vec4(fs_in.vFragColor, 1.0);
     vec3 spec = vec3(1.0);
@@ -100,5 +100,5 @@ void main()
     finalColor = pow(finalColor, vec3(1.0 / 2.2));
     FragColor = vec4(finalColor, opacity);
 
-    gPicking = cmd.PickingId;
+    gPicking = draw.PickingId;
 }

@@ -53,7 +53,22 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
     protected override void OnComponentUpdate(TComponent component, float delta)
     {
+        // TODO: that's ugly
+        var isNew = component.Metadata is null;
         component.Update(Resources);
+        if (isNew && component.Metadata is { } metadata)
+        {
+            OnResourcesAdded(component, metadata);
+        }
+    }
+
+    /// <summary>
+    /// Called once per component, right after its GPU resources have been created.
+    /// Lets derived systems upload their own per-component/per-mesh data (e.g. skinning buffers).
+    /// TODO: improve and leverage
+    /// </summary>
+    protected virtual void OnResourcesAdded(TComponent component, ResourcesMetadata metadata)
+    {
     }
 
     protected override void PostOnUpdate()
@@ -83,8 +98,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         if (_guids.TryAdd(component.Descriptor.Guid, 0))
         {
             _counts.UniqueComponents++;
-            if (component.Descriptor.Skeleton is { } skeleton)
-                _counts.Bones += (uint)skeleton.BoneCount;
 
             foreach (var lod in component.Descriptor.Lods)
             {
@@ -93,7 +106,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
                 _counts.Vertices += lod.VertexCount;
 
                 if (lod.HasColoredVertices) _counts.ColoredVertices += lod.VertexCount;
-                if (lod.HasSkinnedVertices) _counts.SkinnedVertices += lod.VertexCount;
             }
         }
     }
@@ -111,8 +123,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         if (_guids.Remove(component.Descriptor.Guid, out _))
         {
             _counts.UniqueComponents--;
-            if (component.Descriptor.Skeleton is { } skeleton)
-                _counts.Bones -= (uint)skeleton.BoneCount;
 
             foreach (var lod in component.Descriptor.Lods)
             {
@@ -120,7 +130,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
                 _counts.Vertices -= lod.VertexCount;
 
                 if (lod.HasColoredVertices) _counts.ColoredVertices -= lod.VertexCount;
-                if (lod.HasSkinnedVertices) _counts.SkinnedVertices -= lod.VertexCount;
             }
         }
 

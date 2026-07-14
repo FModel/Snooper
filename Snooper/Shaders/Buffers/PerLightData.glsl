@@ -14,7 +14,7 @@
     uint UseInverseSquaredFalloff;
 };
 
-layout(std430, binding = 0) readonly buffer LightBuffer
+layout(std430, binding = BINDING_LIGHT_DATA) readonly buffer LightBuffer
 {
     PerLightData lights[];
 };
@@ -25,12 +25,12 @@ struct ClusterData
     uint count;
 };
 
-layout(std430, binding = 1) buffer ClusterDataBuffer
+layout(std430, binding = BINDING_LIGHT_CLUSTER_DATA) buffer ClusterDataBuffer
 {
     ClusterData clusterData[];
 };
 
-layout(std430, binding = 2) buffer LightIndexList
+layout(std430, binding = BINDING_LIGHT_INDEX_LIST) buffer LightIndexList
 {
     uint lightIndices[];
 };

@@ -133,7 +133,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
         _clusterBuildProgram.SetUniform("uInverseProjectionMatrix", camera.InverseProjectionMatrix);
 
-        _clusterAABBBuffer.Bind(0);
+        _clusterAABBBuffer.Bind(BindingPoints.LightClusterAabbs);
 
         GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
@@ -161,8 +161,8 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         _lightCullingProgram.SetUniform("uViewMatrix", camera.ViewMatrix);
 
         BindForRendering();
-        _clusterAABBBuffer.Bind(3);
-        _globalIndexCountBuffer.Bind(4);
+        _clusterAABBBuffer.Bind(BindingPoints.LightClusterAabbs);
+        _globalIndexCountBuffer.Bind(BindingPoints.LightGlobalIndexCount);
 
         GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
@@ -234,9 +234,9 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
     internal void BindForRendering()
     {
-        _lightDataBuffer.Bind(0);
-        _clusterDataBuffer.Bind(1);
-        _lightIndexListBuffer.Bind(2);
+        _lightDataBuffer.Bind(BindingPoints.LightData);
+        _clusterDataBuffer.Bind(BindingPoints.LightClusterData);
+        _lightIndexListBuffer.Bind(BindingPoints.LightIndexList);
     }
     public override void Dispose()
     {

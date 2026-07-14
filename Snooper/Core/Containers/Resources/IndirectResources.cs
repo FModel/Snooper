@@ -20,8 +20,6 @@ public struct AllocationCounts
     public uint Indices; // total number of indices across all LODs of all unique components
     public uint Vertices; // total number of vertices across all LODs of all unique components
     public uint ColoredVertices; // total number of vertices with color data across all LODs of all unique components
-    public uint SkinnedVertices; // total number of vertices with bone data across all LODs of all unique components
-    public uint Bones; // total number of bones across all unique components
 }
 
 public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(PrimitiveType mode) : IMemoryDetailsProvider, IDisposable
@@ -33,7 +31,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     private readonly CommandBufferSet _commands = new();
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new();
     private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new();
-    private readonly ShaderStorageBuffer<Matrix4x4> _poseData = new(BufferUsageHint.DynamicDraw);
 
     private readonly List<Action> _geometryUpdates = []; // TODO: remove this hack
 
@@ -43,7 +40,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _commands.Generate();
         _instanceData.Generate();
         _materialData.Generate();
-        _poseData.Generate();
     }
 
     public void SetVertexLayout(Action<uint> setter) => _geometry.SetVertexLayout(setter);
@@ -54,7 +50,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (counts.Draws > 0) _commands.Allocate(counts.Draws);
         if (counts.Instances > 0) _instanceData.Allocate(counts.Instances);
         if (counts.Materials > 0) _materialData.Allocate(counts.Materials);
-        if (counts.Bones > 0) _poseData.Allocate(counts.Bones);
 
         Log.Debug("Allocated {SystemName}<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
             systemName,
@@ -74,13 +69,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public ResourcesMetadata Add(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
         var descriptor = component.Descriptor;
-        var geometryHandle = _geometry.Add(descriptor.Guid, descriptor.Lods, descriptor.Bounds, new Vector2(component.MinDrawDistance, component.MaxDrawDistance), descriptor.Skeleton);
+        var geometryHandle = _geometry.Add(descriptor, component.DrawDistance);
         var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
-
-        if (descriptor.Skeleton is { } skeleton)
-        {
-            skeleton._poseAllocation = _poseData.AddRange(skeleton.BoneMatrices);
-        }
 
         BufferAllocation? materialAllocation = null;
         foreach (var material in component.Materials)
@@ -104,19 +94,18 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 InstanceCount = instanceCount,
                 FirstIndex = geometryHandle.FirstIndex + section.FirstIndex,
                 BaseVertex = geometryHandle.BaseVertex,
-                BaseInstance = (uint)instanceAllocation.StartIndex,
-                BaseGeometry = (uint)geometryHandle.CullingAllocation.StartIndex,
-                BaseColor = geometryHandle.BaseColor,
-                BaseBoneInfluence = geometryHandle.BaseBoneInfluence,
-                BaseBone = (uint)(geometryHandle.BoneAllocation?.StartIndex ?? int.MaxValue),
-                BasePose = (uint)(descriptor.Skeleton?._poseAllocation?.StartIndex ?? int.MaxValue),
+                BaseInstance = (uint)instanceAllocation.StartIndex
+            }, new PerDrawData
+            {
+                MeshIndex = geometryHandle.MeshIndex,
+                SectionId = i,
                 BaseMaterial = (uint)(materialAllocation?.StartIndex ?? int.MaxValue),
                 MaterialIndex = section.MaterialIndex,
                 PickingId = (uint)component.Id,
                 OriginalInstanceCount = instanceCount,
                 OriginalBaseInstance = (uint)instanceAllocation.StartIndex,
-                SectionId = i,
-                CastShadow = section.CastShadow && component.CastShadow ? 1u : 0u
+                CastShadow = section.CastShadow && component.CastShadow ? 1u : 0u,
+                BaseColor = geometryHandle.BaseColor
             });
 
             drawAllocations[i] = new DrawBufferAllocation(draw, bufferType, section.MaterialIndex);
@@ -135,7 +124,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             foreach (var draw in metadata.DrawAllocations)
             {
                 if (!component.Materials[draw.MaterialIndex].IsTranslucent) continue;
-                draw.BufferAllocation = _commands.Transfer(draw.BufferAllocation, draw.BufferType, CommandBufferType.Transparent);
+                draw.Allocation = _commands.Transfer(draw.Allocation, draw.BufferType, CommandBufferType.Transparent);
                 draw.BufferType = CommandBufferType.Transparent;
             }
 
@@ -146,7 +135,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         {
             if (component.IsOutlined)
                 foreach (var draw in metadata.DrawAllocations)
-                    _commands.Transfer(draw.BufferAllocation, draw.BufferType, CommandBufferType.Mask);
+                    _commands.Transfer(draw.Allocation, draw.BufferType, CommandBufferType.Mask);
 
             component.MarkClean(DirtyFlags.Outline);
         }
@@ -163,28 +152,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             component.MarkClean(DirtyFlags.InstanceData);
         }
 
-        if (component.IsDirty(DirtyFlags.Animation))
-        {
-            if (component.Descriptor.Skeleton is { _poseAllocation: { } poseAllocation } skeleton)
-                _poseData.Update(poseAllocation, skeleton.BoneMatrices);
-
-            component.MarkClean(DirtyFlags.Animation);
-            foreach (var child in component.Children)
-            {
-                child.MarkDirty(DirtyFlags.Transform);
-            }
-        }
-
         if (component.IsDirty(DirtyFlags.Visibility))
         {
-            const int offset = 52; // offset to OriginalInstanceCount in DrawElementsIndirectCommand
-
             var originalInstanceCount = component.IsVisible ? (uint)metadata.InstanceAllocation.Length : 0u;
             foreach (var draw in metadata.DrawAllocations)
             {
                 var buffer = _commands.GetBuffer(draw.BufferType);
-                buffer.UpdateCustom(draw.BufferAllocation, originalInstanceCount, offset);
-                buffer.UpdateCustom(draw.BufferAllocation, originalInstanceCount, 4);
+                buffer.Commands.UpdateCustom(draw.Allocation.Command, originalInstanceCount, DrawElementsIndirectCommand.InstanceCountOffset);
+                buffer.DrawData.UpdateCustom(draw.Allocation.Data, originalInstanceCount, PerDrawData.OriginalInstanceCountOffset);
             }
 
             component.MarkClean(DirtyFlags.Visibility);
@@ -219,7 +194,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         _instanceData.FlushUpdates();
         _materialData.FlushUpdates();
-        _poseData.FlushUpdates();
     }
 
     public void Remove(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
@@ -234,7 +208,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         _geometry.Remove(metadata.GeometryHandle);
         foreach (var draw in metadata.DrawAllocations)
-            _commands.GetBuffer(draw.BufferType).Remove(draw.BufferAllocation);
+            _commands.GetBuffer(draw.BufferType).Remove(draw.Allocation);
         _instanceData.Remove(metadata.InstanceAllocation);
         if (metadata.MaterialAllocation is { } materialAllocation)
             _materialData.Remove(materialAllocation);
@@ -245,15 +219,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public void Render(CommandBufferType type)
     {
         var buffer = _commands.GetBuffer(type);
-        buffer.Bind();
-        buffer.Bind(0);
-        _instanceData.Bind(1);
-        _materialData.Bind(2);
-        _poseData.Bind(3);
+        buffer.Commands.Bind();
+        buffer.DrawData.Bind(BindingPoints.DrawData);
+        _instanceData.Bind(BindingPoints.InstanceData);
+        _materialData.Bind(BindingPoints.MaterialData);
 
         _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, 0, buffer.Capacity, buffer.Stride));
 
-        buffer.Unbind();
+        buffer.Commands.Unbind();
     }
 
     /// <summary>
@@ -271,7 +244,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _commands.Dispose();
         _instanceData.Dispose();
         _materialData.Dispose();
-        _poseData.Dispose();
     }
 
     public long Allocated
@@ -283,7 +255,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             total += _commands.Allocated;
             total += _instanceData.Allocated;
             total += _materialData.Allocated;
-            total += _poseData.Allocated;
             return total;
         }
     }
@@ -297,7 +268,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             total += _commands.Used;
             total += _instanceData.Used;
             total += _materialData.Used;
-            total += _poseData.Used;
             return total;
         }
     }
@@ -308,6 +278,5 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         yield return new MemoryDetail("Draw Commands", _commands);
         yield return new MemoryDetail("Instance Data", _instanceData);
         yield return new MemoryDetail("Material Data", _materialData);
-        yield return new MemoryDetail("Pose Data", _poseData);
     }
 }

@@ -1,4 +1,3 @@
-﻿using OpenTK.Graphics.OpenGL4;
 using Serilog;
 
 namespace Snooper.Core.Containers.Buffers;
@@ -12,12 +11,12 @@ public enum CommandBufferType
 
 public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
 {
-    private readonly DrawIndirectBuffer _opaque = new();
-    private readonly DrawIndirectBuffer _transparent = new();
-    private readonly DrawIndirectBuffer _mask = new();
+    private readonly IndirectDrawBuffer _opaque = new();
+    private readonly IndirectDrawBuffer _transparent = new();
+    private readonly IndirectDrawBuffer _mask = new();
 
-    private Buffer<DrawElementsIndirectCommand>.DeferMergeScope? _opaqueScope;
-    private Buffer<DrawElementsIndirectCommand>.DeferMergeScope? _transparentScope;
+    private IndirectDrawBuffer.DeferMergeScope? _opaqueScope;
+    private IndirectDrawBuffer.DeferMergeScope? _transparentScope;
 
     public void Generate()
     {
@@ -35,7 +34,7 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
         Log.Debug("Allocated CommandBufferSet: {OpaqueCapacity} opaque, {TransparentCapacity} transparent, {MaskCapacity} mask", _opaque.Capacity, _transparent.Capacity, _mask.Capacity);
     }
 
-    public DrawIndirectBuffer GetBuffer(CommandBufferType type) => type switch
+    public IndirectDrawBuffer GetBuffer(CommandBufferType type) => type switch
     {
         CommandBufferType.Opaque => _opaque,
         CommandBufferType.Transparent => _transparent,
@@ -57,32 +56,7 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
         _transparentScope = null;
     }
 
-    public BufferAllocation[] Transfer(BufferAllocation[] sourceAllocations, CommandBufferType from, CommandBufferType to)
-    {
-        if (from == to) return sourceAllocations;
-
-        var sourceBuffer = GetBuffer(from);
-        var targetBuffer = GetBuffer(to);
-        var delete = (from == CommandBufferType.Opaque && to == CommandBufferType.Transparent) ||
-                     (from == CommandBufferType.Transparent && to == CommandBufferType.Opaque);
-
-        var targetAllocations = new BufferAllocation[sourceAllocations.Length];
-        for (var i = 0; i < targetAllocations.Length; i++)
-        {
-            var sourceAllocation = sourceAllocations[i];
-            targetAllocations[i] = targetBuffer.CopyFrom(sourceBuffer, sourceAllocations[i]);
-
-            // only remove from source if transferring between opaque/transparent (not copying to mask)
-            if (delete)
-            {
-                sourceBuffer.Remove(sourceAllocation);
-            }
-        }
-
-        return targetAllocations;
-    }
-
-    public BufferAllocation Transfer(BufferAllocation sourceAllocation, CommandBufferType from, CommandBufferType to)
+    public DrawAllocation Transfer(DrawAllocation sourceAllocation, CommandBufferType from, CommandBufferType to)
     {
         if (from == to) return sourceAllocation;
 
@@ -91,13 +65,15 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
         var delete = (from == CommandBufferType.Opaque && to == CommandBufferType.Transparent) ||
                      (from == CommandBufferType.Transparent && to == CommandBufferType.Opaque);
 
-        var targetAllocations = targetBuffer.CopyFrom(sourceBuffer, sourceAllocation);
+        var targetAllocation = targetBuffer.CopyFrom(sourceBuffer, sourceAllocation);
+
+        // only remove from source if transferring between opaque/transparent (not copying to mask)
         if (delete)
         {
             sourceBuffer.Remove(sourceAllocation);
         }
 
-        return targetAllocations;
+        return targetAllocation;
     }
 
     public void ClearMask()

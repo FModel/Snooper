@@ -19,19 +19,6 @@ public struct DrawElementsIndirectCommand
     public uint FirstIndex;
     public uint BaseVertex;
     public uint BaseInstance;
-    // end of struct for indirect draw commands
-    // anything extra can be used as ssbo data
 
-    public uint BaseGeometry; // index into the culling buffer for the geometry of this draw
-    public uint BaseColor;
-    public uint BaseBoneInfluence;
-    public uint BaseBone; // first bone index in the bone buffers for this mesh
-    public uint BasePose; // first bone index in the pose buffers for this mesh
-    public uint BaseMaterial; // first index into the material buffer for this draw
-    public uint MaterialIndex; // index of the material this draw should use relative to BaseMaterial
-    public uint PickingId;
-    public uint OriginalInstanceCount;
-    public uint OriginalBaseInstance;
-    public uint SectionId;
-    public uint CastShadow;
+    public const int InstanceCountOffset = 4;
 }

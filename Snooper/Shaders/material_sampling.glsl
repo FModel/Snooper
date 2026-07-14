@@ -20,7 +20,7 @@ struct PerMaterialData
     float DiffuseColor[12];
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
+layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
 {
     PerMaterialData uMaterialDataBuffer[];
 };

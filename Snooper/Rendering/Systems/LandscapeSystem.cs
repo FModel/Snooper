@@ -94,7 +94,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 
             // this only works because there's a match between the draw allocation id and the mapping allocation id
             // would be better to have a direct reference
-            _mapping.Update(metadata.DrawAllocations[0].BufferAllocation, m);
+            _mapping.Update(metadata.DrawAllocations[0].Allocation.Command, m);
         }
 
         _updateMapping = false;
@@ -109,8 +109,8 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
         shader.SetUniform("uGlobalScale", Settings.GlobalScale);
 
-        _scales.Bind(8);
-        _mapping.Bind(9);
+        _scales.Bind(BindingPoints.LandscapeScales);
+        _mapping.Bind(BindingPoints.LandscapeWeightMapping);
     }
 
     public override long Allocated => base.Allocated + _scales.Allocated + _mapping.Allocated;

@@ -6,12 +6,12 @@ struct PerMaterialData
     vec3 FontColor;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
+layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
 {
     PerMaterialData uMaterialDataBuffer[];
 };
 
-#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerDrawData.glsl"
 #include "Buffers/common.frag"
 
 in vec2 vTexCoord;
@@ -22,8 +22,8 @@ out vec4 FragColor;
 
 void main()
 {
-    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
+    PerDrawData draw = uDrawDataBuffer[gDrawID];
+    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
     
     vec4 text = texture(uTextTexture, vTexCoord);
     if (text.a < 0.1)
@@ -40,5 +40,5 @@ void main()
     
     FragColor = text * vec4(color, 1.0);
     
-    gPicking = uDrawCommandBuffer[gDrawID].PickingId;
+    gPicking = draw.PickingId;
 }

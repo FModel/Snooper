@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -9,12 +10,14 @@ namespace Snooper.Core.Containers.Resources;
 
 public class CullingResources : IMemoryDetailsProvider, IDisposable
 {
+    private readonly ShaderStorageBuffer<PerMeshData> _meshes = new();
     private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new();
     private readonly ShaderStorageBuffer<SectionOffsets> _sections = new();
     private readonly ComputeShader _compute = new("culling.comp");
 
     public void Generate()
     {
+        _meshes.Generate();
         _primitives.Generate();
         _sections.Generate();
 
@@ -24,7 +27,11 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
     public void Allocate(AllocationCounts counts)
     {
-        if (counts.UniqueComponents > 0) _primitives.Allocate(counts.UniqueComponents);
+        if (counts.UniqueComponents > 0)
+        {
+            _meshes.Allocate(counts.UniqueComponents);
+            _primitives.Allocate(counts.UniqueComponents);
+        }
         if (counts.Sections > 0) _sections.Allocate(counts.Sections);
     }
 
@@ -39,14 +46,20 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         return _sections.AddRange(offsets);
     }
 
-    public BufferAllocation Add(PrimitiveOffsets offsets) => _primitives.Add(offsets);
+    public BufferAllocation Add(PerMeshData mesh, PrimitiveOffsets lods)
+    {
+        var meshAllocation = _meshes.Add(mesh);
+        var lodAllocation = _primitives.Add(lods);
+        Debug.Assert(meshAllocation.StartIndex == lodAllocation.StartIndex, "PerMeshData and PrimitiveOffsets buffers must stay index-aligned.");
+        return meshAllocation;
+    }
 
     public void UpdateOverrideLod(BufferAllocation allocation, int overrideLod)
     {
-        _primitives.UpdateCustom(allocation, overrideLod, 40);
+        _meshes.UpdateCustom(allocation, overrideLod, PerMeshData.OverrideLodOffset);
     }
 
-    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands, bool shadowPass = false) where TInstanceData : unmanaged, IPerInstanceData
+    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, IndirectDrawBuffer commands, bool shadowPass = false) where TInstanceData : unmanaged, IPerInstanceData
     {
         var matrix = camera.ViewMatrix * camera.ProjectionMatrix;
         var planes = new Plane[6];
@@ -63,10 +76,12 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _compute.SetUniform("uCameraPosition", camera.InverseViewMatrix.Translation);
         _compute.SetUniform("uShadowPass", shadowPass);
 
-        commands.Bind(0);
-        instances.Bind(1);
-        _primitives.Bind(2);
-        _sections.Bind(3);
+        commands.Commands.Bind(BindingPoints.DrawCommands);
+        commands.DrawData.Bind(BindingPoints.DrawData);
+        instances.Bind(BindingPoints.InstanceData);
+        _meshes.Bind(BindingPoints.MeshData);
+        _primitives.Bind(BindingPoints.CullLodData);
+        _sections.Bind(BindingPoints.CullSections);
 
         GL.DispatchCompute(commands.Capacity, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
@@ -86,6 +101,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
     public void Dispose()
     {
+        _meshes.Dispose();
         _primitives.Dispose();
         _sections.Dispose();
         _compute.Dispose();
@@ -96,6 +112,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         get
         {
             long total = 0;
+            total += _meshes.Allocated;
             total += _primitives.Allocated;
             total += _sections.Allocated;
             total += _compute.Allocated;
@@ -108,6 +125,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         get
         {
             long total = 0;
+            total += _meshes.Used;
             total += _primitives.Used;
             total += _sections.Used;
             total += _compute.Used;
@@ -117,6 +135,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
+        yield return new MemoryDetail("Mesh Data", _meshes);
         yield return new MemoryDetail("Primitive Offsets", _primitives);
         yield return new MemoryDetail("Section Offsets", _sections);
         yield return new MemoryDetail("Culling Compute Shader", _compute);

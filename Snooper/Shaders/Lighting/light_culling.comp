@@ -10,12 +10,12 @@ struct ClusterAABB
     vec3 maxPoint;
 };
 
-layout(std430, binding = 3) readonly buffer ClusterAABBs
+layout(std430, binding = BINDING_LIGHT_CLUSTER_AABBS) readonly buffer ClusterAABBs
 {
     ClusterAABB clusters[];
 };
 
-layout(std430, binding = 4) buffer GlobalIndexCount
+layout(std430, binding = BINDING_LIGHT_GLOBAL_INDEX_COUNT) buffer GlobalIndexCount
 {
     uint globalIndexCount;
 };

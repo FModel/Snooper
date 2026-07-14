@@ -3,7 +3,7 @@
 uniform mat4 uViewProjection;
 
 #include "Buffers/PerInstanceData.glsl"
-#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerDrawData.glsl"
 #if defined(SPLINE_VERTEX)
 #include "Buffers/PerSplineData.glsl"
 #elif defined(SKINNED_MESH_VERTEX)
@@ -16,18 +16,21 @@ void main()
     vec2 posZW = unpackHalf2x16(aPosHalf.y);
     vec4 aPos  = vec4(posXY, posZW);
 
-    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gl_DrawID];
+    PerDrawData draw = uDrawDataBuffer[gl_DrawID];
 
 #if defined(SPLINE_VERTEX)
     vec3 uePos = aPos.xzy;
-    SplineMeshParams params = uSplineParameters[uSplineIdToParameterIndex[cmd.PickingId]];
+    SplineMeshParams params = uSplineParameters[uSplineIdToParameterIndex[draw.PickingId]];
     float distanceAlong = GetAxisValueRef(params.ForwardAxis, uePos);
     vec3 computed = ComputeRatioAlongSpline(params, distanceAlong);
     mat4 sliceTransform = CalcSliceTransformAtSplineOffset(params, computed);
     SetAxisValueRef(params.ForwardAxis, uePos, 0.0);
     aPos = (sliceTransform * vec4(uePos, 1.0)).xzyw;
 #elif defined(SKINNED_MESH_VERTEX)
-    uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[cmd.BaseBoneInfluence + (gl_VertexID - gl_BaseVertex)];
+    uint baseBone, basePose, baseInfluence;
+    getSkinningBases(draw, baseBone, basePose, baseInfluence);
+
+    uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[baseInfluence + (gl_VertexID - gl_BaseVertex)];
     uint startIndex = packedInfluenceOffset >> 8;
     uint count = packedInfluenceOffset & 0xFFu;
 
@@ -39,7 +42,7 @@ void main()
         uint boneIndex = inf.x;
         float weight = float(inf.y) / 255.0;
 
-        mat4 skinningMatrix = uPoseBuffer[cmd.BasePose + boneIndex] * uInverseBindBuffer[cmd.BaseBone + boneIndex];
+        mat4 skinningMatrix = uPoseBuffer[basePose + boneIndex] * uInverseBindBuffer[baseBone + boneIndex];
         uePos += skinningMatrix * aPos * weight;
     }
 

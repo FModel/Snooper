@@ -30,22 +30,22 @@ struct WeightHighlightMapping
     vec4 DebugColor;
 };
 
-layout(std430, binding = 2) restrict readonly buffer PerMaterialDataBuffer
+layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
 {
     PerMaterialData uMaterialDataBuffer[];
 };
 
-layout(std430, binding = 8) restrict readonly buffer LandscapeScales
+layout(std430, binding = BINDING_LANDSCAPE_SCALES) restrict readonly buffer LandscapeScales
 {
     vec2 uLandscapeScales[];
 };
 
-layout(std430, binding = 9) restrict readonly buffer WeightMappingBuffer
+layout(std430, binding = BINDING_LANDSCAPE_WEIGHT_MAPPING) restrict readonly buffer WeightMappingBuffer
 {
     WeightHighlightMapping uWeightMappingBuffer[];
 };
 
-#include "Buffers/PerDrawCommand.glsl"
+#include "Buffers/PerDrawData.glsl"
 #include "Buffers/common.frag"
 
 in TE_OUT {
@@ -153,8 +153,8 @@ vec3 getColorFromHeight(float height)
 
 void main()
 {
-    DrawElementsIndirectCommand cmd = uDrawCommandBuffer[gDrawID];
-    PerMaterialData material = uMaterialDataBuffer[cmd.BaseMaterial + cmd.MaterialIndex];
+    PerDrawData draw = uDrawDataBuffer[gDrawID];
+    PerMaterialData material = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
 
     vec3 color = vec3(1.0);
     if (!material.IsReady || uColorMode == 0)
@@ -172,5 +172,5 @@ void main()
     gColor.a = 1.0; // free space
     gSpecular.rgb = vec3(0.0, 0.0, 0.0);
     gSpecular.a = 1.0; // free space
-    gPicking = cmd.PickingId;
+    gPicking = draw.PickingId;
 }

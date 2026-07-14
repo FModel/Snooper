@@ -22,12 +22,12 @@
     vec3 MeshBoxExtent;
 };
 
-layout(std430, binding = 8) restrict readonly buffer SplineIdToParameterIndex
+layout(std430, binding = BINDING_SPLINE_MAPPING) restrict readonly buffer SplineIdToParameterIndex
 {
     uint uSplineIdToParameterIndex[];
 };
 
-layout(std430, binding = 9) restrict readonly buffer SplineParameters
+layout(std430, binding = BINDING_SPLINE_PARAMS) restrict readonly buffer SplineParameters
 {
     SplineMeshParams uSplineParameters[];
 };

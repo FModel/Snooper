@@ -4,9 +4,9 @@ using Snooper.UI;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class DrawBufferAllocation(BufferAllocation bufferAllocation, CommandBufferType bufferType, uint materialIndex)
+public class DrawBufferAllocation(DrawAllocation allocation, CommandBufferType bufferType, uint materialIndex)
 {
-    public BufferAllocation BufferAllocation = bufferAllocation;
+    public DrawAllocation Allocation = allocation;
     public CommandBufferType BufferType = bufferType;
     public readonly uint MaterialIndex = materialIndex;
 }
@@ -30,11 +30,11 @@ public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation i
             ImGui.TableHeadersRow();
 
             ImGui.TableNextRow();
-            ImGui.TableNextColumn(); ImGui.Text("Geometry Culling");
-            ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.CullingAllocation.AllocationId.ToString());
-            ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.CullingAllocation.StartIndex.ToString());
-            ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.CullingAllocation.Length.ToString());
-            ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.CullingAllocation.EndIndex.ToString());
+            ImGui.TableNextColumn(); ImGui.Text("Mesh Data");
+            ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.MeshAllocation.AllocationId.ToString());
+            ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.MeshAllocation.StartIndex.ToString());
+            ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.MeshAllocation.Length.ToString());
+            ImGui.TableNextColumn(); ImGui.Text(GeometryHandle.MeshAllocation.EndIndex.ToString());
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); ImGui.Text("Instance");
@@ -54,7 +54,7 @@ public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation i
             {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn(); ImGui.Text($"Draw {i}");
-                var draw = DrawAllocations[i].BufferAllocation;
+                var draw = DrawAllocations[i].Allocation.Command;
                 ImGui.TableNextColumn(); ImGui.Text(draw.AllocationId.ToString());
                 ImGui.TableNextColumn(); ImGui.Text(draw.StartIndex.ToString());
                 ImGui.TableNextColumn(); ImGui.Text(draw.Length.ToString());
