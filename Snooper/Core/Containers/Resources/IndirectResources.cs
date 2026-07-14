@@ -74,7 +74,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public ResourcesMetadata Add(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
         var descriptor = component.Descriptor;
-        var geometryHandle = _geometry.Add(descriptor.Guid, descriptor.Lods, descriptor.Bounds, descriptor.Skeleton);
+        var geometryHandle = _geometry.Add(descriptor.Guid, descriptor.Lods, descriptor.Bounds, new Vector2(component.MinDrawDistance, component.MaxDrawDistance), descriptor.Skeleton);
         var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
 
         if (descriptor.Skeleton is { } skeleton)

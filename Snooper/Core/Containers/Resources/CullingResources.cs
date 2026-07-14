@@ -43,7 +43,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
     public void UpdateOverrideLod(BufferAllocation allocation, int overrideLod)
     {
-        _primitives.UpdateCustom(allocation, overrideLod, 32);
+        _primitives.UpdateCustom(allocation, overrideLod, 40);
     }
 
     public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, DrawIndirectBuffer commands, bool shadowPass = false) where TInstanceData : unmanaged, IPerInstanceData
@@ -60,7 +60,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _compute.Use();
         _compute.SetUniform("uFrustumPlanes", planes);
         _compute.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
-        _compute.SetUniform("uCameraPosition", matrix.Translation);
+        _compute.SetUniform("uCameraPosition", camera.InverseViewMatrix.Translation);
         _compute.SetUniform("uShadowPass", shadowPass);
 
         commands.Bind(0);

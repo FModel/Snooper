@@ -77,7 +77,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _culling.Allocate(counts);
     }
 
-    public GeometryHandle Add(FGuid guid, LodDescriptor<TVertex>[] lods, CullingBounds bounds, SkeletonDescriptor? skeleton = null)
+    public GeometryHandle Add(FGuid guid, LodDescriptor<TVertex>[] lods, CullingBounds bounds, Vector2 drawDistances, SkeletonDescriptor? skeleton = null)
     {
         if (!_cache.TryGetValue(guid, out var handle))
         {
@@ -91,7 +91,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         unsafe (uint, uint, uint, uint, PrimitiveOffsets) CreateOffsets()
         {
             var maxLod = 0u;
-            var o = new PrimitiveOffsets(bounds);
+            var o = new PrimitiveOffsets(bounds, drawDistances);
             for (var i = 0; i < lods.Length && i < Settings.MaxNumberOfLods; i++)
             {
                 var primitive = lods[i].CreatePrimitive();

@@ -8,8 +8,9 @@ public unsafe struct PrimitiveOffsets
     public readonly float SphereRadius;
     public readonly Vector3 Extents;
     public uint MaxLOD = 0;
+    public Vector2 DrawDistances;
     public int OverrideLod = -1; // -1 for automatic LOD selection, >= 0 to force a specific LOD
-    public Vector3 Padding;
+    public float Padding;
 
     // vec4 alignment needed
     public fixed uint LOD_FirstIndex[Settings.MaxNumberOfLods];
@@ -20,11 +21,12 @@ public unsafe struct PrimitiveOffsets
     public fixed uint LOD_BaseColor[Settings.MaxNumberOfLods];
     public fixed uint LOD_BaseBoneInfluence[Settings.MaxNumberOfLods];
 
-    public PrimitiveOffsets(CullingBounds bounds)
+    public PrimitiveOffsets(CullingBounds bounds, Vector2 drawDistances)
     {
         Center = bounds.Center;
         SphereRadius = bounds.Extents.Length();
         Extents = bounds.Extents;
+        DrawDistances = drawDistances;
 
         for (var i = 0; i < Settings.MaxNumberOfLods; i++)
         {

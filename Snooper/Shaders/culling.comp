@@ -11,6 +11,7 @@ struct PrimitiveDescriptor
     float sphereRadius;
     vec3 extents;
     uint maxLod;
+    vec2 drawDistances; // min and max draw distances
     int overrideLod; // -1 for automatic LOD selection, >= 0 to force a specific LOD
     uvec4 firstIndex[2]; // EBO offsets for each LOD
     uvec4 baseVertex[2]; // VBO offsets for each LOD
@@ -64,6 +65,13 @@ bool isVisible(vec3 center, vec3 extents)
     return true;
 }
 
+bool isWithinDrawDistance(vec2 drawDistances, float dist)
+{
+    if (dist < drawDistances.x) return false;
+    if (drawDistances.y > 0.0 && dist > drawDistances.y) return false;
+    return true;
+}
+
 bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
 {
     return
@@ -113,11 +121,12 @@ void main()
             dot(abs(m[2]), primitive.extents)
         );
 
-        if (isVisible(worldCenter, worldExtents))
+        float dist = length(uCameraPosition - worldCenter);
+        if (isVisible(worldCenter, worldExtents) && isWithinDrawDistance(primitive.drawDistances, dist))
         {
             localMin = min(localMin, j);
             localMax = max(localMax, j);
-            localClosest = min(localClosest, length(uCameraPosition - worldCenter));
+            localClosest = min(localClosest, dist);
             localAny = 1u;
         }
     }
