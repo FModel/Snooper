@@ -220,9 +220,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     {
         var buffer = _commands.GetBuffer(type);
         buffer.Commands.Bind();
-        buffer.DrawData.Bind(BindingPoints.DrawData);
-        _instanceData.Bind(BindingPoints.InstanceData);
-        _materialData.Bind(BindingPoints.MaterialData);
+        buffer.DrawData.Bind(Bindings.DrawData);
+        _instanceData.Bind(Bindings.InstanceData);
+        _materialData.Bind(Bindings.MaterialData);
 
         _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, 0, buffer.Capacity, buffer.Stride));
 

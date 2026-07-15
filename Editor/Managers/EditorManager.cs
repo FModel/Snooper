@@ -153,11 +153,15 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
                         {
                             ImGui.Columns(2, $"SysTable{system.Order}", false);
                             {
+                                var capacity = system.Capacity >= 0 ? $"/{system.Capacity:N0}" : "";
                                 ImGui.TextDisabled("Components");
-                                ImGui.TextUnformatted($"{system.ComponentsCount:N0} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}");
+                                ImGui.TextUnformatted($"{system.ComponentsCount:N0}{capacity} {system.ComponentType.Name}{(system.ComponentsCount > 1 ? "s" : "")}");
                                 ImGui.Spacing();
                                 ImGui.TextDisabled("Dirty Components");
-                                ImGui.TextUnformatted($"{system.DirtyComponentsCount:N0} {system.ComponentType.Name}{(system.DirtyComponentsCount > 1 ? "s" : "")}");
+                                ImGui.TextUnformatted($"{system.DirtyComponentsCount:N0}{capacity} {system.ComponentType.Name}{(system.DirtyComponentsCount > 1 ? "s" : "")}");
+                                ImGui.Spacing();
+                                ImGui.TextDisabled("Max Binding Used");
+                                ImGui.TextUnformatted($"{system.MaxBindingUsed?.ToString() ?? "N/A"}");
                                 ImGui.NextColumn();
                                 ImGui.TextDisabled("Show Wireframe");
                                 ImGui.Checkbox($"##ShowWireframe{system.Order}", ref system.ShowWireframe);

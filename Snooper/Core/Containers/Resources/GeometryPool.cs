@@ -114,7 +114,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     public void Render(Action mdi)
     {
-        _colors.Bind(BindingPoints.VertexColors);
+        _colors.Bind(Bindings.VertexColors);
 
         _vao.Bind();
         _ebo.Bind();

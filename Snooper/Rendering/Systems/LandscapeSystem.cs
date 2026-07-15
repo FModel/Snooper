@@ -14,13 +14,28 @@ namespace Snooper.Rendering.Systems;
 
 public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent, PerInstanceData, PerMaterialLandscapeData>(PrimitiveType.Patches), IControllable
 {
+    private abstract class LandscapeBindings : Bindings
+    {
+        public const uint Scales = BaseMaxBinding + 1;
+        public const uint WeightMapping = BaseMaxBinding + 2;
+        public const uint MaxBinding = WeightMapping;
+
+        public static readonly string[] OwnDefines =
+        [
+            Define("LANDSCAPE_SCALES", Scales),
+            Define("LANDSCAPE_WEIGHT_MAPPING", WeightMapping)
+        ];
+    }
+
     public override uint Order => 21;
+    public override uint? MaxBindingUsed => LandscapeBindings.MaxBinding;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {
         [CommandBufferType.Opaque] = new EmbeddedShader("Landscape/landscape")
         {
             TessellationControl = "Landscape/landscape.tesc",
-            TessellationEvaluation = "Landscape/landscape.tese"
+            TessellationEvaluation = "Landscape/landscape.tese",
+            Defines = LandscapeBindings.OwnDefines
         }
     };
     protected override Action<uint> VertexLayout { get; } = vao =>
@@ -109,8 +124,8 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
         shader.SetUniform("uGlobalScale", Settings.GlobalScale);
 
-        _scales.Bind(BindingPoints.LandscapeScales);
-        _mapping.Bind(BindingPoints.LandscapeWeightMapping);
+        _scales.Bind(LandscapeBindings.Scales);
+        _mapping.Bind(LandscapeBindings.WeightMapping);
     }
 
     public override long Allocated => base.Allocated + _scales.Allocated + _mapping.Allocated;

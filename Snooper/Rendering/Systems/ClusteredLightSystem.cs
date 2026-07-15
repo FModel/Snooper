@@ -52,9 +52,29 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     private const int WorkGroupSize = 64;
     private const int MaxLightsPerCluster = 256;
 
+    private abstract class LightBindings : Bindings
+    {
+        public const uint LightData = BaseMaxBinding + 1;
+        public const uint LightClusterData = BaseMaxBinding + 2;
+        public const uint LightIndexList = BaseMaxBinding + 3;
+        public const uint LightClusterAabbs = BaseMaxBinding + 4;
+        public const uint LightGlobalIndexCount = BaseMaxBinding + 5;
+        public const uint MaxBinding = LightGlobalIndexCount;
+
+        public static readonly string[] OwnDefines =
+        [
+            Define("LIGHT_DATA", LightData),
+            Define("LIGHT_CLUSTER_DATA", LightClusterData),
+            Define("LIGHT_INDEX_LIST", LightIndexList),
+            Define("LIGHT_CLUSTER_AABBS", LightClusterAabbs),
+            Define("LIGHT_GLOBAL_INDEX_COUNT", LightGlobalIndexCount)
+        ];
+    }
+
     public override ActorSystemType SystemType => ActorSystemType.Custom;
     public override uint Order => 99; // at least after TransformSystem
     public override int Capacity => 10000;
+    public override uint? MaxBindingUsed => LightBindings.MaxBinding;
 
     private readonly ShaderStorageBuffer<LightData> _lightDataBuffer = new();
     private readonly ShaderStorageBuffer<ClusterAABB> _clusterAABBBuffer = new(BufferUsageHint.DynamicDraw);
@@ -62,8 +82,8 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
     private readonly ShaderStorageBuffer<uint> _lightIndexListBuffer = new(BufferUsageHint.DynamicDraw);
     private readonly ShaderStorageBuffer<uint> _globalIndexCountBuffer = new(BufferUsageHint.DynamicDraw);
 
-    private readonly ComputeShader _clusterBuildProgram = new("Lighting/cluster_build.comp");
-    private readonly ComputeShader _lightCullingProgram = new("Lighting/light_culling.comp");
+    private readonly ComputeShader _clusterBuildProgram = new("Lighting/cluster_build.comp") { Defines = LightBindings.OwnDefines };
+    private readonly ComputeShader _lightCullingProgram = new("Lighting/light_culling.comp") { Defines = LightBindings.OwnDefines };
 
     public int GridDimensionX { get; private set; }
     public int GridDimensionY { get; private set; }
@@ -88,6 +108,8 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
             if (field != null) field.IsEnabled = true;
         }
     }
+
+    internal static string[] LightingDefines => LightBindings.OwnDefines;
 
     protected override void OnLoad()
     {
@@ -133,7 +155,7 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
         _clusterBuildProgram.SetUniform("uInverseProjectionMatrix", camera.InverseProjectionMatrix);
 
-        _clusterAABBBuffer.Bind(BindingPoints.LightClusterAabbs);
+        _clusterAABBBuffer.Bind(LightBindings.LightClusterAabbs);
 
         GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
@@ -161,8 +183,8 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         _lightCullingProgram.SetUniform("uViewMatrix", camera.ViewMatrix);
 
         BindForRendering();
-        _clusterAABBBuffer.Bind(BindingPoints.LightClusterAabbs);
-        _globalIndexCountBuffer.Bind(BindingPoints.LightGlobalIndexCount);
+        _clusterAABBBuffer.Bind(LightBindings.LightClusterAabbs);
+        _globalIndexCountBuffer.Bind(LightBindings.LightGlobalIndexCount);
 
         GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
@@ -234,9 +256,9 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
 
     internal void BindForRendering()
     {
-        _lightDataBuffer.Bind(BindingPoints.LightData);
-        _clusterDataBuffer.Bind(BindingPoints.LightClusterData);
-        _lightIndexListBuffer.Bind(BindingPoints.LightIndexList);
+        _lightDataBuffer.Bind(LightBindings.LightData);
+        _clusterDataBuffer.Bind(LightBindings.LightClusterData);
+        _lightIndexListBuffer.Bind(LightBindings.LightIndexList);
     }
     public override void Dispose()
     {

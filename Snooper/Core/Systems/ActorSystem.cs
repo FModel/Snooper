@@ -2,7 +2,6 @@
 using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Managers;
-using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
@@ -34,6 +33,7 @@ public abstract class ActorSystem : IGameSystem
     public abstract int ComponentsCount { get; }
     public abstract int EnqueuedComponentsCount { get; }
     public abstract int DirtyComponentsCount { get; }
+    public abstract uint? MaxBindingUsed { get; }
 
     protected ActorSystem(Type componentType)
     {
@@ -80,13 +80,25 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override int ComponentsCount => Components.Count;
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
     public override int DirtyComponentsCount => DirtyComponents.Count;
+    public override uint? MaxBindingUsed => null;
 
     protected bool ClearMaskBuffer { get; private set; } = false;
 
     protected HashSet<TComponent> Components { get; } = [];
     protected HashSet<TComponent> DirtyComponents { get; } = [];
 
-    protected override void OnLoad() { }
+    protected override void OnLoad()
+    {
+        if (MaxBindingUsed is not { } max) return;
+
+        var limit = ActorManager?.Renderer.DeviceInfo.MaxShaderStorageBufferBindings;
+        if (max > limit)
+        {
+            // TODO: should we actually limit or let it crash?
+            Log.Warning("{SystemName} uses {MaxBindingUsed} shader storage buffer bindings, which exceeds the device limit of {Limit}. This may cause rendering issues.", DisplayName, max, limit);
+        }
+    }
+
     protected override void OnUpdate(float delta)
     {
         DequeueComponents(5);

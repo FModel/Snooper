@@ -7,9 +7,23 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class SplineMeshRenderSystem() : MeshRenderSystem<SplineMeshComponent>(["SPLINE_VERTEX"])
+public class SplineMeshRenderSystem() : MeshRenderSystem<SplineMeshComponent>(["SPLINE_VERTEX", ..SplineBindings.OwnDefines])
 {
+    private abstract class SplineBindings : Bindings
+    {
+        public const uint Mapping = BaseMaxBinding + 1;
+        public const uint Params = BaseMaxBinding + 2;
+        public const uint MaxBinding = Params;
+
+        public static readonly string[] OwnDefines =
+        [
+            Define("SPLINE_MAPPING", Mapping),
+            Define("SPLINE_PARAMS", Params)
+        ];
+    }
+
     public override uint Order => 24;
+    public override uint? MaxBindingUsed => SplineBindings.MaxBinding;
     protected override bool IsCulled => false; // TODO: alter the bounding box based on the spline params, then restore culling
 
     private readonly ShaderStorageBuffer<uint> _mapping = new();
@@ -50,8 +64,8 @@ public class SplineMeshRenderSystem() : MeshRenderSystem<SplineMeshComponent>(["
     {
         base.PreRender(camera, shader);
 
-        _mapping.Bind(BindingPoints.SplineMapping);
-        _params.Bind(BindingPoints.SplineParams);
+        _mapping.Bind(SplineBindings.Mapping);
+        _params.Bind(SplineBindings.Params);
     }
 
     private int _maxComponentId;

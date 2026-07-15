@@ -30,9 +30,31 @@ public unsafe struct PerMeshSkinningData
     }
 }
 
-public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(["SKINNED_MESH_VERTEX"])
+public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(["SKINNED_MESH_VERTEX", ..SkinnedBindings.OwnDefines])
 {
+    private abstract class SkinnedBindings : Bindings
+    {
+        public const uint Poses = BaseMaxBinding + 1;
+        public const uint InverseBind = BaseMaxBinding + 2;
+        public const uint BoneInfluences = BaseMaxBinding + 3;
+        public const uint BoneInfluenceOffsets = BaseMaxBinding + 4;
+        public const uint SkinMeshData = BaseMaxBinding + 5;
+        public const uint PoseMapping = BaseMaxBinding + 6;
+        public const uint MaxBinding = PoseMapping;
+
+        public static readonly string[] OwnDefines =
+        [
+            Define("SKIN_POSES", Poses),
+            Define("SKIN_INVERSE_BIND", InverseBind),
+            Define("SKIN_BONE_INFLUENCES", BoneInfluences),
+            Define("SKIN_BONE_INFLUENCE_OFFSETS", BoneInfluenceOffsets),
+            Define("SKIN_MESH_DATA", SkinMeshData),
+            Define("SKIN_POSE_MAPPING", PoseMapping)
+        ];
+    }
+
     public override uint Order => 23;
+    public override uint? MaxBindingUsed => SkinnedBindings.MaxBinding;
     // protected override bool IsCulled => DirtyComponentsCount == 0; // TODO: meshes can disappear if animated outside of their BB
 
     private readonly ShaderStorageBuffer<Matrix4x4> _poseData = new(BufferUsageHint.DynamicDraw);
@@ -209,12 +231,12 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
     {
         base.PreRender(camera, shader);
 
-        _poseData.Bind(BindingPoints.SkinPoses);
-        _inverseBind.Bind(BindingPoints.SkinInverseBind);
-        _boneInfluences.Bind(BindingPoints.SkinBoneInfluences);
-        _boneInfluenceOffsets.Bind(BindingPoints.SkinBoneInfluenceOffsets);
-        _skinMeshData.Bind(BindingPoints.SkinMeshData);
-        _poseMapping.Bind(BindingPoints.SkinPoseMapping);
+        _poseData.Bind(SkinnedBindings.Poses);
+        _inverseBind.Bind(SkinnedBindings.InverseBind);
+        _boneInfluences.Bind(SkinnedBindings.BoneInfluences);
+        _boneInfluenceOffsets.Bind(SkinnedBindings.BoneInfluenceOffsets);
+        _skinMeshData.Bind(SkinnedBindings.SkinMeshData);
+        _poseMapping.Bind(SkinnedBindings.PoseMapping);
     }
 
     public override void Dispose()

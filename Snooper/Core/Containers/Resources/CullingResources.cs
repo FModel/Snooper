@@ -76,12 +76,12 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _compute.SetUniform("uCameraPosition", camera.InverseViewMatrix.Translation);
         _compute.SetUniform("uShadowPass", shadowPass);
 
-        commands.Commands.Bind(BindingPoints.DrawCommands);
-        commands.DrawData.Bind(BindingPoints.DrawData);
-        instances.Bind(BindingPoints.InstanceData);
-        _meshes.Bind(BindingPoints.MeshData);
-        _primitives.Bind(BindingPoints.CullLodData);
-        _sections.Bind(BindingPoints.CullSections);
+        commands.Commands.Bind(Bindings.DrawCommands);
+        commands.DrawData.Bind(Bindings.DrawData);
+        instances.Bind(Bindings.InstanceData);
+        _meshes.Bind(Bindings.MeshData);
+        _primitives.Bind(Bindings.CullLodData);
+        _sections.Bind(Bindings.CullSections);
 
         GL.DispatchCompute(commands.Capacity, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);

@@ -4,6 +4,7 @@ using Serilog;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Containers.Framebuffers;
+using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Managers;
 
@@ -67,7 +68,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<LitStageContext>("Lighting Pass", Generate("Framebuffers/light_clustered.frag"), _lit)
+        _passes.Add(new StagePass<LitStageContext>("Lighting Pass", Generate("Framebuffers/light_clustered.frag", ClusteredLightSystem.LightingDefines), _lit)
         {
             SetupBindings = (ctx, shader) =>
             {
