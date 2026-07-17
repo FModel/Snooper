@@ -18,6 +18,17 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
 
     public void Generate()
     {
+        _passes.Add(new RenderPass<ComputeRenderContext>("Compute Pass")
+        {
+            Execute = ctx =>
+            {
+                foreach (var system in ctx.Systems)
+                {
+                    system.Execute(ctx.Camera);
+                }
+            }
+        });
+
         _shadow.Generate();
         _passes.Add(new RenderPass<ShadowRenderContext>("Shadow Pass")
         {
@@ -53,7 +64,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         });
 
         _deferred.Generate();
-        _passes.Add(new RenderPass<SystemRenderContext>("Deferred Pass")
+        _passes.Add(new RenderPass<GeometryRenderContext>("Deferred Pass")
         {
             PrePass = _ =>
             {
@@ -79,7 +90,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         });
 
         _forward.Generate();
-        _passes.Add(new RenderPass<SystemRenderContext>("Forward Pass")
+        _passes.Add(new RenderPass<GeometryRenderContext>("Forward Pass")
         {
             PrePass = _ =>
             {
@@ -108,7 +119,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         });
 
         _mask.Generate();
-        _passes.Add(new RenderPass<SystemRenderContext>("Mask Pass")
+        _passes.Add(new RenderPass<GeometryRenderContext>("Mask Pass")
         {
             PrePass = _ =>
             {

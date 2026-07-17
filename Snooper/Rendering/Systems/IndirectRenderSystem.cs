@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Resources;
@@ -12,7 +13,7 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type) : ActorSystem<TComponent>, IMemoryDetailsProvider
+public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type) : ActorSystem<TComponent>, IMemoryDetailsProvider, IGeometryRenderSystem
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData
@@ -112,7 +113,18 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         }
     }
 
-    protected override void OnRender(CameraComponent camera, CommandBufferType type)
+    public void Render(CameraComponent camera, CommandBufferType type)
+    {
+        if (!IsEnabled) return;
+        using (Profiler.Sample(DisplayName))
+        {
+            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
+            OnRender(camera, type);
+            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
+        }
+    }
+
+    protected virtual void OnRender(CameraComponent camera, CommandBufferType type)
     {
         Resources.Render(type);
     }

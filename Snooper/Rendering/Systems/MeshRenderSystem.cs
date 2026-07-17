@@ -4,16 +4,11 @@ using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
-
-public interface IMeshRenderSystem
-{
-    public void RenderShadowCascade(IViewProjectionProvider cascade);
-    public IEnumerable<MeshComponent> GetMeshComponents();
-}
 
 public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : PrimitiveSystem<Vertex, TComponent, PerInstanceData, PerMaterialMeshData>, IMeshRenderSystem where TComponent : MeshComponent
 {

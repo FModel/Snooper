@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -46,7 +47,7 @@ public readonly struct ClusterData
     public readonly uint Count;    // Number of lights in this cluster
 }
 
-public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsProvider, IControllable, IResizable
+public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemoryDetailsProvider, IControllable, IResizable
 {
     private const int TileSize = 32;
     private const int WorkGroupSize = 64;
@@ -134,10 +135,10 @@ public class ClusteredLightSystem : ActorSystem<LightComponent>, IMemoryDetailsP
         IsEnabled = false;
     }
 
-    protected override void OnRender(CameraComponent camera, CommandBufferType type)
+    protected override void OnExecute(CameraComponent camera)
     {
-        BuildClusters(camera);
-        CullLights(camera); // TODO: improve, especially for rect lights
+        using (Profiler.Gpu("Build")) BuildClusters(camera);
+        using (Profiler.Cull()) CullLights(camera); // TODO: improve, especially for rect lights
     }
 
     private void BuildClusters(CameraComponent camera)

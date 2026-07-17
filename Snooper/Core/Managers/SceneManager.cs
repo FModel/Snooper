@@ -65,16 +65,13 @@ public class SceneManager : ActorManager
         // TODO: we do not support multiple cameras yet
         if (MainViewport == null) return;
 
-        var renderSystems = Systems.Values.OfType<IRenderSystem>().ToArray();
-        var meshSystems = renderSystems.OfType<IMeshRenderSystem>().ToArray();
-        var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
-
         var camera = MainViewport.Camera;
+        var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
 
         Profiler.BeginFrame();
         try
         {
-            Pipeline.RenderScene(camera, meshSystems, renderSystems, lightSystem?.DirectionalLight);
+            Pipeline.RenderScene(camera, Systems.Values, lightSystem?.DirectionalLight);
             Pipeline.PostProcessScene(camera, lightSystem);
         }
         finally

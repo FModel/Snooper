@@ -1,10 +1,8 @@
-﻿using OpenTK.Graphics.OpenGL4;
-using Serilog;
+﻿using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
 
 namespace Snooper.Core.Systems;
 
@@ -74,7 +72,7 @@ public abstract class ActorSystem : IGameSystem
     }
 }
 
-public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)), IRenderSystem where TComponent : ActorComponent
+public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)) where TComponent : ActorComponent
 {
     public override int Capacity => -1; // unlimited
     public override int ComponentsCount => Components.Count;
@@ -114,18 +112,6 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         }
         PostOnUpdate();
     }
-
-    public void Render(CameraComponent camera, CommandBufferType type)
-    {
-        if (!IsEnabled) return;
-        using (Profiler.Sample(DisplayName))
-        {
-            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
-            OnRender(camera, type);
-            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
-        }
-    }
-    protected abstract void OnRender(CameraComponent camera, CommandBufferType type);
 
     public sealed override void ProcessActorComponent(ActorComponent component, Actor actor)
     {

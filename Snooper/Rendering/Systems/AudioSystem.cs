@@ -11,7 +11,7 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Systems;
 
-public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
+public sealed class AudioSystem : ComputeRenderSystem<AudioComponent>, IControllable
 {
     public override ActorSystemType SystemType => ActorSystemType.Audio;
     public override uint Order => 100;
@@ -93,7 +93,7 @@ public sealed class AudioSystem : ActorSystem<AudioComponent>, IControllable
         }
     }
 
-    protected override void OnRender(CameraComponent camera, CommandBufferType type)
+    protected override void OnExecute(CameraComponent camera)
     {
         if (_context == ALContext.Null) return;
 
