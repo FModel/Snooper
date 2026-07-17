@@ -69,13 +69,13 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         // this trigger a shader use, do it before pre-rendering to avoid conflicts
         if (IsCulled)
         {
-            using (Profiler.Gpu("Cull"))
+            using (Profiler.Cull())
             {
                 Resources.Cull(camera, type);
             }
         }
 
-        using (Profiler.Gpu("Draw"))
+        using (Profiler.Draw())
         {
             PreRender(camera, shader);
             BindSystemBuffers();

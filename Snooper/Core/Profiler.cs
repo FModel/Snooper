@@ -3,6 +3,7 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core;
 
+/// <summary>Rolling per-frame history of one timing, with running max/average over the window.</summary>
 public class ProfilerMetricData
 {
     public const int MaxFrameHistory = 100;
@@ -34,14 +35,25 @@ public class ProfilerMetricData
     }
 }
 
-public sealed class ProfilerNode
+/// <summary>One zone in the profiler tree. Timings accumulate during a frame and are committed to the rolling histories
+/// by <see cref="Flush"/>; primitive counts roll up from the children at the same time.</summary>
+public sealed class ProfilerNode(string name)
 {
-    public string Name { get; }
+    public string Name { get; } = name;
     public ProfilerMetricData Cpu { get; } = new();
     public ProfilerMetricData Gpu { get; } = new();
 
-    /// <summary>True once at least one GPU sample has been recorded for this zone.</summary>
+    /// <summary>True once any GPU time has been recorded for this zone.</summary>
     public bool HasGpu { get; private set; }
+
+    /// <summary>
+    /// Primitives generated last frame by this zone and everything under it. Only leaf draw zones hold a query, so a
+    /// pass or a system must be read through this rather than its own count, which would always be zero.
+    /// </summary>
+    public long TotalPrimitives { get; private set; }
+
+    /// <summary>True when this zone or anything under it counts primitives.</summary>
+    public bool HasPrimitives { get; private set; }
 
     private readonly Dictionary<string, ProfilerNode> _childLookup = [];
     private readonly List<ProfilerNode> _children = [];
@@ -49,11 +61,8 @@ public sealed class ProfilerNode
 
     private double _cpuAccum;
     private double _gpuAccum;
-
-    internal ProfilerNode(string name)
-    {
-        Name = name;
-    }
+    private long _primAccum;
+    private bool _countsPrimitives;
 
     internal ProfilerNode GetOrAddChild(string name)
     {
@@ -74,180 +83,224 @@ public sealed class ProfilerNode
         HasGpu = true;
     }
 
+    internal void AddPrimitives(long count)
+    {
+        _primAccum += count;
+        _countsPrimitives = true;
+    }
+
     internal void Flush()
     {
         Cpu.AddTimeSample((float)_cpuAccum);
         Gpu.AddTimeSample((float)_gpuAccum);
+
+        TotalPrimitives = _primAccum;
+        HasPrimitives = _countsPrimitives;
         _cpuAccum = 0;
         _gpuAccum = 0;
+        _primAccum = 0;
 
         foreach (var child in _children)
+        {
             child.Flush();
+            TotalPrimitives += child.TotalPrimitives;
+            HasPrimitives |= child.HasPrimitives;
+        }
     }
 }
 
-public readonly struct ProfilerScope : IDisposable
+/// <summary>Handle for an open zone; closing it (via <c>using</c>) records the elapsed CPU/GPU and any query result.</summary>
+public readonly struct ProfilerScope(ProfilerNode? node, long cpuStart, int gpuBegin, int gpuEnd, int primQuery) : IDisposable
 {
-    internal readonly ProfilerNode? _node;
-    internal readonly long _cpuStart;
-    internal readonly int _gpuBegin;
-    internal readonly int _gpuEnd;
-
-    internal ProfilerScope(ProfilerNode? node, long cpuStart, int gpuBegin, int gpuEnd)
-    {
-        _node = node;
-        _cpuStart = cpuStart;
-        _gpuBegin = gpuBegin;
-        _gpuEnd = gpuEnd;
-    }
+    internal readonly ProfilerNode? _node = node;
+    internal readonly long _cpuStart = cpuStart;
+    internal readonly int _gpuBegin = gpuBegin;
+    internal readonly int _gpuEnd = gpuEnd;
+    internal readonly int _primQuery = primQuery;
 
     public void Dispose() => Profiler.End(this);
 }
 
+/// <summary>
+/// Frame-scoped GPU/CPU profiler. Everything here — opening zones, flushing, and the UI reading the tree — runs on the
+/// single GL/main thread; it is deliberately not thread-safe. Add synchronization before profiling any worker thread.
+/// </summary>
 public static class Profiler
 {
-    public static bool Enabled = false;
+    public static bool Enabled;
 
-    private static readonly Lock _treeLock = new();
-    private static readonly ProfilerNode _rootNode = new("Root");
-    private static readonly ThreadLocal<Stack<ProfilerNode>> _stacks = new(() => new Stack<ProfilerNode>());
+    [Flags]
+    private enum Track
+    {
+        None = 0,
+        Cpu = 1,
+        Gpu = 2,
+        Primitives = 4, // implies Gpu; counts primitives the zone's draws generate
+    }
 
-    // GL-thread-only state (query pool + in-flight timestamp pairs).
-    private static readonly Queue<int> _freeQueries = [];
-    private static readonly Queue<PendingGpu> _pending = [];
+    private static readonly ProfilerNode _root = new("Root");
+    private static readonly Stack<ProfilerNode> _stack = new();
 
-    private static int? _glThreadId;
+    // Query id pools, kept apart because a GL query object takes its type from first use: a timestamp query cannot be
+    // recycled as a PRIMITIVES_GENERATED one.
+    private static readonly QueryPool _timestampQueries = new();
+    private static readonly QueryPool _primitiveQueries = new();
+    private static readonly Queue<PendingTime> _pendingTime = [];
+    private static readonly Queue<PendingCount> _pendingCount = [];
+    private static int _activePrimQuery = -1;
+
     private static ProfilerScope _frameScope;
 
+    /// <summary>Root of the zone tree; its children are the frame's top-level zones. Only read after <see cref="EndFrame"/>.</summary>
+    public static ProfilerNode Root => _root;
+
+    /// <summary>Primitives generated across every draw of the last frame. Holds its last value once disabled.</summary>
+    public static long TotalPrimitives { get; private set; }
+
+    /// <summary>Times CPU only.</summary>
+    public static ProfilerScope Cpu(string name) => Begin(name, Track.Cpu);
+
+    /// <summary>Times GPU only.</summary>
+    public static ProfilerScope Gpu(string name) => Begin(name, Track.Gpu);
+
+    /// <summary>Times CPU and GPU.</summary>
+    public static ProfilerScope Sample(string name) => Begin(name, Track.Cpu | Track.Gpu);
+
     /// <summary>
-    /// Reads the profiler tree under the tree lock. Use this (rather than touching
-    /// <see cref="ProfilerNode.Children"/> directly) whenever a reader may run while zones
-    /// are being opened on other threads, e.g. the editor UI walking the tree while a
-    /// worker thread times work. The callback receives the tree root.
+    /// A "Draw" zone: GPU time plus the primitives its draws generate, post-tessellation. These must not nest —
+    /// PRIMITIVES_GENERATED is a scoped query and GL allows only one active per target at a time.
     /// </summary>
-    public static void Read(Action<ProfilerNode> reader)
-    {
-        lock (_treeLock)
-        {
-            reader(_rootNode);
-        }
-    }
+    public static ProfilerScope Draw() => Begin(nameof(Draw), Track.Gpu | Track.Primitives);
 
-    private static bool IsGlThread => _glThreadId == Environment.CurrentManagedThreadId;
+    /// <summary>A "Cull" zone: GPU time of a culling dispatch.</summary>
+    public static ProfilerScope Cull() => Begin(nameof(Cull), Track.Gpu);
 
-    /// <summary>Times CPU only. Safe to call from any thread.</summary>
-    public static ProfilerScope Cpu(string name) => Begin(name, true, false);
-
-    /// <summary>Times GPU only (GL thread only; no-op on other threads).</summary>
-    public static ProfilerScope Gpu(string name) => Begin(name, false, true);
-
-    /// <summary>Times both CPU and GPU. GPU part is only measured on the GL thread.</summary>
-    public static ProfilerScope Sample(string name) => Begin(name, true, true);
-
-    /// <summary>Begins a frame: matures pending GPU results and opens the root "Frame" zone.
-    /// Must be paired with <see cref="EndFrame"/> and called from the GL thread.</summary>
+    /// <summary>Matures last frame's GPU results and opens the root "Frame" zone. Pair with <see cref="EndFrame"/>; GL thread only.</summary>
     public static void BeginFrame()
     {
-        _glThreadId ??= Environment.CurrentManagedThreadId;
-
         if (!Enabled) return;
 
-        ReadbackGpu();
-        _frameScope = Begin("Frame", true, true);
+        MatureQueries();
+        _frameScope = Begin("Frame", Track.Cpu | Track.Gpu);
     }
 
-    /// <summary>Ends the frame opened by <see cref="BeginFrame"/> and flushes all accumulated
-    /// samples into their rolling histories.</summary>
+    /// <summary>Closes the frame zone and commits every accumulator into its rolling history.</summary>
     public static void EndFrame()
     {
-        // Always close the frame scope (keeps the stack balanced even if profiling was
-        // toggled off mid-frame), but skip the flush entirely when disabled so a disabled
-        // profiler does no per-frame work.
+        // Always close the frame scope so the stack stays balanced even if profiling was toggled off mid-frame, but
+        // only flush when enabled so a disabled profiler does no per-frame work.
         End(_frameScope);
         _frameScope = default;
-
         if (!Enabled) return;
 
-        lock (_treeLock)
-        {
-            _rootNode.Flush();
-        }
+        _root.Flush();
+        TotalPrimitives = _root.TotalPrimitives;
     }
 
-    private static ProfilerScope Begin(string name, bool cpu, bool gpu)
+    private static ProfilerScope Begin(string name, Track track)
     {
         if (!Enabled) return default;
 
-        var stack = _stacks.Value!;
+        var node = (_stack.Count > 0 ? _stack.Peek() : _root).GetOrAddChild(name);
+        _stack.Push(node);
 
-        ProfilerNode node;
-        lock (_treeLock)
-        {
-            var parent = stack.Count > 0 ? stack.Peek() : _rootNode;
-            node = parent.GetOrAddChild(name);
-        }
-        stack.Push(node);
-
-        var cpuStart = cpu ? Stopwatch.GetTimestamp() : 0L;
+        var cpuStart = track.HasFlag(Track.Cpu) ? Stopwatch.GetTimestamp() : 0L;
 
         var gpuBegin = -1;
         var gpuEnd = -1;
-        if (gpu && IsGlThread)
+        if (track.HasFlag(Track.Gpu))
         {
-            gpuBegin = RentQuery();
-            gpuEnd = RentQuery();
+            gpuBegin = _timestampQueries.Rent();
+            gpuEnd = _timestampQueries.Rent();
             GL.QueryCounter(gpuBegin, QueryCounterTarget.Timestamp);
         }
 
-        return new ProfilerScope(node, cpuStart, gpuBegin, gpuEnd);
+        var primQuery = -1;
+        if (track.HasFlag(Track.Primitives))
+        {
+            // Only one scoped query may be active. A nested Draw zone is skipped so the outer keeps counting; the assert
+            // surfaces the mistake in development.
+            Debug.Assert(_activePrimQuery < 0, $"Draw zone '{name}' nested inside another; its primitives go uncounted.");
+            if (_activePrimQuery < 0)
+            {
+                primQuery = _primitiveQueries.Rent();
+                _activePrimQuery = primQuery;
+                GL.BeginQuery(QueryTarget.PrimitivesGenerated, primQuery);
+            }
+        }
+
+        return new ProfilerScope(node, cpuStart, gpuBegin, gpuEnd, primQuery);
     }
 
     internal static void End(ProfilerScope scope)
     {
         if (scope._node == null) return;
 
-        var stack = _stacks.Value!;
-        if (stack.Count > 0) stack.Pop();
+        if (_stack.Count > 0) _stack.Pop();
 
         if (scope._cpuStart != 0)
         {
             var ms = (Stopwatch.GetTimestamp() - scope._cpuStart) * 1000.0 / Stopwatch.Frequency;
-            lock (_treeLock)
-            {
-                scope._node.AddCpu(ms);
-            }
+            scope._node.AddCpu(ms);
         }
 
         if (scope._gpuBegin >= 0)
         {
             GL.QueryCounter(scope._gpuEnd, QueryCounterTarget.Timestamp);
-            _pending.Enqueue(new PendingGpu(scope._node, scope._gpuBegin, scope._gpuEnd));
+            _pendingTime.Enqueue(new PendingTime(scope._node, scope._gpuBegin, scope._gpuEnd));
+        }
+
+        if (scope._primQuery >= 0)
+        {
+            GL.EndQuery(QueryTarget.PrimitivesGenerated);
+            _activePrimQuery = -1;
+            _pendingCount.Enqueue(new PendingCount(scope._node, scope._primQuery));
         }
     }
 
-    private static void ReadbackGpu()
+    /// <summary>
+    /// Reads back the GPU results that have matured, oldest first. Queries complete in submission order, so each loop
+    /// stops at the first one not yet available rather than stalling the CPU on the GPU.
+    /// </summary>
+    private static void MatureQueries()
     {
-        // Timestamp queries complete in submission order, so the front of the queue
-        // matures first. Stop as soon as the oldest is not yet available: no busy-wait.
-        while (_pending.Count > 0)
+        while (_pendingTime.Count > 0)
         {
-            var p = _pending.Peek();
-
+            var p = _pendingTime.Peek();
             GL.GetQueryObject(p.End, GetQueryObjectParam.QueryResultAvailable, out int available);
             if (available == 0) break;
 
             GL.GetQueryObject(p.Begin, GetQueryObjectParam.QueryResult, out long begin);
             GL.GetQueryObject(p.End, GetQueryObjectParam.QueryResult, out long end);
-
             p.Node.AddGpu((end - begin) / 1_000_000.0);
 
-            _freeQueries.Enqueue(p.Begin);
-            _freeQueries.Enqueue(p.End);
-            _pending.Dequeue();
+            _timestampQueries.Return(p.Begin);
+            _timestampQueries.Return(p.End);
+            _pendingTime.Dequeue();
+        }
+
+        while (_pendingCount.Count > 0)
+        {
+            var p = _pendingCount.Peek();
+            GL.GetQueryObject(p.Query, GetQueryObjectParam.QueryResultAvailable, out int available);
+            if (available == 0) break;
+
+            GL.GetQueryObject(p.Query, GetQueryObjectParam.QueryResult, out long count);
+            p.Node.AddPrimitives(count);
+
+            _primitiveQueries.Return(p.Query);
+            _pendingCount.Dequeue();
         }
     }
 
-    private static int RentQuery() => _freeQueries.Count > 0 ? _freeQueries.Dequeue() : GL.GenQuery();
+    /// <summary>Recycles GL query ids so the steady state issues no new query allocations.</summary>
+    private sealed class QueryPool
+    {
+        private readonly Queue<int> _free = [];
+        public int Rent() => _free.Count > 0 ? _free.Dequeue() : GL.GenQuery();
+        public void Return(int query) => _free.Enqueue(query);
+    }
 
-    private readonly record struct PendingGpu(ProfilerNode Node, int Begin, int End);
+    private readonly record struct PendingTime(ProfilerNode Node, int Begin, int End);
+    private readonly record struct PendingCount(ProfilerNode Node, int Query);
 }

@@ -9,7 +9,7 @@ public class ProfilerOverlayWidget
     private const float Margin = 8f;          // gap from the viewport edges
     private const float Inner = 8f;           // padding inside the panel
     private const float ToolbarClearance = 38f;
-    private const float BottomClearance = 34f; // clears the FPS readout
+    private const float BottomClearance = 53f; // clears the FPS and primitive readouts, both of which show while profiling
     private const float PanelWidth = 320f;
     private const float GraphHeight = 46f;
     private const float LabelHeight = 16f;
@@ -40,17 +40,16 @@ public class ProfilerOverlayWidget
         var origin = contentPos + new Vector2(Margin, ToolbarClearance);
         var savedCursor = ImGui.GetCursorScreenPos();
 
-        Profiler.Read(root =>
+        var root = Profiler.Root;
+        if (root.Children.Count == 0)
         {
-            if (root.Children.Count == 0)
-            {
-                var emptySize = new Vector2(PanelWidth, Inner * 2f + RowHeight);
-                drawList.AddRectFilled(origin, origin + emptySize, Color(0.06f, 0.06f, 0.08f, 0.72f));
-                drawList.AddRect(origin, origin + emptySize, Color(1f, 1f, 1f, 0.10f));
-                drawList.AddText(origin + new Vector2(Inner, Inner), Color(0.7f, 0.7f, 0.75f), "No profiler data yet.");
-                return;
-            }
-
+            var emptySize = new Vector2(PanelWidth, Inner * 2f + RowHeight);
+            drawList.AddRectFilled(origin, origin + emptySize, Color(0.06f, 0.06f, 0.08f, 0.72f));
+            drawList.AddRect(origin, origin + emptySize, Color(1f, 1f, 1f, 0.10f));
+            drawList.AddText(origin + new Vector2(Inner, Inner), Color(0.7f, 0.7f, 0.75f), "No profiler data yet.");
+        }
+        else
+        {
             var node = ResolveNode(root);
             var series = node.Children.Count > 0 ? node.Children : (IReadOnlyList<ProfilerNode>)[node];
 
@@ -75,7 +74,7 @@ public class ProfilerOverlayWidget
             DrawPanel(drawList, origin, panelSize, node, series);
             drawList.PopClipRect();
             ImGui.PopID();
-        });
+        }
 
         ImGui.SetCursorScreenPos(savedCursor);
     }
@@ -260,11 +259,27 @@ public class ProfilerOverlayWidget
             var timingWidth = ImGui.CalcTextSize(timing).X;
             drawList.AddText(new Vector2(right - timingWidth, y + 1f), Color(0.62f, 0.62f, 0.68f), timing);
 
+            if (task.HasPrimitives)
+            {
+                var primitives = FormatCount(task.TotalPrimitives);
+                var primitivesWidth = ImGui.CalcTextSize(primitives).X;
+                drawList.AddText(new Vector2(right - timingWidth - 8f - primitivesWidth, y + 1f), Color(0.45f, 0.45f, 0.52f), primitives);
+            }
+
             y += RowHeight;
         }
     }
 
     private static ProfilerMetricData Series(ProfilerNode node, bool gpu) => gpu ? node.Gpu : node.Cpu;
+
+    /// <summary>Primitive counts run to millions and the panel is 320px, so they get short-scaled.</summary>
+    private static string FormatCount(long count) => count switch
+    {
+        >= 1_000_000_000 => $"{count / 1_000_000_000.0:0.##}B",
+        >= 1_000_000 => $"{count / 1_000_000.0:0.##}M",
+        >= 1_000 => $"{count / 1_000.0:0.##}K",
+        _ => count.ToString()
+    };
 
     private static uint Color(float r, float g, float b, float a = 1f) => (uint)(a * 255f) << 24 | (uint)(b * 255f) << 16 | (uint)(g * 255f) << 8 | (uint)(r * 255f);
 }

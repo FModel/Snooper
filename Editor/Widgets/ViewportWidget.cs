@@ -3,6 +3,7 @@ using Editor.Managers;
 using ImGuiNET;
 using ImGuizmoNET;
 using OpenTK.Windowing.Common;
+using Snooper.Core;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
@@ -159,6 +160,14 @@ public class ViewportWidget
         var size = ImGui.CalcTextSize(text);
         ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, contentSize.Y - Padding - size.Y));
         ImGui.TextUnformatted(text);
+
+        if (Profiler.Enabled)
+        {
+            var primitives = $"{Profiler.TotalPrimitives:N0} primitives";
+            var primitivesSize = ImGui.CalcTextSize(primitives);
+            ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, contentSize.Y - Padding - size.Y - primitivesSize.Y));
+            ImGui.TextUnformatted(primitives);
+        }
 
         text = "\uf06a Previewed content may differ from final version saved or used in-game.";
         size = ImGui.CalcTextSize(text);

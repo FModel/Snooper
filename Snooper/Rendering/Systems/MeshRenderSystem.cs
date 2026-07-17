@@ -57,7 +57,7 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
     {
         if (IsCulled)
         {
-            using (Profiler.Gpu("Cull"))
+            using (Profiler.Cull())
             {
                 Resources.Cull(cascade, CommandBufferType.Opaque, true); // cull against this cascade's own frustum
             }
@@ -66,7 +66,7 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
         _shadowShader.Use();
         _shadowShader.SetUniform("uViewProjection", cascade.ViewMatrix * cascade.ProjectionMatrix);
 
-        using (Profiler.Gpu("Draw"))
+        using (Profiler.Draw())
         {
             BindSystemBuffers();
             Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
