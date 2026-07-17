@@ -1,4 +1,7 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using System.Runtime.InteropServices;
+using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers.Resources;
+using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Buffers;
 
@@ -12,13 +15,13 @@ public sealed class DrawIndirectBuffer(BufferUsageHint usageHint = BufferUsageHi
     }
 }
 
-public struct DrawElementsIndirectCommand
+public readonly struct DrawElementsIndirectCommand(SectionDescriptor section, uint instanceCount, GeometryHandle geometry, uint baseInstance)
 {
-    public uint IndexCount;
-    public uint InstanceCount;
-    public uint FirstIndex;
-    public uint BaseVertex;
-    public uint BaseInstance;
+    public readonly uint IndexCount = section.IndexCount;
+    public readonly uint InstanceCount = instanceCount;
+    public readonly uint FirstIndex = geometry.FirstIndex + section.FirstIndex;
+    public readonly uint BaseVertex = geometry.BaseVertex;
+    public readonly uint BaseInstance = baseInstance;
 
-    public const int InstanceCountOffset = 4;
+    public static readonly int InstanceCountOffset = (int)Marshal.OffsetOf<DrawElementsIndirectCommand>(nameof(InstanceCount));
 }

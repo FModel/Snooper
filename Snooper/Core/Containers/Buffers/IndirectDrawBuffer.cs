@@ -1,5 +1,8 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Containers.Resources;
+using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Buffers;
 
@@ -82,18 +85,18 @@ public readonly struct DrawAllocation(BufferAllocation command, BufferAllocation
     public readonly BufferAllocation Data = data;
 }
 
-public readonly struct PerDrawData
+public readonly struct PerDrawData(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, uint originalInstanceCount, uint originalBaseInstance, bool castShadow)
 {
-    public uint MeshIndex { get; init; } // index into the per-mesh buffers (PerMeshData, PrimitiveOffsets)
-    public uint SectionId { get; init; } // section index in the current model (0-X)
-    public uint BaseMaterial { get; init; } // offset of the first material this component uses in the material buffer
-    public uint MaterialIndex { get; init; } // index of the material relative to BaseMaterial (GPU-written per LOD)
-    public uint PickingId { get; init; }
-    public uint OriginalInstanceCount { get; init; }
-    public uint OriginalBaseInstance { get; init; }
-    public uint CastShadow { get; init; } // 0 or 1
-    public readonly uint Lod; // GPU-written, LOD chosen by the culling pass
-    public uint BaseColor { get; init; } // GPU-written per LOD, offset into the vertex color buffer
+    public readonly uint MeshIndex = geometry.MeshIndex; // index into the per-mesh buffers (PerMeshData, PrimitiveOffsets)
+    public readonly uint SectionId = sectionId; // section index in the current model (0-X)
+    public readonly uint BaseMaterial = baseMaterial; // offset of the first material this component uses in the material buffer
+    public readonly uint MaterialIndex = section.MaterialIndex; // index of the material relative to BaseMaterial (GPU-written per LOD)
+    public readonly uint PickingId = pickingId;
+    public readonly uint OriginalInstanceCount = originalInstanceCount;
+    public readonly uint OriginalBaseInstance = originalBaseInstance;
+    public readonly uint CastShadow = section.CastShadow && castShadow ? 1u : 0u; // 0 or 1
+    public readonly uint Lod; // GPU-written, LOD chosen by the culling pass, so it takes no parameter
+    public readonly uint BaseColor = geometry.BaseColor; // GPU-written per LOD, offset into the vertex color buffer
 
-    public const int OriginalInstanceCountOffset = 20; // byte offset for partial updates
+    public static readonly int OriginalInstanceCountOffset = (int)Marshal.OffsetOf<PerDrawData>(nameof(OriginalInstanceCount));
 }

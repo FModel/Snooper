@@ -82,7 +82,7 @@ void CommonMeshMain()
 
 #if defined(SPLINE_VERTEX)
     vec3 uePos = aPos.xzy;
-    SplineMeshParams params = uSplineParameters[uSplineIdToParameterIndex[draw.PickingId]];
+    SplineMeshParams params = uSplineParameters[id];
     float distanceAlong = GetAxisValueRef(params.ForwardAxis, uePos);
     vec3 computed = ComputeRatioAlongSpline(params, distanceAlong);
     mat4 sliceTransform = CalcSliceTransformAtSplineOffset(params, computed);
@@ -90,7 +90,7 @@ void CommonMeshMain()
     aPos = (sliceTransform * vec4(uePos, 1.0)).xzyw;
 #elif defined(SKINNED_MESH_VERTEX)
     uint baseBone, basePose, baseInfluence;
-    getSkinningBases(draw, baseBone, basePose, baseInfluence);
+    getSkinningBases(draw, uint(id), baseBone, basePose, baseInfluence);
 
     uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[baseInfluence + (gl_VertexID - gl_BaseVertex)];
     uint startIndex = packedInfluenceOffset >> 8;

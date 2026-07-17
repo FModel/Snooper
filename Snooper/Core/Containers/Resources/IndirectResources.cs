@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
@@ -9,7 +8,7 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Containers.Resources;
 
-public struct AllocationCounts
+public class AllocationCounts
 {
     public uint Components; // total number of components in the system
     public uint UniqueComponents; // number of unique components (based on descriptor guid)
@@ -88,27 +87,18 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         for (var i = 0u; i < drawAllocations.Length; i++)
         {
             var section = descriptor.Lods[currentLod].Sections[i];
-            var draw = buffer.Add(new DrawElementsIndirectCommand
-            {
-                IndexCount = section.IndexCount,
-                InstanceCount = instanceCount,
-                FirstIndex = geometryHandle.FirstIndex + section.FirstIndex,
-                BaseVertex = geometryHandle.BaseVertex,
-                BaseInstance = (uint)instanceAllocation.StartIndex
-            }, new PerDrawData
-            {
-                MeshIndex = geometryHandle.MeshIndex,
-                SectionId = i,
-                BaseMaterial = (uint)(materialAllocation?.StartIndex ?? int.MaxValue),
-                MaterialIndex = section.MaterialIndex,
-                PickingId = (uint)component.Id,
-                OriginalInstanceCount = instanceCount,
-                OriginalBaseInstance = (uint)instanceAllocation.StartIndex,
-                CastShadow = section.CastShadow && component.CastShadow ? 1u : 0u,
-                BaseColor = geometryHandle.BaseColor
-            });
+            var command = new DrawElementsIndirectCommand(section, instanceCount, geometryHandle, (uint)instanceAllocation.StartIndex);
+            var draw = new PerDrawData(
+                geometryHandle,
+                i,
+                (uint) (materialAllocation?.StartIndex ?? int.MaxValue),
+                section,
+                (uint) component.Id,
+                instanceCount,
+                (uint) instanceAllocation.StartIndex,
+                component.CastShadow);
 
-            drawAllocations[i] = new DrawBufferAllocation(draw, bufferType, section.MaterialIndex);
+            drawAllocations[i] = new DrawBufferAllocation(buffer.Add(command, draw), bufferType, section.MaterialIndex);
         }
 
         component.MarkClean(DirtyFlags.All);
@@ -219,6 +209,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public void Render(CommandBufferType type)
     {
         var buffer = _commands.GetBuffer(type);
+        if (buffer.Capacity == 0) return;
+
         buffer.Commands.Bind();
         buffer.DrawData.Bind(Bindings.DrawData);
         _instanceData.Bind(Bindings.InstanceData);

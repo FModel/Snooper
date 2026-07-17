@@ -41,10 +41,7 @@ public unsafe struct PerMaterialLandscapeData : IPerMaterialData
 public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLandscapeData>
 {
     public readonly uint SizeQuads;
-    public readonly Vector2[] Scales;
     public readonly Dictionary<string, LayerMapping> Layers;
-
-    internal bool IsInitialized { get; set; } // TODO: rework this hack
 
     protected override bool SupportsOpaquePass => true;
 
@@ -74,16 +71,6 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         Descriptor = new PrimitiveDescriptor<Vector2>(tessellatedBounds, () => new Geometry(sizeQuads));
 
         SizeQuads = sizeQuads + 1;
-        Scales = new Vector2[Settings.TessellationQuadCountTotal];
-
-        const int quadCount = Settings.TessellationQuadCount;
-        for (var x = 0; x < quadCount; x++)
-        {
-            for (var y = 0; y < quadCount; y++)
-            {
-                Scales[x * quadCount + y] = new Vector2(x, y);
-            }
-        }
 
         var textures = component.GetWeightmapTextures();
         var weightmaps = new Texture[textures.Length];

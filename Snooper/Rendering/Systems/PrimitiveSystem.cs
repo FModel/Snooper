@@ -78,6 +78,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         using (Profiler.Gpu("Draw"))
         {
             PreRender(camera, shader);
+            BindSystemBuffers();
             base.OnRender(camera, type);
             PostRender(camera, shader);
         }

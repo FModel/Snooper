@@ -32,17 +32,17 @@ layout(std430, binding = BINDING_SKIN_MESH_DATA) readonly buffer PerMeshSkinning
     PerMeshSkinningData uSkinMeshDataBuffer[];
 };
 
-layout(std430, binding = BINDING_SKIN_POSE_MAPPING) readonly buffer PerComponentPoseOffsetBuffer
+layout(std430, binding = BINDING_SKIN_POSE_MAPPING) readonly buffer PerInstancePoseOffsetBuffer
 {
-    uint uPoseOffsetByComponent[]; // componentId -> base pose index
+    uint uPoseOffsetByInstance[]; // instance index (gl_BaseInstance + gl_InstanceID) -> base pose index
 };
 
 // requires Buffers/PerDrawData.glsl to be included first
-void getSkinningBases(PerDrawData draw, out uint baseBone, out uint basePose, out uint baseInfluence)
+void getSkinningBases(PerDrawData draw, uint instance, out uint baseBone, out uint basePose, out uint baseInfluence)
 {
     PerMeshSkinningData skin = uSkinMeshDataBuffer[draw.MeshIndex];
     baseBone = skin.BaseBone;
-    basePose = uPoseOffsetByComponent[draw.PickingId];
+    basePose = uPoseOffsetByInstance[instance];
     baseInfluence = skin.LOD_BaseBoneInfluence[draw.Lod];
 }
 

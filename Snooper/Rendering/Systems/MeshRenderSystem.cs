@@ -67,7 +67,10 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
         _shadowShader.SetUniform("uViewProjection", cascade.ViewMatrix * cascade.ProjectionMatrix);
 
         using (Profiler.Gpu("Draw"))
+        {
+            BindSystemBuffers();
             Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
+        }
 
         _shadowShader.Unuse();
     }

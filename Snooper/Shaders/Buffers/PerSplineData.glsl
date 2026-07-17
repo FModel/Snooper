@@ -22,14 +22,9 @@
     vec3 MeshBoxExtent;
 };
 
-layout(std430, binding = BINDING_SPLINE_MAPPING) restrict readonly buffer SplineIdToParameterIndex
-{
-    uint uSplineIdToParameterIndex[];
-};
-
 layout(std430, binding = BINDING_SPLINE_PARAMS) restrict readonly buffer SplineParameters
 {
-    SplineMeshParams uSplineParameters[];
+    SplineMeshParams uSplineParameters[]; // indexed by instance (gl_BaseInstance + gl_InstanceID)
 };
 
 vec3 getSafeNormal(vec3 vector) {

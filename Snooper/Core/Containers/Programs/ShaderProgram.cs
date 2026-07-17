@@ -57,12 +57,16 @@ public class ShaderProgram(string vertex, string fragment) : Program
         GL.ShaderSource(handle, content);
         GL.CompileShader(handle);
 
+        GL.GetShader(handle, ShaderParameter.CompileStatus, out var status);
         var infoLog = GL.GetShaderInfoLog(handle);
-        if (!string.IsNullOrWhiteSpace(infoLog))
+        if (status == 0) // GL_FALSE
         {
             GL.DeleteShader(handle);
             throw new Exception($"{type} failed to compile with error {infoLog}");
         }
+
+        if (!string.IsNullOrWhiteSpace(infoLog))
+            Log.Warning("{Type} compiled with warnings: {InfoLog}", type, infoLog);
 
         return (uint)handle;
     }

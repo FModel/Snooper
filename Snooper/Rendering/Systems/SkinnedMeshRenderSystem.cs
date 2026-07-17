@@ -1,6 +1,4 @@
-using System.Collections.Concurrent;
 using System.Numerics;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
@@ -63,38 +61,43 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
     private readonly ShaderStorageBuffer<uint> _boneInfluenceOffsets = new();
     private readonly ShaderStorageBuffer<PerMeshSkinningData> _skinMeshData = new();
     private readonly ShaderStorageBuffer<uint> _poseMapping = new();
+    protected override IEnumerable<(uint, IIndexedBind)> SystemBuffers =>
+    [
+        (SkinnedBindings.Poses, _poseData),
+        (SkinnedBindings.InverseBind, _inverseBind),
+        (SkinnedBindings.BoneInfluences, _boneInfluences),
+        (SkinnedBindings.BoneInfluenceOffsets, _boneInfluenceOffsets),
+        (SkinnedBindings.SkinMeshData, _skinMeshData),
+        (SkinnedBindings.PoseMapping, _poseMapping)
+    ];
 
-    // TODO: it's annoying to always deduplicate, do it once somewhere
-    private readonly ConcurrentDictionary<FGuid, byte> _guids = [];
-    private readonly HashSet<FGuid> _uploadedGuids = [];
-    private uint _poseBones;
-    private uint _uniqueBones;
-    private uint _skinnedVertices;
-    private int _maxComponentId;
+    private sealed class SkinnedCounts : AllocationCounts
+    {
+        public uint PoseBones; // total number of bones across every skeleton, one pose per component
+        public uint UniqueBones; // number of bones across unique skeletons only
+        public uint SkinnedVertices; // total number of skinned vertices across all LODs of all unique meshes
+    }
+    private readonly SkinnedCounts _counts = new();
+    protected override AllocationCounts CreateCounts() => _counts;
 
     protected override void OnActorComponentEnqueued(SkinnedMeshComponent component)
     {
         base.OnActorComponentEnqueued(component);
 
-        if (component.Id > _maxComponentId)
-        {
-            _maxComponentId = component.Id;
-        }
-
         if (component.Descriptor.Skeleton is { } skeleton)
         {
-            _poseBones += (uint)skeleton.BoneCount;
+            _counts.PoseBones += (uint)skeleton.BoneCount;
         }
 
-        if (_guids.TryAdd(component.Descriptor.Guid, 0))
-        {
-            if (component.Descriptor.Skeleton is { } uniqueSkeleton)
-                _uniqueBones += (uint)uniqueSkeleton.BoneCount;
+        // the base just took this mesh's refcount up; anything above 1 means another component already counted it
+        if (Meshes[component.Descriptor.Guid].RefCount > 1) return;
 
-            foreach (var lod in component.Descriptor.Lods)
-            {
-                if (lod.HasSkinnedVertices) _skinnedVertices += lod.VertexCount;
-            }
+        if (component.Descriptor.Skeleton is { } uniqueSkeleton)
+            _counts.UniqueBones += (uint)uniqueSkeleton.BoneCount;
+
+        foreach (var lod in component.Descriptor.Lods)
+        {
+            if (lod.HasSkinnedVertices) _counts.SkinnedVertices += lod.VertexCount;
         }
     }
 
@@ -109,15 +112,15 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         _skinMeshData.Generate();
         _poseMapping.Generate();
 
-        if (_poseBones > 0) _poseData.Allocate(_poseBones);
-        if (_uniqueBones > 0) _inverseBind.Allocate(_uniqueBones);
-        if (_skinnedVertices > 0)
+        if (_counts.PoseBones > 0) _poseData.Allocate(_counts.PoseBones);
+        if (_counts.UniqueBones > 0) _inverseBind.Allocate(_counts.UniqueBones);
+        if (_counts.SkinnedVertices > 0)
         {
-            _boneInfluences.Allocate(_skinnedVertices * 2);
-            _boneInfluenceOffsets.Allocate(_skinnedVertices);
+            _boneInfluences.Allocate(_counts.SkinnedVertices * 2);
+            _boneInfluenceOffsets.Allocate(_counts.SkinnedVertices);
         }
-        if (_guids.Count > 0) _skinMeshData.Allocate((uint)_guids.Count);
-        _poseMapping.Allocate(_maxComponentId + 1);
+        if (_counts.UniqueComponents > 0) _skinMeshData.Allocate(_counts.UniqueComponents);
+        if (_counts.Instances > 0) _poseMapping.Allocate(_counts.Instances);
     }
 
     protected override void OnResourcesAdded(SkinnedMeshComponent component, ResourcesMetadata metadata)
@@ -127,7 +130,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         var descriptor = component.Descriptor;
         if (descriptor.Skeleton is not { } skeleton) return;
 
-        if (_uploadedGuids.Add(descriptor.Guid))
+        if (Meshes[descriptor.Guid].UploadedBy == component.Id)
         {
             var inverseBoneMatrices = new Matrix4x4[skeleton.BoneMatrices.Length];
             for (var i = 0; i < inverseBoneMatrices.Length; i++)
@@ -167,7 +170,13 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         }
 
         skeleton._poseAllocation = _poseData.AddRange(skeleton.BoneMatrices);
-        _poseMapping.Upsert(component.Id, (uint)skeleton._poseAllocation.Value.StartIndex);
+
+        // one pose per component, so every instance of it points at the same base
+        var basePose = (uint)skeleton._poseAllocation.Value.StartIndex;
+        for (var i = 0; i < metadata.InstanceAllocation.Length; i++)
+        {
+            _poseMapping.Upsert(metadata.InstanceAllocation.StartIndex + i, basePose);
+        }
     }
 
     protected override void OnComponentUpdate(SkinnedMeshComponent component, float delta)
@@ -225,18 +234,6 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
             _poseData.Remove(poseAllocation);
             descriptor._poseAllocation = null;
         }
-    }
-
-    protected override void PreRender(CameraComponent camera, ShaderProgram shader)
-    {
-        base.PreRender(camera, shader);
-
-        _poseData.Bind(SkinnedBindings.Poses);
-        _inverseBind.Bind(SkinnedBindings.InverseBind);
-        _boneInfluences.Bind(SkinnedBindings.BoneInfluences);
-        _boneInfluenceOffsets.Bind(SkinnedBindings.BoneInfluenceOffsets);
-        _skinMeshData.Bind(SkinnedBindings.SkinMeshData);
-        _poseMapping.Bind(SkinnedBindings.PoseMapping);
     }
 
     public override void Dispose()

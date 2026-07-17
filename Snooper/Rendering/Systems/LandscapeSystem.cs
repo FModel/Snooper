@@ -47,6 +47,12 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 
     private readonly ShaderStorageBuffer<Vector2> _scales = new();
     private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new();
+    protected override IEnumerable<(uint, IIndexedBind)> SystemBuffers =>
+    [
+        (LandscapeBindings.Scales, _scales),
+        (LandscapeBindings.WeightMapping, _mapping)
+    ];
+
     private readonly List<string> _layers = ["None"];
     private float _sizeQuads = 0.0f;
     private ColorMode _colorMode = ColorMode.Weightmap;
@@ -60,19 +66,31 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         _scales.Generate();
         _mapping.Generate();
 
-        _scales.Allocate(EnqueuedComponentsCount * Settings.TessellationQuadCountTotal);
-        _mapping.Allocate(EnqueuedComponentsCount);
+        _scales.Allocate(Settings.TessellationQuadCountTotal);
+        _scales.AddRange(CreateSubPatchOffsets());
+
+        _mapping.Allocate((int)Counts.Materials);
+
+        Vector2[] CreateSubPatchOffsets()
+        {
+            const int quadCount = Settings.TessellationQuadCount;
+            var offsets = new Vector2[Settings.TessellationQuadCountTotal];
+
+            for (var x = 0; x < quadCount; x++)
+            {
+                for (var y = 0; y < quadCount; y++)
+                {
+                    offsets[x * quadCount + y] = new Vector2(x, y);
+                }
+            }
+
+            return offsets;
+        }
     }
 
-    protected override void OnComponentUpdate(LandscapeMeshComponent component, float delta)
+    protected override void OnResourcesAdded(LandscapeMeshComponent component, ResourcesMetadata metadata)
     {
-        base.OnComponentUpdate(component, delta);
-
-        if (component.IsInitialized) return;
-        component.IsInitialized = true;
-
-        _scales.AddRange(component.Scales);
-        _mapping.Add(new WeightHighlightMapping());
+        base.OnResourcesAdded(component, metadata);
 
         foreach (var layer in component.Layers.Keys)
         {
@@ -93,7 +111,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 
         foreach (var component in Components)
         {
-            if (component.Metadata is not { } metadata || metadata.DrawAllocations.Length == 0)
+            if (component.Metadata is not { MaterialAllocation: { } allocation })
                 continue;
 
             var m = new WeightHighlightMapping();
@@ -107,9 +125,10 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
                 };
             }
 
-            // this only works because there's a match between the draw allocation id and the mapping allocation id
-            // would be better to have a direct reference
-            _mapping.Update(metadata.DrawAllocations[0].Allocation.Command, m);
+            // MaterialAllocation.StartIndex is draw.BaseMaterial
+            // for a single section landscape tile draw.MaterialIndex is always 0
+            // meaning the mapping and the material buffers are aligned and we can use the same index to update the mapping buffer
+            _mapping.Upsert(allocation.StartIndex, m);
         }
 
         _updateMapping = false;
@@ -123,9 +142,6 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         shader.SetUniform("uSizeQuads", _sizeQuads);
         shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
         shader.SetUniform("uGlobalScale", Settings.GlobalScale);
-
-        _scales.Bind(LandscapeBindings.Scales);
-        _mapping.Bind(LandscapeBindings.WeightMapping);
     }
 
     public override long Allocated => base.Allocated + _scales.Allocated + _mapping.Allocated;

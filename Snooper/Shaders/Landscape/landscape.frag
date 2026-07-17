@@ -163,7 +163,7 @@ void main()
     }
     else if (uColorMode == 1)
     {
-        color = getColorFromWeightmap(material, uWeightMappingBuffer[gDrawID]);
+        color = getColorFromWeightmap(material, uWeightMappingBuffer[draw.BaseMaterial + draw.MaterialIndex]);
     }
 
     gPosition = fs_in.vViewPos;

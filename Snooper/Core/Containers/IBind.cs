@@ -10,3 +10,8 @@ public interface IBind
     public void Bind();
     public void Unbind();
 }
+
+public interface IIndexedBind
+{
+    public void Bind(uint index);
+}

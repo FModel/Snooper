@@ -3,7 +3,7 @@ using Snooper.Core.Containers.Resources;
 
 namespace Snooper.Core.Containers.Buffers;
 
-public sealed class ShaderStorageBuffer<T>(BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<T>(BufferTarget.ShaderStorageBuffer, usageHint) where T : unmanaged
+public sealed class ShaderStorageBuffer<T>(BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<T>(BufferTarget.ShaderStorageBuffer, usageHint), IIndexedBind where T : unmanaged
 {
     public override GetPName PName => GetPName.ShaderStorageBufferBinding;
     

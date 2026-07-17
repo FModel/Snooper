@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
@@ -12,7 +13,7 @@ public struct PerMeshData(CullingBounds bounds, uint maxLod, Vector2 drawDistanc
     public int OverrideLod = -1; // -1 for automatic LOD selection, >= 0 to force a specific LOD
     public readonly uint Padding = 0;
 
-    public const int OverrideLodOffset = 40; // byte offset of OverrideLod for partial updates
+    public static readonly int OverrideLodOffset = (int)Marshal.OffsetOf<PerMeshData>(nameof(OverrideLod));
 }
 
 public unsafe struct PrimitiveOffsets

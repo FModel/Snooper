@@ -16,11 +16,12 @@ void main()
     vec2 posZW = unpackHalf2x16(aPosHalf.y);
     vec4 aPos  = vec4(posXY, posZW);
 
+    int id = gl_BaseInstance + gl_InstanceID;
     PerDrawData draw = uDrawDataBuffer[gl_DrawID];
 
 #if defined(SPLINE_VERTEX)
     vec3 uePos = aPos.xzy;
-    SplineMeshParams params = uSplineParameters[uSplineIdToParameterIndex[draw.PickingId]];
+    SplineMeshParams params = uSplineParameters[id];
     float distanceAlong = GetAxisValueRef(params.ForwardAxis, uePos);
     vec3 computed = ComputeRatioAlongSpline(params, distanceAlong);
     mat4 sliceTransform = CalcSliceTransformAtSplineOffset(params, computed);
@@ -28,7 +29,7 @@ void main()
     aPos = (sliceTransform * vec4(uePos, 1.0)).xzyw;
 #elif defined(SKINNED_MESH_VERTEX)
     uint baseBone, basePose, baseInfluence;
-    getSkinningBases(draw, baseBone, basePose, baseInfluence);
+    getSkinningBases(draw, uint(id), baseBone, basePose, baseInfluence);
 
     uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[baseInfluence + (gl_VertexID - gl_BaseVertex)];
     uint startIndex = packedInfluenceOffset >> 8;
@@ -49,5 +50,5 @@ void main()
     aPos = uePos;
 #endif
 
-    gl_Position = uViewProjection * (uInstanceDataBuffer[gl_BaseInstance + gl_InstanceID].Matrix * aPos);
+    gl_Position = uViewProjection * (uInstanceDataBuffer[id].Matrix * aPos);
 }

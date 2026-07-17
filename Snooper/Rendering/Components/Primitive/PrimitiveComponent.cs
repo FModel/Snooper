@@ -1,12 +1,10 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Core.Math;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Actors;
-using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
@@ -37,7 +35,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         protected init;
     }
 
-    public ResourcesMetadata? Metadata { get; private set; }
+    public ResourcesMetadata? Metadata { get; internal set; }
 
     public abstract MaterialSection[] Materials { get; }
 
@@ -45,7 +43,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     public bool IsOpaque
     {
         get => _isOpaque ??= SupportsOpaquePass;
-        private set
+        internal set
         {
             if (!SupportsOpaquePass || _isOpaque == value) return;
 
@@ -119,37 +117,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     protected PrimitiveComponent(USceneComponent component) : base(component)
     {
 
-    }
-
-    public void Update(IndirectResources<TVertex, TInstanceData, TPerMaterialData> resources)
-    {
-        if (Metadata is null)
-        {
-            Metadata = resources.Add(this);
-
-            // in our current setup, we first upload the geometry data to the GPU and THEN we set up the material sections
-            // but it's very much possible here that the material section already has its material data container set
-            // in which case, by subscribing to OnMaterialDataContainerSet it will be triggered immediately
-            foreach (var material in Materials)
-            {
-                // basically the component is responsible for setting a material container for each section
-                // once the container is set, OnMaterialDataContainerSet will be triggered and all the textures in the container will be sent to the texture cache
-                // the cache will generate all these textures, make them bindless, finalize the container's GPU data, and then trigger OnContainerReady
-                // OnContainerReady will upload the material data to the GPU for this component, in the system that owns it
-                // material containers and textures are CPU cached globally, but duplicated on the GPU, per section, per component, per system...
-
-                material.OnContainerReady += resources.Update;
-                material.OnMaterialDataContainerSet += section =>
-                {
-                    TextureCache.Add(section);
-                    IsOpaque &= !section.IsTranslucent;
-                };
-            }
-        }
-        else
-        {
-            resources.Update(this);
-        }
     }
 
     private TInstanceData[]? _cachedInstanceData;
