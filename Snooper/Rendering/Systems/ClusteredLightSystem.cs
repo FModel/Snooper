@@ -51,7 +51,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
 {
     private const int TileSize = 32;
     private const int WorkGroupSize = 64;
-    private const int MaxLightsPerCluster = 256;
+    private const int MaxLightsPerCluster = 128;
 
     private abstract class LightBindings : Bindings
     {
@@ -59,16 +59,14 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         public const uint LightClusterData = BaseMaxBinding + 2;
         public const uint LightIndexList = BaseMaxBinding + 3;
         public const uint LightClusterAabbs = BaseMaxBinding + 4;
-        public const uint LightGlobalIndexCount = BaseMaxBinding + 5;
-        public const uint MaxBinding = LightGlobalIndexCount;
+        public const uint MaxBinding = LightClusterAabbs;
 
         public static readonly string[] OwnDefines =
         [
             Define("LIGHT_DATA", LightData),
             Define("LIGHT_CLUSTER_DATA", LightClusterData),
             Define("LIGHT_INDEX_LIST", LightIndexList),
-            Define("LIGHT_CLUSTER_AABBS", LightClusterAabbs),
-            Define("LIGHT_GLOBAL_INDEX_COUNT", LightGlobalIndexCount)
+            Define("LIGHT_CLUSTER_AABBS", LightClusterAabbs)
         ];
     }
 
@@ -81,10 +79,12 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     private readonly ShaderStorageBuffer<ClusterAABB> _clusterAABBBuffer = new(BufferUsageHint.DynamicDraw);
     private readonly ShaderStorageBuffer<ClusterData> _clusterDataBuffer = new(BufferUsageHint.DynamicDraw);
     private readonly ShaderStorageBuffer<uint> _lightIndexListBuffer = new(BufferUsageHint.DynamicDraw);
-    private readonly ShaderStorageBuffer<uint> _globalIndexCountBuffer = new(BufferUsageHint.DynamicDraw);
 
     private readonly ComputeShader _clusterBuildProgram = new("Lighting/cluster_build.comp") { Defines = LightBindings.OwnDefines };
-    private readonly ComputeShader _lightCullingProgram = new("Lighting/light_culling.comp") { Defines = LightBindings.OwnDefines };
+    private readonly ComputeShader _lightCullingProgram = new("Lighting/light_culling.comp")
+    {
+        Defines = [..LightBindings.OwnDefines, $"MAX_LIGHTS_PER_CLUSTER {MaxLightsPerCluster}"]
+    };
 
     public int GridDimensionX { get; private set; }
     public int GridDimensionY { get; private set; }
@@ -95,7 +95,8 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     private int _screenWidth = 1;
     private int _screenHeight = 1;
 
-    private BufferAllocation? _globalIndexCountAllocation;
+    private bool _clustersDirty = true;
+    private Matrix4x4 _lastClusterProjection;
 
     internal DirectionalLightComponent? DirectionalLight
     {
@@ -123,9 +124,6 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         _clusterDataBuffer.Generate();
         _lightIndexListBuffer.Generate();
 
-        _globalIndexCountBuffer.Generate();
-        _globalIndexCountAllocation = _globalIndexCountBuffer.Add(0u);
-
         _clusterBuildProgram.Generate();
         _clusterBuildProgram.Link();
 
@@ -137,8 +135,25 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
 
     protected override void OnExecute(CameraComponent camera)
     {
-        using (Profiler.Gpu("Build")) BuildClusters(camera);
-        using (Profiler.Cull()) CullLights(camera); // TODO: improve, especially for rect lights
+        if (ConsumeClustersDirty(camera))
+        {
+            using (Profiler.Gpu("Build")) BuildClusters(camera);
+        }
+
+        using (Profiler.Cull()) CullLights(camera);
+    }
+
+    // Cluster AABBs are camera-relative (view space) and independent of the camera's position/orientation
+    // and of the lights, so they only need rebuilding when the projection or screen size changes.
+    private bool ConsumeClustersDirty(CameraComponent camera)
+    {
+        var projection = camera.InverseProjectionMatrix;
+        if (!_clustersDirty && projection == _lastClusterProjection)
+            return false;
+
+        _clustersDirty = false;
+        _lastClusterProjection = projection;
+        return true;
     }
 
     private void BuildClusters(CameraComponent camera)
@@ -170,12 +185,6 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
             return;
         }
 
-        // Reset global index counter
-        if (_globalIndexCountAllocation.HasValue)
-        {
-            _globalIndexCountBuffer.Update(_globalIndexCountAllocation.Value, 0u);
-        }
-
         _lightCullingProgram.Use();
         _lightCullingProgram.SetUniform("uLightCount", _lightDataBuffer.Capacity);
         _lightCullingProgram.SetUniform("uGridDimX", GridDimensionX);
@@ -185,7 +194,6 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
 
         BindForRendering();
         _clusterAABBBuffer.Bind(LightBindings.LightClusterAabbs);
-        _globalIndexCountBuffer.Bind(LightBindings.LightGlobalIndexCount);
 
         GL.DispatchCompute(_numWorkGroups, 1, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.ShaderStorageBarrierBit);
@@ -246,6 +254,8 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         _clusterAABBBuffer.Reallocate(_numClusters);
         _clusterDataBuffer.Reallocate(_numClusters);
         _lightIndexListBuffer.Reallocate(_numClusters * MaxLightsPerCluster);
+
+        _clustersDirty = true; // grid changed, rebuild the cluster AABBs next frame
     }
 
     public long Allocated => _lightDataBuffer.Allocated;
@@ -268,7 +278,6 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         _clusterAABBBuffer.Dispose();
         _clusterDataBuffer.Dispose();
         _lightIndexListBuffer.Dispose();
-        _globalIndexCountBuffer.Dispose();
         _clusterBuildProgram.Dispose();
         _lightCullingProgram.Dispose();
     }
