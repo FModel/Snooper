@@ -24,8 +24,6 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         [CommandBufferType.Transparent] = new EmbeddedShader("default")
     };
 
-    protected int FragmentColor => ActorManager?.FragmentColor ?? FragmentColorMode.Disabled;
-
     protected override void OnLoad()
     {
         base.OnLoad();
@@ -55,7 +53,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         shader.Use();
         shader.SetUniform("uViewMatrix", camera.ViewMatrix);
         shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
-        shader.SetUniform("uFragmentColorMode", FragmentColor);
+        shader.SetUniform("uFragmentColorMode", ActorManager?.FragmentColor ?? FragmentColorMode.Disabled);
     }
 
     protected sealed override void OnRender(CameraComponent camera, CommandBufferType type)

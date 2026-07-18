@@ -29,6 +29,12 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     private bool _debug;
     private int _selectedTextureIndex = 0;
     private float _split = 0.5f;
+    private int _channel;
+
+    // cluster viz
+    private int _clusterVizMode;
+    private float _clusterVizOverlay = 0.75f;
+    private bool _clusterVizGrid = true;
 
     public void Generate()
     {
@@ -78,13 +84,23 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         if (_debug)
         {
             texture = GetTextures()[_selectedTextureIndex];
-            if (texture.Name == "PostProcess - Shadow Viz")
+            switch (texture.Name)
             {
-                _postProcess.DoStagePass("Shadow Viz Pass", litContext);
+                case "PostProcess - Shadow Viz":
+                {
+                    _postProcess.DoStagePass("Shadow Viz Pass", litContext);
+                    break;
+                }
+                case "PostProcess - Light Cluster Viz":
+                {
+                    var clusterContext = new ClusterDebugStageContext(camera, _geometry, lightSystem, _antiAliasing, _clusterVizMode, _clusterVizOverlay, _clusterVizGrid);
+                    _postProcess.DoStagePass("Cluster Viz Pass", clusterContext);
+                    break;
+                }
             }
         }
 
-        _postProcess.DoStagePass("Final Pass", new FinalStageContext(_antiAliasing, texture, _split));
+        _postProcess.DoStagePass("Final Pass", new FinalStageContext(_antiAliasing, texture, _split, _channel));
     }
 
     public void RenderToScreen(int width, int height)
@@ -153,6 +169,21 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 
                 EditorUI.Property("Vertical Split");
                 ImGui.SliderFloat("##Vertical Split", ref _split, 0.0f, 1.0f);
+
+                EditorUI.Property("Channel");
+                ImGui.Combo("##Channel", ref _channel, "RGB\0R\0G\0B\0A\0");
+
+                if (textures[_selectedTextureIndex].Name == "PostProcess - Light Cluster Viz")
+                {
+                    EditorUI.Property("Cluster Mode");
+                    ImGui.Combo("##Cluster Mode", ref _clusterVizMode, "Lights In Cluster\0Cluster Z Slice\0Column Peak\0");
+
+                    EditorUI.Property("Cluster Overlay");
+                    ImGui.SliderFloat("##Cluster Overlay", ref _clusterVizOverlay, 0.0f, 1.0f);
+
+                    EditorUI.Property("Cluster Grid");
+                    ImGui.Checkbox("##Cluster Grid", ref _clusterVizGrid);
+                }
             });
         });
     }

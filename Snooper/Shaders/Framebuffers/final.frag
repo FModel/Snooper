@@ -4,8 +4,18 @@ uniform sampler2D texture1;
 uniform sampler2D texture2;
 uniform bool enabled;
 uniform float split;
+uniform int channel; // 0 = RGB, 1 = R, 2 = G, 3 = B, 4 = A
 
 out vec4 FragColor;
+
+vec4 IsolateChannel(vec4 color)
+{
+    if (channel == 1) return vec4(color.rrr, 1.0);
+    if (channel == 2) return vec4(color.ggg, 1.0);
+    if (channel == 3) return vec4(color.bbb, 1.0);
+    if (channel == 4) return vec4(color.aaa, 1.0);
+    return color;
+}
 
 void main()
 {
@@ -24,5 +34,5 @@ void main()
     if (vTexCoords.x < split)
         FragColor = texture(texture1, vTexCoords);
     else
-        FragColor = texture(texture2, vTexCoords);
+        FragColor = IsolateChannel(texture(texture2, vTexCoords));
 }

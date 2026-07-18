@@ -16,6 +16,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
     private readonly ResizableTexture2D _combined = new(originalWidth, originalHeight, name: "PostProcess - Combined");
     private readonly ResizableTexture2D _fxaa = new(originalWidth, originalHeight, name: "PostProcess - FXAA");
     private readonly ResizableTexture2D _shadowViz = new(originalWidth, originalHeight, SizedInternalFormat.Rgb8, PixelFormat.Rgb, name: "PostProcess - Shadow Viz");
+    private readonly ResizableTexture2D _clusterViz = new(originalWidth, originalHeight, SizedInternalFormat.Rgb8, PixelFormat.Rgb, name: "PostProcess - Light Cluster Viz");
     private readonly PickingTexture _picking = new(originalWidth, originalHeight);
     private readonly ResizableTexture2D _pickingViz = new(originalWidth, originalHeight, SizedInternalFormat.Rgb8, PixelFormat.Rgb, name: "PostProcess - Picking Viz");
 
@@ -29,6 +30,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         Generate(_combined);
         Generate(_fxaa);
         Generate(_shadowViz);
+        Generate(_clusterViz);
         Generate(_picking, TextureMinFilter.Nearest);
         Generate(_pickingViz);
 
@@ -178,6 +180,35 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
+        _passes.Add(new StagePass<ClusterDebugStageContext>("Cluster Viz Pass", Generate("Framebuffers/cluster_debug.frag", ClusteredLightSystem.LightingDefines), _clusterViz)
+        {
+            SetupBindings = (ctx, shader) =>
+            {
+                shader.SetUniform("gPosition", 0);
+                shader.SetUniform("sceneTexture", 1);
+
+                ctx.Geometry.Bind(EDeferredTexture.Position, 0);
+                (ctx.AntiAliasing ? _fxaa : _combined).Bind(1);
+
+                shader.SetUniform("uZNear", ctx.Camera.NearClipPlane);
+                shader.SetUniform("uZFar", ctx.Camera.FarClipPlane);
+                shader.SetUniform("uMode", ctx.Mode);
+                shader.SetUniform("uOverlay", ctx.Overlay);
+                shader.SetUniform("uShowGrid", ctx.ShowGrid);
+                shader.SetUniform("uMaxLightsPerCluster", ClusteredLightSystem.MaxLightsPerClusterLimit);
+
+                if (ctx.LightSystem is { IsEnabled: true } system)
+                {
+                    system.BindForRendering();
+                    shader.SetUniform("uHasLights", true);
+                    shader.SetUniform("uGridDimX", system.GridDimensionX);
+                    shader.SetUniform("uGridDimY", system.GridDimensionY);
+                    shader.SetUniform("uGridDimZ", system.GridDimensionZ);
+                }
+                else shader.SetUniform("uHasLights", false);
+            }
+        });
+
         _passes.Add(new StagePass<FinalStageContext>("Final Pass", Generate("Framebuffers/final.frag"))
         {
             SetupBindings = (ctx, shader) =>
@@ -186,6 +217,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("texture2", 1);
                 shader.SetUniform("enabled", ctx.Texture != null);
                 shader.SetUniform("split", ctx.Split ?? 1.0f);
+                shader.SetUniform("channel", ctx.Channel);
 
                 (ctx.AntiAliasing ? _fxaa : _combined).Bind(0);
                 ctx.Texture?.Bind(1);
@@ -235,6 +267,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             EPostProcessTexture.PickingViz => _pickingViz,
             EPostProcessTexture.Aa => _fxaa,
             EPostProcessTexture.ShadowViz => _shadowViz,
+            EPostProcessTexture.ClusterViz => _clusterViz,
             _ => throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid post-process texture type")
         };
 
@@ -291,6 +324,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         _fxaa,
         _pickingViz,
         _shadowViz,
+        _clusterViz,
     ];
 
     public override void Resize(int newWidth, int newHeight)
@@ -303,6 +337,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         _combined.Resize(newWidth, newHeight);
         _fxaa.Resize(newWidth, newHeight);
         _shadowViz.Resize(newWidth, newHeight);
+        _clusterViz.Resize(newWidth, newHeight);
         _picking.Resize(newWidth, newHeight);
         _pickingViz.Resize(newWidth, newHeight);
     }
@@ -320,6 +355,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         _combined.Dispose();
         _fxaa.Dispose();
         _shadowViz.Dispose();
+        _clusterViz.Dispose();
         _picking.Dispose();
         _pickingViz.Dispose();
     }

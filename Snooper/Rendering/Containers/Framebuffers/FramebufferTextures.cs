@@ -34,4 +34,5 @@ public enum EPostProcessTexture : byte
     PickingViz = 4,
     Aa = 5,
     ShadowViz = 6,
+    ClusterViz = 7,
 }

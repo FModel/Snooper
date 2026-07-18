@@ -112,6 +112,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     }
 
     internal static string[] LightingDefines => LightBindings.OwnDefines;
+    internal static int MaxLightsPerClusterLimit => MaxLightsPerCluster;
 
     protected override void OnLoad()
     {

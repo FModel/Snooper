@@ -48,9 +48,21 @@ public readonly struct ShadowStageContext(int width, int height, int depth, floa
     public readonly Matrix4x4[] Matrices = matrices;
 }
 
-public readonly struct FinalStageContext(bool antiAliasing, Texture? texture = null, float? split = null) : IStageContext
+public readonly struct ClusterDebugStageContext(CameraComponent camera, GeometryRenderer geometry, ClusteredLightSystem? lightSystem, bool antiAliasing, int mode, float overlay, bool showGrid) : IStageContext
+{
+    public readonly CameraComponent Camera = camera;
+    public readonly GeometryRenderer Geometry = geometry;
+    public readonly ClusteredLightSystem? LightSystem = lightSystem;
+    public readonly bool AntiAliasing = antiAliasing;
+    public readonly int Mode = mode;
+    public readonly float Overlay = overlay;
+    public readonly bool ShowGrid = showGrid;
+}
+
+public readonly struct FinalStageContext(bool antiAliasing, Texture? texture = null, float? split = null, int channel = 0) : IStageContext
 {
     public readonly bool AntiAliasing = antiAliasing;
     public readonly Texture? Texture = texture;
     public readonly float? Split = split;
+    public readonly int Channel = channel;
 }
