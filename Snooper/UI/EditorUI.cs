@@ -92,6 +92,24 @@ public static class EditorUI
         return ImGui.DragFloat("##" + label, ref value, speed, min, max, format);
     }
 
+    public static bool SliderInt(string label, ref int value, int min, int max, string? format = null)
+    {
+        Property(label);
+        return ImGui.SliderInt("##" + label, ref value, min, max, format);
+    }
+
+    public static bool SliderFloat(string label, ref float value, float min, float max, string? format = null)
+    {
+        Property(label);
+        return ImGui.SliderFloat("##" + label, ref value, min, max, format);
+    }
+
+    public static bool ColorEdit3(string label, ref Vector3 value, ImGuiColorEditFlags flags = ImGuiColorEditFlags.NoInputs)
+    {
+        Property(label);
+        return ImGui.ColorEdit3("##" + label, ref value, flags);
+    }
+
     public static bool Checkbox(string label, ref bool value)
     {
         Property(label);

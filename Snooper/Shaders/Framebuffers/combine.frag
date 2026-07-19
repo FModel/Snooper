@@ -13,7 +13,7 @@ void main()
 {
     vec4 deferred = texture(deferredTexture, vTexCoords);
     vec4 forward = texture(forwardTexture, vTexCoords);
-    vec4 color = mix(deferred, forward, forward.a);
+    vec4 color = forward + deferred * (1.0 - forward.a);
 
     float mask = texture(maskTexture, vTexCoords).r;
     if (mask <= 0.0 || mask >= 1.0)

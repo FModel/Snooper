@@ -102,6 +102,9 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
                 GL.Clear(ClearBufferMask.ColorBufferBit);
 
                 GL.Enable(EnableCap.Blend);
+                GL.BlendFuncSeparate(
+                    BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha,
+                    BlendingFactorSrc.One, BlendingFactorDest.OneMinusSrcAlpha);
             },
             Execute = ctx =>
             {
@@ -112,6 +115,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             },
             PostPass = _ =>
             {
+                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
                 GL.Disable(EnableCap.Blend);
 
                 _forward.Unbind();

@@ -1,85 +1,72 @@
-﻿using System.Numerics;
-using ImGuiNET;
-using OpenTK.Graphics.OpenGL4;
-using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
-using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
-using Snooper.UI;
 
 namespace Snooper.Rendering.Systems;
 
-public class GridSystem : PrimitiveSystem<GridComponent>, IControllable
+public class GridSystem : PrimitiveSystem<GridComponent>
 {
     public override uint Order => 2;
+    public override int Capacity => 1;
     protected override bool AllowDerivation => true;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {
-        [CommandBufferType.Transparent] = new EmbeddedShader("grid")
+        [CommandBufferType.Transparent] = new EmbeddedShader("Grid/grid"),
+        [CommandBufferType.Opaque] = new EmbeddedShader("Grid/grid.vert", "Grid/grid_opaque.frag")
     };
 
-    private Texture? _texture;
-    private Vector3 _color = Vector3.One;
-
-    public bool IsOpaque => _texture is not null;
+    private GridComponent? _component;
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
         base.PreRender(camera, shader);
 
-        shader.SetUniform("uNear", camera.NearClipPlane);
         shader.SetUniform("uFar", camera.FarClipPlane);
-        shader.SetUniform("uIsOpaque", IsOpaque);
+        shader.SetUniform("uHeight", _component?.LocalTransform.Position.Y ?? 0);
 
-        _texture?.Bind(0);
-        shader.SetUniform("uTexture", 0);
-        shader.SetUniform("uColor", _color);
+        if (_component is not null)
+        {
+            var settings = _component.GridSettings;
+            shader.SetUniform("uColor", settings.Tint);
 
-        if (!IsOpaque) GL.DepthMask(false);
-    }
+            shader.SetUniform("uCellSize", MathF.Max(settings.CellSize, 1e-4f));
+            shader.SetUniform("uLodStep", (float) Math.Max(settings.CellsPerDivision, 2));
+            shader.SetUniform("uAdaptive", settings.Adaptive);
+            shader.SetUniform("uMinCellPixels", MathF.Max(settings.MinCellPixels, 1.0f));
 
-    protected override void PostRender(CameraComponent camera, ShaderProgram shader)
-    {
-        base.PostRender(camera, shader);
+            shader.SetUniform("uMinorThickness", settings.MinorThickness);
+            shader.SetUniform("uMajorThickness", settings.MajorThickness);
+            shader.SetUniform("uAxisThickness", settings.AxisThickness);
+            shader.SetUniform("uMinorColor", settings.MinorColor);
+            shader.SetUniform("uMajorColor", settings.MajorColor);
+            shader.SetUniform("uAxisColorX", settings.AxisColorX);
+            shader.SetUniform("uAxisColorZ", settings.AxisColorZ);
+            shader.SetUniform("uMinorOpacity", settings.MinorOpacity);
+            shader.SetUniform("uMajorOpacity", settings.MajorOpacity);
+            shader.SetUniform("uOpacity", settings.Opacity);
+            shader.SetUniform("uShowAxes", settings.ShowAxes);
 
-        if (!IsOpaque) GL.DepthMask(true);
+            // keep the fade window ordered, an inverted one would make the grid vanish entirely
+            shader.SetUniform("uFadeStart", MathF.Min(settings.FadeStart, settings.FadeEnd));
+            shader.SetUniform("uFadeEnd", MathF.Max(settings.FadeStart, settings.FadeEnd));
+
+            if (settings is OpaqueGridComponent.OpaqueSettings opaque)
+            {
+                shader.SetUniform("uCheckerColorA", opaque.CheckerColorA);
+                shader.SetUniform("uCheckerColorB", opaque.CheckerColorB);
+                shader.SetUniform("uCheckerScale", opaque.CheckerScale);
+                shader.SetUniform("uMetallic", opaque.Metallic);
+                // a fully zeroed specular target means "not a pbr material" to the lighting pass
+                shader.SetUniform("uRoughness", MathF.Max(opaque.Roughness, 0.01f));
+            }
+        }
     }
 
     protected override void OnActorComponentAdded(GridComponent component)
     {
         base.OnActorComponentAdded(component);
 
-        if (component is OpaqueGridComponent && _texture is null)
-        {
-            // https://verythieflike.itch.io/prototype-texture-generator
-            _texture = new EmbeddedTexture2D("Rendering.Resources.prototype_blue.png", mipmapped: true);
-            _texture.Generate();
-            GL.TextureParameter(_texture, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
-            GL.TextureParameter(_texture, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-            GL.TextureParameter(_texture, TextureParameterName.TextureWrapR, (int) TextureWrapMode.Repeat);
-            GL.TextureParameter(_texture, TextureParameterName.TextureWrapS, (int) TextureWrapMode.Repeat);
-            GL.TextureParameter(_texture, TextureParameterName.TextureWrapT, (int) TextureWrapMode.Repeat);
-            GL.GenerateTextureMipmap(_texture);
-        }
-    }
-
-    public override long Allocated => base.Allocated + _texture?.Allocated ?? 0;
-    public override long Used => base.Used + _texture?.Used ?? 0;
-    public override IEnumerable<MemoryDetail> GetMemoryDetails()
-    {
-        foreach (var detail in base.GetMemoryDetails())
-            yield return detail;
-
-        if (_texture is not null)
-        {
-            yield return new MemoryDetail("Grid Texture", _texture);
-        }
-    }
-
-    public void DrawControls()
-    {
-        ImGui.ColorEdit3("Grid Color", ref _color);
+        _component = component;
     }
 }
