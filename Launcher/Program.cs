@@ -45,12 +45,12 @@ DetexHelper.Initialize("D:\\FModel\\.data\\Detex.dll");
 
 #if FN
 const string dir = "D:\\Games\\Fortnite\\FortniteGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\++Fortnite+Release-41.00-CL-54618515_br.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\++Fortnite+Release-41.00-CL-54618515_br.usmap";
 const string key = "0x0A2416572EECAE9561E2384EC6EC5D7C830BB5AEC4D90B5BE756648B2E9AB41A";
 var version = new VersionContainer(EGame.GAME_UE5_8);
 #elif VL
 const string dir = "D:\\Games\\Riot Games\\VALORANT\\live\\ShooterGame\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\VALORANT_13.00_zs.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\VALORANT_13.00_zs.usmap";
 const string key = "0x4BE71AF2459CF83899EC9DC2CB60E22AC4B3047E0211034BBABE9D174C069DD6";
 var version = new VersionContainer(EGame.GAME_Valorant);
 #elif GTA
@@ -65,7 +65,7 @@ const string key = "0x0000000000000000000000000000000000000000000000000000000000
 var version = new VersionContainer(EGame.GAME_UE4_27);
 #elif SUPRA
 const string dir = "D:\\CSGO\\steamapps\\common\\Supraworld\\Supraworld\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\5.6.1-44394996+++UE5+Release-5.6-Supraworld.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\5.6.1-44394996+++UE5+Release-5.6-Supraworld.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_6);
 #elif CAT
@@ -75,12 +75,12 @@ const string key = "0x0000000000000000000000000000000000000000000000000000000000
 var version = new VersionContainer(EGame.GAME_Stray);
 #elif COE33
 const string dir = "D:\\Games\\Clair Obscur - Expedition 33\\Sandfall\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\5.4.4-61339+++streams+ProjectW-release-Sandfall.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\5.4.4-61339+++streams+ProjectW-release-Sandfall.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_4);
 #elif CARS
 const string dir = "D:\\Games\\Cars_Overdrive\\Cars_Overdrive\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\5.4.4-35576357+++UE5+Release-5.4-Cars_Overdrive.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\5.4.4-35576357+++UE5+Release-5.4-Cars_Overdrive.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_4);
 #elif R9W
@@ -90,17 +90,17 @@ const string key = "0x34FC366196D4535B12D4B0A67072B5F973CDA66D5BBAD30D26C3950354
 var version = new VersionContainer(EGame.GAME_UE4_27);
 #elif MR
 const string dir = "D:\\CSGO\\steamapps\\common\\MarvelRivals\\MarvelGame\\Marvel\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\5.3.2-1967306+++depot_marvel+S2_2_release-Marvel+PY.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\5.3.2-1967306+++depot_marvel+S2_2_release-Marvel+PY.usmap";
 const string key = "0x0C263D8C22DCB085894899C3A3796383E9BF9DE0CBFB08C9BF2DEF2E84F29D74";
 var version = new VersionContainer(EGame.GAME_MarvelRivals);
 #elif WEST
 const string dir = "D:\\CSGO\\steamapps\\common\\Far Far West Demo\\FarFarWest\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\507_FarFarWest.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\507_FarFarWest.usmap";
 const string key = "0xDD5543BCC9C387A03DEADD72473D6A2EAF491AF88FC47365EE963F8AFE16B2D9";
 var version = new VersionContainer(EGame.GAME_UE5_7);
 #elif BUS
 const string dir = "D:\\CSGO\\steamapps\\common\\Denshattack! Demo\\Denshattack_Proto\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\5.6.1-0+UE5-Denshattack_Proto.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\5.6.1-0+UE5-Denshattack_Proto.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_6);
 #elif UPS
@@ -110,7 +110,7 @@ const string key = "0x0000000000000000000000000000000000000000000000000000000000
 var version = new VersionContainer(EGame.GAME_UE4_27);
 #elif EXA
 const string dir = "D:\\Games\\UE Projects\\ContentExamples\\Saved\\StagedBuilds\\Windows\\ContentExamples\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\507_ContentExamples.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\507_ContentExamples.usmap";
 const string key = "0x0000000000000000000000000000000000000000000000000000000000000000";
 var version = new VersionContainer(EGame.GAME_UE5_7);
 #elif OAR
@@ -274,7 +274,7 @@ switch (provider.ProjectName)
     {
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoCQ01/TokyoCQ01.TokyoCQ01")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoE01/TokyoE01_Art.TokyoE01_Art")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/NewYorkE01/NewYorkE01_Art.NewYorkE01_Art")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/NewYorkE01/NewYorkE01_Art.NewYorkE01_Art"))); // TODO: lots of missing walls
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/AsgardE01/AsgardE01_Art.AsgardE01_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/Arakko/ArakkoE01_Art.ArakkoE01_Art")));
         scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/WakandaMC01/WakandaC03/WakandaC03_Art.WakandaC03_Art")));
@@ -290,6 +290,8 @@ switch (provider.ProjectName)
     }
     case "FarFarWest":
     {
+        // grid.Components.Clear();
+        // grid.Components.Add(new OpaqueGridComponent());
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Characters/BP_NPC_RailwayWorker.BP_NPC_RailwayWorker_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/Quests/Assets/BP_GatlingAntenna.BP_GatlingAntenna_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FarFarWest/Content/GPE/Assets/Train/BP_TrainExtraction.BP_TrainExtraction_C")));
@@ -318,6 +320,8 @@ switch (provider.ProjectName)
     }
     case "DEADLINE_DELIVERY":
     {
+        grid.Components.Clear();
+        grid.Components.Add(new OpaqueGridComponent());
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/monke_NPC.monke_NPC_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/monke_NPC_Car.monke_NPC_Car_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/Car_MASTER.Car_MASTER_C")));

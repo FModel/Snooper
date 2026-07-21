@@ -7,7 +7,7 @@ namespace Snooper.Rendering.Systems;
 
 public class GridSystem : PrimitiveSystem<GridComponent>
 {
-    public override uint Order => 2;
+    public override uint Order => 59;
     public override int Capacity => 1;
     protected override bool AllowDerivation => true;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()

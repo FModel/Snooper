@@ -125,7 +125,7 @@ public class OpaqueGridComponent : GridComponent
         public Vector3 CheckerColorB = new(0.09f);
 
         public float CheckerScale = 1.0f;
-        public float Roughness = 0.8f;
+        public float Roughness = 0.95f;
         public float Metallic;
 
         public OpaqueSettings()
