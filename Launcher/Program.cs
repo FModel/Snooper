@@ -4,6 +4,7 @@ using CUE4Parse.Compression;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
 using CUE4Parse.MappingsProvider;
+using CUE4Parse.MappingsProvider.Usmap;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Animation;
@@ -272,6 +273,31 @@ switch (provider.ProjectName)
     }
     case "Marvel":
     {
+        grid.Components.Clear();
+        grid.Components.Add(new OpaqueGridComponent());
+
+        var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("Marvel/Content/Marvel/Characters/1036/1036503/Meshes/SK_1036_1036503_Lobby.SK_1036_1036503_Lobby"));
+        if (character.RootComponent is SkeletalMeshComponent component)
+        {
+            // foreach (var lod in component.Descriptor.Lods)
+            // {
+            //     for (var i = 0; i < lod.Sections.Length; i++)
+            //     {
+            //         if (lod.Sections[i].Name.EndsWith("_HeroDetails"))
+            //         {
+            //             lod.Sections[i].IsVisible = false;
+            //         }
+            //     }
+            // }
+
+            var animToPlay = provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10363002050_Lobby.Emote_10363002050_Lobby");
+            // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10365002020_Lobby.Emote_10365002020_Lobby");
+            // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10365012040_Lobby.Emote_10365012040_Lobby");
+            component.SetAnimation(animToPlay);
+        }
+        scene.Children.Add(character);
+        break;
+
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoCQ01/TokyoCQ01.TokyoCQ01")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoE01/TokyoE01_Art.TokyoE01_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/NewYorkE01/NewYorkE01_Art.NewYorkE01_Art"))); // TODO: lots of missing walls
@@ -426,6 +452,40 @@ switch (provider.ProjectName)
         // overhang.Components.Add(new TextRenderComponent("Asteria Dojo Overhang", 32, transform: new Transform(new Vector3(0, -1.5f, 0), new Quaternion(1, 0, 0, 1))));
         // scene.Children.Add(overhang);
         // break;
+
+        grid.Components.Clear();
+        grid.Components.Add(new OpaqueGridComponent());
+
+        var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/F_MED_RoseForm.F_MED_RoseForm"));
+        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Heads/F_MED_RoseForm_Head/Meshes/F_MED_RoseForm_Head.F_MED_RoseForm_Head"))
+        {
+            AttachSocketName = "root"
+        });
+        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/Parts/F_MED_RoseForm_FaceAcc.F_MED_RoseForm_FaceAcc"))
+        {
+            AttachSocketName = "root"
+        });
+        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Accessories/FORT_Backpacks/Backpack_M_MED_BadCat/Meshes/M_MED_BadCat_Pack.M_MED_BadCat_Pack"))
+        {
+            AttachSocketName = "Backpack_BR"
+        });
+        character.Components.Add(new TextRenderComponent("Character (Clip)", 16, transform: new Transform(new Vector3(0, 1.8f, 0), new Quaternion(1, 0, 0, 1))));
+
+        var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/MarkerDeer_Tin/CMF/Emote_MarkerDeer_Tin_CMF_FrontEnd_M.Emote_MarkerDeer_Tin_CMF_FrontEnd_M");
+        foreach (var component in character.Components.OfType<SkeletalMeshComponent>())
+        {
+            // TODO: what's the anim hierarchy? if root component is animated should be animate its children skel mesh components too?
+            component.SetAnimation(animToPlay);
+            break;
+        }
+        scene.Children.Add(character);
+        break;
+
+        grid.Components.Clear();
+        grid.Components.Add(new OpaqueGridComponent());
+        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTheme_LionKnightCastle/Content/Props/BP/BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04.BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTG_AnubisSettlement_Bldg/Content/GuidedBuilding/BP_ASST_Castle_01.BP_ASST_Castle_01_C")));
+        break;
 
         grid.Parent?.Children.Remove(grid);
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/WildEstate/Content/Maps/WildEstate_Terrain.WildEstate_Terrain")));

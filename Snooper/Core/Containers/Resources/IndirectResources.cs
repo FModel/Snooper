@@ -94,8 +94,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 (uint) (materialAllocation?.StartIndex ?? int.MaxValue),
                 section,
                 (uint) component.Id,
-                instanceCount,
-                (uint) instanceAllocation.StartIndex,
+                command,
                 component.CastShadow);
 
             drawAllocations[i] = new DrawBufferAllocation(buffer.Add(command, draw), bufferType, section.MaterialIndex);

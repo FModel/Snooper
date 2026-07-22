@@ -7,6 +7,7 @@ using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.TextRender;
+using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.UObject;
@@ -43,6 +44,7 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                         _ => new StaticMeshComponent(mesh, sm)
                     },
                     USkeletalMeshComponent sk when sk.TryGetValue<USkeletalMesh>(out var mesh, "SkeletalMesh", "SkinnedAsset") => new SkeletalMeshComponent(mesh, sk),
+                    UGeometryCollectionComponent gc when gc.RestCollection?.TryLoad<UGeometryCollection>(out var collection) == true => new SpatialComponent(scene),
                     ULandscapeComponent landscape => new LandscapeMeshComponent(landscape),
                     ULandscapeSplinesComponent splines => new LandscapeSplinesComponent(splines),
                     UDecalComponent decal => new DecalComponent(decal),

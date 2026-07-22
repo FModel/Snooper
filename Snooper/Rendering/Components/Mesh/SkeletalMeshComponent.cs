@@ -1,8 +1,12 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion;
+using CUE4Parse.GameTypes.FN.Assets.Exports.Animation;
+using CUE4Parse.GameTypes.NetEase.MAR.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
@@ -69,6 +73,16 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 
     }
 
+    private SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform, UAnimationAsset? animToPlay, float startTime = 0f) : this(skeletalMesh, transform)
+    {
+        SetAnimation(animToPlay, startTime);
+    }
+
+    public SkeletalMeshComponent(UAnimationAsset animToPlay, float startTime = 0f, float playRate = 1f) : this(animToPlay.Skeleton.Load<USkeleton>() ?? throw new InvalidOperationException($"Animation {animToPlay.Name} has no skeleton"))
+    {
+        SetAnimation(animToPlay, startTime, playRate);
+    }
+
     public SkeletalMeshComponent(USkeleton skeleton, Transform? transform = null) : base(skeleton, transform)
     {
 
@@ -85,6 +99,52 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     public void SetAnimation(UAnimationAsset? animToPlay, float startTime = 0f, float playRate = 1f)
     {
         Animation = animToPlay != null ? new AnimationDescriptor(animToPlay, startTime, playRate) : null;
+        if (animToPlay is not UAnimSequenceBase animSequence) return;
+
+        foreach (var notify in animSequence.Notifies)
+        {
+            switch (notify.NotifyStateClass?.Load<UAnimNotifyState>())
+            {
+                case UFortAnimNotifyState_SpawnProp fn:
+                {
+                    var transform = new Transform(fn.LocationOffset, fn.RotationOffset.Quaternion(), fn.Scale);
+
+                    SpatialComponent? component = null;
+                    if (fn.SkeletalMeshProp?.TryLoad<USkeletalMesh>(out var sk) == true)
+                    {
+                        component = new SkeletalMeshComponent(sk, transform, fn.SkeletalMeshPropAnimation?.Load<UAnimationAsset>());
+                    }
+                    else if (fn.StaticMeshProp?.TryLoad<UStaticMesh>(out var sm) == true)
+                    {
+                        component = new StaticMeshComponent(sm, transform);
+                    }
+
+                    Attach(component, fn.SocketName?.Text);
+                    break;
+                }
+                case UAnimNotifyState_TimedSkeletonAnimation mr:
+                {
+                    var transform = new Transform(mr.LocationOffset, mr.RotationOffset.Quaternion(), FVector.OneVector);
+
+                    SpatialComponent? component = null;
+                    if (mr.SkeletalMeshTemplate?.TryLoad<USkeletalMesh>(out var sk) == true)
+                    {
+                        component = new SkeletalMeshComponent(sk, transform, mr.AnimToPlay?.Load<UAnimationAsset>(), mr.AnimStartPos);
+                    }
+
+                    Attach(component, mr.SocketName?.Text);
+                    break;
+                }
+            }
+        }
+
+        void Attach(SpatialComponent? component, string? socketName)
+        {
+            if (component is null) return;
+
+            component.AttachSocketName = socketName;
+            Actor?.Components.Add(component);
+        }
     }
 
     public override void Export(ExportSession session, CancellationToken ct = default)

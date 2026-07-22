@@ -85,15 +85,15 @@ public readonly struct DrawAllocation(BufferAllocation command, BufferAllocation
     public readonly BufferAllocation Data = data;
 }
 
-public readonly struct PerDrawData(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, uint originalInstanceCount, uint originalBaseInstance, bool castShadow)
+public readonly struct PerDrawData(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, DrawElementsIndirectCommand command, bool castShadow)
 {
     public readonly uint MeshIndex = geometry.MeshIndex; // index into the per-mesh buffers (PerMeshData, PrimitiveOffsets)
     public readonly uint SectionId = sectionId; // section index in the current model (0-X)
     public readonly uint BaseMaterial = baseMaterial; // offset of the first material this component uses in the material buffer
     public readonly uint MaterialIndex = section.MaterialIndex; // index of the material relative to BaseMaterial (GPU-written per LOD)
     public readonly uint PickingId = pickingId;
-    public readonly uint OriginalInstanceCount = originalInstanceCount;
-    public readonly uint OriginalBaseInstance = originalBaseInstance;
+    public readonly uint OriginalInstanceCount = command.InstanceCount;
+    public readonly uint OriginalBaseInstance = command.BaseInstance;
     public readonly uint CastShadow = section.CastShadow && castShadow ? 1u : 0u; // 0 or 1
     public readonly uint Lod; // GPU-written, LOD chosen by the culling pass, so it takes no parameter
     public readonly uint BaseColor = geometry.BaseColor; // GPU-written per LOD, offset into the vertex color buffer
