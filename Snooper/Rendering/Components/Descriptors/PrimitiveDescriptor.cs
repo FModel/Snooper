@@ -113,7 +113,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         }
     }
 
-    private PrimitiveDescriptor(USkeleton owner, Func<TPrimitiveData<TVertex>> factory)
+    private PrimitiveDescriptor(USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
         Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
@@ -121,10 +121,11 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
 
         using var dto = new SkeletonDto(owner);
         Bounds = new CullingBounds(dto.Bounds);
-        Lods = [new LodDescriptor<TVertex>(factory())];
 
         Skeleton = new SkeletonDescriptor(dto.Bones);
         Skeleton.SetOwner(owner);
+
+        Lods = [new LodDescriptor<TVertex>(factory(Skeleton), true)];
 
         Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
         for (var i = 0; i < Sockets.Length; i++)
@@ -167,7 +168,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(FGuid.Random(), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
-    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeleton owner, Func<TPrimitiveData<TVertex>> factory)
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.Guid, () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
     private int _selectedLod;

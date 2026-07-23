@@ -276,25 +276,10 @@ switch (provider.ProjectName)
         grid.Components.Clear();
         grid.Components.Add(new OpaqueGridComponent());
 
-        var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("Marvel/Content/Marvel/Characters/1036/1036503/Meshes/SK_1036_1036503_Lobby.SK_1036_1036503_Lobby"));
-        if (character.RootComponent is SkeletalMeshComponent component)
-        {
-            // foreach (var lod in component.Descriptor.Lods)
-            // {
-            //     for (var i = 0; i < lod.Sections.Length; i++)
-            //     {
-            //         if (lod.Sections[i].Name.EndsWith("_HeroDetails"))
-            //         {
-            //             lod.Sections[i].IsVisible = false;
-            //         }
-            //     }
-            // }
-
-            var animToPlay = provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10363002050_Lobby.Emote_10363002050_Lobby");
-            // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10365002020_Lobby.Emote_10365002020_Lobby");
-            // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10365012040_Lobby.Emote_10365012040_Lobby");
-            component.SetAnimation(animToPlay);
-        }
+        var character = new Actor("Animation");
+        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10363002050_Lobby.Emote_10363002050_Lobby")));
+        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10365002020_Lobby.Emote_10365002020_Lobby")));
+        // character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("Marvel/Content/Marvel/Characters/1036/1036001/Animations/Emotes/Emote_10365012040_Lobby.Emote_10365012040_Lobby")));
         scene.Children.Add(character);
         break;
 
@@ -456,29 +441,11 @@ switch (provider.ProjectName)
         grid.Components.Clear();
         grid.Components.Add(new OpaqueGridComponent());
 
-        var character = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/F_MED_RoseForm.F_MED_RoseForm"));
-        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Heads/F_MED_RoseForm_Head/Meshes/F_MED_RoseForm_Head.F_MED_RoseForm_Head"))
-        {
-            AttachSocketName = "root"
-        });
-        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Characters/Player/Female/Medium/Bodies/F_MED_RoseForm/Meshes/Parts/F_MED_RoseForm_FaceAcc.F_MED_RoseForm_FaceAcc"))
-        {
-            AttachSocketName = "root"
-        });
-        character.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Accessories/FORT_Backpacks/Backpack_M_MED_BadCat/Meshes/M_MED_BadCat_Pack.M_MED_BadCat_Pack"))
-        {
-            AttachSocketName = "Backpack_BR"
-        });
-        character.Components.Add(new TextRenderComponent("Character (Clip)", 16, transform: new Transform(new Vector3(0, 1.8f, 0), new Quaternion(1, 0, 0, 1))));
-
-        var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/MarkerDeer_Tin/CMF/Emote_MarkerDeer_Tin_CMF_FrontEnd_M.Emote_MarkerDeer_Tin_CMF_FrontEnd_M");
-        foreach (var component in character.Components.OfType<SkeletalMeshComponent>())
-        {
-            // TODO: what's the anim hierarchy? if root component is animated should be animate its children skel mesh components too?
-            component.SetAnimation(animToPlay);
-            break;
-        }
-        scene.Children.Add(character);
+        var anim = new Actor("Animation");
+        // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/MarkerDeer_Tin/CMF/Emote_MarkerDeer_Tin_CMF_FrontEnd_M.Emote_MarkerDeer_Tin_CMF_FrontEnd_M")));
+        // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Resilient/Emote_Resilient_CMM_M.Emote_Resilient_CMM_M")));
+        anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Incantation/CMM/Emote_Incantation_CMM_M.Emote_Incantation_CMM_M")));
+        scene.Children.Add(anim);
         break;
 
         grid.Components.Clear();

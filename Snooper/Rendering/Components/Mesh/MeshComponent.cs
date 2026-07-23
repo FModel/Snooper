@@ -258,27 +258,128 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             BoneInfluences = influences.ToArray();
         }
 
-        public Geometry(USkeleton skeleton)
+        public Geometry(SkeletonDescriptor descriptor)
         {
-            var refSkeleton = skeleton.ReferenceSkeleton;
-            var boneCount = refSkeleton.FinalRefBonePose.Length;
-            Vertices = new Vertex[boneCount];
-            var indices = new List<uint>();
+            var bones = descriptor.BoneDescriptors;
+            var matrices = descriptor.BoneMatrices;
 
-            for (int i = 0; i < boneCount; i++)
+            var vertices = new List<Vertex>(bones.Length * 64);
+            var indices = new List<uint>(bones.Length * 64);
+            var influences = new List<uint>(bones.Length * 64);
+            var influenceCounts = new List<byte>(bones.Length * 64);
+
+            const float inset = 0.15f;
+            for (var i = 0; i < bones.Length; i++)
             {
-                var transform = refSkeleton.FinalRefBonePose[i];
-                var position = new Vector3(transform.Translation.X, transform.Translation.Z, transform.Translation.Y) * Settings.GlobalScale;
-                Vertices[i] = new Vertex(position, Vector4.UnitY, Vector3.UnitX, Vector2.Zero, 0);
+                var parent = bones[i].ParentIndex;
+                if (parent < 0) continue;
 
-                var parent = refSkeleton.FinalRefBoneInfo[i].ParentIndex;
-                if (parent >= 0)
+                var head = matrices[parent].Translation;
+                var tail = matrices[i].Translation;
+                var axis = tail - head;
+                var length = axis.Length();
+                if (length < 1e-6f) continue;
+
+                var dir = axis / length;
+                AppendBone(head + dir * (length * inset), tail - dir * (length * inset), (uint) parent);
+            }
+
+            Vertices = vertices.ToArray();
+            Indices = indices.ToArray();
+            BoneInfluences = influences.ToArray();
+            BoneInfluenceCounts = influenceCounts.ToArray();
+
+            void AppendBone(Vector3 head, Vector3 tail, uint bone)
+            {
+                var axis = tail - head;
+                var length = axis.Length();
+                if (length < 1e-6f) return; // coincident joints, nothing to draw
+
+                var dir = axis / length;
+                var reference = MathF.Abs(dir.Y) < 0.99f ? Vector3.UnitY : Vector3.UnitX;
+                var side = Vector3.Normalize(Vector3.Cross(reference, dir));
+                var up = Vector3.Cross(dir, side);
+
+                var center = head + dir * (length * 0.1f);
+                var radius = length * 0.1f;
+                Span<Vector3> ring =
+                [
+                    center + side * radius,
+                    center + up * radius,
+                    center - side * radius,
+                    center - up * radius
+                ];
+
+                for (var k = 0; k < 4; k++)
                 {
-                    indices.Add((uint)parent);
-                    indices.Add((uint)i);
+                    var a = ring[k];
+                    var b = ring[(k + 1) % 4];
+                    AppendTriangle(head, a, b, dir, bone); // head cap
+                    AppendTriangle(tail, b, a, dir, bone); // tail cap
+                }
+
+                AppendBall(head, radius * 0.9f, bone);
+                AppendBall(tail, radius * 0.5f, bone);
+            }
+
+            void AppendBall(Vector3 center, float radius, uint bone)
+            {
+                const int slices = 6; // longitude
+                const int stacks = 4; // latitude
+                var baseIndex = (uint) vertices.Count;
+
+                // smooth (radial-normal) UV sphere; shared vertices give it a rounded look
+                for (var stack = 0; stack <= stacks; stack++)
+                {
+                    var phi = MathF.PI * stack / stacks;
+                    var y = MathF.Cos(phi);
+                    var r = MathF.Sin(phi);
+                    for (var slice = 0; slice <= slices; slice++)
+                    {
+                        var theta = MathF.Tau * slice / slices;
+                        var normal = new Vector3(r * MathF.Cos(theta), y, r * MathF.Sin(theta));
+                        var tangent = new Vector3(-MathF.Sin(theta), 0f, MathF.Cos(theta));
+                        AppendVertex(center + normal * radius, normal, tangent, bone);
+                    }
+                }
+
+                var ring = (uint) (slices + 1);
+                for (var stack = 0u; stack < stacks; stack++)
+                {
+                    for (var slice = 0u; slice < slices; slice++)
+                    {
+                        var a = baseIndex + stack * ring + slice;
+                        var b = baseIndex + (stack + 1) * ring + slice;
+                        indices.Add(a); indices.Add(b); indices.Add(b + 1);
+                        indices.Add(a); indices.Add(b + 1); indices.Add(a + 1);
+                    }
                 }
             }
-            Indices = indices.ToArray();
+
+            void AppendTriangle(Vector3 apex, Vector3 b, Vector3 c, Vector3 dir, uint bone)
+            {
+                var normal = Vector3.Normalize(Vector3.Cross(b - apex, c - apex));
+
+                // flip toward the outside of the bone so flat shading reads as a solid surface (culling is off)
+                var centroid = (apex + b + c) / 3f;
+                var onAxis = apex + dir * Vector3.Dot(centroid - apex, dir);
+                if (Vector3.Dot(normal, centroid - onAxis) < 0f) normal = -normal;
+
+                var start = (uint) vertices.Count;
+                AppendVertex(apex, normal, dir, bone);
+                AppendVertex(b, normal, dir, bone);
+                AppendVertex(c, normal, dir, bone);
+                indices.Add(start);
+                indices.Add(start + 1);
+                indices.Add(start + 2);
+            }
+
+            void AppendVertex(Vector3 position, Vector3 normal, Vector3 tangent, uint bone)
+            {
+                vertices.Add(new Vertex(position, new Vector4(normal, 1f), tangent, Vector2.Zero, 0));
+                influences.Add((bone << 16) | 0xFFu); // full weight (255) to the single owning bone
+                influenceCounts.Add(1);
+            }
         }
     }
 }

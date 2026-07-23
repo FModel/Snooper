@@ -23,7 +23,7 @@ public abstract class SkinnedMeshComponent : MeshComponent
 
     protected SkinnedMeshComponent(USkeleton skeleton, Transform? transform = null) : base([], transform, skeleton.Name)
     {
-        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeleton, () => new Geometry(skeleton));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeleton, descriptor => new Geometry(descriptor));
     }
 
     protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, USkinnedMeshComponent component) : base(skeletalMesh.Materials, component)

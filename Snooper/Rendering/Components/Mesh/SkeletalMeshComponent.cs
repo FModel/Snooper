@@ -8,6 +8,8 @@ using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
+using Snooper.Rendering.Actors;
+using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.UI;
@@ -73,7 +75,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 
     }
 
-    private SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform, UAnimationAsset? animToPlay, float startTime = 0f) : this(skeletalMesh, transform)
+    public SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform, UAnimationAsset? animToPlay, float startTime = 0f) : this(skeletalMesh, transform)
     {
         SetAnimation(animToPlay, startTime);
     }
@@ -96,55 +98,101 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
         }
     }
 
+    private readonly List<(SpatialComponent Component, string? Socket)> _pendingNotifies = [];
+    private readonly List<ActorComponent> _notifyComponents = [];
+
     public void SetAnimation(UAnimationAsset? animToPlay, float startTime = 0f, float playRate = 1f)
     {
         Animation = animToPlay != null ? new AnimationDescriptor(animToPlay, startTime, playRate) : null;
+
+        ClearNotifyComponents();
+        BuildNotifyComponents(animToPlay);
+
+        if (Actor != null) FlushNotifyComponents();
+    }
+
+    private void BuildNotifyComponents(UAnimationAsset? animToPlay)
+    {
         if (animToPlay is not UAnimSequenceBase animSequence) return;
 
         foreach (var notify in animSequence.Notifies)
         {
-            switch (notify.NotifyStateClass?.Load<UAnimNotifyState>())
+            // UAnimNotifyState ?? UAnimNotify
+            switch (notify.NotifyStateClass?.Load() ?? notify.Notify?.Load())
             {
-                case UFortAnimNotifyState_SpawnProp fn:
+                // Fortnite
+                case UFortAnimNotifyState_SpawnProp sp:
                 {
-                    var transform = new Transform(fn.LocationOffset, fn.RotationOffset.Quaternion(), fn.Scale);
+                    var transform = new Transform(sp.LocationOffset, sp.RotationOffset.Quaternion(), sp.Scale);
 
                     SpatialComponent? component = null;
-                    if (fn.SkeletalMeshProp?.TryLoad<USkeletalMesh>(out var sk) == true)
+                    if (sp.SkeletalMeshProp?.TryLoad<USkeletalMesh>(out var sk) == true)
                     {
-                        component = new SkeletalMeshComponent(sk, transform, fn.SkeletalMeshPropAnimation?.Load<UAnimationAsset>());
+                        component = new SkeletalMeshComponent(sk, transform, sp.SkeletalMeshPropAnimation?.Load<UAnimationAsset>());
                     }
-                    else if (fn.StaticMeshProp?.TryLoad<UStaticMesh>(out var sm) == true)
+                    else if (sp.StaticMeshProp?.TryLoad<UStaticMesh>(out var sm) == true)
                     {
                         component = new StaticMeshComponent(sm, transform);
                     }
 
-                    Attach(component, fn.SocketName?.Text);
+                    if (component != null)
+                    {
+                        _pendingNotifies.Add((component, sp.SocketName?.Text));
+                    }
                     break;
                 }
-                case UAnimNotifyState_TimedSkeletonAnimation mr:
+                case UFortAnimNotifyState_EmoteSound es:
                 {
-                    var transform = new Transform(mr.LocationOffset, mr.RotationOffset.Quaternion(), FVector.OneVector);
-
-                    SpatialComponent? component = null;
-                    if (mr.SkeletalMeshTemplate?.TryLoad<USkeletalMesh>(out var sk) == true)
-                    {
-                        component = new SkeletalMeshComponent(sk, transform, mr.AnimToPlay?.Load<UAnimationAsset>(), mr.AnimStartPos);
-                    }
-
-                    Attach(component, mr.SocketName?.Text);
+                    _pendingNotifies.Add((new AudioComponent(es, notify.NotifyName?.Text), es.AttachName?.Text));
+                    break;
+                }
+                // Marvel Rivals
+                case UAnimNotifyState_TimedSkeletonAnimation tsa when tsa.SkeletalMeshTemplate?.TryLoad<USkeletalMesh>(out var sk) == true:
+                {
+                    var transform = new Transform(tsa.LocationOffset, tsa.RotationOffset.Quaternion(), FVector.OneVector);
+                    var component = new SkeletalMeshComponent(sk, transform, tsa.AnimToPlay?.Load<UAnimationAsset>(), tsa.AnimStartPos);
+                    _pendingNotifies.Add((component, tsa.SocketName?.Text));
+                    break;
+                }
+                case UAN_AkEvent ae:
+                {
+                    _pendingNotifies.Add((new AudioComponent(ae, notify.NotifyName?.Text), ae.AttachName?.Text));
                     break;
                 }
             }
         }
+    }
 
-        void Attach(SpatialComponent? component, string? socketName)
+    private void FlushNotifyComponents()
+    {
+        if (Actor is null || _pendingNotifies.Count == 0) return;
+
+        foreach (var (component, socket) in _pendingNotifies)
         {
-            if (component is null) return;
+            component.AttachSocketName = socket;
+            component.Relation = this;
 
-            component.AttachSocketName = socketName;
-            Actor?.Components.Add(component);
+            Actor.Components.Add(component);
+            _notifyComponents.Add(component);
         }
+        _pendingNotifies.Clear();
+    }
+
+    private void ClearNotifyComponents()
+    {
+        _pendingNotifies.Clear();
+        foreach (var component in _notifyComponents)
+        {
+            Actor?.Components.Remove(component);
+        }
+        _notifyComponents.Clear();
+    }
+
+    protected override void OnActorAttached(Actor actor)
+    {
+        base.OnActorAttached(actor);
+
+        FlushNotifyComponents();
     }
 
     public override void Export(ExportSession session, CancellationToken ct = default)

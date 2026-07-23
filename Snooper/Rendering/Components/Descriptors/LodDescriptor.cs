@@ -21,7 +21,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
     private TPrimitiveData<TVertex>? _primitive;
     private readonly Func<TPrimitiveData<TVertex>>? _factory;
 
-    public LodDescriptor(TPrimitiveData<TVertex> primitive)
+    public LodDescriptor(TPrimitiveData<TVertex> primitive, bool castShadow = false)
     {
         _primitive = primitive;
         _factory = null;
@@ -32,7 +32,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         LayerCount = 1;
         HasColoredVertices = _primitive?.Colors?.Length > 0;
         HasSkinnedVertices = _primitive?.BoneInfluences?.Length > 0 && _primitive?.BoneInfluenceCounts?.Length > 0;
-        Sections = [new SectionDescriptor(0, IndexCount, 0)];
+        Sections = [new SectionDescriptor(0, IndexCount, 0, castShadow)];
     }
 
     private LodDescriptor(uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>>? factory)
