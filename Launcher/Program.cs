@@ -173,6 +173,10 @@ switch (provider.ProjectName)
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new Vector3(-3, 0, 0)));
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new Vector3(-2, 4, 1)));
         // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
+        //
+        // var animation = new Actor("Animation");
+        // animation.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Breach/S0/Ability_4/3P/Anims/TP_Breach_S0_4_Fire_Montage.TP_Breach_S0_4_Fire_Montage")));
+        // scene.Children.Add(animation);
         // break;
 
         /*
@@ -438,20 +442,26 @@ switch (provider.ProjectName)
         // scene.Children.Add(overhang);
         // break;
 
-        grid.Components.Clear();
-        grid.Components.Add(new OpaqueGridComponent());
-
-        var anim = new Actor("Animation");
+        // grid.Components.Clear();
+        // grid.Components.Add(new OpaqueGridComponent());
+        //
+        // var anim = new Actor("Animation");
         // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/MarkerDeer_Tin/CMF/Emote_MarkerDeer_Tin_CMF_FrontEnd_M.Emote_MarkerDeer_Tin_CMF_FrontEnd_M")));
-        // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Resilient/Emote_Resilient_CMM_M.Emote_Resilient_CMM_M")));
-        anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Incantation/CMM/Emote_Incantation_CMM_M.Emote_Incantation_CMM_M")));
-        scene.Children.Add(anim);
-        break;
+        // // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Resilient/Emote_Resilient_CMM_M.Emote_Resilient_CMM_M")));
+        // // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Incantation/CMM/Emote_Incantation_CMM_M.Emote_Incantation_CMM_M")));
+        // scene.Children.Add(anim);
+        // break;
 
         grid.Components.Clear();
         grid.Components.Add(new OpaqueGridComponent());
-        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTheme_LionKnightCastle/Content/Props/BP/BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04.BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04_C")));
+
+        const string Dir = "FortniteGame/Plugins/GameFeatures/Juno/JunoTheme_LionKnightCastle/Content/Props/BP/";
+        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04.BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_LK_Heat_Fireplace_M_06x06_01.BP_GC_LK_Heat_Fireplace_M_06x06_01_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_LK_Bed_Sgl_08x04_01.BP_GC_LK_Bed_Sgl_08x04_01_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTG_AnubisSettlement_Bldg/Content/GuidedBuilding/BP_ASST_Castle_01.BP_ASST_Castle_01_C")));
+
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Juno/POIs/JunoPOI_RavenCastle/Content/POIs/RC_2x2/Juno_RC_2x2_Ruin_15.Juno_RC_2x2_Ruin_15")));
         break;
 
         grid.Parent?.Children.Remove(grid);

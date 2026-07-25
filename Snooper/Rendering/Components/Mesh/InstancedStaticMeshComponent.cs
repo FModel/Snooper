@@ -37,6 +37,24 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
         _instanceDirtyFlags = new bool[LocalInstancedTransforms.Count];
     }
 
+    public InstancedStaticMeshComponent(UStaticMesh staticMesh, List<Transform> transforms) : base(staticMesh)
+    {
+        LocalInstancedTransforms.AddRange(transforms);
+
+        IsVisible = IsVisible && LocalInstancedTransforms.Count > 0;
+
+        if (LocalInstancedTransforms.Count == 0)
+        {
+            // add a dummy instance to avoid issues with empty instance arrays
+            // this also makes it possible to toggle visibility on/off without having to add/remove instances
+            LocalInstancedTransforms.Add(Transform.Identity);
+        }
+
+        _originalInstancedTransforms = new Transform[LocalInstancedTransforms.Count];
+        LocalInstancedTransforms.CopyTo(_originalInstancedTransforms);
+        _instanceDirtyFlags = new bool[LocalInstancedTransforms.Count];
+    }
+
     protected override DebugComponent CreateDebugVisualization() => new InstancedMeshBoundsVisualization(this);
 
     public override Transform GetLocalTransform(int index = -1) => index < 0 ? base.GetLocalTransform(index) : LocalInstancedTransforms[index];

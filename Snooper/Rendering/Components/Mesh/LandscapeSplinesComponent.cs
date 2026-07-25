@@ -7,7 +7,7 @@ namespace Snooper.Rendering.Components.Mesh;
 
 public class LandscapeSplinesComponent : SpatialComponent
 {
-    private readonly List<USplineMeshComponent> _splines = [];
+    private readonly List<USplineMeshComponent> _components = [];
 
     public LandscapeSplinesComponent(ULandscapeSplinesComponent component) : base(component)
     {
@@ -19,7 +19,7 @@ public class LandscapeSplinesComponent : SpatialComponent
                 {
                     if (meshPtr?.TryLoad<USplineMeshComponent>(out var splineMesh) == true)
                     {
-                        _splines.Add(splineMesh);
+                        _components.Add(splineMesh);
                     }
                 }
             }
@@ -30,11 +30,11 @@ public class LandscapeSplinesComponent : SpatialComponent
     {
         base.OnActorAttached(actor);
 
-        foreach (var spline in _splines)
+        foreach (var component in _components)
         {
-            if (spline.GetStaticMesh().TryLoad<UStaticMesh>(out var mesh))
+            if (component.GetStaticMesh().TryLoad<UStaticMesh>(out var mesh))
             {
-                actor.Components.Add(new SplineMeshComponent(mesh, spline) { Relation = this });
+                actor.Components.Add(new SplineMeshComponent(mesh, component) { Relation = this });
             }
         }
     }
