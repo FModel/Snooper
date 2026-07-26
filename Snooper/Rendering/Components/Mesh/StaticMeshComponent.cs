@@ -10,7 +10,7 @@ namespace Snooper.Rendering.Components.Mesh;
 [DefaultActorSystem(typeof(StaticMeshRenderSystem))]
 public class StaticMeshComponent : MeshComponent
 {
-    protected StaticMeshComponent(StaticMeshComponent other) : base(other)
+    private StaticMeshComponent(StaticMeshComponent other) : base(other)
     {
 
     }

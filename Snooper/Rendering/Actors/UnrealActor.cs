@@ -12,7 +12,6 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Collection;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;

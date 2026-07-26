@@ -21,7 +21,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private readonly HashSet<int> _actors = [];
 
-    public int FragmentColor = FragmentColorMode.Disabled;
+    public uint FragmentColor = FragmentColorMode.Disabled;
 
     public float Time { get; private set; }
     public RendererInfo Renderer { get; } = new();

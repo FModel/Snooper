@@ -189,7 +189,7 @@ public abstract class SkinnedMeshComponent : MeshComponent
             bool IsOctahedral(in SkeletonEdge edge) => shape switch
             {
                 ESkeletonShape.Octahedral => true,
-                ESkeletonShape.Adaptive => childCounts[edge.Head] == 1,
+                ESkeletonShape.Adaptive => childCounts[edge.Head] == 1 && edge.Length < reference * 2f,
                 _ => false
             };
 

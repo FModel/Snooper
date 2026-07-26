@@ -2,17 +2,15 @@ namespace Snooper.Rendering;
 
 public static class FragmentColorMode
 {
-    public const int Disabled = 0;
-    public const int Clay = 1;
-    public const int ComponentId = 2;
-    public const int InstanceId = 3;
-    public const int DrawId = 4;
-    public const int VertexColor = 5;
-    public const int Normals = 6;
-    public const int BoneWeightPainting = 7;
-    public const int LODLevel = 8;
-    // public const int LightInfluence    = 10;
-    // public const int ShadowCascades    = 11;
+    public const uint Disabled = 0;
+    public const uint Clay = 1;
+    public const uint ComponentId = 2;
+    public const uint InstanceId = 3;
+    public const uint DrawId = 4;
+    public const uint VertexColor = 5;
+    public const uint Normals = 6;
+    public const uint BoneWeightPainting = 7;
+    public const uint LODLevel = 8;
 
     public static readonly string[] Labels =
     [

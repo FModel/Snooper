@@ -47,7 +47,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         _factory = factory;
     }
 
-    internal static LodDescriptor<TVertex> FromLod<TMeshVertex>(MeshLodDto<TMeshVertex> lod, Func<TMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) where TMeshVertex : struct, IMeshVertex
+    internal static LodDescriptor<TVertex> FromLod<TMeshVertex>(MeshLodDto<TMeshVertex> lod, Func<TMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory, Action<FColor[]>? colorRemap = null) where TMeshVertex : struct, IMeshVertex
     {
         if (lod.Vertices is not { Length: > 0 } vertices)
             throw new ArgumentException("LOD does not contain valid vertices.", nameof(lod));
@@ -74,6 +74,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         if (lod.VertexColors is { Length: > 0 } colors)
         {
             cColors = (FColor[])colors[0].Colors.Clone();
+            colorRemap?.Invoke(cColors);
         }
 
         FMeshUVFloat[]? cExtraUvs = null;

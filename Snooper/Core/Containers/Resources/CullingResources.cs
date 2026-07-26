@@ -59,6 +59,8 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _meshes.UpdateCustom(allocation, overrideLod, PerMeshData.OverrideLodOffset);
     }
 
+    public void BindMeshData() => _meshes.Bind(Bindings.MeshData);
+
     public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, IndirectDrawBuffer commands, bool shadowPass = false) where TInstanceData : unmanaged, IPerInstanceData
     {
         var matrix = camera.ViewMatrix * camera.ProjectionMatrix;
@@ -79,7 +81,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         commands.Commands.Bind(Bindings.DrawCommands);
         commands.DrawData.Bind(Bindings.DrawData);
         instances.Bind(Bindings.InstanceData);
-        _meshes.Bind(Bindings.MeshData);
+        BindMeshData();
         _primitives.Bind(Bindings.CullLodData);
         _sections.Bind(Bindings.CullSections);
 

@@ -6,17 +6,17 @@ namespace Snooper.UI;
 
 public static class EditorUI
 {
-    public static bool FragmentColorCombo(string id, ref int value) => LabelCombo(id, ref value, FragmentColorMode.Labels);
+    public static bool FragmentColorCombo(string id, ref uint value) => LabelCombo(id, ref value, FragmentColorMode.Labels);
 
-    public static bool LabelCombo(string id, ref int value, string[] labels)
+    public static bool LabelCombo(string id, ref uint value, string[] labels)
     {
-        var preview = (uint)value < (uint)labels.Length ? labels[value] : "Unknown";
+        var preview = value < (uint)labels.Length ? labels[value] : "Unknown";
         var changed = false;
 
         ImGui.SetNextItemWidth(-1);
         if (ImGui.BeginCombo(id, preview))
         {
-            for (var i = 0; i < labels.Length; i++)
+            for (var i = 0u; i < labels.Length; i++)
             {
                 if (ImGui.Selectable(labels[i], i == value))
                 {

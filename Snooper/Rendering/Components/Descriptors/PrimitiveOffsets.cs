@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public struct PerMeshData(CullingBounds bounds, uint maxLod, Vector2 drawDistances)
+public struct PerMeshData(CullingBounds bounds, uint maxLod, Vector2 drawDistances, uint colorMode)
 {
     public readonly Vector3 Center = bounds.Center;
     public readonly float SphereRadius = bounds.Extents.Length();
@@ -11,7 +11,7 @@ public struct PerMeshData(CullingBounds bounds, uint maxLod, Vector2 drawDistanc
     public readonly uint MaxLOD = maxLod;
     public readonly Vector2 DrawDistances = drawDistances;
     public int OverrideLod = -1; // -1 for automatic LOD selection, >= 0 to force a specific LOD
-    public readonly uint Padding = 0;
+    public readonly uint ColorMode = colorMode; // FragmentColorMode for this mesh, 0 to follow the global uniform
 
     public static readonly int OverrideLodOffset = (int)Marshal.OffsetOf<PerMeshData>(nameof(OverrideLod));
 }

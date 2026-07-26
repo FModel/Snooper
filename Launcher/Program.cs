@@ -150,34 +150,61 @@ switch (provider.ProjectName)
 {
     case "ShooterGame":
     {
-        // camera.CameraComponent.FarClipPlane = 100f;
-        // grid.Components.Clear();
-        // grid.Components.Add(new OpaqueGridComponent());
-        //
-        // var textOrientation = new Quaternion(0.5f, 0.5f, -0.5f, 0.5f);
-        //
-        // var character1P = new Actor("Raze 1P");
-        // character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/1P/Models/FP_Clay_S0_Skelmesh.FP_Clay_S0_Skelmesh")));
-        // character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Equippables/Guns/Rifles/AK/Afterglow/Models/GN_AK_Afterglow_Lv2_Skelmesh.GN_AK_Afterglow_Lv2_Skelmesh"))
-        // {
-        //     AttachSocketName = "L_WeaponPoint"
-        // });
-        // character1P.Components.Add(new TextRenderComponent(character1P.Name, transform: new Transform(new Vector3(0, 1.9f, 0), textOrientation)));
-        // scene.Children.Add(character1P);
-        //
-        // var character3P = new Actor("Raze 3P");
-        // character3P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new Vector3(0, 0, -1)));
-        // character3P.Components.Add(new TextRenderComponent(character3P.Name, transform: new Transform(new Vector3(0, 2.2f, 0), textOrientation)));
-        // scene.Children.Add(character3P);
-        //
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new Vector3(-3, 0, 0)));
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new Vector3(-2, 4, 1)));
-        // scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
-        //
-        // var animation = new Actor("Animation");
-        // animation.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Breach/S0/Ability_4/3P/Anims/TP_Breach_S0_4_Fire_Montage.TP_Breach_S0_4_Fire_Montage")));
-        // scene.Children.Add(animation);
-        // break;
+        camera.CameraComponent.FarClipPlane = 100f;
+        grid.Components.Clear();
+        grid.Components.Add(new OpaqueGridComponent());
+
+        var textOrientation = new Quaternion(0.5f, 0.5f, -0.5f, 0.5f);
+
+        var character1P = new Actor("Raze 1P");
+        character1P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/1P/Models/FP_Clay_S0_Skelmesh.FP_Clay_S0_Skelmesh")));
+        character1P.Components.Add(new TextRenderComponent(character1P.Name, transform: new Transform(new Vector3(0, 1.9f, 0), textOrientation)));
+        scene.Children.Add(character1P);
+
+        var character3P = new Actor("Raze 3P");
+        character3P.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/3P/Models/TP_Clay_S0_Skelmesh.TP_Clay_S0_Skelmesh"), new Vector3(0, 0, -1)));
+        character3P.Components.Add(new TextRenderComponent(character3P.Name, transform: new Transform(new Vector3(0, 2.2f, 0), textOrientation)));
+        scene.Children.Add(character3P);
+
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/HURM_Helix/Asset/Props/Boat/0/Boat_0_LongThaiB.Boat_0_LongThaiB"), new Vector3(-3, 0, 0)));
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("Engine/Content/BasicShapes/sphere.Sphere"), new Vector3(-2, 4, 1)));
+        scene.Children.Add(new MeshActor(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Environment/Asset/Props/Foliage/9/Foliage_9_IvyTopA.Foliage_9_IvyTopA"), new Vector3(2, 1, 1)));
+
+        if (character1P.RootComponent is SkeletalMeshComponent mesh1p)
+        {
+            var animToPlay = provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Clay/S0/Ability_4/1P/Anims/FP_Clay_S0_4_Equip_Cosmetic_Montage.FP_Clay_S0_4_Equip_Cosmetic_Montage");
+            mesh1p.SetAnimation(animToPlay);
+
+            var grenade = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/Ability_4/1P/Models/AB_Clay_S0_4_Skelmesh.AB_Clay_S0_4_Skelmesh"), new Quaternion(-1, 0, 0, 1))
+            {
+                AttachSocketName = "R_WeaponPoint"
+            };
+            grenade.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Clay/S0/Ability_4/1P/Anims/AB_Clay_S0_4_Equip_Montage.AB_Clay_S0_4_Equip_Montage"));
+            mesh1p.Actor?.Components.Add(grenade);
+
+            mesh1p.Actor?.Components.Add(new StaticMeshComponent(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Characters/Clay/S0/Ability_4/1P/Models/AB_Clay_S0_4_Pin_Staticmesh.AB_Clay_S0_4_Pin_Staticmesh"))
+            {
+                AttachSocketName = "L_WeaponPoint"
+            });
+        }
+        if (character3P.RootComponent is SkeletalMeshComponent mesh3p)
+        {
+            var animToPlay = provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Clay/S0/Ability_4/3P/Anims/TP_Clay_S0_4_Equip_Cosmetic_Montage.TP_Clay_S0_4_Equip_Cosmetic_Montage");
+            mesh3p.SetAnimation(animToPlay);
+
+            var grenade = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("ShooterGame/Content/Characters/Clay/S0/Ability_4/1P/Models/AB_Clay_S0_4_Skelmesh.AB_Clay_S0_4_Skelmesh"), new Quaternion(-1, 0, 0, 1))
+            {
+                AttachSocketName = "R_WeaponPoint"
+            };
+            grenade.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("ShooterGame/Content/Characters/Clay/S0/Ability_4/3P/Anims/ABTP_Clay_S0_4_Equip_Montage.ABTP_Clay_S0_4_Equip_Montage"));
+            mesh3p.Actor?.Components.Add(grenade);
+
+            mesh3p.Actor?.Components.Add(new StaticMeshComponent(provider.LoadPackageObject<UStaticMesh>("ShooterGame/Content/Characters/Clay/S0/Ability_4/1P/Models/AB_Clay_S0_4_Pin_Staticmesh.AB_Clay_S0_4_Pin_Staticmesh"))
+            {
+                AttachSocketName = "L_WeaponPoint"
+            });
+        }
+        break;
 
         /*
          * Wraith
@@ -343,10 +370,10 @@ switch (provider.ProjectName)
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/CarMP_MASTER.CarMP_MASTER_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Monkeys/Inspector/monke_Inspector.monke_Inspector_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/NPCs/Bus.Bus_C")));
-        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/Hippievan/Car_HIPPIEVAN.Car_HIPPIEVAN_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("DEADLINE_DELIVERY/Content/Blueprints/Cars/Hippievan/Car_HIPPIEVAN.Car_HIPPIEVAN_C")));
 
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map18.Map18")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map1.Map1")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map1.Map1")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map17.Map17")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("DEADLINE_DELIVERY/Content/Maps/Map2.Map2")));
         break;
@@ -429,10 +456,6 @@ switch (provider.ProjectName)
         // character.Components.Add(new TextRenderComponent("Character (Clip)", 16, transform: new Transform(new Vector3(0, 1.8f, 0), new Quaternion(1, 0, 0, 1))));
         // scene.Children.Add(character);
         //
-        // var glider = new MeshActor(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Gadgets/Assets/VinderTech_GliderChute/Glider_Rumble_Female/Meshes/Rumble_Female_Glider.Rumble_Female_Glider"), new FTransform(new FVector(200, 0, 100)));
-        // glider.Components.Add(new TextRenderComponent("Glider (Kayari Buta)", 16, transform: new Transform(new Vector3(0, 2.2f, 0), new Quaternion(1, 0, 0, 1))));
-        // scene.Children.Add(glider);
-        //
         // var actor = new Actor("Origin Indicator");
         // actor.Components.Add(new TextRenderComponent("Origin", 54, new Vector3(1.0f, 0, 0), transform: new Transform(new Vector3(0, 0.001f, 0))));
         // scene.Children.Add(actor);
@@ -456,10 +479,15 @@ switch (provider.ProjectName)
         grid.Components.Add(new OpaqueGridComponent());
 
         const string Dir = "FortniteGame/Plugins/GameFeatures/Juno/JunoTheme_LionKnightCastle/Content/Props/BP/";
-        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04.BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04.BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_LK_Heat_Fireplace_M_06x06_01.BP_GC_LK_Heat_Fireplace_M_06x06_01_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_LK_Bed_Sgl_08x04_01.BP_GC_LK_Bed_Sgl_08x04_01_C")));
-        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTG_AnubisSettlement_Bldg/Content/GuidedBuilding/BP_ASST_Castle_01.BP_ASST_Castle_01_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoGame/Content/GuidedBuilding/BP_PP_HouseLg_05.BP_PP_HouseLg_05_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoGame/Content/GuidedBuilding/BP_PP_HouseLg_04.BP_PP_HouseLg_04_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoGame/Content/GuidedBuilding/BP_CR_Guided_Castle_Lrg_04.BP_CR_Guided_Castle_Lrg_04_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTM_RavenCastle/Content/GuidedBuildingDisplayActor/BP_DisplayActor_RC_Factory_01.BP_DisplayActor_RC_Factory_01_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTM_TabascoOniClanOutpost_Bldg/Content/GuidedBuildingDisplayActor/BP_DisplayActor_TOOT_Outpost_01.BP_DisplayActor_TOOT_Outpost_01_C")));
+        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoThemeMinimal_NewsPaperBuilding/Content/GuidedBuildingDisplayActor/BP_DisplayActor_NPB_Bugle_01.BP_DisplayActor_NPB_Bugle_01_C")));
 
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Juno/POIs/JunoPOI_RavenCastle/Content/POIs/RC_2x2/Juno_RC_2x2_Ruin_15.Juno_RC_2x2_Ruin_15")));
         break;

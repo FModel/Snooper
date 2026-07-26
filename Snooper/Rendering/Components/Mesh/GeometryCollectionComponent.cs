@@ -4,21 +4,22 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Actors;
-using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
-namespace Snooper.Rendering.Components.Collection;
+namespace Snooper.Rendering.Components.Mesh;
 
-public class GeometryCollectionComponent : SpatialComponent
+public class GeometryCollectionComponent : SpatialComponent/* : MeshComponent*/
 {
     private readonly List<SpatialComponent> _components = [];
 
-    public GeometryCollectionComponent(UGeometryCollectionComponent component) : base(component)
+    public GeometryCollectionComponent(UGeometryCollectionComponent component) : base(/*component.OverrideMaterials, */component) // pass OverrideMaterials just so that the array is correctly sized if we ever have OverrideMaterials set
     {
         var r = component.RestCollection?.Load<UGeometryCollection>();
         if (r is not { AutoInstanceMeshes: { Length: > 0 } meshes, GeometryCollection: { } collection }) return;
 
-        // TODO: vertices group
+        // TODO: use vertices group to create this component descriptor, in the meantime, this component is not a mesh
+        // we need an asset with actual vertices as an example, could not find any yet
+        // Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
 
         var group = new FName("Transform");
 

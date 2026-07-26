@@ -1,54 +1,29 @@
-﻿layout (location = 0) in uvec2 aPosHalf;
+// Depth-only vertex stage for the shadow cascades. It shares the deformation hooks with
+// Buffers/CommonMesh.vert so spline and skinned meshes cast the shape they render as, but
+// MESH_DEPTH_ONLY compiles out everything that only shading needs.
+
+#define MESH_VERTEX_STAGE
+#define MESH_DEPTH_ONLY
+
+layout (location = 0) in uvec2 aPosHalf;
 
 uniform mat4 uViewProjection;
 
 #include "Buffers/PerInstanceData.glsl"
-#include "Buffers/PerDrawData.glsl"
-#if defined(SPLINE_VERTEX)
-#include "Buffers/PerSplineData.glsl"
-#elif defined(SKINNED_MESH_VERTEX)
-#include "Buffers/PerSkinningData.glsl"
-#endif
+#include "Buffers/MeshHooks.glsl"
 
 void main()
 {
     vec2 posXY = unpackHalf2x16(aPosHalf.x);
     vec2 posZW = unpackHalf2x16(aPosHalf.y);
-    vec4 aPos  = vec4(posXY, posZW);
+
+    MeshVertex vertex;
+    vertex.Position = vec4(posXY, posZW);
+    vertex.Normal = vec4(0.0);
+    vertex.Tangent = vec3(0.0);
 
     int id = gl_BaseInstance + gl_InstanceID;
-    PerDrawData draw = uDrawDataBuffer[gl_DrawID];
+    DeformVertex(uDrawDataBuffer[gl_DrawID], id, vertex);
 
-#if defined(SPLINE_VERTEX)
-    vec3 uePos = aPos.xzy;
-    SplineMeshParams params = uSplineParameters[id];
-    float distanceAlong = GetAxisValueRef(params.ForwardAxis, uePos);
-    vec3 computed = ComputeRatioAlongSpline(params, distanceAlong);
-    mat4 sliceTransform = CalcSliceTransformAtSplineOffset(params, computed);
-    SetAxisValueRef(params.ForwardAxis, uePos, 0.0);
-    aPos = (sliceTransform * vec4(uePos, 1.0)).xzyw;
-#elif defined(SKINNED_MESH_VERTEX)
-    uint baseBone, basePose, baseInfluence;
-    getSkinningBases(draw, uint(id), baseBone, basePose, baseInfluence);
-
-    uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[baseInfluence + (gl_VertexID - gl_BaseVertex)];
-    uint startIndex = packedInfluenceOffset >> 8;
-    uint count = packedInfluenceOffset & 0xFFu;
-
-    vec4 uePos = vec4(0.0);
-
-    for (uint i = 0u; i < count; i++)
-    {
-        uvec2 inf = unpackBoneInfluence(uVertexBoneInfluenceBuffer[startIndex + i]);
-        uint boneIndex = inf.x;
-        float weight = float(inf.y) / 255.0;
-
-        mat4 skinningMatrix = uPoseBuffer[basePose + boneIndex] * uInverseBindBuffer[baseBone + boneIndex];
-        uePos += skinningMatrix * aPos * weight;
-    }
-
-    aPos = uePos;
-#endif
-
-    gl_Position = uViewProjection * (uInstanceDataBuffer[id].Matrix * aPos);
+    gl_Position = uViewProjection * (uInstanceDataBuffer[id].Matrix * vertex.Position);
 }

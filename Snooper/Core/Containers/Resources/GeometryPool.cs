@@ -71,7 +71,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         if (!_cache.TryGetValue(descriptor.Guid, out var handle))
         {
             var (firstIndex, baseVertex, baseColor, maxLod, offsets) = CreateOffsets();
-            var mesh = new PerMeshData(descriptor.Bounds, maxLod, drawDistances);
+            var mesh = new PerMeshData(descriptor.Bounds, maxLod, drawDistances, descriptor.ColorMode);
             handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(mesh, offsets), baseColor, lods.Length > 1 ? -1 : 0);
             _cache.Add(descriptor.Guid, handle);
         }
@@ -115,6 +115,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     public void Render(Action mdi)
     {
         _colors.Bind(Bindings.VertexColors);
+        _culling.BindMeshData();
 
         _vao.Bind();
         _ebo.Bind();

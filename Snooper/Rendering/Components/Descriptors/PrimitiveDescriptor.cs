@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse.FileProvider;
 using CUE4Parse_Conversion.Dto;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
@@ -18,6 +19,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     public string? Name { get; }
     public string? Path { get; }
     public FGuid Guid { get; } // this will be used by the geometry pool in order to not upload the geometry data twice on the gpu
+    public uint ColorMode { get; } = FragmentColorMode.Disabled; // per-mesh shading mode, overridden by the global uniform when that one is set
     public CullingBounds Bounds { get; }
     public LodDescriptor<TVertex>[] Lods { get; }
     public SkeletonDescriptor? Skeleton { get; }
@@ -29,6 +31,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Name = other.Name;
         Path = other.Path;
         Guid = other.Guid;
+        ColorMode = other.ColorMode;
         Bounds = (CullingBounds) other.Bounds.Clone();
         Lods = [];
         Skeleton = null;
@@ -57,12 +60,15 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
         Guid = owner.LightingGuid;
 
+        var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
+        if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
+
         using var dto = new StaticMeshDto(owner);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)
         {
-            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
         }
 
         Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
@@ -79,12 +85,15 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
         Guid = new FGuid((uint)owner.Name.GetHashCode());
 
+        var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
+        if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
+
         using var dto = new SkeletalMeshDto(owner);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)
         {
-            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
         }
 
         Skeleton = new SkeletonDescriptor(dto.Bones);
@@ -135,6 +144,20 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         }
     }
 
+    private Action<FColor[]>? CreateJunoColorRemap(IFileProvider? provider, string? path)
+    {
+        if (provider is null || path?.StartsWith("FortniteGame/Plugins/GameFeatures/Juno/", StringComparison.OrdinalIgnoreCase) != true)
+            return null;
+
+        return colors =>
+        {
+            for (var i = 0; i < colors.Length; i++)
+            {
+                colors[i] = JunoPaletteCache.Resolve(provider, colors[i]);
+            }
+        };
+    }
+
     public Matrix4x4 GetSocketModelMatrix(string name)
     {
         var socket = Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
@@ -154,17 +177,9 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         return matrix;
     }
 
-    /// <summary>
-    /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> for the given static mesh.
-    /// The factory function is used to generate the primitive data if it doesn't already exist in the cache.
-    /// </summary>
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.LightingGuid, () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
-    /// <summary>
-    /// Creates or retrieves a cached <see cref="PrimitiveDescriptor{TVertex}"/> for the given skeletal mesh.
-    /// The factory function is used to generate the primitive data if it doesn't already exist in the
-    /// </summary>
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(FGuid.Random(), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
