@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Numerics;
 using CUE4Parse.Utils;
 
@@ -40,6 +40,12 @@ public static class Settings
     public const string AddIcon = "\uf055";
     public const string EyeIcon = "\uf06e";
     public const string EyeSlashIcon = "\uf070";
+    public const string CameraIcon = "\uf48b";
+    public const string FocusIcon = "\uf05b";
+    public const string JobIcon = "\uf085";
+    public const string TextureIcon = "\uf03e";
+    public const string CopyIcon = "\uf0c5";
+    public const string SpeedIcon = "\uf3fd";
 
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";

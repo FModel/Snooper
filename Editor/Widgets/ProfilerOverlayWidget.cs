@@ -30,15 +30,14 @@ public class ProfilerOverlayWidget
         Color(0.50f, 0.60f, 0.70f), Color(0.80f, 0.80f, 0.40f), Color(0.40f, 0.70f, 0.55f),
     ];
 
-    public void Draw(ImDrawListPtr drawList, Vector2 contentPos, Vector2 contentSize)
+    public void Draw(ImDrawListPtr drawList, Vector2 contentPos, Vector2 contentSize, float bottomClearance)
     {
         if (!Profiler.Enabled) return;
 
-        var maxHeight = contentSize.Y - ToolbarClearance - BottomClearance;
+        var maxHeight = contentSize.Y - ToolbarClearance - BottomClearance - bottomClearance;
         if (maxHeight < GraphHeight * 2f || contentSize.X < PanelWidth + Margin * 2f) return;
 
         var origin = contentPos + new Vector2(Margin, ToolbarClearance);
-        var savedCursor = ImGui.GetCursorScreenPos();
 
         var root = Profiler.Root;
         if (root.Children.Count == 0)
@@ -75,8 +74,6 @@ public class ProfilerOverlayWidget
             drawList.PopClipRect();
             ImGui.PopID();
         }
-
-        ImGui.SetCursorScreenPos(savedCursor);
     }
 
     private ProfilerNode ResolveNode(ProfilerNode root)

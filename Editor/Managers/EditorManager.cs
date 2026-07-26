@@ -18,9 +18,12 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     private readonly SceneHierarchyWidget _sceneHierarchy = new();
     private readonly ViewportWidget _viewport = new();
     private readonly ProfilerWidget _profiler = new();
+    private readonly LogWidget _log = new();
 
     internal readonly ViewportAxisWidget _viewportAxis = new();
     internal readonly ProfilerOverlayWidget _profilerOverlay = new();
+    internal readonly HardwareOverlayWidget _hardwareOverlay = new();
+    internal readonly NotificationOverlayWidget _notificationOverlay = new();
     internal readonly JsonViewerWidget _jsonViewer = new();
     internal readonly SkeletonOverlayWidget _skeletonOverlay = new();
     internal readonly SplineOverlayWidget _splineOverlay = new();
@@ -56,11 +59,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         }
         ImGui.End();
 
-        if (ImGui.Begin("\uf120 Log"))
-        {
-
-        }
-        ImGui.End();
+        _log.Draw();
 
         if (ImGui.Begin("\uf200 Profiler"))
         {

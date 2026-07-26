@@ -41,8 +41,10 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     {
         Time += delta;
 
+        Renderer.Update(delta);
         DequeueSystems(1);
         TextureCache.Update();
+        TrackBackgroundWork();
 
         using (Profiler.Cpu("Update"))
         {
@@ -227,6 +229,43 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
 
             Systems.Add(system.Order, system);
             count++;
+        }
+    }
+
+    private const int MinBackgroundWork = 8;
+
+    private int _peakQueuedJobs;
+    private int _peakPendingTextures;
+    private void TrackBackgroundWork()
+    {
+        var jobs = ThreadManager.CurrentQueuedJobs;
+        if (jobs > 0)
+        {
+            _peakQueuedJobs = Math.Max(_peakQueuedJobs, jobs);
+        }
+        else if (_peakQueuedJobs > 0)
+        {
+            if (_peakQueuedJobs >= MinBackgroundWork)
+            {
+                Notifications.Push("work.jobs", Settings.JobIcon, $"{_peakQueuedJobs:N0} jobs processed");
+            }
+
+            _peakQueuedJobs = 0;
+        }
+
+        var textures = TextureCache.PendingTextureCount;
+        if (textures > 0)
+        {
+            _peakPendingTextures = Math.Max(_peakPendingTextures, textures);
+        }
+        else if (_peakPendingTextures > 0)
+        {
+            if (_peakPendingTextures >= MinBackgroundWork)
+            {
+                Notifications.Push("work.textures", Settings.TextureIcon, $"{_peakPendingTextures:N0} textures uploaded");
+            }
+
+            _peakPendingTextures = 0;
         }
     }
 

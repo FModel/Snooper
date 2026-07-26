@@ -8,6 +8,7 @@ public class DeviceInfo
     public string Vendor { get; private set; } = string.Empty;
     public int MaxShaderStorageBufferBindings { get; private set; }
     public ExtensionSupport ExtensionSupport { get; } = new();
+    public GpuMemoryInfo Memory { get; } = new();
 
     public void Load()
     {
@@ -15,5 +16,6 @@ public class DeviceInfo
         Vendor = GL.GetString(StringName.Vendor);
         MaxShaderStorageBufferBindings = GL.GetInteger(GetPName.MaxShaderStorageBufferBindings);
         ExtensionSupport.Load();
+        Memory.Load(ExtensionSupport);
     }
 }

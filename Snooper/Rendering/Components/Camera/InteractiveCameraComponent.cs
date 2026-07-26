@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using Snooper.Core;
 
 namespace Snooper.Rendering.Components.Camera;
 
@@ -87,6 +88,7 @@ public class InteractiveCameraComponent : CameraComponent
         if (input.X != 0 && ViewType == CameraType.Orbital)
         {
             ViewType = CameraType.Free; // disable orbital if we move left or right
+            Notifications.Push("camera.view", Settings.CameraIcon, "Free Camera");
         }
 
         const float smoothing = 12f; // higher = snappier

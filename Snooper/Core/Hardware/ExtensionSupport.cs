@@ -9,6 +9,16 @@ public class ExtensionSupport
     /// </summary>
     public bool SupportBindlessTextures { get; private set; }
 
+    /// <summary>
+    /// GL_NVX_gpu_memory_info
+    /// </summary>
+    public bool SupportNvidiaMemoryInfo { get; private set; }
+
+    /// <summary>
+    /// GL_ATI_meminfo
+    /// </summary>
+    public bool SupportAtiMemoryInfo { get; private set; }
+
     public string[] Extensions { get; private set; } = [];
 
     public void Load()
@@ -17,9 +27,17 @@ public class ExtensionSupport
         for (var i = 0; i < Extensions.Length; i++)
         {
             var ext = GL.GetString(StringNameIndexed.Extensions, i);
-            if (ext == "GL_ARB_bindless_texture")
+            switch (ext)
             {
-                SupportBindlessTextures = true;
+                case "GL_ARB_bindless_texture":
+                    SupportBindlessTextures = true;
+                    break;
+                case "GL_NVX_gpu_memory_info":
+                    SupportNvidiaMemoryInfo = true;
+                    break;
+                case "GL_ATI_meminfo":
+                    SupportAtiMemoryInfo = true;
+                    break;
             }
 
             Extensions[i] = ext;

@@ -6,6 +6,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Serilog;
 using Snooper;
+using Snooper.Core.Hardware;
 using Snooper.Rendering.Cache;
 
 namespace Editor;
@@ -34,6 +35,13 @@ public partial class EditorWindow : GameWindow
         })
     {
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
+#if DEBUG
+        if (Flags.HasFlag(ContextFlags.Debug))
+        {
+            // Profiler.Enabled = true;
+            RendererInfo.TrackMemory = true;
+        }
+#endif
 
         Load += DoLoad; // right before the game loop starts
         UpdateFrame += DoUpdate;

@@ -3,7 +3,9 @@ using Editor.Managers;
 using ImGuiNET;
 using ImGuizmoNET;
 using OpenTK.Windowing.Common;
+using Snooper;
 using Snooper.Core;
+using Snooper.Core.Hardware;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
@@ -27,6 +29,7 @@ public class ViewportWidget
     private const string FreeIcon      = "\uf48b"; // street-view
     private const string OrbitalIcon   = "\uf140"; // bullseye
     private const string ProfilerIcon  = "\uf201"; // chart-line
+    private const string HardwareIcon  = "\uf2db"; // microchip
 
     private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
     private bool _localSpace = true;
@@ -70,12 +73,15 @@ public class ViewportWidget
         var component = manager.SelectedComponent ?? manager.SelectedActor?.RootComponent;
         DrawComponentControlsOverlay(viewport.Camera, component, contentPos, contentSize);
 
+        var editorManager = manager as EditorManager;
+        var bandHeight = editorManager?._hardwareOverlay.Draw(drawList, contentPos, contentSize, manager) ?? 0f;
+
         DrawToolbar(viewport.Camera, contentPos);
         var clicked = DrawAxisOverlay(viewport.Camera, contentPos, contentSize);
-        DrawStatsOverlay(contentPos, contentSize);
+        DrawStatsOverlay(contentPos, contentSize, bandHeight);
 
-        if (manager is EditorManager editorManager)
-            editorManager._profilerOverlay.Draw(drawList, contentPos, contentSize);
+        editorManager?._profilerOverlay.Draw(drawList, contentPos, contentSize, bandHeight);
+        editorManager?._notificationOverlay.Draw(drawList, contentPos, contentSize, bandHeight);
 
         if (imageHovered && !ImGui.IsAnyItemActive() && !ImGuizmo.IsUsing() && !clicked)
         {
@@ -86,11 +92,12 @@ public class ViewportWidget
 
             if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                manager.OnViewportLeftClick(ImGui.GetMousePos(), ImGui.GetCursorScreenPos(), contentSize);
+                manager.OnViewportLeftClick(ImGui.GetMousePos(), contentPos, contentSize);
             }
             if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && component is SpatialComponent spatial)
             {
                 spatial.TeleportTo();
+                Notifications.Push("camera.focus", Settings.FocusIcon, $"Focused {spatial.Name}");
             }
         }
 
@@ -135,7 +142,10 @@ public class ViewportWidget
         ImGui.SameLine();
         VerticalSeparator(style.FramePadding.Y);
         ImGui.SameLine();
-        ToggleButton(ProfilerIcon, ref Snooper.Core.Profiler.Enabled, "Profiler");
+        ToggleButton(ProfilerIcon, ref Profiler.Enabled, "Profiler");
+
+        ImGui.SameLine();
+        ToggleButton(HardwareIcon, ref RendererInfo.TrackMemory, "Hardware");
 
         ImGui.PopStyleVar();
     }
@@ -151,27 +161,29 @@ public class ViewportWidget
         return clicked;
     }
 
-    private void DrawStatsOverlay(Vector2 contentPos, Vector2 contentSize)
+    private void DrawStatsOverlay(Vector2 contentPos, Vector2 contentSize, float bottomClearance)
     {
         ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold]);
+
+        var bottom = contentSize.Y - bottomClearance;
 
         var io = ImGui.GetIO();
         var text = $"FPS: {io.Framerate:F1} ({io.DeltaTime * 1000f:F2} ms)";
         var size = ImGui.CalcTextSize(text);
-        ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, contentSize.Y - Padding - size.Y));
+        ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, bottom - Padding - size.Y));
         ImGui.TextUnformatted(text);
 
         if (Profiler.Enabled)
         {
             var primitives = $"{Profiler.TotalPrimitives:N0} primitives";
             var primitivesSize = ImGui.CalcTextSize(primitives);
-            ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, contentSize.Y - Padding - size.Y - primitivesSize.Y));
+            ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, bottom - Padding - size.Y - primitivesSize.Y));
             ImGui.TextUnformatted(primitives);
         }
 
         text = "\uf06a Previewed content may differ from final version saved or used in-game.";
         size = ImGui.CalcTextSize(text);
-        ImGui.SetCursorScreenPos(contentPos + new Vector2(contentSize.X - Padding - size.X, contentSize.Y - Padding - size.Y));
+        ImGui.SetCursorScreenPos(contentPos + new Vector2(contentSize.X - Padding - size.X, bottom - Padding - size.Y));
         ImGui.TextUnformatted(text);
 
         ImGui.PopFont();

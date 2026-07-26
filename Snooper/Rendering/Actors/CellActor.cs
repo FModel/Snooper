@@ -30,7 +30,7 @@ public class CellActor : StreamableActor
             }
             else
             {
-                var box = (data.CellBounds ?? data.ContentBounds) * Settings.GlobalScale;
+                var box = data.ContentBounds * Settings.GlobalScale;
                 box.GetCenterAndExtents(out center, out extents);
             }
 

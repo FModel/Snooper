@@ -278,20 +278,13 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
     {
         var scaleX = windowSize.X / Width;
         var scaleY = windowSize.Y / Height;
-        var x = Convert.ToInt32((mousePos.X - windowPos.X) / scaleX);
-        var y = Convert.ToInt32((mousePos.Y - windowPos.Y) / scaleY);
 
-        // ui disabled / enabled
-        if (windowPos == Vector2.Zero)
-            y = Height - 1 - y;
-        else
-        {
-            y -= 4; // don't ask me why
-            y = -y;
-        }
+        // windowPos is the top left corner of the rendered image, Vector2.Zero when the ui is disabled
+        var x = Convert.ToInt32((mousePos.X - windowPos.X) / scaleX);
+        var y = Height - 1 - Convert.ToInt32((mousePos.Y - windowPos.Y) / scaleY); // the picking buffer is bottom up, the mouse is top down
 
         var pixel = _picking.GetPixel<uint>(x, y);
-        Log.Debug("Read pixel at ({X}, {Y}) with scale ({ScaleX}, {ScaleY}), resulting in component ID {ComponentId}", x, y, scaleX, scaleY, pixel);
+        Log.Verbose("Read pixel at ({X}, {Y}) with scale ({ScaleX}, {ScaleY}), resulting in component ID {ComponentId}", x, y, scaleX, scaleY, pixel);
 
         return pixel;
     }

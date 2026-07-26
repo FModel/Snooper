@@ -8,6 +8,8 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using Snooper;
+using Snooper.Core;
 using Snooper.Core.Managers;
 
 namespace Editor.Managers;
@@ -232,6 +234,7 @@ public abstract class ImGuiManager : SceneManager
             {
                 var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
                 MainViewport.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
+                Notifications.Push("camera.speed", Settings.SpeedIcon, $"Camera Speed  {MainViewport.Camera.MovementSpeed:0.#}");
             }
 
             MainViewport?.Camera.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);

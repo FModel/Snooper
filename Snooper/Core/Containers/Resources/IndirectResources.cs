@@ -50,7 +50,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (counts.Instances > 0) _instanceData.Allocate(counts.Instances);
         if (counts.Materials > 0) _materialData.Allocate(counts.Materials);
 
-        Log.Debug("Allocated {SystemName}<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
+        Log.Information("Allocated {SystemName}<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
             systemName,
             typeof(TVertex).Name,
             typeof(TInstanceData).Name,
