@@ -203,42 +203,45 @@ public abstract class ImGuiManager : SceneManager
 
     public override void Update(float delta)
     {
-        if (Window.IsKeyPressed(Keys.F10))
-            _show = !_show;
-
-        if (_show)
+        using (Profiler.Cpu("Inputs"))
         {
-            _controller.Update(Window, delta);
-        }
-        else
-        {
-            if (Window.IsMouseButtonPressed(MouseButton.Right))
-                Window.CursorState = CursorState.Grabbed;
+            if (Window.IsKeyPressed(Keys.F10))
+                _show = !_show;
 
-            if (Window.IsMouseButtonPressed(MouseButton.Left))
+            if (_show)
             {
-                var mousePos = new Vector2(Window.MousePosition.X, Window.MousePosition.Y);
-                var viewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
-                OnViewportLeftClick(mousePos, Vector2.Zero, viewportSize);
+                _controller.Update(Window, delta);
+            }
+            else
+            {
+                if (Window.IsMouseButtonPressed(MouseButton.Right))
+                    Window.CursorState = CursorState.Grabbed;
+
+                if (Window.IsMouseButtonPressed(MouseButton.Left))
+                {
+                    var mousePos = new Vector2(Window.MousePosition.X, Window.MousePosition.Y);
+                    var viewportSize = new Vector2(Window.ClientSize.X, Window.ClientSize.Y);
+                    OnViewportLeftClick(mousePos, Vector2.Zero, viewportSize);
+                }
+
+                MainViewport?.Camera.Resize(Window.ClientSize.X, Window.ClientSize.Y);
             }
 
-            MainViewport?.Camera.Resize(Window.ClientSize.X, Window.ClientSize.Y);
-        }
+            if (!ImGui.GetIO().WantTextInput)
+                MainViewport?.Camera.Update(Window.KeyboardState, delta);
 
-        if (!ImGui.GetIO().WantTextInput)
-            MainViewport?.Camera.Update(Window.KeyboardState, delta);
-
-        if (Window.CursorState == CursorState.Grabbed)
-        {
-            if (MainViewport != null && Window.MouseState.ScrollDelta.Y != 0)
+            if (Window.CursorState == CursorState.Grabbed)
             {
-                var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
-                MainViewport.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
-                Notifications.Push("camera.speed", Settings.SpeedIcon, $"Camera Speed  {MainViewport.Camera.MovementSpeed:0.#}");
-            }
+                if (MainViewport != null && Window.MouseState.ScrollDelta.Y != 0)
+                {
+                    var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+                    MainViewport.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
+                    Notifications.Push("camera.speed", Settings.SpeedIcon, $"Camera Speed  {MainViewport.Camera.MovementSpeed:0.#}");
+                }
 
-            MainViewport?.Camera.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
-            if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
+                MainViewport?.Camera.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
+                if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
+            }
         }
 
         base.Update(delta);
@@ -252,14 +255,14 @@ public abstract class ImGuiManager : SceneManager
         GL.ClearColor(0, 0, 0, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
-        if (_show)
-        {
-            RenderInterface();
-            _controller.Render();
-        }
-        else
+        if (!_show)
         {
             Pipeline.RenderToScreen(Window.ClientSize.X, Window.ClientSize.Y);
+        }
+        else using (Profiler.Sample("ImGui"))
+        {
+            using (Profiler.Cpu("Widgets")) RenderInterface();
+            _controller.Render();
         }
     }
 

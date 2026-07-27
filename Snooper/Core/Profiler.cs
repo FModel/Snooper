@@ -127,7 +127,17 @@ public readonly struct ProfilerScope(ProfilerNode? node, long cpuStart, int gpuB
 /// </summary>
 public static class Profiler
 {
-    public static bool Enabled;
+    /// <summary>
+    /// UI-facing toggle, applied at the next <see cref="BeginFrame"/>. The toolbar that flips it is drawn from inside
+    /// the frame being profiled, so acting on it immediately would let zones open after the frame zone was skipped —
+    /// with an empty stack those hang themselves off the root as bogus top-level zones that never go away.
+    /// </summary>
+    public static ref bool Enabled => ref _requested;
+
+    private static bool _requested;
+
+    /// <summary>Latched at the frame boundary; the whole frame is profiled or none of it is.</summary>
+    private static bool _active;
 
     [Flags]
     private enum Track
@@ -138,7 +148,8 @@ public static class Profiler
         Primitives = 4, // implies Gpu; counts primitives the zone's draws generate
     }
 
-    private static readonly ProfilerNode _root = new("Root");
+    private const string FrameZone = "Frame";
+
     private static readonly Stack<ProfilerNode> _stack = new();
 
     // Query id pools, kept apart because a GL query object takes its type from first use: a timestamp query cannot be
@@ -148,11 +159,13 @@ public static class Profiler
     private static readonly Queue<PendingTime> _pendingTime = [];
     private static readonly Queue<PendingCount> _pendingCount = [];
     private static int _activePrimQuery = -1;
-
     private static ProfilerScope _frameScope;
 
     /// <summary>Root of the zone tree; its children are the frame's top-level zones. Only read after <see cref="EndFrame"/>.</summary>
-    public static ProfilerNode Root => _root;
+    public static ProfilerNode Root { get; } = new("Root");
+
+    /// <summary>The "Frame" zone. Always present, so callers never have to index into <see cref="Root"/> by position.</summary>
+    public static ProfilerNode Frame { get; } = Root.GetOrAddChild(FrameZone);
 
     /// <summary>Primitives generated across every draw of the last frame. Holds its last value once disabled.</summary>
     public static long TotalPrimitives { get; private set; }
@@ -178,30 +191,29 @@ public static class Profiler
     /// <summary>Matures last frame's GPU results and opens the root "Frame" zone. Pair with <see cref="EndFrame"/>; GL thread only.</summary>
     public static void BeginFrame()
     {
-        if (!Enabled) return;
+        _active = _requested;
+        if (!_active) return;
 
         MatureQueries();
-        _frameScope = Begin("Frame", Track.Cpu | Track.Gpu);
+        _frameScope = Begin(FrameZone, Track.Cpu | Track.Gpu);
     }
 
     /// <summary>Closes the frame zone and commits every accumulator into its rolling history.</summary>
     public static void EndFrame()
     {
-        // Always close the frame scope so the stack stays balanced even if profiling was toggled off mid-frame, but
-        // only flush when enabled so a disabled profiler does no per-frame work.
         End(_frameScope);
         _frameScope = default;
-        if (!Enabled) return;
+        if (!_active) return;
 
-        _root.Flush();
-        TotalPrimitives = _root.TotalPrimitives;
+        Root.Flush();
+        TotalPrimitives = Root.TotalPrimitives;
     }
 
     private static ProfilerScope Begin(string name, Track track)
     {
-        if (!Enabled) return default;
+        if (!_active) return default;
 
-        var node = (_stack.Count > 0 ? _stack.Peek() : _root).GetOrAddChild(name);
+        var node = (_stack.Count > 0 ? _stack.Peek() : Root).GetOrAddChild(name);
         _stack.Push(node);
 
         var cpuStart = track.HasFlag(Track.Cpu) ? Stopwatch.GetTimestamp() : 0L;

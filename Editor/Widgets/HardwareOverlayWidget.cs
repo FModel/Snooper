@@ -166,9 +166,9 @@ public class HardwareOverlayWidget
         AddRow(frame, "FPS", $"{io.Framerate:F1}", io.Framerate < 30f ? Severity.Warn : Severity.None);
         AddRow(frame, "FRAME", $"{io.DeltaTime * 1000f:F2} ms");
 
-        var frameNode = Profiler.Enabled && Profiler.Root.Children.Count > 1 ? Profiler.Root.Children[1] : null;
-        if (frameNode != null)
+        if (Profiler.Enabled)
         {
+            var frameNode = Profiler.Frame;
             AddRow(frame, "CPU/GPU", $"{frameNode.Cpu.AverageTimeElapsedMs:F2} / {frameNode.Gpu.AverageTimeElapsedMs:F2}");
         }
 

@@ -46,12 +46,9 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         TextureCache.Update();
         TrackBackgroundWork();
 
-        using (Profiler.Cpu("Update"))
+        foreach (var system in Systems.Values)
         {
-            foreach (var system in Systems.Values)
-            {
-                system.Update(delta);
-            }
+            system.Update(delta);
         }
     }
 

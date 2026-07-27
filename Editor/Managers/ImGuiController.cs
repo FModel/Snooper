@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 using System.Reflection;
 using ImGuiNET;
 using ImGuizmoNET;
@@ -7,6 +8,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -133,69 +135,72 @@ public class ImGuiController : IResizable, IDisposable
             }
         }
 
-        // Setup orthographic projection matrix into our constant buffer
         var io = ImGui.GetIO();
-        _shader.Use();
-        _shader.SetUniform("projection_matrix", Matrix4x4.CreateOrthographicOffCenter(0.0f, io.DisplaySize.X, io.DisplaySize.Y, 0.0f, -1.0f, 1.0f));
-        _shader.SetUniform("in_fontTexture", 0);
-        CheckForErrors("Projection");
-
         drawData.ScaleClipRects(io.DisplayFramebufferScale);
 
-        GL.Enable(EnableCap.Blend);
-        GL.Enable(EnableCap.ScissorTest);
-        GL.BlendEquation(BlendEquationMode.FuncAdd);
-        GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-        GL.Disable(EnableCap.CullFace);
-        GL.Disable(EnableCap.DepthTest);
-
-        _vao.Bind();
-        _ebo.Bind();
-        _vbo.Bind();
-
-        // Render command lists
-        for (var i = 0; i < drawData.CmdListsCount; i++)
+        using (Profiler.Draw())
         {
-            var cmd = drawData.CmdLists[i];
+            // Setup orthographic projection matrix into our constant buffer
+            _shader.Use();
+            _shader.SetUniform("projection_matrix", Matrix4x4.CreateOrthographicOffCenter(0.0f, io.DisplaySize.X, io.DisplaySize.Y, 0.0f, -1.0f, 1.0f));
+            _shader.SetUniform("in_fontTexture", 0);
+            CheckForErrors("Projection");
 
-            _vbo.Update(cmd.VtxBuffer.Size, cmd.VtxBuffer.Data);
-            CheckForErrors($"Data Vert {i}");
+            GL.Enable(EnableCap.Blend);
+            GL.Enable(EnableCap.ScissorTest);
+            GL.BlendEquation(BlendEquationMode.FuncAdd);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+            GL.Disable(EnableCap.CullFace);
+            GL.Disable(EnableCap.DepthTest);
 
-            _ebo.Update(cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
-            CheckForErrors($"Data Idx {i}");
+            _vao.Bind();
+            _ebo.Bind();
+            _vbo.Bind();
 
-            for (var j = 0; j < cmd.CmdBuffer.Size; j++)
+            // Render command lists
+            for (var i = 0; i < drawData.CmdListsCount; i++)
             {
-                var pcmd = cmd.CmdBuffer[j];
-                GL.BindTextureUnit(0, (uint)pcmd.TextureId);
-                CheckForErrors("Texture");
+                var cmd = drawData.CmdLists[i];
 
-                // We do _windowHeight - (int)clip.W instead of (int)clip.Y because gl has flipped Y when it comes to these coordinates
-                var clip = pcmd.ClipRect;
-                GL.Scissor((int)clip.X, (int)(io.DisplaySize.Y - clip.W), (int)(clip.Z - clip.X), (int)(clip.W - clip.Y));
-                CheckForErrors("Scissor");
+                _vbo.Update(cmd.VtxBuffer.Size, cmd.VtxBuffer.Data);
+                CheckForErrors($"Data Vert {i}");
 
-                if (io.BackendFlags.HasFlag(ImGuiBackendFlags.RendererHasVtxOffset))
+                _ebo.Update(cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
+                CheckForErrors($"Data Idx {i}");
+
+                for (var j = 0; j < cmd.CmdBuffer.Size; j++)
                 {
-                    GL.DrawElementsBaseVertex(PrimitiveType.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (IntPtr)(pcmd.IdxOffset * sizeof(ushort)), unchecked((int)pcmd.VtxOffset));
+                    var pcmd = cmd.CmdBuffer[j];
+                    GL.BindTextureUnit(0, (uint)pcmd.TextureId);
+                    CheckForErrors("Texture");
+
+                    // We do _windowHeight - (int)clip.W instead of (int)clip.Y because gl has flipped Y when it comes to these coordinates
+                    var clip = pcmd.ClipRect;
+                    GL.Scissor((int)clip.X, (int)(io.DisplaySize.Y - clip.W), (int)(clip.Z - clip.X), (int)(clip.W - clip.Y));
+                    CheckForErrors("Scissor");
+
+                    if (io.BackendFlags.HasFlag(ImGuiBackendFlags.RendererHasVtxOffset))
+                    {
+                        GL.DrawElementsBaseVertex(PrimitiveType.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (IntPtr)(pcmd.IdxOffset * sizeof(ushort)), unchecked((int)pcmd.VtxOffset));
+                    }
+                    else
+                    {
+                        GL.DrawElements(BeginMode.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (int)pcmd.IdxOffset * sizeof(ushort));
+                    }
+                    CheckForErrors("Draw");
                 }
-                else
-                {
-                    GL.DrawElements(BeginMode.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (int)pcmd.IdxOffset * sizeof(ushort));
-                }
-                CheckForErrors("Draw");
             }
+
+            _vbo.Unbind();
+            _ebo.Unbind();
+            _vao.Unbind();
+            CheckForErrors("VAO");
+
+            GL.Disable(EnableCap.Blend);
+            GL.Disable(EnableCap.ScissorTest);
+
+            _shader.Unuse();
         }
-
-        _vbo.Unbind();
-        _ebo.Unbind();
-        _vao.Unbind();
-        CheckForErrors("VAO");
-
-        GL.Disable(EnableCap.Blend);
-        GL.Disable(EnableCap.ScissorTest);
-
-        _shader.Unuse();
 
         // Reset state
         GL.BindTexture(TextureTarget.Texture2D, prevTexture2D);
@@ -221,6 +226,7 @@ public class ImGuiController : IResizable, IDisposable
         ImGui.GetIO().DisplaySize = new Vector2(newWidth, newHeight);
     }
 
+    [Conditional("DEBUG")]
     private void CheckForErrors(string title)
     {
         ErrorCode error;

@@ -6,6 +6,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using Serilog;
 using Snooper;
+using Snooper.Core;
 using Snooper.Core.Hardware;
 using Snooper.Rendering.Cache;
 
@@ -35,13 +36,11 @@ public partial class EditorWindow : GameWindow
         })
     {
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
-#if DEBUG
         if (Flags.HasFlag(ContextFlags.Debug))
         {
             // Profiler.Enabled = true;
             RendererInfo.TrackMemory = true;
         }
-#endif
 
         Load += DoLoad; // right before the game loop starts
         UpdateFrame += DoUpdate;
@@ -90,12 +89,24 @@ public partial class EditorWindow : GameWindow
 
     private void DoUpdate(FrameEventArgs args)
     {
-        Manager.Update((float) args.Time);
+        using (Profiler.Cpu("Update"))
+        {
+            Manager.Update((float) args.Time);
+        }
     }
 
     private void DoRender(FrameEventArgs args)
     {
-        Manager.Render();
+        Profiler.BeginFrame();
+        try
+        {
+            Manager.Render();
+        }
+        finally
+        {
+            Profiler.EndFrame();
+        }
+
         SwapBuffers();
     }
 
