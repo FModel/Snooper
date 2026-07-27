@@ -183,45 +183,43 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
     {
         base.OnComponentUpdate(component, delta);
 
-        if (component is SkeletalMeshComponent { IsPlayingAnimation: true, Descriptor.Skeleton: { } skeleton, Animation: { Sequences.Length: > 0 } animation } skeletal)
+        var skeletal = component as SkeletalMeshComponent;
+        skeletal?.AdvanceAnimation(delta);
+
+        if (!component.IsDirty(DirtyFlags.Animation) ||
+            skeletal is not { Descriptor.Skeleton: { } skeleton, Animation: { Sequences.Length: > 0 } animation }) return;
+
+        var time = skeletal.AnimationTime;
+        foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
         {
-            float time = ActorManager?.Time ?? delta;
-            time = (time * animation.PlayRate + animation.StartTime) % skeletal.MaxAnimationDuration;
+            // for each vertex bone, find its skeleton bone
+            if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex))
+                continue;
 
-            foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
+            foreach (var sequence in animation.Sequences)
             {
-                // for each vertex bone, find its skeleton bone
-                if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex))
-                    continue;
+                if (!sequence.IsAnimatingBone(skeletonIndex)) continue;
 
-                foreach (var sequence in animation.Sequences)
+                // if this sequence should be played for this frame
+                if (time >= sequence.StartTime && time < sequence.EndTime)
                 {
-                    if (!sequence.IsAnimatingBone(skeletonIndex)) continue;
-
-                    // if this sequence should be played for this frame
-                    if (time >= sequence.StartTime && time < sequence.EndTime)
-                    {
-                        var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
-                        skeleton.BoneLocalMatrices[boneIndex] = sequence.GetBoneMatrix(skeletonIndex, time, scale);
-                        break;
-                    }
+                    var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
+                    skeleton.BoneLocalMatrices[boneIndex] = sequence.GetBoneMatrix(skeletonIndex, time, scale);
+                    break;
                 }
             }
-
-            skeleton.RecalculateBoneMatrices();
-            component.MarkDirty(DirtyFlags.Animation);
         }
+        skeleton.RecalculateBoneMatrices();
 
-        if (component.IsDirty(DirtyFlags.Animation))
+        if (skeleton._poseAllocation is { } poseAllocation)
         {
-            if (component.Descriptor.Skeleton is { _poseAllocation: { } poseAllocation } descriptor)
-                _poseData.Update(poseAllocation, descriptor.BoneMatrices);
+            _poseData.Update(poseAllocation, skeleton.BoneMatrices);
+        }
+        component.MarkClean(DirtyFlags.Animation);
 
-            component.MarkClean(DirtyFlags.Animation);
-            foreach (var child in component.Children)
-            {
-                child.MarkDirty(DirtyFlags.Transform);
-            }
+        foreach (var child in component.Children)
+        {
+            child.MarkDirty(DirtyFlags.Transform);
         }
     }
 

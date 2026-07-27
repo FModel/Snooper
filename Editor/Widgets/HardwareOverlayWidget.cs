@@ -28,7 +28,7 @@ public class HardwareOverlayWidget
     private static readonly uint SeparatorColor = Color(1f, 1f, 1f, 0.06f);
     private static readonly uint LabelColor = Color(0.42f, 0.46f, 0.52f);
     private static readonly uint ValueColor = Color(0.86f, 0.88f, 0.90f);
-    private static readonly uint AccentColor = Color(0.40f, 0.78f, 0.95f);
+    private static readonly uint AccentColor = Color(0.38f, 0.62f, 0.98f);
     private static readonly uint WarnColor = Color(0.95f, 0.75f, 0.25f);
     private static readonly uint AlertColor = Color(0.92f, 0.82f, 0.18f);
     private static readonly uint AlertTextColor = Color(0.05f, 0.05f, 0.05f);

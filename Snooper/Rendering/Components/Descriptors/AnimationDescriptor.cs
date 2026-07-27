@@ -13,6 +13,7 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
 
     public readonly SkeletonDescriptor Skeleton;
     public readonly SequenceDescriptor[] Sequences;
+    public readonly NotifyDescriptor[] Notifies;
     public readonly float Duration;
 
     public float StartTime;
@@ -25,6 +26,7 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
 
         Skeleton = other.Skeleton;
         Sequences = other.Sequences;
+        Notifies = other.Notifies;
         Duration = other.Duration;
 
         StartTime = other.StartTime;
@@ -51,6 +53,16 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
 
         if (Sequences.Length > 0)
             Duration = Sequences[^1].EndTime;
+
+        if (owner is UAnimSequenceBase animSequence)
+        {
+            Notifies = new NotifyDescriptor[animSequence.Notifies.Length];
+            for (var i = 0; i < Notifies.Length; i++)
+            {
+                Notifies[i] = new NotifyDescriptor(animSequence.Notifies[i]);
+            }
+        }
+        else Notifies = [];
 
         StartTime = startTime;
         PlayRate = playRate;

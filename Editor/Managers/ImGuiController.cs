@@ -31,8 +31,8 @@ public class ImGuiController : IResizable, IDisposable
         _vbo.Generate();
 
         // Initial size, will grow as needed
-        _ebo.Allocate(4500);
-        _vbo.Allocate(3000);
+        _ebo.Allocate(45000);
+        _vbo.Allocate(30000);
 
         GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
         GL.VertexArrayElementBuffer(_vao, _ebo);

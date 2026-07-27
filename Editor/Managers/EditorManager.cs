@@ -19,6 +19,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     private readonly ViewportWidget _viewport = new();
     private readonly ProfilerWidget _profiler = new();
     private readonly LogWidget _log = new();
+    private readonly TimelineWidget _timeline = new();
 
     internal readonly ViewportAxisWidget _viewportAxis = new();
     internal readonly ProfilerOverlayWidget _profilerOverlay = new();
@@ -53,11 +54,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         }
         ImGui.End();
 
-        if (ImGui.Begin("\ue0e4 Timeline"))
-        {
-
-        }
-        ImGui.End();
+        _timeline.Draw(this);
 
         _log.Draw();
 
