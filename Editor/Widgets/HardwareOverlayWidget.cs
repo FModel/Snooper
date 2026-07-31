@@ -23,15 +23,15 @@ public class HardwareOverlayWidget
     private const float BarWidth = 54f;
     private const float BarHeight = 6f;
 
-    private static readonly uint BandColor = Color(0f, 0f, 0f, 0.75f);
-    private static readonly uint BorderColor = Color(1f, 1f, 1f, 0.12f);
-    private static readonly uint SeparatorColor = Color(1f, 1f, 1f, 0.06f);
-    private static readonly uint LabelColor = Color(0.42f, 0.46f, 0.52f);
-    private static readonly uint ValueColor = Color(0.86f, 0.88f, 0.90f);
-    private static readonly uint AccentColor = Color(0.38f, 0.62f, 0.98f);
-    private static readonly uint WarnColor = Color(0.95f, 0.75f, 0.25f);
-    private static readonly uint AlertColor = Color(0.92f, 0.82f, 0.18f);
-    private static readonly uint AlertTextColor = Color(0.05f, 0.05f, 0.05f);
+    private static readonly uint _bandColor = Color(0f, 0f, 0f, 0.75f);
+    private static readonly uint _borderColor = Color(1f, 1f, 1f, 0.12f);
+    private static readonly uint _separatorColor = Color(1f, 1f, 1f, 0.06f);
+    private static readonly uint _labelColor = Color(0.42f, 0.46f, 0.52f);
+    private static readonly uint _valueColor = Color(0.86f, 0.88f, 0.90f);
+    private static readonly uint _accentColor = Color(0.38f, 0.62f, 0.98f);
+    private static readonly uint _warnColor = Color(0.95f, 0.75f, 0.25f);
+    private static readonly uint _alertColor = Color(0.92f, 0.82f, 0.18f);
+    private static readonly uint _alertTextColor = Color(0.05f, 0.05f, 0.05f);
 
     private enum Severity
     {
@@ -44,7 +44,7 @@ public class HardwareOverlayWidget
         Alert
     }
 
-    private readonly struct Row(string label, string value, uint color, Severity severity, float fraction)
+    private readonly struct Row(string label, string value, uint color, Severity severity, float fraction, float labelWidth, float valueWidth)
     {
         public readonly string Label = label;
         public readonly string Value = value;
@@ -53,6 +53,10 @@ public class HardwareOverlayWidget
 
         /// <summary>Negative for a plain row, otherwise the fill ratio of an inline usage bar.</summary>
         public readonly float Fraction = fraction;
+
+        /// <summary>Measured once when the row is built; laying out and drawing both need them every frame.</summary>
+        public readonly float LabelWidth = labelWidth;
+        public readonly float ValueWidth = valueWidth;
 
         public bool IsBar => Fraction >= 0f;
     }
@@ -66,8 +70,16 @@ public class HardwareOverlayWidget
         public bool IsBandStart;
     }
 
+    /// <summary>
+    /// How often the readouts are regenerated. Every row is a freshly formatted string that has to be measured, and
+    /// none of these values say anything new between two frames — a memory figure refreshed at frame rate is just
+    /// unreadable flicker. Layout and drawing still run every frame, so resizing stays immediate.
+    /// </summary>
+    private const float RebuildInterval = 0.1f;
+
     private readonly List<Cell> _cells = [];
     private int _cellCount;
+    private float _sinceRebuild = float.MaxValue;
     private ImFontPtr _font;
     private float _fontSize;
     private float _rowHeight;
@@ -79,13 +91,21 @@ public class HardwareOverlayWidget
     {
         if (!RendererInfo.TrackMemory) return 0f;
 
-        _font = ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold];
-        _fontSize = ImGui.GetFontSize() * FontScale;
-        _rowHeight = MathF.Round(_fontSize * 1.15f);
+        var fontSize = ImGui.GetFontSize() * FontScale;
+        _sinceRebuild += ImGui.GetIO().DeltaTime;
 
-        _cellCount = 0;
-        Build(manager);
-        Measure();
+        // A font size change invalidates every measured width, so it forces a rebuild regardless of the interval.
+        if (_sinceRebuild >= RebuildInterval || fontSize != _fontSize || _cellCount == 0)
+        {
+            _font = ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold];
+            _fontSize = fontSize;
+            _rowHeight = MathF.Round(fontSize * 1.15f);
+            _sinceRebuild = 0f;
+
+            _cellCount = 0;
+            Build(manager);
+            Measure();
+        }
 
         // A viewport this small has nothing to spare, and the band would swallow the whole view.
         var maxHeight = contentSize.Y * 0.4f;
@@ -97,8 +117,8 @@ public class HardwareOverlayWidget
         var height = contentHeight + PadY * 2f;
         var top = contentPos.Y + contentSize.Y - height;
 
-        drawList.AddRectFilled(contentPos with { Y = top }, contentPos + contentSize, BandColor);
-        drawList.AddLine(contentPos with { Y = top }, new Vector2(contentPos.X + contentSize.X, top), BorderColor);
+        drawList.AddRectFilled(contentPos with { Y = top }, contentPos + contentSize, _bandColor);
+        drawList.AddLine(contentPos with { Y = top }, new Vector2(contentPos.X + contentSize.X, top), _borderColor);
 
         DrawCells(drawList, new Vector2(contentPos.X + PadX, top + PadY), contentSize.X - PadX * 2f);
 
@@ -112,9 +132,9 @@ public class HardwareOverlayWidget
         var ram = renderer.SystemMemory;
 
         var device = BeginCell();
-        AddRow(device, "GPU", renderer.DeviceInfo.Name, AccentColor);
-        AddRow(device, "API", renderer.Name, AccentColor);
-        AddRow(device, "VND", renderer.DeviceInfo.Vendor, AccentColor);
+        AddRow(device, "GPU", renderer.DeviceInfo.Name, _accentColor);
+        AddRow(device, "API", renderer.Name, _accentColor);
+        AddRow(device, "VND", renderer.DeviceInfo.Vendor, _accentColor);
 
         if (gpu.IsAvailable)
         {
@@ -193,7 +213,7 @@ public class HardwareOverlayWidget
 
             foreach (var row in cell.Rows)
             {
-                var rowWidth = TextWidth(row.Label) + LabelGap + TextWidth(row.Value);
+                var rowWidth = row.LabelWidth + LabelGap + row.ValueWidth;
                 if (row.IsBar) rowWidth += BarWidth + LabelGap;
 
                 width = MathF.Max(width, rowWidth);
@@ -268,13 +288,13 @@ public class HardwareOverlayWidget
                 if (i > 0)
                 {
                     var y = position.Y - BandGap * 0.5f;
-                    drawList.AddLine(new Vector2(origin.X, y), new Vector2(origin.X + width, y), SeparatorColor);
+                    drawList.AddLine(new Vector2(origin.X, y), new Vector2(origin.X + width, y), _separatorColor);
                 }
             }
             else
             {
                 var x = position.X - CellGap * 0.5f;
-                drawList.AddLine(new Vector2(x, position.Y), new Vector2(x, position.Y + cell.BandHeight), SeparatorColor);
+                drawList.AddLine(new Vector2(x, position.Y), new Vector2(x, position.Y + cell.BandHeight), _separatorColor);
             }
 
             for (var r = 0; r < cell.Rows.Count; r++)
@@ -287,24 +307,24 @@ public class HardwareOverlayWidget
     private void DrawRow(ImDrawListPtr drawList, Row row, float x, float y, float width)
     {
         var right = x + width;
-        var valueX = right - TextWidth(row.Value);
+        var valueX = right - row.ValueWidth;
         var valueColor = row.Severity switch
         {
-            Severity.Warn => WarnColor,
-            Severity.Alert => AlertTextColor,
+            Severity.Warn => _warnColor,
+            Severity.Alert => _alertTextColor,
             _ => row.Color
         };
 
         if (row.Severity == Severity.Alert)
         {
-            drawList.AddRectFilled(new Vector2(valueX - 3f, y), new Vector2(right + 3f, y + _rowHeight - 2f), AlertColor);
+            drawList.AddRectFilled(new Vector2(valueX - 3f, y), new Vector2(right + 3f, y + _rowHeight - 2f), _alertColor);
         }
 
-        drawList.AddText(_font, _fontSize, new Vector2(x, y), LabelColor, row.Label);
+        drawList.AddText(_font, _fontSize, new Vector2(x, y), _labelColor, row.Label);
 
         if (row.IsBar)
         {
-            var barX = x + TextWidth(row.Label) + LabelGap;
+            var barX = x + row.LabelWidth + LabelGap;
             var barRight = MathF.Max(barX, valueX - LabelGap);
             var barY = y + (_rowHeight - BarHeight) * 0.5f;
 
@@ -334,14 +354,14 @@ public class HardwareOverlayWidget
         return cell;
     }
 
-    private static void AddRow(Cell cell, string label, string value, Severity severity = Severity.None)
-        => cell.Rows.Add(new Row(label, value, ValueColor, severity, -1f));
+    private void AddRow(Cell cell, string label, string value, Severity severity = Severity.None)
+        => cell.Rows.Add(new Row(label, value, _valueColor, severity, -1f, TextWidth(label), TextWidth(value)));
 
-    private static void AddRow(Cell cell, string label, string value, uint color)
-        => cell.Rows.Add(new Row(label, value, color, Severity.None, -1f));
+    private void AddRow(Cell cell, string label, string value, uint color)
+        => cell.Rows.Add(new Row(label, value, color, Severity.None, -1f, TextWidth(label), TextWidth(value)));
 
-    private static void AddBar(Cell cell, string label, float fraction, string value)
-        => cell.Rows.Add(new Row(label, value, ValueColor, Severity.None, Math.Clamp(fraction, 0f, 1f)));
+    private void AddBar(Cell cell, string label, float fraction, string value)
+        => cell.Rows.Add(new Row(label, value, _valueColor, Severity.None, Math.Clamp(fraction, 0f, 1f), TextWidth(label), TextWidth(value)));
 
     private static Severity Pressure(float ratio) => ratio switch
     {

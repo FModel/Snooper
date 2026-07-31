@@ -71,17 +71,20 @@ public class ViewportWidget
         ImGuizmo.SetRect(itemMin.X, itemMin.Y, contentSize.X, contentSize.Y);
 
         var component = manager.SelectedComponent ?? manager.SelectedActor?.RootComponent;
-        DrawComponentControlsOverlay(viewport.Camera, component, contentPos, contentSize);
+        using (Profiler.Cpu("Gizmos")) DrawComponentControlsOverlay(viewport.Camera, component, contentPos, contentSize);
 
         var editorManager = manager as EditorManager;
-        var bandHeight = editorManager?._hardwareOverlay.Draw(drawList, contentPos, contentSize, manager) ?? 0f;
+        float bandHeight;
+        using (Profiler.Cpu("Hardware")) bandHeight = editorManager?._hardwareOverlay.Draw(drawList, contentPos, contentSize, manager) ?? 0f;
 
-        DrawToolbar(viewport.Camera, contentPos);
-        var clicked = DrawAxisOverlay(viewport.Camera, contentPos, contentSize);
-        DrawStatsOverlay(contentPos, contentSize, bandHeight);
+        using (Profiler.Cpu("Toolbar")) DrawToolbar(viewport.Camera, contentPos);
 
-        editorManager?._profilerOverlay.Draw(drawList, contentPos, contentSize, bandHeight);
-        editorManager?._notificationOverlay.Draw(drawList, contentPos, contentSize, bandHeight);
+        bool clicked;
+        using (Profiler.Cpu("Axis")) clicked = DrawAxisOverlay(viewport.Camera, contentPos, contentSize);
+
+        using (Profiler.Cpu("Footer")) DrawFooterOverlay(contentPos, contentSize, bandHeight);
+        using (Profiler.Cpu("Profiler")) editorManager?._profilerOverlay.Draw(drawList, contentPos, contentSize, bandHeight);
+        using (Profiler.Cpu("Notifications")) editorManager?._notificationOverlay.Draw(drawList, contentPos, contentSize, bandHeight);
 
         if (imageHovered && !ImGui.IsAnyItemActive() && !ImGuizmo.IsUsing() && !clicked)
         {
@@ -161,7 +164,7 @@ public class ViewportWidget
         return clicked;
     }
 
-    private void DrawStatsOverlay(Vector2 contentPos, Vector2 contentSize, float bottomClearance)
+    private void DrawFooterOverlay(Vector2 contentPos, Vector2 contentSize, float bottomClearance)
     {
         ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold]);
 
@@ -172,14 +175,6 @@ public class ViewportWidget
         var size = ImGui.CalcTextSize(text);
         ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, bottom - Padding - size.Y));
         ImGui.TextUnformatted(text);
-
-        if (Profiler.Enabled)
-        {
-            var primitives = $"{Profiler.TotalPrimitives:N0} primitives";
-            var primitivesSize = ImGui.CalcTextSize(primitives);
-            ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, bottom - Padding - size.Y - primitivesSize.Y));
-            ImGui.TextUnformatted(primitives);
-        }
 
         text = "\uf06a Previewed content may differ from final version saved or used in-game.";
         size = ImGui.CalcTextSize(text);

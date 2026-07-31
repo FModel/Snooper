@@ -91,7 +91,7 @@ const string key = "0x34FC366196D4535B12D4B0A67072B5F973CDA66D5BBAD30D26C3950354
 var version = new VersionContainer(EGame.GAME_UE4_27);
 #elif MR
 const string dir = "D:\\CSGO\\steamapps\\common\\MarvelRivals\\MarvelGame\\Marvel\\Content\\Paks";
-const string mapping = "D:\\FModel\\.data\\mappings\\5.3.2-1967306+++depot_marvel+S2_2_release-Marvel+PY.usmap";
+const string mapping = "D:\\FModel\\.data\\mappings\\5.3.2-3719654+++depot_marvel+S9.0_release-Marvel.usmap";
 const string key = "0x0C263D8C22DCB085894899C3A3796383E9BF9DE0CBFB08C9BF2DEF2E84F29D74";
 var version = new VersionContainer(EGame.GAME_MarvelRivals);
 #elif WEST
@@ -313,11 +313,12 @@ switch (provider.ProjectName)
         break;
 
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoCQ01/TokyoCQ01.TokyoCQ01")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoCQ01/TokyoCQ01_Destruction.TokyoCQ01_Destruction"))); // TODO: UGeometryCollection
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/TokyoE01/TokyoE01_Art.TokyoE01_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/NewYorkE01/NewYorkE01_Art.NewYorkE01_Art"))); // TODO: lots of missing walls
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/AsgardE01/AsgardE01_Art.AsgardE01_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/Arakko/ArakkoE01_Art.ArakkoE01_Art")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/WakandaMC01/WakandaC03/WakandaC03_Art.WakandaC03_Art")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/WakandaMC01/WakandaC03/WakandaC03_Art.WakandaC03_Art")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Marvel/Content/Marvel/Maps/Lobby/Lobby_SevenDayActiveEvent_Bg1.Lobby_SevenDayActiveEvent_Bg1")));
         break;
     }
@@ -463,15 +464,22 @@ switch (provider.ProjectName)
         // scene.Children.Add(overhang);
         // break;
 
-        // grid.Components.Clear();
-        // grid.Components.Add(new OpaqueGridComponent());
-        //
-        // var anim = new Actor("Animation");
-        // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/MarkerDeer_Tin/CMF/Emote_MarkerDeer_Tin_CMF_FrontEnd_M.Emote_MarkerDeer_Tin_CMF_FrontEnd_M")));
-        // // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Resilient/Emote_Resilient_CMM_M.Emote_Resilient_CMM_M")));
-        // // anim.Components.Add(new SkeletalMeshComponent(provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Incantation/CMM/Emote_Incantation_CMM_M.Emote_Incantation_CMM_M")));
-        // scene.Children.Add(anim);
-        // break;
+        grid.Components.Clear();
+        grid.Components.Add(new OpaqueGridComponent());
+
+        var actor = new Actor("Jonesy");
+        var body = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Meshes/SK_M_Med_Soldier_04.SK_M_Med_Soldier_04"));
+        var head = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Medium/Heads/M_MED_CAU_Jonesy_Head_01/Meshes/M_MED_CAU_Jonesy_Head_01.M_MED_CAU_Jonesy_Head_01"));
+        // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Cowbell/Cowbell_CMM_Loop_M.Cowbell_CMM_Loop_M"); // TODO: spawns the same stuff for each SetAnimation
+        var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/AirHorn/Emote_AirHorn_M.Emote_AirHorn_M");
+        // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Boogie_Down/Emote_Boogie_Down_CMM.Emote_Boogie_Down_CMM"); // TODO: sequence looping via SectionName/NextSectionName
+        body.SetAnimation(animToPlay);
+        head.SetAnimation(animToPlay);
+
+        actor.Components.Add(body);
+        actor.Components.Add(head);
+        scene.Children.Add(actor);
+        break;
 
         grid.Components.Clear();
         grid.Components.Add(new OpaqueGridComponent());
@@ -480,12 +488,12 @@ switch (provider.ProjectName)
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04.BP_GC_Prop_LK_Seat_Sgl_1Way_Chair_04x04_04_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_LK_Heat_Fireplace_M_06x06_01.BP_GC_LK_Heat_Fireplace_M_06x06_01_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>($"{Dir}BP_GC_LK_Bed_Sgl_08x04_01.BP_GC_LK_Bed_Sgl_08x04_01_C")));
-        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoGame/Content/GuidedBuilding/BP_PP_HouseLg_05.BP_PP_HouseLg_05_C")));
+        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoGame/Content/GuidedBuilding/BP_PP_HouseLg_05.BP_PP_HouseLg_05_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoGame/Content/GuidedBuilding/BP_PP_HouseLg_04.BP_PP_HouseLg_04_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoGame/Content/GuidedBuilding/BP_CR_Guided_Castle_Lrg_04.BP_CR_Guided_Castle_Lrg_04_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTM_RavenCastle/Content/GuidedBuildingDisplayActor/BP_DisplayActor_RC_Factory_01.BP_DisplayActor_RC_Factory_01_C")));
         // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoTM_TabascoOniClanOutpost_Bldg/Content/GuidedBuildingDisplayActor/BP_DisplayActor_TOOT_Outpost_01.BP_DisplayActor_TOOT_Outpost_01_C")));
-        scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoThemeMinimal_NewsPaperBuilding/Content/GuidedBuildingDisplayActor/BP_DisplayActor_NPB_Bugle_01.BP_DisplayActor_NPB_Bugle_01_C")));
+        // scene.Children.Add(new BlueprintActor(provider.LoadPackageObject<UBlueprintGeneratedClass>("FortniteGame/Plugins/GameFeatures/Juno/JunoThemeMinimal_NewsPaperBuilding/Content/GuidedBuildingDisplayActor/BP_DisplayActor_NPB_Bugle_01.BP_DisplayActor_NPB_Bugle_01_C")));
 
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("FortniteGame/Plugins/GameFeatures/Juno/POIs/JunoPOI_RavenCastle/Content/POIs/RC_2x2/Juno_RC_2x2_Ruin_15.Juno_RC_2x2_Ruin_15")));
         break;

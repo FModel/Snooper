@@ -95,6 +95,7 @@ public abstract class ImGuiManager : SceneManager
         io.FontGlobalScale = scale;
 
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+        io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
         io.ConfigDockingAlwaysTabBar = true;
         io.ConfigDockingWithShift = true;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
@@ -236,7 +237,7 @@ public abstract class ImGuiManager : SceneManager
                 {
                     var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
                     MainViewport.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
-                    Notifications.Push("camera.speed", Settings.SpeedIcon, $"Camera Speed  {MainViewport.Camera.MovementSpeed:0.#}");
+                    Notifications.Push("camera.speed", Settings.SpeedIcon, $"Camera Speed {MainViewport.Camera.MovementSpeed:0.#}");
                 }
 
                 MainViewport?.Camera.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Numerics;
 using CUE4Parse.Utils;
 
@@ -46,6 +46,7 @@ public static class Settings
     public const string TextureIcon = "\uf03e";
     public const string CopyIcon = "\uf0c5";
     public const string SpeedIcon = "\uf3fd";
+    public const string FovIcon = "\uf065";
 
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";

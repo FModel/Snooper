@@ -123,8 +123,14 @@ public class InteractiveCameraComponent : CameraComponent
 
         MarkDirty(DirtyFlags.Transform);
 
-        if (keyboard.IsKeyDown(Keys.X)) FieldOfView = Math.Clamp(FieldOfView + 0.5f, FieldOfViewMin, FieldOfViewMax);
-        if (keyboard.IsKeyDown(Keys.C)) FieldOfView = Math.Clamp(FieldOfView - 0.5f, FieldOfViewMin, FieldOfViewMax);
+        var fov = FieldOfView;
+        if (keyboard.IsKeyDown(Keys.X)) fov += 0.5f;
+        if (keyboard.IsKeyDown(Keys.C)) fov -= 0.5f;
+        if (!fov.Equals(FieldOfView))
+        {
+            FieldOfView = Math.Clamp(fov, FieldOfViewMin, FieldOfViewMax);
+            Notifications.Push("camera.fov", Settings.FovIcon, $"Field of View {FieldOfView:0}");
+        }
     }
 
     public void Update(float deltaX, float deltaY)

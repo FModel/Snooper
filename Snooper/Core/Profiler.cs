@@ -16,12 +16,18 @@ public class ProfilerMetricData
 
     public void AddTimeSample(float ms)
     {
+        var max = ms;
+        var sum = ms;
         for (var i = TimeElapsedMs.Length - 1; i > 0; i--)
-            TimeElapsedMs[i] = TimeElapsedMs[i - 1];
+        {
+            var shifted = TimeElapsedMs[i] = TimeElapsedMs[i - 1];
+            if (shifted > max) max = shifted;
+            sum += shifted;
+        }
 
         TimeElapsedMs[0] = ms;
-        MaxTimeElapsedMs = TimeElapsedMs.Max();
-        AverageTimeElapsedMs = TimeElapsedMs.Average();
+        MaxTimeElapsedMs = max;
+        AverageTimeElapsedMs = sum / TimeElapsedMs.Length;
 
         if (ms > AllTimeMaxTimeElapsedMs)
             AllTimeMaxTimeElapsedMs = ms;

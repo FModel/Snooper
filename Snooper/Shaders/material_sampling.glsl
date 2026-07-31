@@ -90,9 +90,8 @@ vec3 SampleLayerSpecular(PerMaterialData materialData, uint layer, vec2 uv)
         return spec;
     }
 
-    // Default specular values if no texture
     vec2 roughness = GetLayerRoughness(materialData, layer);
-    return vec3(0.5, 0.5, roughness.y);
+    return vec3(0.0, 0.0, roughness.y);
 }
 
 // Sample all material properties for a layer

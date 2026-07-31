@@ -36,7 +36,7 @@ Surface ResolveSurface(PerDrawData draw, PerMaterialData material)
 {
     Surface surface;
     surface.Color = fs_in.vFragColor;
-    surface.Specular = vec3(1.0);
+    surface.Specular = vec3(0.0, 0.0, 0.6);
     surface.Opacity = 1.0;
     surface.Discard = false;
 

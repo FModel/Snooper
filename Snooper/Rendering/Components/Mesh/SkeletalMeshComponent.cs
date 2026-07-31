@@ -131,6 +131,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     {
         Animation = animToPlay != null ? new AnimationDescriptor(animToPlay, startTime, playRate) : null;
 
+        // TODO: do not spawn notifies if it's already part of this actor and it's not attached to anyone
         ClearNotifyComponents();
         BuildNotifyComponents();
 
