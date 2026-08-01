@@ -8,7 +8,12 @@ namespace Editor.Widgets.Timeline;
 internal enum TimelineRowKind
 {
     Component,
-    Sequence,
+
+    /// <summary>
+    /// One slot of an animation with every segment laid on it. Segments on a slot never overlap, so a
+    /// slot carrying a dozen of them still costs one line.
+    /// </summary>
+    Slot,
 
     /// <summary>Every notify of an animation on one line, and the parent of its per-track rows.</summary>
     NotifyGroup,
@@ -48,9 +53,8 @@ internal sealed class TimelineRow
 
     public AnimationDescriptor? Animation => Skeletal?.Animation;
 
-    public SequenceDescriptor? Sequence => Kind == TimelineRowKind.Sequence && Animation is { } animation && Index < animation.Sequences.Length
-        ? animation.Sequences[Index]
-        : null;
+    /// <summary>What a slot row draws, gathered with the row rather than filtered by name every frame.</summary>
+    public SequenceDescriptor[] Segments = [];
 
     /// <summary>A prop the performance moves rather than a component performing it.</summary>
     public bool Driven => Component is SpatialComponent { Relation: SkeletalMeshComponent };
@@ -60,7 +64,7 @@ internal sealed class TimelineRow
     /// <summary>Only an animated component carries a toggle, and only those carry no detail.</summary>
     public bool HasToggle => Kind == TimelineRowKind.Component && Animation != null;
 
-    public bool Selectable => Kind is TimelineRowKind.Component or TimelineRowKind.Sequence;
+    public bool Selectable => Kind is TimelineRowKind.Component or TimelineRowKind.Slot;
 
     /// <summary>A curve row reads out what it is worth right now, which no other row has to.</summary>
     public bool HasReadout => Kind == TimelineRowKind.Curve;

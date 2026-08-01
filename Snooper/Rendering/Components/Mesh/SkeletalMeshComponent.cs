@@ -38,7 +38,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
             else
             {
                 IsPlayingAnimation = true;
-                AnimationTime = field.StartTime;
+                AnimationTime = field.PlayPosition;
             }
         }
     }
@@ -67,12 +67,14 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
                 ? (value % duration + duration) % duration // the second modulo brings a rewind past zero back into range
                 : Math.Clamp(value, 0f, duration);
 
-            // going backwards is a fresh play, so everything this animation drives starts over with it
+            // going backwards is a loop or a seek, and either way what this animation drives is meant to
+            // be read against it: they are authored on the same timeline, so they land where it lands
+            // rather than at the top of their own
             if (value < field)
             {
                 foreach (var component in Children.OfType<SkeletalMeshComponent>())
                 {
-                    component.AnimationTime = component.Animation?.StartTime ?? 0f;
+                    component.AnimationTime = value;
                 }
             }
 
@@ -85,7 +87,10 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     {
         if (!IsPlayingAnimation) return;
 
-        AnimationTime += delta * (Animation?.PlayRate ?? 1f);
+        // the animation gets to say where its own time carries on, which is how a montage holds on the
+        // section it loops instead of running back to the top of the timeline
+        var time = AnimationTime + delta * (Animation?.PlayRate ?? 1f);
+        AnimationTime = Animation?.Follow(AnimationTime, time) ?? time;
     }
 
     private SkeletalMeshComponent(SkeletalMeshComponent other) : base(other)
@@ -101,14 +106,14 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 
     }
 
-    public SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform, UAnimationAsset? animToPlay, float startTime = 0f) : this(skeletalMesh, transform)
+    public SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform, UAnimationAsset? animToPlay, float playPosition = 0f) : this(skeletalMesh, transform)
     {
-        SetAnimation(animToPlay, startTime);
+        SetAnimation(animToPlay, playPosition);
     }
 
-    public SkeletalMeshComponent(UAnimationAsset animToPlay, float startTime = 0f, float playRate = 1f) : this(animToPlay.Skeleton.Load<USkeleton>() ?? throw new InvalidOperationException($"Animation {animToPlay.Name} has no skeleton"))
+    public SkeletalMeshComponent(UAnimationAsset animToPlay, float playPosition = 0f, float playRate = 1f) : this(animToPlay.Skeleton.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {animToPlay.Name}"))
     {
-        SetAnimation(animToPlay, startTime, playRate);
+        SetAnimation(animToPlay, playPosition, playRate);
     }
 
     public SkeletalMeshComponent(USkeleton skeleton, Transform? transform = null) : base(skeleton, transform)
@@ -127,9 +132,9 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     private readonly List<(SpatialComponent Component, string? Socket)> _pendingNotifies = [];
     private readonly List<ActorComponent> _notifyComponents = [];
 
-    public void SetAnimation(UAnimationAsset? animToPlay, float startTime = 0f, float playRate = 1f)
+    public void SetAnimation(UAnimationAsset? animToPlay, float playPosition = 0f, float playRate = 1f)
     {
-        Animation = animToPlay != null ? new AnimationDescriptor(animToPlay, startTime, playRate) : null;
+        Animation = animToPlay != null ? new AnimationDescriptor(animToPlay, playPosition, playRate) : null;
 
         // TODO: do not spawn notifies if it's already part of this actor and it's not attached to anyone
         ClearNotifyComponents();
@@ -277,10 +282,10 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
             EditorUI.Text("Duration", $"{Animation.Duration:0.00} seconds");
             ImGui.SameLine();
             ImGui.TextDisabled($"(in {Animation.Sequences.Length} sequence{(Animation.Sequences.Length != 1 ? "s" : "")})");
-            EditorUI.Property("Start Time");
-            if (ImGui.DragFloat("##StartTime", ref Animation.StartTime, Animation.Duration / 1000f, 0f, Animation.Duration, "%.2fs", ImGuiSliderFlags.AlwaysClamp))
+            EditorUI.Property("Play Position");
+            if (ImGui.DragFloat("##PlayPosition", ref Animation.PlayPosition, Animation.Duration / 1000f, 0f, Animation.Duration, "%.2fs", ImGuiSliderFlags.AlwaysClamp))
             {
-                AnimationTime = Animation.StartTime; // the start time is where playback begins, so moving it seeks there
+                AnimationTime = Animation.PlayPosition; // the play position is where playback begins, so moving it seeks there
             }
             EditorUI.Property("Play Rate");
             ImGui.DragFloat("##PlayRate", ref Animation.PlayRate, 0.01f, 0.1f, 5f, "%.2fx", ImGuiSliderFlags.AlwaysClamp);

@@ -26,6 +26,17 @@ internal static class TimelineTrack
             {
                 drawList.AddRectFilled(new Vector2(layout.TimeToX(0f), top), new Vector2(layout.TimeToX(animation.Duration), bottom), ImGui.GetColorU32(TimelineStyle.Track));
 
+                // a montage's own structure, the slots below carrying what plays over it. The sections
+                // name themselves, so the animation is named in the gutter and on hover instead
+                if (animation.Sections.Length > 0)
+                {
+                    for (var i = 0; i < animation.Sections.Length; i++)
+                    {
+                        DrawSection(drawList, layout, animation.Sections[i], i, local, palette, top, bottom, origin.Y);
+                    }
+                    break;
+                }
+
                 for (var i = 0; i < animation.Sequences.Length; i++)
                 {
                     DrawSequenceBar(drawList, layout, animation.Sequences[i], local, i % 2 == 0 ? palette.Bar : palette.BarAlt, palette, top, bottom);
@@ -42,10 +53,14 @@ internal static class TimelineTrack
                 DrawBarLabel(drawList, layout, row, layout.TimeToX(0f), layout.TimeToX(layout.Duration), origin.Y, TimelineStyle.Dim);
                 break;
             }
-            case TimelineRowKind.Sequence when row.Sequence is { } sequence:
+            case TimelineRowKind.Slot when row.Animation is { } animation:
             {
-                DrawSequenceBar(drawList, layout, sequence, local, palette.Bar, palette, top, bottom);
-                DrawBarLabel(drawList, layout, row, layout.TimeToX(sequence.StartTime), layout.TimeToX(sequence.EndTime), origin.Y, TimelineStyle.Text);
+                drawList.AddRectFilled(new Vector2(layout.TimeToX(0f), top), new Vector2(layout.TimeToX(animation.Duration), bottom), ImGui.GetColorU32(TimelineStyle.Track));
+
+                for (var i = 0; i < row.Segments.Length; i++)
+                {
+                    DrawSegment(drawList, layout, row.Segments[i], i, local, palette, top, bottom, origin.Y);
+                }
                 break;
             }
             case TimelineRowKind.NotifyGroup or TimelineRowKind.Notifies when row.Animation is { } animation:
@@ -105,12 +120,68 @@ internal static class TimelineTrack
     /// </summary>
     private static void DrawSequenceBar(ImDrawListPtr drawList, TimelineLayout layout, SequenceDescriptor sequence, float local, Vector4 fill, TimelinePalette palette, float top, float bottom)
     {
-        var active = local >= sequence.StartTime && local < sequence.EndTime;
+        var active = sequence.IsActiveAt(local);
 
         drawList.AddRectFilled(
-            new Vector2(layout.TimeToX(sequence.StartTime) + (sequence.StartTime > 0f ? 1f : 0f), top),
-            new Vector2(layout.TimeToX(sequence.EndTime), bottom),
+            new Vector2(layout.TimeToX(sequence.StartPos) + (sequence.StartPos > 0f ? 1f : 0f), top),
+            new Vector2(layout.TimeToX(sequence.EndPos), bottom),
             ImGui.GetColorU32(active ? palette.Active : fill));
+    }
+
+    /// <summary>
+    /// One segment on its slot, named on its own box the way a clip is labelled in any editing
+    /// timeline. Cut to that box rather than elided: a slot draws several of them at widths that move
+    /// with the zoom, so the tooltip is what a box too narrow to name is read with.
+    /// </summary>
+    private static void DrawSegment(ImDrawListPtr drawList, TimelineLayout layout, SequenceDescriptor segment, int index, float local, TimelinePalette palette, float top, float bottom, float rowY)
+    {
+        var left = layout.TimeToX(segment.StartPos);
+        var right = layout.TimeToX(segment.EndPos);
+        var fill = segment.IsActiveAt(local) ? palette.Active : index % 2 == 0 ? palette.Bar : palette.BarAlt;
+
+        drawList.AddRectFilled(new Vector2(left + (segment.StartPos > 0f ? 1f : 0f), top), new Vector2(right, bottom), ImGui.GetColorU32(fill));
+
+        drawList.PushClipRect(new Vector2(left, rowY), new Vector2(right, rowY + layout.RowHeight), true);
+        drawList.AddText(new Vector2(left + 5f, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Text), segment.Name);
+
+        // a segment set to replay its sequence says so on its own box, now that it has no row of its own
+        if (segment.LoopCount > 1)
+        {
+            var text = $"{Settings.LoopIcon} {segment.LoopCount}";
+            var width = ImGui.CalcTextSize(text).X;
+            drawList.AddText(new Vector2(right - width - 5f, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Rate), text);
+        }
+
+        drawList.PopClipRect();
+    }
+
+    /// <summary>
+    /// One montage section, filled like a sequence bar because it is read for the same thing: which of
+    /// them the clock is inside. Sections meet end to end, so the row reads as a strip cut into parts
+    /// rather than as bars laid on a track. A section naming itself carries the loop glyph, that being
+    /// the whole of what holds an animation on it.
+    /// </summary>
+    private static void DrawSection(ImDrawListPtr drawList, TimelineLayout layout, AnimationSectionDescriptor section, int index, float local, TimelinePalette palette, float top, float bottom, float rowY)
+    {
+        var left = layout.TimeToX(section.StartTime);
+        var right = layout.TimeToX(section.EndTime);
+        var fill = section.IsActiveAt(local) ? palette.Active : index % 2 == 0 ? palette.Bar : palette.BarAlt;
+
+        // the hairline off the near side, the way a sequence bar takes it, so the strip still closes
+        drawList.AddRectFilled(new Vector2(left + (section.StartTime > 0f ? 1f : 0f), top), new Vector2(right, bottom), ImGui.GetColorU32(fill));
+
+        // cut to its own part rather than elided: a section too narrow to name is read off the tooltip,
+        // and eliding every one of them would measure text on every frame
+        drawList.PushClipRect(new Vector2(left, rowY), new Vector2(right, rowY + layout.RowHeight), true);
+        drawList.AddText(new Vector2(left + 5f, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Text), section.Name);
+
+        if (section.NextIndex == index)
+        {
+            var glyph = ImGui.CalcTextSize(Settings.LoopIcon).X;
+            drawList.AddText(new Vector2(right - glyph - 5f, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Rate), Settings.LoopIcon);
+        }
+
+        drawList.PopClipRect();
     }
 
     /// <summary>

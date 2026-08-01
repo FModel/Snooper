@@ -416,8 +416,8 @@ public class TimelineWidget
     }
 
     /// <summary>
-    /// Names the sequence under the cursor, or reads out the curve there, since a plot normalised to
-    /// its own range carries no scale of its own. Notifies get no tooltip: each one already carries
+    /// Names the section or the segment under the cursor, or reads out the curve there, since a plot
+    /// normalised to its own range carries no scale of its own. Notifies get no tooltip: each one carries
     /// its name in the gutter, and the long notify states span the whole montage, so hit testing them
     /// only ever reported whichever happened to come first.
     /// </summary>
@@ -433,13 +433,36 @@ public class TimelineWidget
             return;
         }
 
-        if (row.Kind is TimelineRowKind.NotifyGroup or TimelineRowKind.Notifies or TimelineRowKind.CurveGroup) return;
-
-        foreach (var sequence in animation.Sequences)
+        // the component row carries the montage's sections, drawn cut to their own part rather than
+        // elided, so the name one of them could not fit and where it hands over next are read here
+        if (row.Kind == TimelineRowKind.Component)
         {
-            if (time < sequence.StartTime || time >= sequence.EndTime) continue;
+            for (var i = 0; i < animation.Sections.Length; i++)
+            {
+                var section = animation.Sections[i];
+                if (!section.IsActiveAt(time)) continue;
 
-            ImGui.SetTooltip($"{sequence.Name}\n{sequence.StartTime:0.00}s -> {sequence.EndTime:0.00}s  {sequence.FrameCount} frames @ {sequence.FrameRate:0.#} fps");
+                var next = section.NextIndex < 0 ? "ends"
+                    : section.NextIndex == i ? $"{Settings.LoopIcon} {Settings.InfinityIcon}"
+                    : animation.Sections[section.NextIndex].Name;
+
+                ImGui.SetTooltip($"{animation.Name}\n{section.Name}  {section.StartTime:0.00}s -> {section.EndTime:0.00}s  ({section.Duration:0.00}s)\nthen {next}");
+                return;
+            }
+
+            // sectionless, so the row is showing the animation itself rather than any part of it
+            ImGui.SetTooltip($"{animation.Name}\n{animation.Duration:0.00}s");
+            return;
+        }
+
+        if (row.Kind != TimelineRowKind.Slot) return;
+
+        foreach (var segment in row.Segments)
+        {
+            if (!segment.IsActiveAt(time)) continue;
+
+            var loop = segment.LoopCount > 1 ? $"  {Settings.LoopIcon} {segment.LoopCount}" : string.Empty;
+            ImGui.SetTooltip($"{segment.Name}\n{segment.StartPos:0.00}s -> {segment.EndPos:0.00}s{loop}\n{segment.FrameCount} frames @ {segment.FrameRate:0.#} fps");
             return;
         }
     }

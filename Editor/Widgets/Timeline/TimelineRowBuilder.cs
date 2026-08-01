@@ -16,6 +16,7 @@ internal sealed class TimelineRowBuilder
     private readonly List<TimelineRow> _rows = [];
     private readonly List<SkeletalMeshComponent> _clocks = [];
     private readonly List<string> _curveNames = [];
+    private readonly List<string> _slotNames = [];
     private readonly List<int> _notifyTracks = [];
 
     // the groups open independently of the component they hang off and of each other, so each needs
@@ -140,21 +141,7 @@ internal sealed class TimelineRowBuilder
 
         if (animation != null)
         {
-            for (var i = 0; i < animation.Sequences.Length; i++)
-            {
-                var sequence = animation.Sequences[i];
-                _rows.Add(new TimelineRow
-                {
-                    Kind = TimelineRowKind.Sequence,
-                    Depth = depth + 1,
-                    Component = component,
-                    Label = sequence.SlotName,
-                    Detail = $"{sequence.Duration:0.00}s",
-                    BarLabel = sequence.Name,
-                    Index = i
-                });
-            }
-
+            AddSlots(component, animation, depth + 1);
             AddNotifies(component, animation, depth + 1);
             AddCurves(component, animation, depth + 1);
         }
@@ -162,6 +149,42 @@ internal sealed class TimelineRowBuilder
         foreach (var child in children)
         {
             AddComponent(child, depth + 1);
+        }
+    }
+
+    /// <summary>
+    /// The slots an animation plays on, one row each, which is how Persona lays a montage out. Segments
+    /// on a slot are laid end to end and never overlap, so however many of them a slot carries they all
+    /// fit the one line. A montage almost always plays on a single slot.
+    /// </summary>
+    private void AddSlots(ActorComponent component, AnimationDescriptor animation, int depth)
+    {
+        if (animation.Sequences.Length == 0) return;
+
+        _slotNames.Clear();
+        foreach (var sequence in animation.Sequences)
+        {
+            if (!_slotNames.Contains(sequence.SlotName)) _slotNames.Add(sequence.SlotName);
+        }
+
+        foreach (var slot in _slotNames)
+        {
+            var segments = new List<SequenceDescriptor>();
+            foreach (var sequence in animation.Sequences)
+            {
+                if (sequence.SlotName == slot) segments.Add(sequence);
+            }
+
+            _rows.Add(new TimelineRow
+            {
+                Kind = TimelineRowKind.Slot,
+                Depth = depth,
+                Component = component,
+                Label = slot,
+                // one segment can say how long it holds the slot, several can only say how many
+                Detail = segments.Count > 1 ? $"{segments.Count}" : $"{segments[0].Duration:0.00}s",
+                Segments = segments.ToArray()
+            });
         }
     }
 

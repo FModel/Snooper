@@ -85,7 +85,7 @@ public readonly struct DrawAllocation(BufferAllocation command, BufferAllocation
     public readonly BufferAllocation Data = data;
 }
 
-public readonly struct PerDrawData(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, DrawElementsIndirectCommand command, bool castShadow)
+public readonly struct PerDrawData(GeometryHandle geometry, uint sectionId, uint baseMaterial, LodSectionDescriptor section, uint pickingId, DrawElementsIndirectCommand command, bool castShadow)
 {
     public readonly uint MeshIndex = geometry.MeshIndex; // index into the per-mesh buffers (PerMeshData, PrimitiveOffsets)
     public readonly uint SectionId = sectionId; // section index in the current model (0-X)

@@ -19,11 +19,6 @@ public sealed class NotifyDescriptor
         Name = notify.NotifyName?.Text ?? Notify?.Name ?? "Notify";
         Duration = notify.Duration;
         TrackIndex = notify.TrackIndex;
-        TriggerTime = notify.LinkMethod switch
-        {
-            EAnimLinkMethod.Relative => notify.SegmentBeginTime + notify.LinkValue,
-            EAnimLinkMethod.Proportional => notify.SegmentBeginTime + notify.LinkValue * notify.SegmentLength,
-            _ => notify.LinkValue
-        } + notify.TriggerTimeOffset;
+        TriggerTime = notify.GetTime() + notify.TriggerTimeOffset;
     }
 }

@@ -471,8 +471,8 @@ switch (provider.ProjectName)
         var body = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Meshes/SK_M_Med_Soldier_04.SK_M_Med_Soldier_04"));
         var head = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Medium/Heads/M_MED_CAU_Jonesy_Head_01/Meshes/M_MED_CAU_Jonesy_Head_01.M_MED_CAU_Jonesy_Head_01"));
         // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Cowbell/Cowbell_CMM_Loop_M.Cowbell_CMM_Loop_M"); // TODO: spawns the same stuff for each SetAnimation
-        var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/AirHorn/Emote_AirHorn_M.Emote_AirHorn_M");
-        // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Boogie_Down/Emote_Boogie_Down_CMM.Emote_Boogie_Down_CMM"); // TODO: sequence looping via SectionName/NextSectionName
+        // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/AirHorn/Emote_AirHorn_M.Emote_AirHorn_M");
+        var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Boogie_Down/Emote_Boogie_Down_CMM.Emote_Boogie_Down_CMM");
         body.SetAnimation(animToPlay);
         head.SetAnimation(animToPlay);
 

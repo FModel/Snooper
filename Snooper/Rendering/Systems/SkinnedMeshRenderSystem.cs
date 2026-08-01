@@ -193,21 +193,12 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
         {
             // for each vertex bone, find its skeleton bone
-            if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex))
+            if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex) ||
+                !animation.TryGetSequence(skeletonIndex, time, out var sequence))
                 continue;
 
-            foreach (var sequence in animation.Sequences)
-            {
-                if (!sequence.IsAnimatingBone(skeletonIndex)) continue;
-
-                // if this sequence should be played for this frame
-                if (time >= sequence.StartTime && time < sequence.EndTime)
-                {
-                    var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
-                    skeleton.BoneLocalMatrices[boneIndex] = sequence.GetBoneMatrix(skeletonIndex, time, scale);
-                    break;
-                }
-            }
+            var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
+            skeleton.BoneLocalMatrices[boneIndex] = sequence.GetBoneMatrix(skeletonIndex, time, scale);
         }
         skeleton.RecalculateBoneMatrices();
 

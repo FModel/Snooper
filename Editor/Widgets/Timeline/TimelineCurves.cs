@@ -49,7 +49,7 @@ internal static class TimelineCurves
     {
         foreach (var sequence in animation.Sequences)
         {
-            if (time < sequence.StartTime || time >= sequence.EndTime) continue;
+            if (!sequence.IsActiveAt(time)) continue;
             if (sequence.Curves is not { } curves || !curves.TryGetValue(name, out var curve)) return null;
 
             return curve.Eval(sequence.ToLocalTime(time));
@@ -169,25 +169,23 @@ internal static class TimelineCurves
         var keys = curve.Keys;
         if (keys.Length == 0) return;
 
-        var left = layout.TimeToX(sequence.StartTime);
-        var right = layout.TimeToX(sequence.EndTime);
+        var left = layout.TimeToX(sequence.StartPos);
+        var right = layout.TimeToX(sequence.EndPos);
         if (right - left < 2f) return;
 
         // the plot spans the whole bar: a curve holds its end values either side of its own keys
-        var last = left;
+        var last = float.NegativeInfinity;
         Sample(left);
 
         for (var i = 0; i < keys.Length; i++)
         {
             var x = KeyX(keys[i].Time);
 
-            // a key landing on the pixel the last one drew has nothing left to say about the shape.
-            // Only the keys are measured this way, so what a segment draws between them cannot make
-            // the one closing it look crowded and drop it
-            if (x - last < Step) continue;
-
-            last = x;
-            Sample(x);
+            // a key landing on the pixel the last one drew has nothing left to say about where the
+            // shape turns, but the stretch after it still says how it gets there. A curve of two keys
+            // has both of them land on an end of the span and skip this, and taking its shape away with
+            // them drew the whole span as one straight chord under a curve that bows off it
+            if (x - last >= Step) Sample(x);
 
             if (i + 1 >= keys.Length) continue;
 
@@ -218,7 +216,13 @@ internal static class TimelineCurves
 
         float KeyX(float local) => Math.Clamp(layout.TimeToX(sequence.FromLocalTime(local)), left, right);
 
-        void Sample(float x) => drawList.PathLineTo(new Vector2(x, Y(curve.Eval(sequence.ToLocalTime(layout.XToTime(x))), min, max, top, bottom)));
+        void Sample(float x)
+        {
+            if (x <= last) return;
+
+            last = x;
+            drawList.PathLineTo(new Vector2(x, Y(curve.Eval(sequence.ToLocalTime(layout.XToTime(x))), min, max, top, bottom)));
+        }
     }
 
     /// <summary>

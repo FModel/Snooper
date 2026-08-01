@@ -1,5 +1,7 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using CUE4Parse_Conversion.Animations;
+using CUE4Parse_Conversion.Writers.ActorX.Structs.Animations;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using ImGuiNET;
 using Snooper.UI;
@@ -13,11 +15,12 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
 
     public readonly SkeletonDescriptor Skeleton;
     public readonly SequenceDescriptor[] Sequences;
+    public readonly AnimationSectionDescriptor[] Sections;
     public readonly NotifyDescriptor[] Notifies;
     public readonly float Duration;
 
-    public float StartTime;
-    public float PlayRate;
+    public float PlayPosition; // where the playhead is put when the animation is set or rewound
+    public float PlayRate; // how fast the playhead crosses the timeline, which never changes its Duration
 
     private AnimationDescriptor(AnimationDescriptor other)
     {
@@ -26,33 +29,81 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
 
         Skeleton = other.Skeleton;
         Sequences = other.Sequences;
+        Sections = other.Sections;
         Notifies = other.Notifies;
         Duration = other.Duration;
 
-        StartTime = other.StartTime;
+        PlayPosition = other.PlayPosition;
         PlayRate = other.PlayRate;
     }
 
-    public AnimationDescriptor(UAnimationAsset owner, float startTime = 0f, float playRate = 1f)
+    public AnimationDescriptor(UAnimationAsset owner, float playPosition = 0f, float playRate = 1f)
     {
         Name = owner.Name;
         Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName()) ?? "N/A";
 
-        var animation = owner.ConvertAnims();
+        var skeleton = owner.Skeleton.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
+        Skeleton = new SkeletonDescriptor(skeleton.ReferenceSkeleton);
+        Skeleton.SetOwner(skeleton);
 
-        Skeleton = new SkeletonDescriptor(animation.Skeleton.ReferenceSkeleton);
-        Skeleton.SetOwner(animation.Skeleton);
-
-        Sequences = new SequenceDescriptor[animation.Sequences.Count];
-        for (var i = 0; i < Sequences.Length; i++)
+        var cache = new Dictionary<UAnimSequence, CAnimSequence>(ReferenceEqualityComparer.Instance);
+        var sequences = new List<SequenceDescriptor>();
+        var duration = 0f;
+        switch (owner)
         {
-            var sequence = animation.Sequences[i];
-            sequence.RetargetTracks(animation.Skeleton);
-            Sequences[i] = new SequenceDescriptor(sequence);
+            case UAnimMontage montage:
+            {
+                foreach (var slot in montage.SlotAnimTracks)
+                {
+                    AddTrack(slot.AnimTrack, slot.SlotName.Text);
+                }
+
+                var sections = montage.CompositeSections;
+
+                var starts = new float[sections.Length];
+                for (var i = 0; i < starts.Length; i++)
+                {
+                    starts[i] = sections[i].GetTime();
+                }
+
+                Sections = new AnimationSectionDescriptor[sections.Length];
+                for (var i = 0; i < Sections.Length; i++)
+                {
+                    var end = duration;
+                    foreach (var start in starts)
+                    {
+                        if (start > starts[i] && start < end) end = start;
+                    }
+
+                    var name = sections[i].NextSectionName;
+                    var next = name.IsNone ? -1 : Array.FindIndex(sections, section => section.SectionName == name);
+
+                    Sections[i] = new AnimationSectionDescriptor(sections[i].SectionName.Text, starts[i], end, next);
+                }
+
+                break;
+            }
+            case UAnimComposite composite:
+            {
+                AddTrack(composite.AnimationTrack, null);
+                Sections = [];
+                break;
+            }
+            case UAnimSequence sequence:
+            {
+                AddSequence(sequence);
+                Sections = [];
+                break;
+            }
+            default:
+            {
+                Sections = [];
+                break;
+            }
         }
 
-        if (Sequences.Length > 0)
-            Duration = Sequences[^1].EndTime;
+        Sequences = sequences.ToArray();
+        Duration = duration;
 
         if (owner is UAnimSequenceBase animSequence)
         {
@@ -64,8 +115,80 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
         }
         else Notifies = [];
 
-        StartTime = startTime;
+        PlayPosition = playPosition;
         PlayRate = playRate;
+
+        void AddTrack(FAnimTrack track, string? slotName)
+        {
+            foreach (var segment in track.AnimSegments)
+            {
+                if (!segment.AnimReference.TryLoad<UAnimSequence>(out var sequence))
+                    continue;
+
+                AddSequence(sequence, segment, slotName);
+            }
+        }
+
+        void AddSequence(UAnimSequence sequence, FAnimSegment? segment = null, string? slotName = null)
+        {
+            if (!TryConvert(sequence, out var clip)) return;
+
+            var descriptor = new SequenceDescriptor(clip, segment, slotName);
+            duration = MathF.Max(duration, descriptor.EndPos);
+            sequences.Add(descriptor);
+        }
+
+        bool TryConvert(UAnimSequence sequence, [MaybeNullWhen(false)] out CAnimSequence clip)
+        {
+            if (cache.TryGetValue(sequence, out clip)) return true;
+
+            clip = skeleton.ConvertAnims(sequence).Sequences.FirstOrDefault();
+            if (clip is null) return false;
+
+            clip.RetargetTracks(skeleton);
+            cache[sequence] = clip;
+            return true;
+        }
+    }
+
+    public float Follow(float from, float to)
+    {
+        if (to <= from) return to;
+
+        var index = SectionAt(from);
+        if (index < 0) return to;
+
+        var section = Sections[index];
+        if (to < section.EndTime || section.NextIndex < 0) return to;
+
+        var next = Sections[section.NextIndex];
+        var carried = next.StartTime + (to - section.EndTime);
+        return carried < next.EndTime ? carried : next.StartTime;
+
+        int SectionAt(float time)
+        {
+            for (var i = 0; i < Sections.Length; i++)
+            {
+                if (Sections[i].IsActiveAt(time)) return i;
+            }
+
+            return -1;
+        }
+    }
+
+    public bool TryGetSequence(uint skeletonIndex, float time, [MaybeNullWhen(false)] out SequenceDescriptor sequence)
+    {
+        sequence = null;
+        foreach (var s in Sequences)
+        {
+            if (s.IsActiveAt(time) && s.IsAnimatingBone(skeletonIndex))
+            {
+                sequence = s;
+                break;
+            }
+        }
+
+        return sequence != null;
     }
 
     public void DrawControls()
@@ -79,6 +202,12 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
         ImGui.Spacing();
         ImGui.SeparatorText($"Sequences ({Sequences.Length})");
         DrawSequenceTimeline();
+
+        if (Sections.Length == 0) return;
+
+        ImGui.Spacing();
+        ImGui.SeparatorText($"Sections ({Sections.Length})");
+        DrawSectionTable();
     }
 
     private void DrawHeader()
@@ -113,7 +242,7 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
         var dl = ImGui.GetWindowDrawList();
         var dimCol = ImGui.GetColorU32(ImGuiCol.TextDisabled);
 
-        var startFrac = Duration > 0f ? StartTime / Duration : 0f;
+        var startFrac = Duration > 0f ? PlayPosition / Duration : 0f;
         var markerX   = 0f;
         var barsTop   = 0f;
         var barsBot   = 0f;
@@ -136,8 +265,8 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
             var idxSz = ImGui.CalcTextSize(idx);
             dl.AddText(p with { X = p.X + labelW - idxSz.X }, dimCol, idx);
 
-            // colored span
-            var sf = Duration > 0f ? seq.StartTime / Duration : 0f;
+            // colored bar
+            var sf = Duration > 0f ? seq.StartPos / Duration : 0f;
             var wf = Duration > 0f ? seq.Duration / Duration : 1f;
             dl.AddRectFilled(
                 new Vector2(bx + sf * barW, p.Y + 1f),
@@ -157,14 +286,14 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
                 new Vector2(markerX + ts * 0.5f, barsTop),
                 new Vector2(markerX, barsTop + ts),
                 markerCol);
-            dl.AddText(new Vector2(markerX + ts, barsTop), markerCol, $"{StartTime:0.00}s");
+            dl.AddText(new Vector2(markerX + ts, barsTop), markerCol, $"{PlayPosition:0.00}s");
         }
 
         ImGui.Spacing();
         var rowH = ImGui.GetTextLineHeightWithSpacing();
         var tblH = Math.Min(Sequences.Length, 8) * rowH + ImGui.GetFrameHeightWithSpacing();
         var flags = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY;
-        if (ImGui.BeginTable("##SeqTimeline", 7, flags, new Vector2(0, tblH)))
+        if (ImGui.BeginTable("##SeqTimeline", 9, flags, new Vector2(0, tblH)))
         {
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, 24f);
@@ -172,7 +301,9 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
             ImGui.TableSetupColumn("Start", ImGuiTableColumnFlags.WidthFixed, 52f);
             ImGui.TableSetupColumn("End", ImGuiTableColumnFlags.WidthFixed, 52f);
             ImGui.TableSetupColumn("Duration", ImGuiTableColumnFlags.WidthFixed, 58f);
+            ImGui.TableSetupColumn("Source", ImGuiTableColumnFlags.WidthFixed, 118f);
             ImGui.TableSetupColumn("Frames", ImGuiTableColumnFlags.WidthFixed, 48f);
+            ImGui.TableSetupColumn("Keys", ImGuiTableColumnFlags.WidthFixed, 40f);
             ImGui.TableSetupColumn("FPS", ImGuiTableColumnFlags.WidthFixed, 44f);
             ImGui.TableHeadersRow();
 
@@ -181,11 +312,56 @@ public sealed class AnimationDescriptor : IControllable, ICloneable
                 var seq = Sequences[i]; ImGui.TableNextRow();
                 ImGui.TableNextColumn(); ImGui.TextUnformatted($"{i}");
                 ImGui.TableNextColumn(); ImGui.TextUnformatted(seq.Name);
-                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{seq.StartTime:F2}s");
-                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{seq.EndTime:F2}s");
+                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{seq.StartPos:F2}s");
+                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{seq.EndPos:F2}s");
                 ImGui.TableNextColumn(); ImGui.TextUnformatted($"{seq.Duration:F2}s");
+
+                ImGui.TableNextColumn();
+                var source = $"{seq.SourceStart:F2}-{seq.SourceEnd:F2} of {seq.SourceLength:F2}s";
+                if (seq.IsClipped) ImGui.TextColored(Settings.OrangeColor, source);
+                else ImGui.TextUnformatted(source);
+
                 ImGui.TableNextColumn(); ImGui.TextUnformatted($"{seq.FrameCount}");
+
+                ImGui.TableNextColumn();
+                if (seq.KeyCount != seq.FrameCount) ImGui.TextColored(Settings.OrangeColor, $"{seq.KeyCount}");
+                else ImGui.TextUnformatted($"{seq.KeyCount}");
+
                 ImGui.TableNextColumn(); ImGui.TextUnformatted($"{seq.FrameRate:F1}");
+            }
+            ImGui.EndTable();
+        }
+    }
+
+    private void DrawSectionTable()
+    {
+        var rowH = ImGui.GetTextLineHeightWithSpacing();
+        var tblH = Math.Min(Sections.Length, 8) * rowH + ImGui.GetFrameHeightWithSpacing();
+        var flags = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.NoSavedSettings | ImGuiTableFlags.ScrollY;
+        if (ImGui.BeginTable("##SecTimeline", 6, flags, new Vector2(0, tblH)))
+        {
+            ImGui.TableSetupScrollFreeze(0, 1);
+            ImGui.TableSetupColumn("#", ImGuiTableColumnFlags.WidthFixed, 24f);
+            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Start", ImGuiTableColumnFlags.WidthFixed, 52f);
+            ImGui.TableSetupColumn("End", ImGuiTableColumnFlags.WidthFixed, 52f);
+            ImGui.TableSetupColumn("Duration", ImGuiTableColumnFlags.WidthFixed, 58f);
+            ImGui.TableSetupColumn("Next", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableHeadersRow();
+
+            for (var i = 0; i < Sections.Length; i++)
+            {
+                var section = Sections[i]; ImGui.TableNextRow();
+                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{i}");
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(section.Name);
+                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{section.StartTime:F2}s");
+                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{section.EndTime:F2}s");
+                ImGui.TableNextColumn(); ImGui.TextUnformatted($"{section.Duration:F2}s");
+
+                ImGui.TableNextColumn();
+                if (section.NextIndex < 0) ImGui.TextDisabled("End");
+                else if (section.NextIndex == i) ImGui.TextUnformatted($"{Settings.LoopIcon} {section.Name}");
+                else ImGui.TextUnformatted(Sections[section.NextIndex].Name);
             }
             ImGui.EndTable();
         }

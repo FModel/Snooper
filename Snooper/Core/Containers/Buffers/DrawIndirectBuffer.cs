@@ -15,7 +15,7 @@ public sealed class DrawIndirectBuffer(BufferUsageHint usageHint = BufferUsageHi
     }
 }
 
-public readonly struct DrawElementsIndirectCommand(SectionDescriptor section, uint instanceCount, GeometryHandle geometry, uint baseInstance)
+public readonly struct DrawElementsIndirectCommand(LodSectionDescriptor section, uint instanceCount, GeometryHandle geometry, uint baseInstance)
 {
     public readonly uint IndexCount = section.IndexCount;
     public readonly uint InstanceCount = instanceCount;

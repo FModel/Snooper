@@ -132,7 +132,7 @@ public static class TextureCache
 
     private static void OnTextureReady(FGuid guid, Texture texture)
     {
-        Log.Debug("Texture {Guid} is ready for bindless usage.", guid);
+        Log.Verbose("Texture {Guid} is ready for bindless usage.", guid);
 
         _textures.TryAdd(guid, texture);
 

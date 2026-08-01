@@ -16,7 +16,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
     public uint LayerCount { get; }
     public bool HasColoredVertices { get; }
     public bool HasSkinnedVertices { get; }
-    public SectionDescriptor[] Sections { get; }
+    public LodSectionDescriptor[] Sections { get; }
 
     private TPrimitiveData<TVertex>? _primitive;
     private readonly Func<TPrimitiveData<TVertex>>? _factory;
@@ -32,10 +32,10 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         LayerCount = 1;
         HasColoredVertices = _primitive?.Colors?.Length > 0;
         HasSkinnedVertices = _primitive?.BoneInfluences?.Length > 0 && _primitive?.BoneInfluenceCounts?.Length > 0;
-        Sections = [new SectionDescriptor(0, IndexCount, 0, castShadow)];
+        Sections = [new LodSectionDescriptor(0, IndexCount, 0, castShadow)];
     }
 
-    private LodDescriptor(uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>>? factory)
+    private LodDescriptor(uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, LodSectionDescriptor[] sections, Func<TPrimitiveData<TVertex>>? factory)
     {
         IndexCount = indexCount;
         VertexCount = vertexCount;
@@ -60,11 +60,11 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         var cVertices = (TMeshVertex[])vertices.Clone();
         var cIndices = (uint[])indices.Clone();
 
-        var cSections = new SectionDescriptor[sections.Length];
+        var cSections = new LodSectionDescriptor[sections.Length];
         for (var i = 0; i < cSections.Length; i++)
         {
             var section = sections[i];
-            cSections[i] = new SectionDescriptor(
+            cSections[i] = new LodSectionDescriptor(
                 (uint) section.FirstIndex, (uint) section.NumFaces * 3,
                 (uint) section.MaterialIndex, section.CastShadow,
                 lod.Owner.GetMaterial(section)?.SlotName);

@@ -47,6 +47,8 @@ public static class Settings
     public const string CopyIcon = "\uf0c5";
     public const string SpeedIcon = "\uf3fd";
     public const string FovIcon = "\uf065";
+    public const string LoopIcon = "\uf021";
+    public const string InfinityIcon = "\uf534";
 
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";
