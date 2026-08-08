@@ -1,7 +1,7 @@
 using System.Numerics;
 using CUE4Parse.UE4.Objects.Engine.Curves;
 using ImGuiNET;
-using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Descriptors.Animations;
 
 namespace Editor.Widgets.Timeline;
 
@@ -25,18 +25,18 @@ internal static class TimelineCurves
     internal readonly record struct Activity(float Time, float Weight);
 
     /// <summary>
-    /// The range a curve is keyed over, across every sequence that carries the name. Taken from the
+    /// The range a curve is keyed over, across every clip that carries the name. Taken from the
     /// keys rather than by sampling, which is what keeps a plot from swimming as the clock moves
     /// through it.
     /// </summary>
-    public static (float Min, float Max) Range(AnimationDescriptor animation, string name)
+    public static (float Min, float Max) Range(SequenceBaseDescriptor animation, string name)
     {
         var min = float.MaxValue;
         var max = float.MinValue;
 
-        foreach (var sequence in animation.Sequences)
+        foreach (var segment in animation.Segments)
         {
-            if (sequence.Curves is not { } curves || !curves.TryGetValue(name, out var curve)) continue;
+            if (segment.Sequence.Curves is not { } curves || !curves.TryGetValue(name, out var curve)) continue;
 
             Extend(curve, ref min, ref max);
         }
@@ -44,15 +44,15 @@ internal static class TimelineCurves
         return min <= max ? (min, max) : (0f, 1f);
     }
 
-    /// <summary>The curve's value on whichever sequence holds that point in time, if any does.</summary>
-    public static float? Value(AnimationDescriptor animation, string name, float time)
+    /// <summary>The curve's value on whichever segment holds that point in time, if any does.</summary>
+    public static float? Value(SequenceBaseDescriptor animation, string name, float time)
     {
-        foreach (var sequence in animation.Sequences)
+        foreach (var segment in animation.Segments)
         {
-            if (!sequence.IsActiveAt(time)) continue;
-            if (sequence.Curves is not { } curves || !curves.TryGetValue(name, out var curve)) return null;
+            if (!segment.IsActiveAt(time)) continue;
+            if (segment.Sequence.Curves is not { } curves || !curves.TryGetValue(name, out var curve)) return null;
 
-            return curve.Eval(sequence.ToLocalTime(time));
+            return curve.Eval(segment.ToLocalTime(time));
         }
 
         return null;
@@ -64,13 +64,13 @@ internal static class TimelineCurves
     /// it, so what is measured is how far the value moved. That is taken against the curve's own range
     /// so one keyed in centimetres cannot drown one keyed in the nought to one a blend weight lives in.
     /// </summary>
-    public static Activity[] CollectActivity(AnimationDescriptor animation)
+    public static Activity[] CollectActivity(SequenceBaseDescriptor animation)
     {
         var samples = new List<Activity>();
 
-        foreach (var sequence in animation.Sequences)
+        foreach (var segment in animation.Segments)
         {
-            if (sequence.Curves is not { } curves) continue;
+            if (segment.Sequence.Curves is not { } curves) continue;
 
             foreach (var curve in curves.Values)
             {
@@ -90,7 +90,7 @@ internal static class TimelineCurves
                     var moved = MathF.Abs(keys[i].Value - keys[i - 1].Value) / range;
                     if (moved <= 0.0001f) continue;
 
-                    samples.Add(new Activity(sequence.FromLocalTime(keys[i].Time), moved));
+                    samples.Add(new Activity(segment.FromLocalTime(keys[i].Time), moved));
                 }
             }
         }
@@ -140,15 +140,15 @@ internal static class TimelineCurves
     /// Every span of a curve on one row, and the value under the clock marked on it so the number in
     /// the gutter has a place on the plot.
     /// </summary>
-    public static void DrawPlot(ImDrawListPtr drawList, TimelineLayout layout, TimelineRow row, AnimationDescriptor animation, float local, float? value, float top, float bottom)
+    public static void DrawPlot(ImDrawListPtr drawList, TimelineLayout layout, TimelineRow row, SequenceBaseDescriptor animation, float local, float? value, float top, float bottom)
     {
         var color = ImGui.GetColorU32(TimelineStyle.Curve);
 
-        foreach (var sequence in animation.Sequences)
+        foreach (var segment in animation.Segments)
         {
-            if (sequence.Curves is not { } curves || !curves.TryGetValue(row.Label, out var curve)) continue;
+            if (segment.Sequence.Curves is not { } curves || !curves.TryGetValue(row.Label, out var curve)) continue;
 
-            Stroke(drawList, layout, sequence, curve, row.CurveMin, row.CurveMax, top, bottom, color);
+            Stroke(drawList, layout, segment, curve, row.CurveMin, row.CurveMax, top, bottom, color);
         }
 
         if (value is { } under)
@@ -158,19 +158,19 @@ internal static class TimelineCurves
     }
 
     /// <summary>
-    /// One curve over the span of the sequence that keys it, sampled off its keys rather than off the
+    /// One curve over the span of the segment that keys it, sampled off its keys rather than off the
     /// pixels: a key is where the shape actually turns, so a linear one is worth a single point and
     /// only a cubic segment needs anything drawn between two of them. What that costs is bounded by
     /// the row: a curve baked at frame rate keys far more often than the bar can show, and those keys
     /// are dropped as they are reached rather than counted up front.
     /// </summary>
-    private static void Stroke(ImDrawListPtr drawList, TimelineLayout layout, SequenceDescriptor sequence, FRichCurve curve, float min, float max, float top, float bottom, uint color)
+    private static void Stroke(ImDrawListPtr drawList, TimelineLayout layout, SegmentDescriptor segment, FRichCurve curve, float min, float max, float top, float bottom, uint color)
     {
         var keys = curve.Keys;
         if (keys.Length == 0) return;
 
-        var left = layout.TimeToX(sequence.StartPos);
-        var right = layout.TimeToX(sequence.EndPos);
+        var left = layout.TimeToX(segment.StartPos);
+        var right = layout.TimeToX(segment.EndPos);
         if (right - left < 2f) return;
 
         // the plot spans the whole bar: a curve holds its end values either side of its own keys
@@ -214,14 +214,14 @@ internal static class TimelineCurves
         drawList.PathStroke(color, ImDrawFlags.None, 1f);
         return;
 
-        float KeyX(float local) => Math.Clamp(layout.TimeToX(sequence.FromLocalTime(local)), left, right);
+        float KeyX(float local) => Math.Clamp(layout.TimeToX(segment.FromLocalTime(local)), left, right);
 
         void Sample(float x)
         {
             if (x <= last) return;
 
             last = x;
-            drawList.PathLineTo(new Vector2(x, Y(curve.Eval(sequence.ToLocalTime(layout.XToTime(x))), min, max, top, bottom)));
+            drawList.PathLineTo(new Vector2(x, Y(curve.Eval(segment.ToLocalTime(layout.XToTime(x))), min, max, top, bottom)));
         }
     }
 

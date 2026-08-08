@@ -8,6 +8,7 @@ using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Meshes;
 using ImGuiNET;
+using Snooper.Extensions;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Primitives;
 using Snooper.UI;
@@ -57,7 +58,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     private PrimitiveDescriptor(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
-        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
+        Path = owner.GetCleanPath();
         Guid = owner.LightingGuid;
 
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
@@ -82,7 +83,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     private PrimitiveDescriptor(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
-        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
+        Path = owner.GetCleanPath();
         Guid = new FGuid((uint)owner.Name.GetHashCode());
 
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
@@ -125,7 +126,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     private PrimitiveDescriptor(USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
-        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
+        Path = owner.GetCleanPath();
         Guid = owner.Guid;
 
         using var dto = new SkeletonDto(owner);
@@ -158,9 +159,19 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         };
     }
 
+    private ISocketDescriptor? FindSocket(string name) => Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+    public bool HasSocket(string name)
+    {
+        var socket = FindSocket(name);
+        if (socket != null) return true;
+
+        return Skeleton?.BoneNameToIndex.ContainsKey(name) == true;
+    }
+
     public Matrix4x4 GetSocketModelMatrix(string name)
     {
-        var socket = Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        var socket = FindSocket(name);
 
         var boneName = name;
         if (socket is SkeletalMeshSocketDescriptor sk)

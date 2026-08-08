@@ -35,7 +35,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         if (counts.Sections > 0) _sections.Allocate(counts.Sections);
     }
 
-    public BufferAllocation Add(LodSectionDescriptor[] sections)
+    public BufferAllocation Add(SectionDescriptor[] sections)
     {
         var offsets = new SectionOffsets[sections.Length];
         for (var i = 0; i < sections.Length; i++)

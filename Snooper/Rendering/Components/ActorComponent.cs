@@ -135,9 +135,16 @@ public abstract class ActorComponent : TreeNode
     {
         actor.OnAttachedToScene += OnActorAttachedToScene;
         actor.OnDetachedFromScene += OnActorDetachedFromScene;
+
+        // subscribing is only enough for a component the actor already carried when it joined the scene.
+        // One added afterwards has missed that event for good, and for a mesh that means never resolving
+        // its materials — the sections stay null and the first indirect draw that reads them faults
+        if (actor.ActorManager is { } scene) OnActorAttachedToScene(scene);
     }
     protected virtual void OnActorDetached(Actor actor)
     {
+        if (actor.ActorManager is { } scene) OnActorDetachedFromScene(scene);
+
         actor.OnAttachedToScene -= OnActorAttachedToScene;
         actor.OnDetachedFromScene -= OnActorDetachedFromScene;
     }

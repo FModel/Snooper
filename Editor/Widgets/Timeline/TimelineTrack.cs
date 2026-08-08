@@ -1,7 +1,7 @@
 using System.Numerics;
 using ImGuiNET;
 using Snooper;
-using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Descriptors.Animations;
 
 namespace Editor.Widgets.Timeline;
 
@@ -28,22 +28,22 @@ internal static class TimelineTrack
 
                 // a montage's own structure, the slots below carrying what plays over it. The sections
                 // name themselves, so the animation is named in the gutter and on hover instead
-                if (animation.Sections.Length > 0)
+                if (row.Montage is { Sections.Length: > 0 } montage)
                 {
-                    for (var i = 0; i < animation.Sections.Length; i++)
+                    for (var i = 0; i < montage.Sections.Length; i++)
                     {
-                        DrawSection(drawList, layout, animation.Sections[i], i, local, palette, top, bottom, origin.Y);
+                        DrawSection(drawList, layout, montage.Sections[i], i, local, palette, top, bottom, origin.Y);
                     }
                     break;
                 }
 
-                for (var i = 0; i < animation.Sequences.Length; i++)
+                for (var i = 0; i < animation.Segments.Count; i++)
                 {
-                    DrawSequenceBar(drawList, layout, animation.Sequences[i], local, i % 2 == 0 ? palette.Bar : palette.BarAlt, palette, top, bottom);
+                    DrawSegmentBar(drawList, layout, animation.Segments[i], local, i % 2 == 0 ? palette.Bar : palette.BarAlt, palette, top, bottom);
                 }
 
-                // without sequences the bar is only the faint track fill, which cannot carry white
-                DrawBarLabel(drawList, layout, row, layout.TimeToX(0f), layout.TimeToX(animation.Duration), origin.Y, animation.Sequences.Length > 0 ? TimelineStyle.Text : TimelineStyle.Dim);
+                // without segments the bar is only the faint track fill, which cannot carry white
+                DrawBarLabel(drawList, layout, row, layout.TimeToX(0f), layout.TimeToX(animation.Duration), origin.Y, animation.Segments.Count > 0 ? TimelineStyle.Text : TimelineStyle.Dim);
                 break;
             }
             case TimelineRowKind.Component:
@@ -99,14 +99,14 @@ internal static class TimelineTrack
             drawList.AddLine(new Vector2(x, top), new Vector2(x, bottom), ImGui.GetColorU32(palette.Head));
         }
 
-        if (row is { Kind: TimelineRowKind.Component, Animation: { } playing })
+        if (row is { Kind: TimelineRowKind.Component, Skeletal.Playback: { } clock })
         {
-            DrawRate(drawList, layout, playing.PlayRate, x, origin.Y);
+            DrawRate(drawList, layout, clock.PlayRate, x, origin.Y);
         }
     }
 
     /// <summary>The bed a group row's markers sit on, and the height they sit at.</summary>
-    private static float DrawGroupLine(ImDrawListPtr drawList, TimelineLayout layout, AnimationDescriptor animation, float top, float bottom)
+    private static float DrawGroupLine(ImDrawListPtr drawList, TimelineLayout layout, SequenceBaseDescriptor animation, float top, float bottom)
     {
         var middle = (top + bottom) * 0.5f;
         drawList.AddLine(new Vector2(layout.TimeToX(0f), middle), new Vector2(layout.TimeToX(animation.Duration), middle), ImGui.GetColorU32(TimelineStyle.Track));
@@ -118,13 +118,13 @@ internal static class TimelineTrack
     /// accent so the fill still carries a white label. The hairline that keeps neighbours apart is
     /// taken off the near side, so a bar closing the animation still closes the track.
     /// </summary>
-    private static void DrawSequenceBar(ImDrawListPtr drawList, TimelineLayout layout, SequenceDescriptor sequence, float local, Vector4 fill, TimelinePalette palette, float top, float bottom)
+    private static void DrawSegmentBar(ImDrawListPtr drawList, TimelineLayout layout, SegmentDescriptor segment, float local, Vector4 fill, TimelinePalette palette, float top, float bottom)
     {
-        var active = sequence.IsActiveAt(local);
+        var active = segment.IsActiveAt(local);
 
         drawList.AddRectFilled(
-            new Vector2(layout.TimeToX(sequence.StartPos) + (sequence.StartPos > 0f ? 1f : 0f), top),
-            new Vector2(layout.TimeToX(sequence.EndPos), bottom),
+            new Vector2(layout.TimeToX(segment.StartPos) + (segment.StartPos > 0f ? 1f : 0f), top),
+            new Vector2(layout.TimeToX(segment.EndPos), bottom),
             ImGui.GetColorU32(active ? palette.Active : fill));
     }
 
@@ -133,7 +133,7 @@ internal static class TimelineTrack
     /// timeline. Cut to that box rather than elided: a slot draws several of them at widths that move
     /// with the zoom, so the tooltip is what a box too narrow to name is read with.
     /// </summary>
-    private static void DrawSegment(ImDrawListPtr drawList, TimelineLayout layout, SequenceDescriptor segment, int index, float local, TimelinePalette palette, float top, float bottom, float rowY)
+    private static void DrawSegment(ImDrawListPtr drawList, TimelineLayout layout, SegmentDescriptor segment, int index, float local, TimelinePalette palette, float top, float bottom, float rowY)
     {
         var left = layout.TimeToX(segment.StartPos);
         var right = layout.TimeToX(segment.EndPos);
@@ -142,9 +142,9 @@ internal static class TimelineTrack
         drawList.AddRectFilled(new Vector2(left + (segment.StartPos > 0f ? 1f : 0f), top), new Vector2(right, bottom), ImGui.GetColorU32(fill));
 
         drawList.PushClipRect(new Vector2(left, rowY), new Vector2(right, rowY + layout.RowHeight), true);
-        drawList.AddText(new Vector2(left + 5f, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Text), segment.Name);
+        drawList.AddText(new Vector2(left + 5f, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Text), segment.Sequence.Name);
 
-        // a segment set to replay its sequence says so on its own box, now that it has no row of its own
+        // a segment set to replay its clip says so on its own box, now that it has no row of its own
         if (segment.LoopCount > 1)
         {
             var text = $"{Settings.LoopIcon} {segment.LoopCount}";
@@ -156,18 +156,18 @@ internal static class TimelineTrack
     }
 
     /// <summary>
-    /// One montage section, filled like a sequence bar because it is read for the same thing: which of
+    /// One montage section, filled like a segment bar because it is read for the same thing: which of
     /// them the clock is inside. Sections meet end to end, so the row reads as a strip cut into parts
     /// rather than as bars laid on a track. A section naming itself carries the loop glyph, that being
     /// the whole of what holds an animation on it.
     /// </summary>
-    private static void DrawSection(ImDrawListPtr drawList, TimelineLayout layout, AnimationSectionDescriptor section, int index, float local, TimelinePalette palette, float top, float bottom, float rowY)
+    private static void DrawSection(ImDrawListPtr drawList, TimelineLayout layout, SectionDescriptor section, int index, float local, TimelinePalette palette, float top, float bottom, float rowY)
     {
         var left = layout.TimeToX(section.StartTime);
         var right = layout.TimeToX(section.EndTime);
         var fill = section.IsActiveAt(local) ? palette.Active : index % 2 == 0 ? palette.Bar : palette.BarAlt;
 
-        // the hairline off the near side, the way a sequence bar takes it, so the strip still closes
+        // the hairline off the near side, the way a segment bar takes it, so the strip still closes
         drawList.AddRectFilled(new Vector2(left + (section.StartTime > 0f ? 1f : 0f), top), new Vector2(right, bottom), ImGui.GetColorU32(fill));
 
         // cut to its own part rather than elided: a section too narrow to name is read off the tooltip,

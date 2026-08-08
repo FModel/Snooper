@@ -423,8 +423,14 @@ switch (provider.ProjectName)
     }
     case "Sandfall":
     {
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/CleasTower/CleasTower_GroundFloorEntrance.CleasTower_GroundFloorEntrance")));
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/WorldMap/Level_WorldMap_Main_V2.Level_WorldMap_Main_V2")));
+        // var mesh = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("Sandfall/Content/MetaHumans/Renoir_v2/Face/Renoir_v2_FaceMesh.Renoir_v2_FaceMesh")); // TODO: kinda laggy, it seems like it gets drawn twice in a single frame sometimes
+        // mesh.SetAnimation(provider.LoadPackageObject<UAnimationAsset>("Sandfall/Content/Cinematics/DarkShores/TheEndOfExpedition33/Animation/TheEndOfExpedition33_P2_Renoir_Face_02.TheEndOfExpedition33_P2_Renoir_Face_02")); // TODO: big curve data with no bone data
+        // var actor = new Actor("Renoir");
+        // actor.Components.Add(mesh);
+        // scene.Children.Add(actor);
+
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/CleasTower/CleasTower_GroundFloorEntrance.CleasTower_GroundFloorEntrance")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/WorldMap/Level_WorldMap_Main_V2.Level_WorldMap_Main_V2")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/Lumiere/Level_Lumiere_Main_V2.Level_Lumiere_Main_V2")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/RedForest/Level_RedForest_Main.Level_RedForest_Main")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Sandfall/Content/Levels/CleasTower/Level_Side_CleasTower.Level_Side_CleasTower")));
@@ -470,11 +476,13 @@ switch (provider.ProjectName)
         var actor = new Actor("Jonesy");
         var body = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Meshes/SK_M_Med_Soldier_04.SK_M_Med_Soldier_04"));
         var head = new SkeletalMeshComponent(provider.LoadPackageObject<USkeletalMesh>("FortniteGame/Content/Characters/Player/Male/Medium/Heads/M_MED_CAU_Jonesy_Head_01/Meshes/M_MED_CAU_Jonesy_Head_01.M_MED_CAU_Jonesy_Head_01"));
-        // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Cowbell/Cowbell_CMM_Loop_M.Cowbell_CMM_Loop_M"); // TODO: spawns the same stuff for each SetAnimation
+
+        var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Cowbell/Cowbell_CMM_Loop_M.Cowbell_CMM_Loop_M");
         // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/AirHorn/Emote_AirHorn_M.Emote_AirHorn_M");
-        var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/Boogie_Down/Emote_Boogie_Down_CMM.Emote_Boogie_Down_CMM");
-        body.SetAnimation(animToPlay);
-        head.SetAnimation(animToPlay);
+        // var animToPlay = provider.LoadPackageObject<UAnimationAsset>("FortniteGame/Plugins/GameFeatures/BRCosmetics/Content/Animation/Game/MainPlayer/Emotes/HeatShineTorn/CMM/Emote_HeatShineTorn_CMM_M.Emote_HeatShineTorn_CMM_M");
+        var playback = AnimationPlayback.Create(animToPlay);
+        body.Bind(playback);
+        head.Bind(playback);
 
         actor.Components.Add(body);
         actor.Components.Add(head);

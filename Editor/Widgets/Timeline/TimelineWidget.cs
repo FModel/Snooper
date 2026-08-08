@@ -71,10 +71,10 @@ public class TimelineWidget
     }
 
     /// <summary>
-    /// The actor's own position, which is the first clock added and so the first component listed.
-    /// Everything it drives keeps its own, drawn per row.
+    /// The actor's own position, which is the performance's clock and so the first one listed. Every mesh
+    /// taking part reads it, and only what the performance drives keeps a clock of its own.
     /// </summary>
-    private float Playhead => _builder.Clocks.Count > 0 ? _builder.Clocks[0].AnimationTime : 0f;
+    private float Playhead => _builder.Clocks.Count > 0 ? _builder.Clocks[0].Time : 0f;
 
     private bool IsPlaying
     {
@@ -82,7 +82,7 @@ public class TimelineWidget
         {
             foreach (var clock in _builder.Clocks)
             {
-                if (clock.IsPlayingAnimation) return true;
+                if (clock.IsPlaying) return true;
             }
 
             return false;
@@ -93,7 +93,7 @@ public class TimelineWidget
     {
         foreach (var clock in _builder.Clocks)
         {
-            clock.AnimationTime = time;
+            clock.Seek(time);
         }
     }
 
@@ -139,7 +139,7 @@ public class TimelineWidget
         {
             foreach (var clock in _builder.Clocks)
             {
-                clock.IsPlayingAnimation = !playing;
+                clock.IsPlaying = !playing;
             }
         }
 
@@ -149,7 +149,7 @@ public class TimelineWidget
         ImGui.SameLine(0f, 3f);
         ImGui.TextColored(TimelineStyle.Dim, $"/ {_builder.Duration:0.00}s");
 
-        var rate = _builder.Clocks.Count > 0 ? _builder.Clocks[0].Animation?.PlayRate ?? 1f : 1f;
+        var rate = _builder.Clocks.Count > 0 ? _builder.Clocks[0].PlayRate : 1f;
         ImGui.SameLine();
         ImGui.SetNextItemWidth(80f);
         if (ImGui.DragFloat("##Speed", ref rate, 0.01f, 0.05f, 8f, "%.2fx"))
@@ -158,7 +158,7 @@ public class TimelineWidget
             {
                 // a driven prop keeps whatever rate it was given: retiming the performance from here
                 // would silently wipe it, and the inspector is where a prop's own rate is set
-                if (clock.Animation is { } animation && clock.Relation is not SkeletalMeshComponent) animation.PlayRate = rate;
+                if (!clock.IsDriven) clock.PlayRate = rate;
             }
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Playback speed");
@@ -315,7 +315,7 @@ public class TimelineWidget
         // where this component is inside its own animation right now, which a driven prop running at
         // its own rate or holding at its own end will have drifted away from the actor's clock
         var head = Playhead;
-        var local = row.Skeletal is { Animation.Duration: > 0f } skeletal ? skeletal.AnimationTime : head;
+        var local = row.Skeletal?.Playback is { Duration: > 0f } clock ? clock.Time : head;
 
         // the one thing a row cannot know until the clock moves, measured here so the gutter and the
         // plot read the same number off one evaluation
@@ -353,7 +353,7 @@ public class TimelineWidget
         drawList.PushClipRect(origin, new Vector2(_layout.TrackX - 4f, origin.Y + _layout.RowHeight), true);
 
         var color = row.Kind == TimelineRowKind.Component
-            ? row.Skeletal is { IsPlayingAnimation: false } ? TimelineStyle.Dim : TimelineStyle.Text
+            ? row.Skeletal?.Playback is { IsPlaying: false } ? TimelineStyle.Dim : TimelineStyle.Text
             : TimelineStyle.Dim;
 
         // the detail owns the right end of the gutter, so the name gets whatever is left and no more.
@@ -379,17 +379,19 @@ public class TimelineWidget
     {
         if (!row.HasToggle) return false;
 
-        var skeletal = row.Skeletal!;
+        if (row.Skeletal?.Playback is not { } clock) return false;
+
         ImGui.SameLine();
         ImGui.SetCursorScreenPos(new Vector2(_layout.TrackX - _layout.ArrowWidth - 4f, origin.Y));
 
         // no tooltip: the glyph says what it does, and the row already raises one of its own
-        if (!TimelineStyle.IconButton("##Toggle", skeletal.IsPlayingAnimation ? TimelineStyle.PauseIcon : TimelineStyle.PlayIcon, false, string.Empty, new Vector2(_layout.ArrowWidth, _layout.RowHeight)))
+        if (!TimelineStyle.IconButton("##Toggle", clock.IsPlaying ? TimelineStyle.PauseIcon : TimelineStyle.PlayIcon, false, string.Empty, new Vector2(_layout.ArrowWidth, _layout.RowHeight)))
         {
             return ImGui.IsItemHovered();
         }
 
-        skeletal.IsPlayingAnimation = !skeletal.IsPlayingAnimation;
+        // every mesh bound to this performance follows, which is the point of it being one clock
+        clock.IsPlaying = !clock.IsPlaying;
         return true;
     }
 
@@ -437,14 +439,15 @@ public class TimelineWidget
         // elided, so the name one of them could not fit and where it hands over next are read here
         if (row.Kind == TimelineRowKind.Component)
         {
-            for (var i = 0; i < animation.Sections.Length; i++)
+            var sections = row.Montage?.Sections ?? [];
+            for (var i = 0; i < sections.Length; i++)
             {
-                var section = animation.Sections[i];
+                var section = sections[i];
                 if (!section.IsActiveAt(time)) continue;
 
                 var next = section.NextIndex < 0 ? "ends"
                     : section.NextIndex == i ? $"{Settings.LoopIcon} {Settings.InfinityIcon}"
-                    : animation.Sections[section.NextIndex].Name;
+                    : sections[section.NextIndex].Name;
 
                 ImGui.SetTooltip($"{animation.Name}\n{section.Name}  {section.StartTime:0.00}s -> {section.EndTime:0.00}s  ({section.Duration:0.00}s)\nthen {next}");
                 return;
@@ -462,7 +465,7 @@ public class TimelineWidget
             if (!segment.IsActiveAt(time)) continue;
 
             var loop = segment.LoopCount > 1 ? $"  {Settings.LoopIcon} {segment.LoopCount}" : string.Empty;
-            ImGui.SetTooltip($"{segment.Name}\n{segment.StartPos:0.00}s -> {segment.EndPos:0.00}s{loop}\n{segment.FrameCount} frames @ {segment.FrameRate:0.#} fps");
+            ImGui.SetTooltip($"{segment.Sequence.Name}\n{segment.StartPos:0.00}s -> {segment.EndPos:0.00}s{loop}\n{segment.Sequence.FrameCount} frames @ {segment.Sequence.FrameRate:0.#} fps");
             return;
         }
     }

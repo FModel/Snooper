@@ -1,6 +1,6 @@
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Descriptors.Animations;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
@@ -14,7 +14,7 @@ namespace Editor.Widgets.Timeline;
 internal sealed class TimelineRowBuilder
 {
     private readonly List<TimelineRow> _rows = [];
-    private readonly List<SkeletalMeshComponent> _clocks = [];
+    private readonly List<AnimationPlayback> _clocks = [];
     private readonly List<string> _curveNames = [];
     private readonly List<string> _slotNames = [];
     private readonly List<int> _notifyTracks = [];
@@ -32,7 +32,7 @@ internal sealed class TimelineRowBuilder
     private bool _dirty = true;
 
     public IReadOnlyList<TimelineRow> Rows => _rows;
-    public IReadOnlyList<SkeletalMeshComponent> Clocks => _clocks;
+    public IReadOnlyList<AnimationPlayback> Clocks => _clocks;
     public float Duration { get; private set; }
 
     /// <summary>
@@ -118,12 +118,13 @@ internal sealed class TimelineRowBuilder
 
         if (skeletal != null)
         {
-            // every animated component runs its own clock, so each one is something the transport drives
-            _clocks.Add(skeletal);
+            // meshes sharing a performance share its clock, so the transport drives the distinct set
+            // rather than one entry per mesh
+            if (skeletal.Playback is { } playback && !_clocks.Contains(playback)) _clocks.Add(playback);
             Duration = MathF.Max(Duration, animation?.Duration ?? 0f);
         }
 
-        var expandable = children.Count > 0 || animation is { Sequences.Length: > 0 } or { Notifies.Length: > 0 };
+        var expandable = children.Count > 0 || animation is { Segments.Count: > 0 } or { Notifies.Length: > 0 };
         var expanded = expandable && !_collapsed.Contains(component.Id);
 
         _rows.Add(new TimelineRow
@@ -157,22 +158,22 @@ internal sealed class TimelineRowBuilder
     /// on a slot are laid end to end and never overlap, so however many of them a slot carries they all
     /// fit the one line. A montage almost always plays on a single slot.
     /// </summary>
-    private void AddSlots(ActorComponent component, AnimationDescriptor animation, int depth)
+    private void AddSlots(ActorComponent component, SequenceBaseDescriptor animation, int depth)
     {
-        if (animation.Sequences.Length == 0) return;
+        if (animation.Segments.Count == 0) return;
 
         _slotNames.Clear();
-        foreach (var sequence in animation.Sequences)
+        foreach (var segment in animation.Segments)
         {
-            if (!_slotNames.Contains(sequence.SlotName)) _slotNames.Add(sequence.SlotName);
+            if (!_slotNames.Contains(segment.SlotName)) _slotNames.Add(segment.SlotName);
         }
 
         foreach (var slot in _slotNames)
         {
-            var segments = new List<SequenceDescriptor>();
-            foreach (var sequence in animation.Sequences)
+            var segments = new List<SegmentDescriptor>();
+            foreach (var segment in animation.Segments)
             {
-                if (sequence.SlotName == slot) segments.Add(sequence);
+                if (segment.SlotName == slot) segments.Add(segment);
             }
 
             _rows.Add(new TimelineRow
@@ -193,7 +194,7 @@ internal sealed class TimelineRowBuilder
     /// track the animator laid out. A track almost always holds a single notify, so those rows are
     /// named after it rather than after the lane number.
     /// </summary>
-    private void AddNotifies(ActorComponent component, AnimationDescriptor animation, int depth)
+    private void AddNotifies(ActorComponent component, SequenceBaseDescriptor animation, int depth)
     {
         if (animation.Notifies.Length == 0) return;
 
@@ -249,12 +250,12 @@ internal sealed class TimelineRowBuilder
     /// belongs to a sequence, so a montage can key the same name on several of them; the rows are the
     /// union of those names, each plotted over whichever spans hold it.
     /// </summary>
-    private void AddCurves(ActorComponent component, AnimationDescriptor animation, int depth)
+    private void AddCurves(ActorComponent component, SequenceBaseDescriptor animation, int depth)
     {
         _curveNames.Clear();
-        foreach (var sequence in animation.Sequences)
+        foreach (var segment in animation.Segments)
         {
-            if (sequence.Curves is not { } curves) continue;
+            if (segment.Sequence.Curves is not { } curves) continue;
 
             foreach (var name in curves.Keys)
             {
@@ -321,7 +322,7 @@ internal sealed class TimelineRowBuilder
         return children;
     }
 
-    private static string DescribeBar(ActorComponent component, AnimationDescriptor? animation)
+    private static string DescribeBar(ActorComponent component, SequenceBaseDescriptor? animation)
     {
         if (animation != null) return animation.Name;
 

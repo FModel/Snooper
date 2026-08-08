@@ -183,22 +183,20 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
     {
         base.OnComponentUpdate(component, delta);
 
-        var skeletal = component as SkeletalMeshComponent;
-        skeletal?.AdvanceAnimation(delta);
+        // TODO: do not animate invisible meshes
+        if (!component.IsDirty(DirtyFlags.Animation) || component is not SkeletalMeshComponent { Descriptor.Skeleton: { } skeleton, Playback: { Animation: { Segments.Count: > 0 } animation } playback })
+            return;
 
-        if (!component.IsDirty(DirtyFlags.Animation) ||
-            skeletal is not { Descriptor.Skeleton: { } skeleton, Animation: { Sequences.Length: > 0 } animation }) return;
-
-        var time = skeletal.AnimationTime;
+        var time = playback.Time;
         foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
         {
             // for each vertex bone, find its skeleton bone
             if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex) ||
-                !animation.TryGetSequence(skeletonIndex, time, out var sequence))
+                !animation.TryGetSegment(skeletonIndex, time, out var segment))
                 continue;
 
             var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
-            skeleton.BoneLocalMatrices[boneIndex] = sequence.GetBoneMatrix(skeletonIndex, time, scale);
+            skeleton.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, scale);
         }
         skeleton.RecalculateBoneMatrices();
 

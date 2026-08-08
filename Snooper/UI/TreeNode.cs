@@ -1,6 +1,7 @@
 ﻿using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
+using Snooper.Extensions;
 using Newtonsoft.Json;
 
 namespace Snooper.UI;
@@ -43,7 +44,7 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
         }
 
         Class = owner.ExportType;
-        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
+        Path = owner.GetCleanPath();
 
         var jsonProperties = new List<string> { JsonConvert.SerializeObject(owner, Formatting.Indented) };
         var templatePtr = owner.Template;

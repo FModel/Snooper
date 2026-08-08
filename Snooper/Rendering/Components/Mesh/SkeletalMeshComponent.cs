@@ -1,104 +1,28 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion;
-using CUE4Parse.GameTypes.FN.Assets.Exports.Animation;
-using CUE4Parse.GameTypes.NetEase.MAR.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
-using CUE4Parse.UE4.Assets.Exports.StaticMesh;
-using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
-using Snooper.Rendering.Actors;
-using Snooper.Rendering.Components.Audio;
-using Snooper.Rendering.Components.Descriptors;
+using Snooper.Core;
+using Snooper.Rendering.Components.Descriptors.Animations;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Mesh;
 
+[DefaultActorSystem(typeof(AnimationClockSystem))]
 public class SkeletalMeshComponent : SkinnedMeshComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Animation;
 
-    public AnimationDescriptor? Animation
-    {
-        get;
-        private set
-        {
-            if (field == value) return;
-
-            field = value;
-
-            if (field == null)
-            {
-                IsPlayingAnimation = false;
-                Descriptor.Skeleton?.ResetAllBones();
-                MarkDirty(DirtyFlags.Animation);
-            }
-            else
-            {
-                IsPlayingAnimation = true;
-                AnimationTime = field.PlayPosition;
-            }
-        }
-    }
-
-    public bool IsLooping => Relation is not SkeletalMeshComponent;
-
-    public bool IsPlayingAnimation
-    {
-        get;
-        set
-        {
-            if (field == value) return;
-
-            field = value;
-            if (field) MarkDirty(DirtyFlags.Animation);
-        }
-    }
-
-    public float AnimationTime
-    {
-        get;
-        set
-        {
-            var duration = Animation?.Duration ?? 0f;
-            value = IsLooping && duration > 0f
-                ? (value % duration + duration) % duration // the second modulo brings a rewind past zero back into range
-                : Math.Clamp(value, 0f, duration);
-
-            // going backwards is a loop or a seek, and either way what this animation drives is meant to
-            // be read against it: they are authored on the same timeline, so they land where it lands
-            // rather than at the top of their own
-            if (value < field)
-            {
-                foreach (var component in Children.OfType<SkeletalMeshComponent>())
-                {
-                    component.AnimationTime = value;
-                }
-            }
-
-            field = value;
-            MarkDirty(DirtyFlags.Animation);
-        }
-    }
-
-    internal void AdvanceAnimation(float delta)
-    {
-        if (!IsPlayingAnimation) return;
-
-        // the animation gets to say where its own time carries on, which is how a montage holds on the
-        // section it loops instead of running back to the top of the timeline
-        var time = AnimationTime + delta * (Animation?.PlayRate ?? 1f);
-        AnimationTime = Animation?.Follow(AnimationTime, time) ?? time;
-    }
+    public AnimationPlayback? Playback { get; private set; }
+    public SequenceBaseDescriptor? Animation => Playback?.Animation;
 
     private SkeletalMeshComponent(SkeletalMeshComponent other) : base(other)
     {
-        if (other.Animation != null)
-        {
-            Animation = (AnimationDescriptor) other.Animation.Clone();
-        }
+        Playback = other.Playback;
     }
 
     public SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh, transform)
@@ -129,101 +53,21 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
         }
     }
 
-    private readonly List<(SpatialComponent Component, string? Socket)> _pendingNotifies = [];
-    private readonly List<ActorComponent> _notifyComponents = [];
-
     public void SetAnimation(UAnimationAsset? animToPlay, float playPosition = 0f, float playRate = 1f)
     {
-        Animation = animToPlay != null ? new AnimationDescriptor(animToPlay, playPosition, playRate) : null;
-
-        // TODO: do not spawn notifies if it's already part of this actor and it's not attached to anyone
-        ClearNotifyComponents();
-        BuildNotifyComponents();
-
-        if (Actor != null) FlushNotifyComponents();
+        Playback?.Despawn();
+        Bind(animToPlay != null ? AnimationPlayback.Create(animToPlay, playPosition, playRate) : null);
     }
 
-    private void BuildNotifyComponents()
+    public void Bind(AnimationPlayback? playback)
     {
-        if (Animation is null) return;
+        if (Playback == playback) return;
 
-        foreach (var descriptor in Animation.Notifies)
-        {
-            switch (descriptor.Notify)
-            {
-                // Fortnite
-                case UFortAnimNotifyState_SpawnProp sp:
-                {
-                    var transform = new Transform(sp.LocationOffset, sp.RotationOffset.Quaternion(), sp.Scale);
+        Playback?.Detach(this);
+        Playback = playback;
+        Playback?.Attach(this);
 
-                    SpatialComponent? component = null;
-                    if (sp.SkeletalMeshProp?.TryLoad<USkeletalMesh>(out var sk) == true)
-                    {
-                        component = new SkeletalMeshComponent(sk, transform, sp.SkeletalMeshPropAnimation?.Load<UAnimationAsset>());
-                    }
-                    else if (sp.StaticMeshProp?.TryLoad<UStaticMesh>(out var sm) == true)
-                    {
-                        component = new StaticMeshComponent(sm, transform);
-                    }
-
-                    if (component != null)
-                    {
-                        _pendingNotifies.Add((component, sp.SocketName?.Text));
-                    }
-                    break;
-                }
-                case UFortAnimNotifyState_EmoteSound es:
-                {
-                    _pendingNotifies.Add((new AudioComponent(es, descriptor.Name), es.AttachName?.Text));
-                    break;
-                }
-                // Marvel Rivals
-                case UAnimNotifyState_TimedSkeletonAnimation tsa when tsa.SkeletalMeshTemplate?.TryLoad<USkeletalMesh>(out var sk) == true:
-                {
-                    var transform = new Transform(tsa.LocationOffset, tsa.RotationOffset.Quaternion(), FVector.OneVector);
-                    var component = new SkeletalMeshComponent(sk, transform, tsa.AnimToPlay?.Load<UAnimationAsset>(), tsa.AnimStartPos);
-                    _pendingNotifies.Add((component, tsa.SocketName?.Text));
-                    break;
-                }
-                case UAN_AkEvent ae:
-                {
-                    _pendingNotifies.Add((new AudioComponent(ae, descriptor.Name), ae.AttachName?.Text));
-                    break;
-                }
-            }
-        }
-    }
-
-    private void FlushNotifyComponents()
-    {
-        if (Actor is null || _pendingNotifies.Count == 0) return;
-
-        foreach (var (component, socket) in _pendingNotifies)
-        {
-            component.AttachSocketName = socket;
-            component.Relation = this;
-
-            Actor.Components.Add(component);
-            _notifyComponents.Add(component);
-        }
-        _pendingNotifies.Clear();
-    }
-
-    private void ClearNotifyComponents()
-    {
-        _pendingNotifies.Clear();
-        foreach (var component in _notifyComponents)
-        {
-            Actor?.Components.Remove(component);
-        }
-        _notifyComponents.Clear();
-    }
-
-    protected override void OnActorAttached(Actor actor)
-    {
-        base.OnActorAttached(actor);
-
-        FlushNotifyComponents();
+        MarkDirty(DirtyFlags.Animation);
     }
 
     public override void Export(ExportSession session, CancellationToken ct = default)
@@ -245,14 +89,14 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 
     private const string HeaderLabel = "Animation";
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
-        .Add(() => IsPlayingAnimation ? "\uf04c" : "\uf04b", "Play/Pause", () => IsPlayingAnimation = !IsPlayingAnimation)
+        .Add(() => Playback is { IsPlaying: true } ? "\uf04c" : "\uf04b", "Play/Pause", () => Playback?.IsPlaying = Playback is { IsPlaying: false })
         .Add("\uf0c5", "Copy Path", () => ImGui.SetClipboardText(Animation?.Path))
         .Add("\uf05a", "Animation Info", () => ImGui.OpenPopup("##AnimationInfo"));
 
     public override void DrawControls()
     {
         base.DrawControls();
-        if (Animation == null) return;
+        if (Playback is not { } playback || Animation is not { } animation) return;
 
         var compatible = Animation.Skeleton.Guid == Descriptor.Skeleton?.Guid;
         if (!compatible)
@@ -278,17 +122,23 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
 
         EditorUI.PropertyValueTable(HeaderLabel, () =>
         {
-            EditorUI.Text("Name", Animation.Name);
-            EditorUI.Text("Duration", $"{Animation.Duration:0.00} seconds");
+            EditorUI.Text("Name", animation.Name);
+            EditorUI.Text("Duration", $"{animation.Duration:0.00} seconds");
             ImGui.SameLine();
-            ImGui.TextDisabled($"(in {Animation.Sequences.Length} sequence{(Animation.Sequences.Length != 1 ? "s" : "")})");
-            EditorUI.Property("Play Position");
-            if (ImGui.DragFloat("##PlayPosition", ref Animation.PlayPosition, Animation.Duration / 1000f, 0f, Animation.Duration, "%.2fs", ImGuiSliderFlags.AlwaysClamp))
+            ImGui.TextDisabled($"(in {animation.Segments.Count} segment{(animation.Segments.Count != 1 ? "s" : "")})");
+
+            if (playback.Components.Count > 1)
             {
-                AnimationTime = Animation.PlayPosition; // the play position is where playback begins, so moving it seeks there
+                EditorUI.Text("Shared With", $"{playback.Components.Count - 1} other mesh{(playback.Components.Count != 2 ? "es" : "")}");
+            }
+
+            EditorUI.Property("Play Position");
+            if (ImGui.DragFloat("##PlayPosition", ref playback.PlayPosition, animation.Duration / 1000f, 0f, animation.Duration, "%.2fs", ImGuiSliderFlags.AlwaysClamp))
+            {
+                playback.Seek(playback.PlayPosition); // the play position is where playback begins, so moving it seeks there
             }
             EditorUI.Property("Play Rate");
-            ImGui.DragFloat("##PlayRate", ref Animation.PlayRate, 0.01f, 0.1f, 5f, "%.2fx", ImGuiSliderFlags.AlwaysClamp);
+            ImGui.DragFloat("##PlayRate", ref playback.PlayRate, 0.01f, 0.1f, 5f, "%.2fx", ImGuiSliderFlags.AlwaysClamp);
         });
     }
 
@@ -304,7 +154,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
         {
             if (ImGui.BeginChild("##AnimationInfoBody", Vector2.Zero, ImGuiChildFlags.FrameStyle))
             {
-                Animation?.DrawControls();
+                Animation?.DrawControls(Playback?.Time ?? 0f);
             }
             ImGui.EndChild();
             ImGui.EndPopup();

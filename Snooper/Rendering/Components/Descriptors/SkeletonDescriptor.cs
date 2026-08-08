@@ -3,6 +3,7 @@ using CUE4Parse_Conversion.Dto;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
+using Snooper.Extensions;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.UI;
@@ -105,7 +106,7 @@ public class SkeletonDescriptor : IControllable
     internal void SetOwner(USkeleton owner)
     {
         Name = owner.Name;
-        Path = owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
+        Path = owner.GetCleanPath();
         Guid = owner.Guid;
     }
 

@@ -1,5 +1,5 @@
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Descriptors.Animations;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
@@ -51,10 +51,13 @@ internal sealed class TimelineRow
     /// <summary>The clock the row runs on, which every row of a component shares.</summary>
     public SkeletalMeshComponent? Skeletal => Component as SkeletalMeshComponent;
 
-    public AnimationDescriptor? Animation => Skeletal?.Animation;
+    public SequenceBaseDescriptor? Animation => Skeletal?.Animation;
+
+    /// <summary>The sections, which only a montage lays its timeline out in.</summary>
+    public MontageDescriptor? Montage => Animation as MontageDescriptor;
 
     /// <summary>What a slot row draws, gathered with the row rather than filtered by name every frame.</summary>
-    public SequenceDescriptor[] Segments = [];
+    public SegmentDescriptor[] Segments = [];
 
     /// <summary>A prop the performance moves rather than a component performing it.</summary>
     public bool Driven => Component is SpatialComponent { Relation: SkeletalMeshComponent };
