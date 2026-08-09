@@ -225,8 +225,9 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
 
         if (component.Descriptor.Skeleton is not { _poseAllocation: { } poseAllocation } descriptor) return;
 
-        // if we are shutting down, the whole buffer is about to be deleted, no need to remove the allocation
-        if (reason != EEndPlayReason.Shutdown)
+        // only a component leaving on its own gives its slot back: on a scene swap or a shutdown the
+        // whole buffer goes with the system, so freeing slot by slot would be wasted work
+        if (reason is EEndPlayReason.Destroyed)
         {
             _poseData.Remove(poseAllocation);
         }

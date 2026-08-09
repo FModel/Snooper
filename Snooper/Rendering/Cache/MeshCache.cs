@@ -29,12 +29,9 @@ public static class MeshCache
 
     public static void ClearAndDispose()
     {
-        foreach (var cached in _cache.Values)
+        foreach (var cached in _cache.Values.OfType<IDisposable>())
         {
-            if (cached is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
+            cached.Dispose();
         }
 
         Log.Information("Clearing primitive descriptor cache with {Count} entries", _cache.Count);

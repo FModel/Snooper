@@ -291,12 +291,12 @@ switch (provider.ProjectName)
     }
     case "ContentExamples":
     {
-        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/ExampleProjectWelcome.ExampleProjectWelcome")));
+        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/ExampleProjectWelcome.ExampleProjectWelcome")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Landscape.Level_Landscape")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_WorldPartitionStreaming.Level_WorldPartitionStreaming")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Streaming.Level_Streaming")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Level/Level_Volumes.Level_Volumes")));
-        scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Geometry/StaticMeshes.StaticMeshes")));
+        // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Geometry/StaticMeshes.StaticMeshes")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Lighting/Lighting_Realtime.Lighting_Realtime")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/AI/AI_NavMesh.AI_NavMesh")));
         // scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("ContentExamples/Content/Maps/Animation/Animation_ControlRig.Animation_ControlRig")));
@@ -531,5 +531,5 @@ switch (provider.ProjectName)
     }
 }
 
-snooper.Manager.RootActor = scene;
+snooper.Manager.LoadScene(scene);
 snooper.Run();

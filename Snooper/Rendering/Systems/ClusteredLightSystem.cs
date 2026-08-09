@@ -228,8 +228,9 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     {
         base.OnActorComponentRemoved(component, reason);
 
-        // if we are shutting down, the whole buffer is about to be deleted, no need to remove the allocation
-        if (reason != EEndPlayReason.Shutdown && component._allocation is { } allocation)
+        // only a component leaving on its own gives its slot back: on a scene swap or a shutdown the
+        // whole buffer goes with the system, so freeing slot by slot would be wasted work
+        if (reason is EEndPlayReason.Destroyed && component._allocation is { } allocation)
         {
             _lightDataBuffer.Remove(allocation);
         }

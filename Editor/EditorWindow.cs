@@ -1,22 +1,24 @@
-﻿using CUE4Parse.FileProvider;
+﻿using System.Collections.Concurrent;
+using CUE4Parse.FileProvider;
 using CUE4Parse.UE4.Assets.Exports;
 using Editor.Managers;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
 using Snooper;
 using Snooper.Core;
 using Snooper.Core.Hardware;
-using Snooper.Rendering.Cache;
 
 namespace Editor;
 
 public partial class EditorWindow : GameWindow
 {
     public readonly ImGuiManager Manager;
+    public readonly bool CloseHides;
 
-    public EditorWindow(double fps, int width, int height, IFileProvider fileProvider, bool startVisible = true) : base(
+    public EditorWindow(double fps, int width, int height, IFileProvider fileProvider, bool startVisible = true, bool closeHides = false) : base(
         new GameWindowSettings { UpdateFrequency = fps },
         new NativeWindowSettings
         {
@@ -42,20 +44,24 @@ public partial class EditorWindow : GameWindow
             RendererInfo.TrackMemory = true;
         }
 
+        CloseHides = closeHides;
+        Manager = new EditorManager(this, fileProvider);
+
         Load += DoLoad; // right before the game loop starts
         UpdateFrame += DoUpdate;
         RenderFrame += DoRender;
         TextInput += DoTextInput;
         FramebufferResize += DoResize;
-        Closing += _ => // this actually runs inside the game loop, it's triggered by SetWindowShouldClose
+        Closing += args => // this actually runs inside the game loop, it's triggered by SetWindowShouldClose
         {
-            MeshCache.ClearAndDispose();
-            MaterialCache.ClearAndDispose();
-            TextureCache.ClearAndDispose();
+            if (!CloseHides || _exiting) return;
+
+            // if we are here we are requesting the close button to simply unload the scene and hide the window
+            args.Cancel = true;
+            Manager.UnloadScene();
+            Hide();
         };
         Unload += DoUnload; // right after the game loop ends
-
-        Manager = new EditorManager(this, fileProvider);
     }
 
     protected override void OnLoad()
@@ -87,8 +93,41 @@ public partial class EditorWindow : GameWindow
         IsVisible = true;
     }
 
+    private readonly ConcurrentQueue<Action> _commands = new();
+    public void Invoke(Action command)
+    {
+        _commands.Enqueue(command);
+        GLFW.PostEmptyEvent();
+    }
+
+    private bool _exiting;
+    public void Shutdown() => Invoke(() =>
+    {
+        _exiting = true;
+        Close();
+    });
+
+    public void Show()
+    {
+        IsEventDriven = false;
+        IsVisible = true;
+
+        GLFW.PostEmptyEvent();
+    }
+
+    public void Hide()
+    {
+        IsVisible = false;
+        IsEventDriven = true;
+    }
+
     private void DoUpdate(FrameEventArgs args)
     {
+        while (_commands.TryDequeue(out var command))
+        {
+            command();
+        }
+
         using (Profiler.Cpu("Update"))
         {
             Manager.Update((float) args.Time);
@@ -97,6 +136,8 @@ public partial class EditorWindow : GameWindow
 
     private void DoRender(FrameEventArgs args)
     {
+        if (!IsVisible) return;
+
         Profiler.BeginFrame();
         try
         {

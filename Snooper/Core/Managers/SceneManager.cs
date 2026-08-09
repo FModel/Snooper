@@ -5,6 +5,7 @@ using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Managers;
@@ -17,10 +18,10 @@ public class SceneManager : ActorManager
     public GameWindow Window { get; }
     public Viewport? MainViewport { get; private set; }
 
-    public Actor? RootActor
+    protected Actor? RootActor
     {
         get;
-        set
+        private set
         {
             if (field == value) return;
 
@@ -31,6 +32,30 @@ public class SceneManager : ActorManager
     }
 
     private EEndPlayReason _endPlayReason = EEndPlayReason.SceneTransition;
+
+    public void LoadScene(Actor scene)
+    {
+        if (IsDisposed)
+        {
+            Log.Warning("Refused {Actor}, the scene is gone for good", scene.Name);
+            return;
+        }
+
+        if (RootActor is { } root)
+        {
+            root.Children.Add(scene);
+            Log.Information("{Actor} appended to {Root}", scene.Name, root.Name);
+            return;
+        }
+
+        RootActor = scene;
+    }
+
+    public void UnloadScene()
+    {
+        if (IsDisposed) return;
+        Teardown();
+    }
 
     protected readonly ObservableCollection<Viewport> Viewports = [];
     public readonly RenderPipeline Pipeline = new();
@@ -217,14 +242,23 @@ public class SceneManager : ActorManager
         yield return new MemoryDetail("Render Pipeline", Pipeline);
     }
 
+    protected override void Teardown()
+    {
+        _endPlayReason = TeardownReason;
+        RootActor = null; // will carry the _endPlayReason down to components and their systems
+
+        base.Teardown();
+    }
+
     public override void Dispose()
     {
-        _endPlayReason = EEndPlayReason.Shutdown;
-        RootActor = null;
-
         base.Dispose();
-        Pipeline.Dispose();
 
+        MeshCache.ClearAndDispose();
+        MaterialCache.ClearAndDispose();
+        TextureCache.ClearAndDispose();
+
+        Pipeline.Dispose();
         _cameras.Clear();
         Viewports.Clear();
     }

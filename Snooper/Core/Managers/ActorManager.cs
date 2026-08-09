@@ -277,13 +277,34 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         ImGui.EndDisabled();
     }
 
+    public bool IsDisposed { get; private set; }
+
     public virtual void Dispose()
     {
-        foreach (var system in Systems.Values)
+        if (IsDisposed) return;
+        IsDisposed = true; // it is what makes the teardown below a Shutdown one
+
+        Teardown();
+        ThreadManager.Dispose();
+    }
+
+    protected EEndPlayReason TeardownReason => IsDisposed ? EEndPlayReason.Shutdown : EEndPlayReason.SceneTransition;
+
+    protected virtual void Teardown()
+    {
+        while (_systemsToLoad.Count > 0)
+        {
+            var pending = _systemsToLoad.Dequeue();
+            pending.Dispose();
+        }
+
+        foreach (var system in Systems.Values.ToArray())
+        {
             system.Dispose();
+        }
 
         Systems.Clear();
-        ThreadManager.Dispose();
+        _systemsPerComponentType.Clear();
     }
 
     public virtual long Allocated

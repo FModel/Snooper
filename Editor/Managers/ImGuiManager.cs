@@ -268,6 +268,14 @@ public abstract class ImGuiManager : SceneManager
     }
 
     protected virtual void RenderInterface() => ImGui.DockSpaceOverViewport();
+
+    public override void Dispose()
+    {
+        base.Dispose(); // the scene, the caches and the pipeline
+
+        _controller.Dispose();
+    }
+
     public abstract void OnViewportLeftClick(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize);
 
     public void TextInput(char c) => _controller.TextInput(c);

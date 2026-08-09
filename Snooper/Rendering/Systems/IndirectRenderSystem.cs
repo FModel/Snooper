@@ -190,8 +190,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             }
         }
 
-        // if we are shutting down, the whole buffer is about to be deleted, no need to remove the allocation
-        if (reason != EEndPlayReason.Shutdown && component.Metadata != null)
+        // only a component leaving on its own gives its slot back: on a scene swap or a shutdown the
+        // whole buffer goes with the system, so freeing slot by slot would be wasted work
+        if (reason is EEndPlayReason.Destroyed && component.Metadata != null)
         {
             Resources.Remove(component);
         }
