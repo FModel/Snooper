@@ -57,7 +57,8 @@ public abstract class ActorSystem : IGameSystem
     protected abstract void OnLoad();
     protected abstract void OnUpdate(float delta);
 
-    public abstract void ProcessActorComponent(ActorComponent component, Actor actor);
+    public abstract void RegisterComponent(ActorComponent component, Actor actor);
+    public abstract void UnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason);
 
     protected virtual bool AllowDerivation => true;
     public virtual bool Accepts(Type type)
@@ -113,23 +114,26 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         PostOnUpdate();
     }
 
-    public sealed override void ProcessActorComponent(ActorComponent component, Actor actor)
+    public sealed override void RegisterComponent(ActorComponent component, Actor actor)
     {
         if (component is not TComponent actorComponent)
             throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));
 
-        switch (Components.Contains(actorComponent))
-        {
-            case false when CanEnqueueActorComponent(actorComponent):
-                _componentsToLoad.Enqueue(actorComponent);
-                OnActorComponentEnqueued(actorComponent);
-                break;
-            case true:
-                Log.Debug("Removing component {ComponentName} from actor {ActorName} in system {SystemName}.", actorComponent.Name, actor.Name, DisplayName);
-                Components.Remove(actorComponent);
-                OnActorComponentRemoved(actorComponent);
-                break;
-        }
+        if (Components.Contains(actorComponent) || !CanEnqueueActorComponent(actorComponent)) return;
+
+        _componentsToLoad.Enqueue(actorComponent);
+        OnActorComponentEnqueued(actorComponent);
+    }
+
+    public sealed override void UnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason)
+    {
+        if (component is not TComponent actorComponent)
+            throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));
+
+        if (!Components.Remove(actorComponent)) return;
+
+        Log.Debug("Removing component {ComponentName} from actor {ActorName} in system {SystemName}.", actorComponent.Name, actor.Name, DisplayName);
+        OnActorComponentRemoved(actorComponent, reason);
     }
 
     protected virtual bool CanEnqueueActorComponent(TComponent component)
@@ -150,7 +154,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         DirtyComponents.Add(component);
     }
 
-    protected virtual void OnActorComponentRemoved(TComponent component)
+    protected virtual void OnActorComponentRemoved(TComponent component, EEndPlayReason reason)
     {
         component.OnRequestSystemUpdate -= OnComponentRequestUpdate;
         DirtyComponents.Remove(component);
@@ -194,6 +198,8 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         while (_componentsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
             var component = _componentsToLoad.Dequeue();
+            if (component.Scene != ActorManager) continue; // it may have ended play while it waited its turn
+
             if (Components.Add(component))
             {
                 OnActorComponentAdded(component);

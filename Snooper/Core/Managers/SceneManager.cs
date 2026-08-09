@@ -24,11 +24,13 @@ public class SceneManager : ActorManager
         {
             if (field == value) return;
 
-            if (field != null) RemoveRoot(field);
+            if (field != null) RemoveRoot(field, _endPlayReason);
             field = value;
             if (field != null) AddRoot(field);
         }
     }
+
+    private EEndPlayReason _endPlayReason = EEndPlayReason.SceneTransition;
 
     protected readonly ObservableCollection<Viewport> Viewports = [];
     public readonly RenderPipeline Pipeline = new();
@@ -129,9 +131,9 @@ public class SceneManager : ActorManager
         }
     }
 
-    protected sealed override void RemoveComponent(ActorComponent component, Actor actor)
+    protected sealed override void RemoveComponent(ActorComponent component, Actor actor, EEndPlayReason reason)
     {
-        base.RemoveComponent(component, actor);
+        base.RemoveComponent(component, actor, reason);
 
         if (component is CameraComponent camera)
         {
@@ -217,6 +219,7 @@ public class SceneManager : ActorManager
 
     public override void Dispose()
     {
+        _endPlayReason = EEndPlayReason.Shutdown;
         RootActor = null;
 
         base.Dispose();

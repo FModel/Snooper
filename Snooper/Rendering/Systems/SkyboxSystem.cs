@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components;
@@ -60,9 +61,9 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
         _component = component;
     }
 
-    protected override void OnActorComponentRemoved(CubeComponent component)
+    protected override void OnActorComponentRemoved(CubeComponent component, EEndPlayReason reason)
     {
-        base.OnActorComponentRemoved(component);
+        base.OnActorComponentRemoved(component, reason);
 
         if (_component == component)
         {

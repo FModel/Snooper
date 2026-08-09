@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using OpenTK.Audio.OpenAL;
 using Serilog;
+using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Cache;
@@ -107,9 +108,9 @@ public sealed class AudioSystem : ComputeRenderSystem<AudioComponent>, IControll
         CheckAlError("Listener update");
     }
 
-    protected override void OnActorComponentRemoved(AudioComponent component)
+    protected override void OnActorComponentRemoved(AudioComponent component, EEndPlayReason reason)
     {
-        base.OnActorComponentRemoved(component);
+        base.OnActorComponentRemoved(component, reason);
 
         if (_sources.TryGetValue(component, out var source))
         {

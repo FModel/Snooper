@@ -60,7 +60,8 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
 
     protected void SetIcon(string icon) => Icon = icon;
 
-    public abstract int Id { get; }
+    private static int _nextId;
+    public int Id { get; } = Interlocked.Increment(ref _nextId);
     public abstract void SetOutlined(bool state);
     public abstract bool ShouldScrollHere { get; set; }
     public abstract void DrawControls();

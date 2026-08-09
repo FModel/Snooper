@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Snooper.Core;
+using Snooper.Core.Managers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Camera;
@@ -163,11 +164,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         return (center, MathF.Max(distance, 0.1f));
     }
 
-    protected override void OnActorAttached(Actor actor)
+    protected override void BeginPlay(ActorManager scene)
     {
-        base.OnActorAttached(actor);
+        base.BeginPlay(scene);
 
-        if (!actor.IsVisible) IsVisible = false;
+        if (Actor is { IsVisible: false }) IsVisible = false;
     }
 
     public override string Icon => "\ue4e2";

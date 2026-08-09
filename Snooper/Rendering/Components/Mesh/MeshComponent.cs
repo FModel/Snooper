@@ -7,6 +7,8 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
+using Snooper.Core;
+using Snooper.Core.Managers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Cache;
@@ -119,32 +121,24 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         _textureData[layerIndex] = textureData;
     }
 
-    protected override void OnActorAttachedToScene(IGameSystem scene)
+    protected override void BeginPlay(ActorManager scene)
     {
-        base.OnActorAttachedToScene(scene);
+        base.BeginPlay(scene);
+
+        var textureData = _textureData.ToArray();
+        var layerCount = Descriptor.Lods[0].LayerCount;
 
         for (var i = 0u; i < _materials.Length; i++)
         {
             var index = i;
-            var textureData = _textureData.ToArray();
-            Materials[index] = new MaterialSection(index);
+            var section = new MaterialSection(index);
+            Materials[index] = section;
 
-            if (Actor?.ActorManager == null)
-                throw new InvalidOperationException("Actor or ActorManager is null when loading materials???");
-
-            Actor?.ActorManager?.ThreadManager.Enqueue(() =>
+            scene.ThreadManager.Enqueue(() =>
             {
-                string key;
-                if (index == 0 && textureData.Length > 0)
-                {
-                    key = MaterialCache.GetOrCreateKeyFromTextureData(textureData, _materials[index], Descriptor.Lods[0].LayerCount);
-                }
-                else
-                {
-                    key = MaterialCache.GetOrCreateKey(_materials[index], Descriptor.Lods[0].LayerCount);
-                }
-
-                Materials[index].CacheKey = key;
+                section.CacheKey = index == 0 && textureData.Length > 0
+                    ? MaterialCache.GetOrCreateKeyFromTextureData(textureData, _materials[index], layerCount)
+                    : MaterialCache.GetOrCreateKey(_materials[index], layerCount);
             });
         }
     }

@@ -1,8 +1,7 @@
-﻿using System.Collections.Specialized;
 using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports;
+using Snooper.Core;
 using Snooper.Core.Managers;
-using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
@@ -15,10 +14,7 @@ public class Actor : TreeNode
     private Actor(Actor other) : base(other)
     {
         Components = new ActorComponentCollection(this);
-        Components.CollectionChanged += OnComponentsCollectionChanged;
-
-        Children = [];
-        Children.CollectionChanged += OnChildrenCollectionChanged;
+        Children = new ActorChildrenCollection(this);
 
         foreach (var component in other.Components)
         {
@@ -34,19 +30,13 @@ public class Actor : TreeNode
     public Actor(string name) : base(name)
     {
         Components = new ActorComponentCollection(this);
-        Components.CollectionChanged += OnComponentsCollectionChanged;
-
-        Children = [];
-        Children.CollectionChanged += OnChildrenCollectionChanged;
+        Children = new ActorChildrenCollection(this);
     }
 
     protected Actor(UObject actor) : base(actor)
     {
         Components = new ActorComponentCollection(this);
-        Components.CollectionChanged += OnComponentsCollectionChanged;
-
-        Children = [];
-        Children.CollectionChanged += OnChildrenCollectionChanged;
+        Children = new ActorChildrenCollection(this);
 
         if (actor.TryGetValue(out bool hidden, "bHidden"))
         {
@@ -70,18 +60,32 @@ public class Actor : TreeNode
         }
     }
 
-    public ActorManager? ActorManager
-    {
-        get;
-        internal set
-        {
-            if (field == value) return;
+    public ActorManager? ActorManager { get; private set; }
 
-            if (field != null) OnSceneDetached(field);
-            field = value;
-            if (field != null) OnSceneAttached(field);
+    internal void SetScene(ActorManager? manager, EEndPlayReason reason)
+    {
+        if (ActorManager == manager) return;
+
+        EndPlayReason = reason;
+
+        ActorManager?.UnregisterActor(this);
+        ActorManager = manager;
+        ActorManager?.RegisterActor(this);
+
+        foreach (var component in Components.ToArray())
+        {
+            component.UpdatePlayState(reason);
         }
+
+        foreach (var child in Children.ToArray())
+        {
+            child.SetScene(manager, reason);
+        }
+
+        EndPlayReason = EEndPlayReason.Destroyed;
     }
+
+    internal EEndPlayReason EndPlayReason { get; private set; } = EEndPlayReason.Destroyed;
 
     public SpatialComponent? RootComponent
     {
@@ -133,19 +137,7 @@ public class Actor : TreeNode
         }
     }
 
-    public event Action<IGameSystem>? OnAttachedToScene;
-    public event Action<IGameSystem>? OnDetachedFromScene;
-
-    protected virtual void OnSceneAttached(IGameSystem scene)
-    {
-        OnAttachedToScene?.Invoke(scene);
-    }
-    protected virtual void OnSceneDetached(IGameSystem scene)
-    {
-        OnDetachedFromScene?.Invoke(scene);
-    }
-
-    private void AddChildrenInternal(Actor actor)
+    internal void OnChildAdded(Actor actor)
     {
         if (actor.Parent != null)
         {
@@ -155,21 +147,25 @@ public class Actor : TreeNode
         actor._parent = this;
         actor.RootComponent?.Relation = RootComponent;
         actor.UpdateHierarchyDepth();
+
+        actor.SetScene(ActorManager, EEndPlayReason.Destroyed);
     }
 
-    private void RemoveChildrenInternal(Actor actor)
+    internal void OnChildRemoved(Actor actor)
     {
         if (actor.Parent != this)
         {
             throw new InvalidOperationException("This actor is not a child of the expected parent.");
         }
 
+        actor.SetScene(null, EEndPlayReason.Destroyed);
+
         actor._parent = null;
         actor.RootComponent?.Relation = null;
         actor.UpdateHierarchyDepth();
     }
 
-    private void AddComponentInternal(ActorComponent component)
+    internal void OnComponentAdded(ActorComponent component)
     {
         if (component.Actor != null)
         {
@@ -184,7 +180,7 @@ public class Actor : TreeNode
         component.Actor = this;
     }
 
-    private void RemoveComponentInternal(ActorComponent component)
+    internal void OnComponentRemoved(ActorComponent component)
     {
         if (component.Actor != this)
         {
@@ -196,51 +192,18 @@ public class Actor : TreeNode
             RootComponent = null;
         }
 
+        var relation = (component as SpatialComponent)?.Relation;
         component.Actor = null;
-    }
 
-    private void OnChildrenCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        switch (e.Action)
+        if (component is SpatialComponent spatial)
         {
-            case NotifyCollectionChangedAction.Add:
-                foreach (var actor in e.NewItems!.Cast<Actor>())
-                {
-                    AddChildrenInternal(actor);
-                }
-                break;
-            case NotifyCollectionChangedAction.Remove:
-                foreach (var actor in e.OldItems!.Cast<Actor>())
-                {
-                    RemoveChildrenInternal(actor);
-                }
-                break;
+            foreach (var child in spatial.Children.ToArray())
+            {
+                child.Relation = relation;
+            }
         }
     }
 
-    private void OnComponentsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        switch (e.Action)
-        {
-            case NotifyCollectionChangedAction.Add:
-                foreach (var component in e.NewItems!.Cast<ActorComponent>())
-                {
-                    AddComponentInternal(component);
-                }
-                break;
-            case NotifyCollectionChangedAction.Remove:
-                foreach (var component in e.OldItems!.Cast<ActorComponent>())
-                {
-                    RemoveComponentInternal(component);
-                }
-                break;
-            case NotifyCollectionChangedAction.Reset:
-                RootComponent = null;
-                break;
-        }
-    }
-
-    public override int Id { get; } = Random.Shared.Next();
     public override void SetOutlined(bool state)
     {
         foreach (var c in Components)

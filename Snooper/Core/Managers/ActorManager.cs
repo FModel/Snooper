@@ -1,4 +1,3 @@
-﻿using System.Collections.Specialized;
 using System.Reflection;
 using CUE4Parse.FileProvider;
 using ImGuiNET;
@@ -19,17 +18,16 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
     private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
-    private readonly HashSet<int> _actors = [];
 
     public uint FragmentColor = FragmentColorMode.Disabled;
 
+    public int ActorCount { get; private set; }
+    public uint Revision { get; private set; }
     public float Time { get; private set; }
     public RendererInfo Renderer { get; } = new();
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
     public IFileProvider FileProvider { get; } = fileProvider;
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
-
-    public int ActorCount => _actors.Count;
 
     public virtual void Load()
     {
@@ -60,89 +58,75 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         {
             throw new ArgumentException("This actor should not have a parent.", nameof(actor));
         }
-
-        AddActorInternal(actor);
-    }
-    private void AddActorInternal(Actor actor)
-    {
-        if (!_actors.Add(actor.Id))
-            throw new ArgumentException("This actor is already added to the actor manager.", nameof(actor));
         if (actor.ActorManager != null)
+        {
             throw new ArgumentException("This actor is already used by another actor manager.", nameof(actor));
-
-        actor.ActorManager = this;
-
-        foreach (var component in actor.Components)
-        {
-            AddComponent(component, actor);
         }
 
-        foreach (var child in actor.Children)
-        {
-            AddActorInternal(child);
-        }
-
-        actor.Children.CollectionChanged += OnChildrenCollectionChanged;
-        actor.Components.CollectionChanged += OnComponentsCollectionChanged;
+        actor.SetScene(this, EEndPlayReason.Destroyed);
     }
 
-    protected void RemoveRoot(Actor actor)
+    protected void RemoveRoot(Actor actor, EEndPlayReason reason = EEndPlayReason.Destroyed)
     {
         if (actor.Parent != null)
         {
             throw new ArgumentException("This actor should not have a parent.", nameof(actor));
         }
-
-        RemoveActorInternal(actor);
-    }
-    private void RemoveActorInternal(Actor actor)
-    {
-        if (!_actors.Remove(actor.Id))
-            throw new ArgumentException("This actor is not part of the actor manager.", nameof(actor));
         if (actor.ActorManager != this)
+        {
             throw new ArgumentException("This actor is not part of this actor manager.", nameof(actor));
-
-        actor.ActorManager = null;
-
-        actor.Components.CollectionChanged -= OnComponentsCollectionChanged;
-        actor.Children.CollectionChanged -= OnChildrenCollectionChanged;
-
-        foreach (var component in actor.Components)
-        {
-            RemoveComponent(component, actor);
         }
 
-        foreach (var child in actor.Children)
-        {
-            RemoveActorInternal(child);
-        }
+        actor.SetScene(null, reason);
     }
+
+    internal void RegisterActor(Actor actor)
+    {
+        ActorCount++;
+        Revision++;
+    }
+
+    internal void UnregisterActor(Actor actor)
+    {
+        ActorCount--;
+        Revision++;
+    }
+
+    internal void RegisterComponent(ActorComponent component) => AddComponent(component, component.Actor!);
+    internal void UnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason) => RemoveComponent(component, actor, reason);
 
     protected virtual void AddComponent(ActorComponent component, Actor actor)
-        => CheckActorComponentWithSystems(component, actor, false);
-    protected virtual void RemoveComponent(ActorComponent component, Actor actor)
-        => CheckActorComponentWithSystems(component, actor, true);
-
-    private void CheckActorComponentWithSystems(ActorComponent component, Actor actor, bool bRemove)
     {
-        var componentType = component.GetType();
-        if (!_systemsPerComponentType.TryGetValue(componentType, out var systemsForComponent))
+        foreach (var system in SystemsFor(component.GetType(), true))
         {
-            if (!bRemove)
-            {
-                CollectNewActorSystems(componentType);
-            }
+            system.RegisterComponent(component, actor);
+        }
+    }
 
-            systemsForComponent = [];
-            foreach (var system in _systemsToLoad) AddIfAccepted(system);
-            foreach (var system in Systems.Values) AddIfAccepted(system);
-            _systemsPerComponentType.Add(componentType, systemsForComponent);
+    protected virtual void RemoveComponent(ActorComponent component, Actor actor, EEndPlayReason reason)
+    {
+        foreach (var system in SystemsFor(component.GetType(), false))
+        {
+            system.UnregisterComponent(component, actor, reason);
+        }
+    }
+
+    private List<ActorSystem> SystemsFor(Type componentType, bool collectNew)
+    {
+        if (_systemsPerComponentType.TryGetValue(componentType, out var systemsForComponent))
+            return systemsForComponent;
+
+        if (collectNew)
+        {
+            CollectNewActorSystems(componentType);
         }
 
-        foreach (var system in systemsForComponent)
-        {
-            system.ProcessActorComponent(component, actor);
-        }
+        systemsForComponent = [];
+        foreach (var system in _systemsToLoad) AddIfAccepted(system);
+        foreach (var system in Systems.Values) AddIfAccepted(system);
+        _systemsPerComponentType.Add(componentType, systemsForComponent);
+
+        return systemsForComponent;
 
         void AddIfAccepted(ActorSystem system)
         {
@@ -167,46 +151,6 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
             var system = (ActorSystem)Activator.CreateInstance(actorSystemAttribute.Type)!;
             system.ActorManager = this;
             _systemsToLoad.Enqueue(system);
-        }
-    }
-
-    private void OnChildrenCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        switch (e.Action)
-        {
-            case NotifyCollectionChangedAction.Add:
-                foreach (var actor in e.NewItems!.Cast<Actor>())
-                {
-                    AddActorInternal(actor);
-                }
-                break;
-            case NotifyCollectionChangedAction.Remove:
-                foreach (var actor in e.OldItems!.Cast<Actor>())
-                {
-                    RemoveActorInternal(actor);
-                }
-                break;
-        }
-    }
-
-    private void OnComponentsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (sender is not ActorComponentCollection componentCollection) return;
-
-        switch (e.Action)
-        {
-            case NotifyCollectionChangedAction.Add:
-                foreach (var component in e.NewItems!.Cast<ActorComponent>())
-                {
-                    AddComponent(component, componentCollection.Actor);
-                }
-                break;
-            case NotifyCollectionChangedAction.Remove:
-                foreach (var component in e.OldItems!.Cast<ActorComponent>())
-                {
-                    RemoveComponent(component, componentCollection.Actor);
-                }
-                break;
         }
     }
 

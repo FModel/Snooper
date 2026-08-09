@@ -3,7 +3,8 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using ImGuiNET;
-using Snooper.Core.Systems;
+using Snooper.Core;
+using Snooper.Core.Managers;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
@@ -61,15 +62,62 @@ public abstract class ActorComponent : TreeNode
         {
             if (field == value) return;
 
-            if (field != null) OnActorDetached(field);
-            field = value;
-            if (field != null) OnActorAttached(field);
+            if (HasBegunPlay) EndPlayInternal(field?.EndPlayReason ?? EEndPlayReason.Destroyed);
 
-            if (this is SpatialComponent { Relation: null } spatial)
+            field = value;
+
+            if (this is SpatialComponent spatial)
             {
-                spatial.Relation = field?.RootComponent;
+                if (field is null) spatial.Relation = null;
+                else if (spatial.Relation is null) spatial.Relation = field.RootComponent;
             }
+
+            UpdatePlayState();
         }
+    }
+
+    public ActorManager? Scene { get; private set; }
+    public bool HasBegunPlay => Scene != null;
+
+    internal void UpdatePlayState(EEndPlayReason reason = EEndPlayReason.Destroyed)
+    {
+        var scene = Actor?.ActorManager;
+        if (ReferenceEquals(scene, Scene)) return;
+
+        if (HasBegunPlay) EndPlayInternal(reason);
+        if (scene != null) BeginPlayInternal(scene);
+    }
+
+    private void BeginPlayInternal(ActorManager scene)
+    {
+        Scene = scene; // before, so anything BeginPlay brings along begins play itself
+
+        BeginPlay(scene);
+        scene.RegisterComponent(this);
+    }
+
+    private void EndPlayInternal(EEndPlayReason reason)
+    {
+        var scene = Scene!;
+        var actor = Actor!;
+
+        Scene = null;
+
+        scene.UnregisterComponent(this, actor, reason);
+        EndPlay(reason);
+    }
+
+    /// <summary>
+    /// The component is now owned by an actor that is in a scene, which is the earliest anything expensive should happen
+    /// </summary>
+    protected virtual void BeginPlay(ActorManager scene)
+    {
+
+    }
+
+    protected virtual void EndPlay(EEndPlayReason reason)
+    {
+
     }
 
     public override void Export(ExportSession session, CancellationToken ct = default)
@@ -131,35 +179,6 @@ public abstract class ActorComponent : TreeNode
             _dirtyFlags &= ~flags;
     }
 
-    protected virtual void OnActorAttached(Actor actor)
-    {
-        actor.OnAttachedToScene += OnActorAttachedToScene;
-        actor.OnDetachedFromScene += OnActorDetachedFromScene;
-
-        // subscribing is only enough for a component the actor already carried when it joined the scene.
-        // One added afterwards has missed that event for good, and for a mesh that means never resolving
-        // its materials — the sections stay null and the first indirect draw that reads them faults
-        if (actor.ActorManager is { } scene) OnActorAttachedToScene(scene);
-    }
-    protected virtual void OnActorDetached(Actor actor)
-    {
-        if (actor.ActorManager is { } scene) OnActorDetachedFromScene(scene);
-
-        actor.OnAttachedToScene -= OnActorAttachedToScene;
-        actor.OnDetachedFromScene -= OnActorDetachedFromScene;
-    }
-
-    protected virtual void OnActorAttachedToScene(IGameSystem scene)
-    {
-
-    }
-    protected virtual void OnActorDetachedFromScene(IGameSystem scene)
-    {
-
-    }
-
-    private static int _nextId = 1;
-    public override int Id { get; } = _nextId++;
     public override string Icon => "\uf111";
     public override void SetOutlined(bool state)
     {

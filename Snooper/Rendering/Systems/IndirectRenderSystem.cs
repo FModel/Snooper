@@ -165,9 +165,9 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         }
     }
 
-    protected override void OnActorComponentRemoved(TComponent component)
+    protected override void OnActorComponentRemoved(TComponent component, EEndPlayReason reason)
     {
-        base.OnActorComponentRemoved(component);
+        base.OnActorComponentRemoved(component, reason);
 
         // not used ig
         Counts.Components--;
@@ -190,7 +190,12 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             }
         }
 
-        Resources.Remove(component);
+        // if we are shutting down, the whole buffer is about to be deleted, no need to remove the allocation
+        if (reason != EEndPlayReason.Shutdown && component.Metadata != null)
+        {
+            Resources.Remove(component);
+        }
+        component.Metadata = null;
     }
 
     public override void Dispose()

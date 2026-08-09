@@ -224,11 +224,12 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         }
     }
 
-    protected override void OnActorComponentRemoved(LightComponent component)
+    protected override void OnActorComponentRemoved(LightComponent component, EEndPlayReason reason)
     {
-        base.OnActorComponentRemoved(component);
+        base.OnActorComponentRemoved(component, reason);
 
-        if (component._allocation is { } allocation)
+        // if we are shutting down, the whole buffer is about to be deleted, no need to remove the allocation
+        if (reason != EEndPlayReason.Shutdown && component._allocation is { } allocation)
         {
             _lightDataBuffer.Remove(allocation);
         }

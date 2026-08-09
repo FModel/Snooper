@@ -1,5 +1,6 @@
 using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -182,22 +183,28 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
     protected override void OnComponentUpdate(SkinnedMeshComponent component, float delta)
     {
         base.OnComponentUpdate(component, delta);
+        if (!component.IsDirty(DirtyFlags.Animation) || component is not SkeletalMeshComponent { Descriptor.Skeleton: { } skeleton } meshComponent) return;
 
         // TODO: do not animate invisible meshes
-        if (!component.IsDirty(DirtyFlags.Animation) || component is not SkeletalMeshComponent { Descriptor.Skeleton: { } skeleton, Playback: { Animation: { Segments.Count: > 0 } animation } playback })
-            return;
-
-        var time = playback.Time;
-        foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
+        if (meshComponent.Playback is { Animation: { Segments.Count: > 0 } animation } playback)
         {
-            // for each vertex bone, find its skeleton bone
-            if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex) ||
-                !animation.TryGetSegment(skeletonIndex, time, out var segment))
-                continue;
+            var time = playback.Time;
+            foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
+            {
+                // for each vertex bone, find its skeleton bone
+                if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex) ||
+                    !animation.TryGetSegment(skeletonIndex, time, out var segment))
+                    continue;
 
-            var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
-            skeleton.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, scale);
+                var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
+                skeleton.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, scale);
+            }
         }
+        else
+        {
+            // manually moved a bone
+        }
+
         skeleton.RecalculateBoneMatrices();
 
         if (skeleton._poseAllocation is { } poseAllocation)
@@ -212,15 +219,18 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         }
     }
 
-    protected override void OnActorComponentRemoved(SkinnedMeshComponent component)
+    protected override void OnActorComponentRemoved(SkinnedMeshComponent component, EEndPlayReason reason)
     {
-        base.OnActorComponentRemoved(component);
+        base.OnActorComponentRemoved(component, reason);
 
-        if (component.Descriptor.Skeleton is { _poseAllocation: { } poseAllocation } descriptor)
+        if (component.Descriptor.Skeleton is not { _poseAllocation: { } poseAllocation } descriptor) return;
+
+        // if we are shutting down, the whole buffer is about to be deleted, no need to remove the allocation
+        if (reason != EEndPlayReason.Shutdown)
         {
             _poseData.Remove(poseAllocation);
-            descriptor._poseAllocation = null;
         }
+        descriptor._poseAllocation = null; // cleared either way tho, the descriptor outlives the buffer
     }
 
     public override void Dispose()

@@ -16,9 +16,9 @@ public class SceneHierarchyWidget
 {
     private const string Title           = "Scene Hierarchy";
     private const string SearchIcon      = "\uf002";
-    private const string CollapseAllIcon = "\uf066";
+    private const string CollapseAllIcon = "\uf422";
 
-    private int _lastActorCount = -1;
+    private uint _lastRevision;
 
     private string _newActorName = "";
     private Actor? _newActorParent;
@@ -34,10 +34,12 @@ public class SceneHierarchyWidget
         {
             DrawSearchBar();
 
-            var actorCount = (actor?.ActorManager?.ActorCount ?? 1) - 1;
-            if (actorCount != _lastActorCount)
+            var manager = actor?.ActorManager;
+            var actorCount = (manager?.ActorCount ?? 1) - 1;
+
+            if (manager?.Revision != _lastRevision)
             {
-                _lastActorCount = actorCount;
+                _lastRevision = manager?.Revision ?? 0;
                 _dirty = true;
             }
 

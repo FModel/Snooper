@@ -3,7 +3,8 @@ using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.UObject;
-using Snooper.Rendering.Actors;
+using Snooper.Core;
+using Snooper.Core.Managers;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Mesh;
@@ -64,13 +65,25 @@ public class GeometryCollectionComponent : SpatialComponent/* : MeshComponent*/
         T GetIndex<T>(T[]? data, int index, T fallback) => data is not null && index < data.Length ? data[index] : fallback;
     }
 
-    protected override void OnActorAttached(Actor actor)
+    protected override void BeginPlay(ActorManager scene)
     {
-        base.OnActorAttached(actor);
+        base.BeginPlay(scene);
+        if (Actor is not { } actor) return;
 
         foreach (var component in _components)
         {
             actor.Components.Add(component);
+        }
+    }
+
+    protected override void EndPlay(EEndPlayReason reason)
+    {
+        base.EndPlay(reason);
+        if (Actor is not { } actor) return;
+
+        foreach (var component in _components)
+        {
+            actor.Components.Remove(component);
         }
     }
 }
