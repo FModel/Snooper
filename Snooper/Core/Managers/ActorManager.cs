@@ -1,3 +1,5 @@
+using Serilog;
+using Serilog.Core;
 using System.Reflection;
 using CUE4Parse.FileProvider;
 using ImGuiNET;
@@ -17,10 +19,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
-    private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
-
     public uint FragmentColor = FragmentColorMode.Disabled;
-
     public int ActorCount { get; private set; }
     public uint Revision { get; private set; }
     public float Time { get; private set; }
@@ -28,6 +27,8 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
     public IFileProvider FileProvider { get; } = fileProvider;
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
+
+    protected ILogger Log => field ??= Serilog.Log.ForContext(Constants.SourceContextPropertyName, GetType().Name);
 
     public virtual void Load()
     {
@@ -64,6 +65,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         }
 
         actor.SetScene(this, EEndPlayReason.Destroyed);
+        Log.Information("{Actor} brought {ActorCount} actors into the scene", actor.Name, ActorCount);
     }
 
     protected void RemoveRoot(Actor actor, EEndPlayReason reason = EEndPlayReason.Destroyed)
@@ -77,23 +79,40 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
             throw new ArgumentException("This actor is not part of this actor manager.", nameof(actor));
         }
 
+        var before = ActorCount;
         actor.SetScene(null, reason);
+        Log.Information("{Actor} took {ActorCount} actors out of the scene ({Reason})", actor.Name, before - ActorCount, reason);
     }
 
     internal void RegisterActor(Actor actor)
     {
         ActorCount++;
         Revision++;
+
+        Log.Verbose("{Actor} entered the scene", actor.Name);
     }
 
     internal void UnregisterActor(Actor actor)
     {
         ActorCount--;
         Revision++;
+
+        Log.Verbose("{Actor} left the scene", actor.Name);
     }
 
-    internal void RegisterComponent(ActorComponent component) => AddComponent(component, component.Actor!);
-    internal void UnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason) => RemoveComponent(component, actor, reason);
+    internal void RegisterComponent(ActorComponent component)
+    {
+        var actor = component.Actor!;
+
+        Log.Verbose("Offering {Component} of {Actor} to the systems", component.Name, actor.Name);
+        AddComponent(component, actor);
+    }
+
+    internal void UnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason)
+    {
+        Log.Verbose("Taking {Component} of {Actor} back from the systems ({Reason})", component.Name, actor.Name, reason);
+        RemoveComponent(component, actor, reason);
+    }
 
     protected virtual void AddComponent(ActorComponent component, Actor actor)
     {
@@ -111,6 +130,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         }
     }
 
+    private readonly Dictionary<Type, List<ActorSystem>> _systemsPerComponentType = [];
     private List<ActorSystem> SystemsFor(Type componentType, bool collectNew)
     {
         if (_systemsPerComponentType.TryGetValue(componentType, out var systemsForComponent))

@@ -7,6 +7,8 @@ namespace Snooper.Rendering.Cache;
 
 public static class MeshCache
 {
+    private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(MeshCache));
+
     private static readonly ConcurrentDictionary<(FGuid, Type), object> _cache = new();
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate<TVertex>(FGuid guid, Func<PrimitiveDescriptor<TVertex>> factory) where TVertex : unmanaged

@@ -33,7 +33,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.OnLoad();
 
         Resources.Generate();
-        Resources.Allocate(Counts, DisplayName);
+        Resources.Allocate(Counts);
 
         Resources.SetVertexLayout(VertexLayout);
     }

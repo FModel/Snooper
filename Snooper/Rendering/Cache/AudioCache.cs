@@ -10,6 +10,8 @@ namespace Snooper.Rendering.Cache;
 
 public class AudioCache : IDisposable
 {
+    private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(AudioCache));
+
     private readonly Dictionary<string, int> _buffers = [];
 
     public int GetOrCreateBuffer(USoundBase sound)

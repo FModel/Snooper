@@ -8,6 +8,8 @@ namespace Snooper.Rendering.Cache;
 
 public static class JunoPaletteCache
 {
+    private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(JunoPaletteCache));
+
     private static readonly ConcurrentDictionary<int, FColor> _cache = new();
 
     private static readonly FColor _fallback = FLinearColor.Gray.ToFColor(true);

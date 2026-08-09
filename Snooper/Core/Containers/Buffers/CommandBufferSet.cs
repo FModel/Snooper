@@ -30,8 +30,6 @@ public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
         _opaque.Allocate((uint)Math.Ceiling(totalDraws * 0.7));
         _transparent.Allocate((uint)Math.Ceiling(totalDraws * 0.25));
         _mask.Allocate(totalDraws);
-
-        Log.Debug("Allocated CommandBufferSet: {OpaqueCapacity} opaque, {TransparentCapacity} transparent, {MaskCapacity} mask", _opaque.Capacity, _transparent.Capacity, _mask.Capacity);
     }
 
     public IndirectDrawBuffer GetBuffer(CommandBufferType type) => type switch

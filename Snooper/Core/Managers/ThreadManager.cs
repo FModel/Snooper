@@ -6,6 +6,8 @@ namespace Snooper.Core.Managers;
 
 public class ThreadManager : IDisposable
 {
+    private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(ThreadManager));
+
     private readonly Worker[] _workers;
     private long _totalJobsEnqueued;
     private int _nextWorkerIndex;

@@ -10,6 +10,8 @@ namespace Snooper.Rendering.Cache;
 
 public static class TextureCache
 {
+    private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(TextureCache));
+
     private static int _totalTexturesRequested;
 
     public static int LoadedTextureCount => _textures.Count;
@@ -126,14 +128,14 @@ public static class TextureCache
         {
             texture.TextureReadyForBindless += () => OnTextureReady(texture.Guid, texture);
             texture.Generate();
+
+            Log.Debug("Uploaded {Format:l} with size {Width}x{Height} ({Guid:l})", texture.FormatName, texture.Width, texture.Height, texture.Guid);
             processed++;
         }
     }
 
     private static void OnTextureReady(FGuid guid, Texture texture)
     {
-        Log.Verbose("Texture {Guid} is ready for bindless usage.", guid);
-
         _textures.TryAdd(guid, texture);
 
         var bindless = new BindlessTexture(texture);

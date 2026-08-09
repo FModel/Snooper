@@ -61,7 +61,6 @@ public class Texture2D(int width, int height,
 
         var terrain = _owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap;
         Reset(width, height, mipData, !terrain);
-        Log.Debug("Texture {Guid} of format {Format} uploaded to GPU with size {Width}x{Height}.", Guid, _owner.Format, Width, Height);
 
         if (terrain)
         {

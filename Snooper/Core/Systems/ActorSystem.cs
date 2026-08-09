@@ -1,4 +1,6 @@
 ﻿using Serilog;
+using Serilog.Context;
+using Serilog.Core;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Actors;
@@ -39,26 +41,49 @@ public abstract class ActorSystem : IGameSystem
         ComponentType = componentType;
     }
 
+    private IDisposable Scope() => LogContext.PushProperty(Constants.SourceContextPropertyName, DisplayName);
+
     public void Load()
     {
         if (!IsEnabled) return;
-        OnLoad();
+
+        using (Scope())
+        {
+            OnLoad();
+        }
     }
 
     public void Update(float delta)
     {
         if (!IsEnabled) return;
+
+        using (Scope())
         using (Profiler.Cpu(DisplayName))
         {
             OnUpdate(delta);
         }
     }
 
+    public void RegisterComponent(ActorComponent component, Actor actor)
+    {
+        using (Scope())
+        {
+            OnRegisterComponent(component, actor);
+        }
+    }
+
+    public void UnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason)
+    {
+        using (Scope())
+        {
+            OnUnregisterComponent(component, actor, reason);
+        }
+    }
+
     protected abstract void OnLoad();
     protected abstract void OnUpdate(float delta);
-
-    public abstract void RegisterComponent(ActorComponent component, Actor actor);
-    public abstract void UnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason);
+    protected abstract void OnRegisterComponent(ActorComponent component, Actor actor);
+    protected abstract void OnUnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason);
 
     protected virtual bool AllowDerivation => true;
     public virtual bool Accepts(Type type)
@@ -114,25 +139,37 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         PostOnUpdate();
     }
 
-    public sealed override void RegisterComponent(ActorComponent component, Actor actor)
+    protected sealed override void OnRegisterComponent(ActorComponent component, Actor actor)
     {
         if (component is not TComponent actorComponent)
             throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));
 
-        if (Components.Contains(actorComponent) || !CanEnqueueActorComponent(actorComponent)) return;
+        if (Components.Contains(actorComponent))
+        {
+            Log.Verbose("Already holding {Component} of {Actor}", actorComponent.Name, actor.Name);
+            return;
+        }
+
+        if (!CanEnqueueActorComponent(actorComponent))
+        {
+            Log.Warning("Refused {Component} of {Actor}, full at {Capacity}", actorComponent.Name, actor.Name, Capacity);
+            return;
+        }
 
         _componentsToLoad.Enqueue(actorComponent);
         OnActorComponentEnqueued(actorComponent);
+
+        Log.Verbose("Took {Component} of {Actor}, {Enqueued} waiting", actorComponent.Name, actor.Name, EnqueuedComponentsCount);
     }
 
-    public sealed override void UnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason)
+    protected sealed override void OnUnregisterComponent(ActorComponent component, Actor actor, EEndPlayReason reason)
     {
         if (component is not TComponent actorComponent)
             throw new ArgumentException("The actor component must be assignable to TComponent", nameof(component));
 
         if (!Components.Remove(actorComponent)) return;
 
-        Log.Debug("Removing component {ComponentName} from actor {ActorName} in system {SystemName}.", actorComponent.Name, actor.Name, DisplayName);
+        Log.Verbose("Released {Component} of {Actor} ({Reason})", actorComponent.Name, actor.Name, reason);
         OnActorComponentRemoved(actorComponent, reason);
     }
 

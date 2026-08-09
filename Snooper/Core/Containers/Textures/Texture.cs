@@ -8,21 +8,44 @@ using Snooper.UI;
 
 namespace Snooper.Core.Containers.Textures;
 
-public abstract class Texture(
-    int width, int height, TextureTarget target,
-    SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
-    PixelFormat format = PixelFormat.Rgba,
-    PixelType type = PixelType.UnsignedByte,
-    FGuid? guid = null,
-    string? name = null) : HandledObject, IMemorySizeProvider, IControllable
+public abstract class Texture : HandledObject, IMemorySizeProvider, IControllable
 {
-    public string Name { get; } = name ?? Settings.NoName;
-    public FGuid Guid { get; } = guid ?? FGuid.Random();
-    public TextureTarget Target { get; } = target;
+    public string Name { get; }
+    public FGuid Guid { get; }
+    public TextureTarget Target { get; }
 
-    public int Width { get; protected set; } = width;
-    public int Height { get; protected set; } = height;
-    protected ITextureFormatInfo FormatInfo { get; set; } = new TextureFormatInfo(internalFormat, format, type);
+    public int Width { get; protected set; }
+    public int Height { get; protected set; }
+
+    protected ITextureFormatInfo FormatInfo
+    {
+        get;
+        set
+        {
+            field = value;
+            FormatName = value.ToString();
+        }
+    }
+
+    public string FormatName { get; private set; } = string.Empty;
+
+    protected Texture(
+        int width, int height, TextureTarget target,
+        SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
+        PixelFormat format = PixelFormat.Rgba,
+        PixelType type = PixelType.UnsignedByte,
+        FGuid? guid = null,
+        string? name = null)
+    {
+        Name = name ?? Settings.NoName;
+        Guid = guid ?? FGuid.Random();
+        Target = target;
+
+        Width = width;
+        Height = height;
+
+        FormatInfo = new TextureFormatInfo(internalFormat, format, type);
+    }
 
     public int[] SwizzleMask { get; internal set; } =
     [

@@ -17,6 +17,8 @@ namespace Snooper.Rendering.Cache;
 
 public static class MaterialCache
 {
+    private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(MaterialCache));
+
     private static readonly ConcurrentDictionary<string, Lazy<IMaterialDataContainer?>> _cache = new();
 
     /// <summary>

@@ -34,8 +34,10 @@ using Snooper.Rendering.Components.Transforms;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
+    .Enrich.FromLogContext() // whatever scope the line was written inside
+    .Enrich.WithProperty("SourceContext", "Snooper") // and a name for the ones written outside any
     .WriteTo.Console(
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}]: {Message:lj}{NewLine}{Exception}",
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}",
         theme: AnsiConsoleTheme.Literate)
     .WriteTo.Sink(ImGuiSink.Instance)
     .CreateLogger();

@@ -72,6 +72,47 @@ public readonly struct TextureFormatInfo : ITextureFormatInfo
             }
         };
     }
+
+    public override string ToString()
+    {
+        var name = InternalFormat switch
+        {
+            SizedInternalFormat.R8 => "R8",
+            SizedInternalFormat.Rg8 => "RG8",
+            SizedInternalFormat.Rgb8 or SizedInternalFormat.Srgb8 => "RGB8",
+            SizedInternalFormat.Rgba8 or SizedInternalFormat.Srgb8Alpha8 => "RGBA8",
+
+            SizedInternalFormat.R16 => "R16",
+            SizedInternalFormat.R16f => "R16F",
+            SizedInternalFormat.Rg16 => "RG16",
+            SizedInternalFormat.Rg16f => "RG16F",
+            SizedInternalFormat.Rgb16 => "RGB16",
+            SizedInternalFormat.Rgb16f => "RGB16F",
+            SizedInternalFormat.Rgba16 => "RGBA16",
+            SizedInternalFormat.Rgba16f => "RGBA16F",
+
+            SizedInternalFormat.R32f => "R32F",
+            SizedInternalFormat.R32ui => "R32UI",
+            SizedInternalFormat.Rg32f => "RG32F",
+            SizedInternalFormat.Rgb32f => "RGB32F",
+            SizedInternalFormat.Rgba32f => "RGBA32F",
+
+            SizedInternalFormat.DepthComponent16 => "D16",
+            SizedInternalFormat.DepthComponent24 => "D24",
+            SizedInternalFormat.DepthComponent32f => "D32F",
+            SizedInternalFormat.Depth24Stencil8 => "D24S8",
+            SizedInternalFormat.Depth32fStencil8 => "D32FS8",
+
+            _ => InternalFormat.ToString()
+        };
+
+        return Format switch
+        {
+            PixelFormat.Bgra => $"BGRA -> {name}",
+            PixelFormat.Bgr => $"BGR -> {name}",
+            _ => name
+        };
+    }
 }
 
 public readonly struct CompressedTextureFormatInfo : ITextureFormatInfo
@@ -156,4 +197,22 @@ public readonly struct CompressedTextureFormatInfo : ITextureFormatInfo
     {
         return InternalFormat is SizedInternalFormat.CompressedRgba8Etc2Eac or SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac;
     }
+
+    public override string ToString() => InternalFormat switch
+    {
+        SizedInternalFormat.CompressedRgbaS3tcDxt1Ext or SizedInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext => "BC1 RGB",
+        SizedInternalFormat.CompressedRgbaS3tcDxt3Ext or SizedInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext => "BC2 RGBA",
+        SizedInternalFormat.CompressedRgbaS3tcDxt5Ext or SizedInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext => "BC3 RGBA",
+        SizedInternalFormat.CompressedRedRgtc1 => "BC4 R",
+        SizedInternalFormat.CompressedRgRgtc2 => "BC5 RG",
+        SizedInternalFormat.CompressedRgbBptcUnsignedFloat => "BC6H RGB",
+        SizedInternalFormat.CompressedRgbaBptcUnorm => "BC7 RGBA",
+
+        SizedInternalFormat.CompressedRgb8Etc2 or SizedInternalFormat.CompressedSrgb8Etc2 => "ETC2 RGB",
+        SizedInternalFormat.CompressedRgba8Etc2Eac or SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac => "ETC2 RGBA",
+
+        _ when IsAstcFormat() => $"ASTC {_blockWidth}x{_blockHeight} RGBA",
+
+        _ => InternalFormat.ToString()
+    };
 }

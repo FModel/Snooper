@@ -89,7 +89,7 @@ public class LogWidget
         while (_pending.TryDequeue(out var log))
         {
             var time = log.Timestamp.ToString("HH:mm:ss.fff");
-            appended |= Append(log.Level, time, log.RenderMessage(), false);
+            appended |= Append(log.Level, time, $"[{SourceOf(log)}] {log.RenderMessage()}", false);
 
             if (log.Exception == null) continue;
 
@@ -111,6 +111,15 @@ public class LogWidget
         _lines.RemoveRange(0, Math.Max(TrimChunk, _lines.Count - MaxLines));
         _selected = -1;
         Rebuild();
+    }
+
+    private static string SourceOf(LogEvent log)
+    {
+        if (!log.Properties.TryGetValue("SourceContext", out var value) || value is not ScalarValue { Value: string name })
+            return "Snooper";
+
+        var dot = name.LastIndexOf('.');
+        return dot >= 0 ? name[(dot + 1)..] : name;
     }
 
     /// <summary>Returns whether the line ended up visible under the current filter.</summary>

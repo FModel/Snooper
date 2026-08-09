@@ -43,26 +43,24 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
     public void SetVertexLayout(Action<uint> setter) => _geometry.SetVertexLayout(setter);
 
-    public void Allocate(AllocationCounts counts, string systemName)
+    public void Allocate(AllocationCounts counts)
     {
         _geometry.Allocate(counts);
         if (counts.Draws > 0) _commands.Allocate(counts.Draws);
         if (counts.Instances > 0) _instanceData.Allocate(counts.Instances);
         if (counts.Materials > 0) _materialData.Allocate(counts.Materials);
 
-        Log.Information("Allocated {SystemName}<{VertexTypeName}, {InstanceTypeName}, {PerMaterialTypeName}> for {ComponentsCount} components ({UniqueComponents} unique ones): {DrawsCount} draws, {InstancesCount} instances, {MaterialsCount} materials, {IndicesCount} indices, {VerticesCount} vertices, {ColoredVerticesCount} colored vertices.",
-            systemName,
-            typeof(TVertex).Name,
-            typeof(TInstanceData).Name,
-            typeof(TPerMaterialData).Name,
+        Log.Information(
+            "Allocated {Components:N0} components ({UniqueComponents:N0} unique): {Instances:N0} instances, {Draws:N0} draws, {Materials:N0} materials | {Vertices:N0} vertices ({ColoredVertices:N0} colored), {Indices:N0} indices, {Sections:N0} sections",
             counts.Components,
             counts.UniqueComponents,
-            counts.Draws,
             counts.Instances,
+            counts.Draws,
             counts.Materials,
-            counts.Indices,
             counts.Vertices,
-            counts.ColoredVertices);
+            counts.ColoredVertices,
+            counts.Indices,
+            counts.Sections);
     }
 
     public ResourcesMetadata Add(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
