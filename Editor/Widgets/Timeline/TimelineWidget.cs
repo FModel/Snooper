@@ -15,8 +15,11 @@ namespace Editor.Widgets.Timeline;
 /// components attached to them. The transport drives that actor's clocks only, so pausing or seeking
 /// one performance leaves every other actor in the scene running.
 /// </summary>
-public class TimelineWidget
+public class TimelineWidget : PanelWidget
 {
+    public override string PanelTitle => TimelineStyle.Title;
+    public override PanelGroup Group => PanelGroup.Editor;
+
     private readonly TimelineRowBuilder _builder = new();
     private readonly TimelineLayout _layout = new();
 
@@ -24,27 +27,19 @@ public class TimelineWidget
     private ActorComponent? _lastSelected;
     private int _scrollTarget = -1;
 
-    public void Draw(InterfaceManager manager)
+    protected override void DrawContents(EditorManager editor)
     {
-        if (!ImGui.Begin(TimelineStyle.Title))
-        {
-            ImGui.End();
-            return;
-        }
-
-        var system = manager.GetSystem<SkinnedMeshRenderSystem>();
+        var system = editor.GetSystem<SkinnedMeshRenderSystem>();
         if (system == null)
         {
             TimelineEmptyState.Draw("Nothing to play", "This scene has no skinned meshes.");
-            ImGui.End();
             return;
         }
 
-        var actor = manager.SelectedActor ?? manager.SelectedComponent?.Actor;
+        var actor = editor.SelectedActor ?? editor.SelectedComponent?.Actor;
         if (actor == null)
         {
             TimelineEmptyState.Draw("No actor selected", "Pick one in the hierarchy or the viewport.");
-            ImGui.End();
             return;
         }
 
@@ -52,11 +47,10 @@ public class TimelineWidget
         if (_builder.Rows.Count == 0)
         {
             TimelineEmptyState.Draw("Nothing animated", $"{actor.Name} has no component playing an animation.");
-            ImGui.End();
             return;
         }
 
-        TrackSelection(manager, actor);
+        TrackSelection(editor, actor);
         DrawTransport(actor);
 
         // the rows measure the track, so the ruler that has to line up with it is drawn afterwards
@@ -64,10 +58,8 @@ public class TimelineWidget
         var origin = ImGui.GetCursorScreenPos();
         ImGui.SetCursorScreenPos(origin with { Y = origin.Y + TimelineStyle.RulerHeight });
 
-        DrawRows(manager);
+        DrawRows(editor);
         DrawRuler(origin.Y);
-
-        ImGui.End();
     }
 
     /// <summary>

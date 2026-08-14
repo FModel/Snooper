@@ -116,6 +116,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public void Render(CameraComponent camera, CommandBufferType type)
     {
         if (!IsEnabled) return;
+
+        using (Scope())
         using (Profiler.Sample(DisplayName))
         {
             if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);

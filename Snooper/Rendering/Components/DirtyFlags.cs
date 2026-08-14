@@ -12,6 +12,7 @@ public enum DirtyFlags : uint
     Outline = 1u << 5,
     Spline = 1u << 6,
     Animation = 1u << 7,
+    Morph = 1u << 8,
     // X = 1u << Y,
 
     All = uint.MaxValue

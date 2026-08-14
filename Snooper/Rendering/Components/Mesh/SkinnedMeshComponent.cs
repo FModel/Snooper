@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using Snooper.Core;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
@@ -12,9 +13,15 @@ namespace Snooper.Rendering.Components.Mesh;
 [DefaultActorSystem(typeof(SkinnedMeshRenderSystem))]
 public abstract class SkinnedMeshComponent : MeshComponent
 {
+    protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Morph;
+
+    private float[]? _morphWeights;
+    public float[] MorphWeights => _morphWeights ??= new float[Descriptor.Morphs?.Count ?? 0];
+    internal BufferAllocation? _morphWeightAllocation;
+
     protected SkinnedMeshComponent(SkinnedMeshComponent other) : base(other)
     {
-
+        _morphWeights = (float[]?) other._morphWeights?.Clone();
     }
 
     protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh.Materials, transform, skeletalMesh.Name)

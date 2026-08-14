@@ -25,7 +25,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     public LodDescriptor<TVertex>[] Lods { get; }
     public SkeletonDescriptor? Skeleton { get; }
     public ISocketDescriptor?[] Sockets { get; }
-    public List<MorphTargetDescriptor>? MorphTargets { get; }
+    public MorphDescriptor? Morphs { get; }
 
     private PrimitiveDescriptor(PrimitiveDescriptor<TVertex> other)
     {
@@ -37,6 +37,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Lods = [];
         Skeleton = null;
         Sockets = [];
+        Morphs = other.Morphs;
     }
 
     public PrimitiveDescriptor(CullingBounds bounds, Func<TPrimitiveData<TVertex>> factory)
@@ -113,13 +114,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         if (dto.MorphTargets is { Length: > 0 } morphTargets)
         {
             owner.PopulateMorphTargetVerticesData();
-
-            MorphTargets = new List<MorphTargetDescriptor>(morphTargets.Length);
-            foreach (var ptr in morphTargets)
-            {
-                if (!ptr.TryLoad<UMorphTarget>(out var morphTarget)) continue;
-                MorphTargets.Add(new MorphTargetDescriptor(morphTarget));
-            }
+            Morphs = MorphDescriptor.Create(morphTargets, Lods);
         }
     }
 

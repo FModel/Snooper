@@ -12,9 +12,11 @@ using Snooper.Rendering.Systems;
 
 namespace Editor.Widgets;
 
-public class SceneHierarchyWidget
+public class SceneHierarchyWidget : PanelWidget
 {
-    private const string Title           = "Scene Hierarchy";
+    public override string PanelTitle => Settings.SceneHierarchyWindow;
+    public override PanelGroup Group => PanelGroup.Editor;
+
     private const string SearchIcon      = "\uf002";
     private const string CollapseAllIcon = "\uf422";
 
@@ -28,33 +30,31 @@ public class SceneHierarchyWidget
     private bool _dirty = true;
     private readonly List<Actor> _flatNodes = [];
 
-    public void Draw(Actor? actor)
+    protected override void DrawContents(EditorManager editor)
     {
-        if (ImGui.Begin(Title))
+        var actor = editor.RootActor;
+
+        DrawSearchBar();
+
+        var manager = actor?.ActorManager;
+        var actorCount = (manager?.ActorCount ?? 1) - 1;
+
+        if (manager?.Revision != _lastRevision)
         {
-            DrawSearchBar();
-
-            var manager = actor?.ActorManager;
-            var actorCount = (manager?.ActorCount ?? 1) - 1;
-
-            if (manager?.Revision != _lastRevision)
-            {
-                _lastRevision = manager?.Revision ?? 0;
-                _dirty = true;
-            }
-
-            ImGui.SeparatorText($"{actor?.Name} ({actorCount} Actor{(actorCount > 1 ? "s" : "")})");
-            DrawClippedTree(actor);
-
-            if (_pendingAddModal)
-            {
-                ImGui.OpenPopup("New Actor");
-                _pendingAddModal = false;
-            }
-
-            DrawAddModal(actor);
+            _lastRevision = manager?.Revision ?? 0;
+            _dirty = true;
         }
-        ImGui.End();
+
+        ImGui.SeparatorText($"{actor?.Name} ({actorCount} Actor{(actorCount > 1 ? "s" : "")})");
+        DrawClippedTree(actor);
+
+        if (_pendingAddModal)
+        {
+            ImGui.OpenPopup("New Actor");
+            _pendingAddModal = false;
+        }
+
+        DrawAddModal(actor);
     }
 
     private void DrawSearchBar()

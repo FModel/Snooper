@@ -16,11 +16,27 @@ namespace Editor.Managers;
 
 public abstract class ImGuiManager : SceneManager
 {
-    private bool _show = true;
+    private bool _show;
+    private WindowState _windowedState;
+
     private readonly ImGuiController _controller;
+
+    public bool IsFullscreen
+    {
+        get => Window.WindowState == WindowState.Fullscreen;
+        set
+        {
+            if (value == IsFullscreen) return;
+            if (value) _windowedState = Window.WindowState;
+            Window.WindowState = value ? WindowState.Fullscreen : _windowedState;
+        }
+    }
 
     protected ImGuiManager(GameWindow wnd, IFileProvider fileProvider) : base(wnd, fileProvider)
     {
+        _show = true;
+        _windowedState = wnd.WindowState;
+
         var context = ImGui.CreateContext();
         ImGui.SetCurrentContext(context);
         ImGuizmo.SetImGuiContext(context);
@@ -206,6 +222,8 @@ public abstract class ImGuiManager : SceneManager
     {
         using (Profiler.Cpu("Inputs"))
         {
+            if (Window.IsKeyPressed(Keys.F11))
+                IsFullscreen = !IsFullscreen;
             if (Window.IsKeyPressed(Keys.F10))
                 _show = !_show;
 

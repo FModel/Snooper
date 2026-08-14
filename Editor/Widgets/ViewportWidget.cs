@@ -15,9 +15,13 @@ using Snooper.Rendering.Managers;
 
 namespace Editor.Widgets;
 
-public class ViewportWidget
+public class ViewportWidget : PanelWidget
 {
-    private const string Title = "Viewport";
+    public override string PanelTitle => Settings.ViewportWindow;
+    public override PanelGroup Group => PanelGroup.Editor;
+    public override bool CanClose => false;
+    public override bool IsOpen { get => true; set { } }
+
     private const float Padding = 7.5f;
 
     private const string SelectIcon    = "\uf245"; // mouse-pointer
@@ -35,24 +39,20 @@ public class ViewportWidget
     private bool _localSpace = true;
     private bool _selectMode;
 
-    public void Draw(Viewport? viewport)
+    protected override void PushWindowStyle() => ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+    protected override void PopWindowStyle() => ImGui.PopStyleVar();
+
+    protected override void DrawContents(EditorManager editor)
     {
-        if (viewport == null) return;
-
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        var visible = ImGui.Begin(Title);
-        ImGui.PopStyleVar();
-
-        if (!visible)
+        if (editor.MainViewport is not { } viewport)
         {
-            ImGui.End();
+            ImGui.TextDisabled("No viewport.");
             return;
         }
 
         if (viewport.Camera.Actor?.ActorManager is not InterfaceManager manager)
         {
             ImGui.TextDisabled("No camera.");
-            ImGui.End();
             return;
         }
 
@@ -108,8 +108,6 @@ public class ViewportWidget
         {
             DrawOrbitCircle(orbitalCamera, component, contentPos, contentSize);
         }
-
-        ImGui.End();
     }
 
     private void DrawToolbar(InteractiveCameraComponent camera, Vector2 contentPos)
@@ -142,13 +140,13 @@ public class ViewportWidget
             camera.ViewType = isOrbital ? CameraType.Orbital : CameraType.Free;
         }
 
-        ImGui.SameLine();
-        VerticalSeparator(style.FramePadding.Y);
-        ImGui.SameLine();
-        ToggleButton(ProfilerIcon, ref Profiler.Enabled, "Profiler");
-
-        ImGui.SameLine();
-        ToggleButton(HardwareIcon, ref RendererInfo.TrackMemory, "Hardware");
+        // ImGui.SameLine();
+        // VerticalSeparator(style.FramePadding.Y);
+        // ImGui.SameLine();
+        // ToggleButton(ProfilerIcon, ref Profiler.Enabled, "Profiler");
+        //
+        // ImGui.SameLine();
+        // ToggleButton(HardwareIcon, ref RendererInfo.TrackMemory, "Hardware");
 
         ImGui.PopStyleVar();
     }

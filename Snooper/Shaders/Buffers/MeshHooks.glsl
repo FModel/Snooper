@@ -64,6 +64,7 @@ vec3 GetSurfaceColor(PerDrawData draw, PerMaterialData material, LayerData layer
 #endif
 #if defined(SKINNED_MESH_VERTEX)
 #include "Hooks/skinning.glsl"
+#include "Hooks/morph.glsl"
 #endif
 
 // --------------------------------------------------------- dispatchers and defaults
@@ -72,7 +73,8 @@ vec3 GetSurfaceColor(PerDrawData draw, PerMaterialData material, LayerData layer
 void DeformVertex(PerDrawData draw, int instance, inout MeshVertex v)
 {
 #if defined(SKINNED_MESH_VERTEX)
-    SkinDeformVertex(draw, instance, v); // skin to the current pose first
+    MorphDeformVertex(draw, instance, v); // reshape the bind pose first
+    SkinDeformVertex(draw, instance, v); // then skin the result to the current pose
 #endif
 #if defined(SPLINE_VERTEX)
     SplineDeformVertex(draw, instance, v); // then bend the result along the spline
@@ -92,6 +94,7 @@ bool GetVertexDebugColor(PerDrawData draw, int instance, uint mode, inout vec3 c
 {
 #if defined(SKINNED_MESH_VERTEX)
     if (SkinVertexDebugColor(draw, instance, mode, color)) return true;
+    if (MorphVertexDebugColor(draw, instance, mode, color)) return true;
 #endif
     return false;
 }

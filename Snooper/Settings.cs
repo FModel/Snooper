@@ -38,9 +38,7 @@ public static class Settings
 
     public const string TrashIcon = "\uf1f8";
     public const string AddIcon = "\uf055";
-    public const string EyeIcon = "\uf06e";
     public const string EyeSlashIcon = "\uf070";
-    public const string CameraIcon = "\uf48b";
     public const string FocusIcon = "\uf05b";
     public const string JobIcon = "\uf085";
     public const string TextureIcon = "\uf03e";
@@ -49,6 +47,36 @@ public static class Settings
     public const string FovIcon = "\uf065";
     public const string LoopIcon = "\uf021";
     public const string InfinityIcon = "\uf534";
+    public const string BoxArchiveIcon = "\uf187";
+    public const string TerminalIcon = "\uf120";
+    public const string ChartGanttIcon = "\ue0e4";
+    public const string BarsProgressIcon = "\uf828";
+    public const string CubeIcon = "\uf1b2";
+    public const string SitemapIcon = "\uf0e8";
+    public const string BinocularsIcon = "\uf1e5";
+    public const string GearIcon = "\uf013";
+    public const string ChartPieIcon = "\uf200";
+    public const string MagnifyingGlassIcon = "\uf002";
+    public const string FolderOpenIcon = "\uf07c";
+    public const string FileImportIcon = "\uf56f";
+    public const string FileExportIcon = "\uf56e";
+    public const string PowerOffIcon = "\uf011";
+    public const string PaletteIcon = "\uf53f";
+    public const string EyeIcon = "\uf06e";
+    public const string CameraIcon = "\uf030";
+    public const string BookIcon = "\uf02d";
+    public const string KeyboardIcon = "\uf11c";
+    public const string CircleInfoIcon = "\uf05a";
+
+    public const string ViewportWindow = $"{CubeIcon}  Viewport";
+    public const string SceneHierarchyWindow = $"{SitemapIcon}  Scene Hierarchy";
+    public const string InspectorWindow = $"{BinocularsIcon}  Inspector";
+    public const string TimelineWindow = $"{ChartGanttIcon}  Timeline";
+    public const string LogWindow = $"{TerminalIcon}  Logs";
+    public const string WorldSettingsWindow = $"{GearIcon}  Render World Settings";
+    public const string SystemsWindow = $"{ChartPieIcon}  Systems";
+    public const string ContentWindow = $"{BoxArchiveIcon}  Content";
+    public const string MorphTargetsWindow = $"{BarsProgressIcon}  Morph Targets";
 
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";

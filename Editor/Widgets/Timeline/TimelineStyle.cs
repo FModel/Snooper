@@ -17,7 +17,7 @@ internal readonly record struct TimelinePalette(Vector4 Bar, Vector4 BarAlt, Vec
 /// </summary>
 internal static class TimelineStyle
 {
-    public const string Title = "\ue0e4 Timeline";
+    public const string Title = Snooper.Settings.TimelineWindow;
     public const string PlayIcon = "\uf04b";      // play
     public const string PauseIcon = "\uf04c";     // pause
     public const string RewindIcon = "\uf049";    // fast-backward

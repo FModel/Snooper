@@ -50,24 +50,27 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
 
     public void RenderShadowCascade(IViewProjectionProvider cascade)
     {
-        if (IsCulled)
+        using (Scope())
         {
-            using (Profiler.Cull())
+            if (IsCulled)
             {
-                Resources.Cull(cascade, CommandBufferType.Opaque, true); // cull against this cascade's own frustum
+                using (Profiler.Cull())
+                {
+                    Resources.Cull(cascade, CommandBufferType.Opaque, true); // cull against this cascade's own frustum
+                }
             }
+
+            _shadowShader.Use();
+            _shadowShader.SetUniform("uViewProjection", cascade.ViewMatrix * cascade.ProjectionMatrix);
+
+            using (Profiler.Draw())
+            {
+                BindSystemBuffers();
+                Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
+            }
+
+            _shadowShader.Unuse();
         }
-
-        _shadowShader.Use();
-        _shadowShader.SetUniform("uViewProjection", cascade.ViewMatrix * cascade.ProjectionMatrix);
-
-        using (Profiler.Draw())
-        {
-            BindSystemBuffers();
-            Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
-        }
-
-        _shadowShader.Unuse();
     }
 
     public IEnumerable<MeshComponent> GetMeshComponents() => GetComponents<TComponent>();

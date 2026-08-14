@@ -14,9 +14,11 @@ using Snooper.Rendering.Systems;
 
 namespace Editor.Widgets;
 
-public class InspectorWidget
+public class InspectorWidget : PanelWidget
 {
-    private const string Title      = "Inspector";
+    public override string PanelTitle => Settings.InspectorWindow;
+    public override PanelGroup Group => PanelGroup.Editor;
+
     private const string WarnIcon   = "\uf071";
     private const string FileIcon   = "\uf1c9";
     private const string SearchIcon = "\uf002";
@@ -31,46 +33,42 @@ public class InspectorWidget
     private readonly List<FlatEntry>  _flatNodes = [];
     private readonly HashSet<int>     _reachable = [];
 
-    public void Draw(Actor? selectedActor, ActorComponent? selectedComponent)
+    protected override void DrawContents(EditorManager editor)
     {
-        if (ImGui.Begin(Title))
+        var selectedComponent = editor.SelectedComponent;
+        var actor = editor.SelectedActor ?? selectedComponent?.Actor;
+        if (actor == null)
         {
-            var actor = selectedActor ?? selectedComponent?.Actor;
-            if (actor == null)
-            {
-                ImGui.TextUnformatted("No actor selected.");
-                ImGui.End();
-                return;
-            }
-
-            var actorId = actor.Id;
-            var componentCount = actor.Components.Count;
-            if (actorId != _lastActorId || componentCount != _lastComponentCount)
-            {
-                _lastActorId = actorId;
-                _lastComponentCount = componentCount;
-                _dirty = true;
-            }
-
-            DrawSearchBar();
-
-            ImGui.SeparatorText($"{actor.Name} ({actor.Class ?? "N/A"} - {componentCount} Component{(componentCount != 1 ? "s" : "")})");
-            DrawClippedTree(actor);
-
-            (selectedComponent ?? actor.RootComponent)?.DrawControls();
-
-            ImGui.SeparatorText("");
-            ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.Header));
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGui.GetColorU32(ImGuiCol.HeaderHovered));
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGui.GetColorU32(ImGuiCol.ButtonActive));
-            var width = ImGui.GetContentRegionAvail().X;
-            if (ImGui.Button($"{Settings.AddIcon}  Add Component", new Vector2(width, 0)))
-            {
-
-            }
-            ImGui.PopStyleColor(3);
+            ImGui.TextUnformatted("No actor selected.");
+            return;
         }
-        ImGui.End();
+
+        var actorId = actor.Id;
+        var componentCount = actor.Components.Count;
+        if (actorId != _lastActorId || componentCount != _lastComponentCount)
+        {
+            _lastActorId = actorId;
+            _lastComponentCount = componentCount;
+            _dirty = true;
+        }
+
+        DrawSearchBar();
+
+        ImGui.SeparatorText($"{actor.Name} ({actor.Class ?? "N/A"} - {componentCount} Component{(componentCount != 1 ? "s" : "")})");
+        DrawClippedTree(actor);
+
+        (selectedComponent ?? actor.RootComponent)?.DrawControls();
+
+        ImGui.SeparatorText("");
+        ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.Header));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGui.GetColorU32(ImGuiCol.HeaderHovered));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGui.GetColorU32(ImGuiCol.ButtonActive));
+        var width = ImGui.GetContentRegionAvail().X;
+        if (ImGui.Button($"{Settings.AddIcon}  Add Component", new Vector2(width, 0)))
+        {
+
+        }
+        ImGui.PopStyleColor(3);
     }
 
     private void DrawSearchBar()

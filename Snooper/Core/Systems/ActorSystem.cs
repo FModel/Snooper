@@ -41,7 +41,7 @@ public abstract class ActorSystem : IGameSystem
         ComponentType = componentType;
     }
 
-    private IDisposable Scope() => LogContext.PushProperty(Constants.SourceContextPropertyName, DisplayName);
+    protected IDisposable Scope() => LogContext.PushProperty(Constants.SourceContextPropertyName, DisplayName);
 
     public void Load()
     {

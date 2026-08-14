@@ -265,15 +265,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             }
             ImGui.EndGroup();
 
-            if (Descriptor.MorphTargets is { Count: > 0 })
+            if (Descriptor.Morphs is { Count: > 0 } morphs)
             {
-                EditorUI.Property($"Morph Targets ({Descriptor.MorphTargets.Count})");
-                ImGui.BeginGroup();
-                foreach (var morphTarget in Descriptor.MorphTargets)
+                EditorUI.Property($"Morph Targets ({morphs.Count})");
+                if (ImGui.Button($"{Settings.BarsProgressIcon}  Open Morph Targets", new Vector2(-1, 0)))
                 {
-                    ImGui.TextUnformatted(morphTarget.Name);
+                    WindowRequests.Request(Settings.MorphTargetsWindow);
                 }
-                ImGui.EndGroup();
             }
         });
     }

@@ -2,6 +2,7 @@
 using System.Numerics;
 using ImGuiNET;
 using Serilog.Events;
+using Editor.Managers;
 using Snooper;
 using Snooper.Core;
 
@@ -11,9 +12,11 @@ namespace Editor.Widgets;
 /// The in app console, fed by <see cref="ImGuiSink"/>. Serilog emits from whatever thread did the
 /// logging, so events are queued and only turned into lines on the ui thread.
 /// </summary>
-public class LogWidget
+public class LogWidget : PanelWidget
 {
-    private const string Title = "\uf120 Log";
+    public override string PanelTitle => Settings.LogWindow;
+    public override PanelGroup Group => PanelGroup.Editor;
+
     private const string FollowIcon = "\uf103"; // angles-down
 
     private const int MaxLines = 4096;
@@ -70,17 +73,13 @@ public class LogWidget
         ImGuiSink.Instance.OnLogEvent += _pending.Enqueue;
     }
 
-    public void Draw()
-    {
-        // drained unconditionally, a collapsed window must not let the queue grow without bound
-        Drain();
+    // drained unconditionally, a closed window must not let the queue grow without bound
+    protected override void Tick(EditorManager editor) => Drain();
 
-        if (ImGui.Begin(Title))
-        {
-            DrawHeader();
-            DrawLines();
-        }
-        ImGui.End();
+    protected override void DrawContents(EditorManager editor)
+    {
+        DrawHeader();
+        DrawLines();
     }
 
     private void Drain()

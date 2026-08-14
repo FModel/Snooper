@@ -18,13 +18,37 @@ layout(std430, binding = BINDING_SKIN_BONE_INFLUENCE_OFFSETS) buffer PerVertexBo
     uint uVertexBoneInfluenceOffsetBuffer[];
 };
 
+struct MorphDelta // one per (vertex, morph) pair, mirrors Descriptors/MorphDescriptor.cs
+{
+    uint MorphIndex;
+    uint PositionXY;
+    uint PositionZ_TangentX;
+    uint TangentYZ;
+};
+
+layout(std430, binding = BINDING_MORPH_DELTAS) readonly buffer PerVertexMorphDeltaBuffer
+{
+    MorphDelta uMorphDeltaBuffer[]; // grouped by vertex: every morph touching a vertex sits in one run
+};
+
+layout(std430, binding = BINDING_MORPH_DELTA_OFFSETS) readonly buffer PerVertexMorphDeltaOffsetBuffer
+{
+    uint uMorphDeltaOffsetBuffer[]; // CSR prefix sum, vertex v owns deltas [offset[v], offset[v + 1])
+};
+
+layout(std430, binding = BINDING_MORPH_WEIGHTS) readonly buffer PerMorphWeightBuffer
+{
+    float uMorphWeightBuffer[]; // one weight per morph target, one contiguous set per component
+};
+
 struct PerMeshSkinningData // one entry per unique mesh, index-aligned with PerMeshData
 {
     uint BaseBone; // offset of this mesh's bones in the inverse bind buffer
+    uint MorphCount; // number of morph targets on this mesh, 0 when it has none
     uint LOD_BaseBoneInfluence[8]; // Settings.MaxNumberOfLods
+    uint LOD_BaseMorphOffset[8];
     uint Pad0;
     uint Pad1;
-    uint Pad2;
 };
 
 layout(std430, binding = BINDING_SKIN_MESH_DATA) readonly buffer PerMeshSkinningDataBuffer
@@ -32,9 +56,15 @@ layout(std430, binding = BINDING_SKIN_MESH_DATA) readonly buffer PerMeshSkinning
     PerMeshSkinningData uSkinMeshDataBuffer[];
 };
 
-layout(std430, binding = BINDING_SKIN_POSE_MAPPING) readonly buffer PerInstancePoseOffsetBuffer
+struct PerInstanceSkinningData // one per instance, indexed by gl_BaseInstance + gl_InstanceID
 {
-    uint uPoseOffsetByInstance[]; // instance index (gl_BaseInstance + gl_InstanceID) -> base pose index
+    uint BasePose;
+    uint BaseMorphWeight; // 0xFFFFFFFF when the mesh has no morph targets
+};
+
+layout(std430, binding = BINDING_SKIN_INSTANCE_DATA) readonly buffer PerInstanceSkinningDataBuffer
+{
+    PerInstanceSkinningData uSkinInstanceBuffer[];
 };
 
 // requires Buffers/PerDrawData.glsl to be included first
@@ -42,7 +72,7 @@ void getSkinningBases(PerDrawData draw, uint instance, out uint baseBone, out ui
 {
     PerMeshSkinningData skin = uSkinMeshDataBuffer[draw.MeshIndex];
     baseBone = skin.BaseBone;
-    basePose = uPoseOffsetByInstance[instance];
+    basePose = uSkinInstanceBuffer[instance].BasePose;
     baseInfluence = skin.LOD_BaseBoneInfluence[draw.Lod];
 }
 

@@ -8,6 +8,8 @@ public abstract class ComputeRenderSystem<TComponent> : ActorSystem<TComponent>,
     public void Execute(CameraComponent camera)
     {
         if (!IsEnabled) return;
+
+        using (Scope())
         using (Profiler.Sample(DisplayName))
         {
             OnExecute(camera);

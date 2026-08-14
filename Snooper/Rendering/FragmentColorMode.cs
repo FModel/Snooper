@@ -11,17 +11,19 @@ public static class FragmentColorMode
     public const uint Normals = 6;
     public const uint BoneWeightPainting = 7;
     public const uint LODLevel = 8;
+    public const uint MorphDisplacement = 9;
 
     public static readonly string[] Labels =
     [
-        "Disabled",
+        "Textures",
         "Clay",
-        "Show Components",
-        "Show Instances",
-        "Show Draws",
-        "Show Vertex Colors",
-        "Show Normals",
-        "Bone Weight Painting",
+        "Components",
+        "Instances",
+        "Draws",
+        "Vertex Colors",
+        "Normals",
+        "Weight Painting",
         "LOD Level",
+        "Morph Displacement",
     ];
 }

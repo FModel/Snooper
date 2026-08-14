@@ -18,7 +18,7 @@ public class SceneManager : ActorManager
     public GameWindow Window { get; }
     public Viewport? MainViewport { get; private set; }
 
-    protected Actor? RootActor
+    public Actor? RootActor
     {
         get;
         private set

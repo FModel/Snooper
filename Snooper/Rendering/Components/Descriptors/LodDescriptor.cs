@@ -10,6 +10,7 @@ namespace Snooper.Rendering.Components.Descriptors;
 
 public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
 {
+    public uint SourceLodIndex { get; }
     public uint IndexCount { get; }
     public uint VertexCount { get; }
     public float ScreenSize { get; }
@@ -26,6 +27,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         _primitive = primitive;
         _factory = null;
 
+        SourceLodIndex = 0;
         IndexCount = (uint)(_primitive?.Indices?.Length ?? 0);
         VertexCount = (uint)(_primitive?.Vertices?.Length ?? 0);
         ScreenSize = 0.0f;
@@ -35,8 +37,9 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         Sections = [new SectionDescriptor(0, IndexCount, 0, castShadow)];
     }
 
-    private LodDescriptor(uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>>? factory)
+    private LodDescriptor(uint sourceLodIndex, uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>>? factory)
     {
+        SourceLodIndex = sourceLodIndex;
         IndexCount = indexCount;
         VertexCount = vertexCount;
         ScreenSize = screenSize;
@@ -84,6 +87,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         }
 
         return new LodDescriptor<TVertex>(
+            lod.SourceLodIndex,
             (uint) indices.Length,
             (uint) vertices.Length,
             lod.ScreenSize,
