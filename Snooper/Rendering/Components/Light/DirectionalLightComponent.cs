@@ -17,7 +17,7 @@ public class DirectionalLightComponent : LightComponent
     public DirectionalLightComponent(float intensity, Vector3 color, Transform? transform = null, string? name = null) : base(intensity, color, "S_LightDirectional", transform, name)
     {
         // manually placed directional lights should be at the origin, just for easy manipulation
-        LocalTransform.Position = Vector3.Zero;
+        // LocalTransform.Position = Vector3.Zero;
     }
 
     protected override DebugComponent CreateDebugVisualization() => new ArrowComponent(Settings.DirectionalLight, null, $"{Name} (Direction)");

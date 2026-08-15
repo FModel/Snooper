@@ -104,4 +104,11 @@ public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvide
     {
 
     }
+
+    protected override void Teardown()
+    {
+        Deselect();
+
+        base.Teardown();
+    }
 }

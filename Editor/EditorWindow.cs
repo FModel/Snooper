@@ -62,7 +62,6 @@ public partial class EditorWindow : GameWindow
             Manager.UnloadScene();
             Hide();
         };
-        Unload += DoUnload; // right after the game loop ends
     }
 
     protected override void OnLoad()
@@ -167,9 +166,14 @@ public partial class EditorWindow : GameWindow
         Manager.Resize(e.Width, e.Height);
     }
 
-    private void DoUnload()
+    protected override void Dispose(bool disposing)
     {
-        Manager.Dispose();
-        Log.CloseAndFlush();
+        if (disposing)
+        {
+            CursorState = CursorState.Normal;
+            Manager.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }
