@@ -5,6 +5,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+        <CUE4ParseDir Condition="'$(CUE4ParseDir)' == ''">$(MSBuildThisFileDirectory)..\CUE4Parse\</CUE4ParseDir>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,7 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\CUE4Parse\CUE4Parse-Conversion\CUE4Parse-Conversion.csproj" />
+        <ProjectReference Include="$(CUE4ParseDir)CUE4Parse-Conversion\CUE4Parse-Conversion.csproj" />
     </ItemGroup>
 
     <ItemGroup>
