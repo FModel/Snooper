@@ -52,7 +52,7 @@ public static class Settings
     public const string ChartGanttIcon = "\ue0e4";
     public const string BarsProgressIcon = "\uf828";
     public const string CubeIcon = "\uf1b2";
-    public const string SitemapIcon = "\uf0e8";
+    public const string RoadIcon = "\uf018";
     public const string BinocularsIcon = "\uf1e5";
     public const string GearIcon = "\uf013";
     public const string ChartPieIcon = "\uf200";
@@ -67,9 +67,10 @@ public static class Settings
     public const string BookIcon = "\uf02d";
     public const string KeyboardIcon = "\uf11c";
     public const string CircleInfoIcon = "\uf05a";
+    public const string EarthEuropeIcon = "\uf7a2";
 
     public const string ViewportWindow = $"{CubeIcon}  Viewport";
-    public const string SceneHierarchyWindow = $"{SitemapIcon}  Scene Hierarchy";
+    public const string SceneHierarchyWindow = $"{RoadIcon}  Hierarchy";
     public const string InspectorWindow = $"{BinocularsIcon}  Inspector";
     public const string TimelineWindow = $"{ChartGanttIcon}  Timeline";
     public const string LogWindow = $"{TerminalIcon}  Logs";

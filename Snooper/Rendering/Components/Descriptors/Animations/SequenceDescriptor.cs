@@ -29,7 +29,7 @@ public sealed class SequenceDescriptor : SequenceBaseDescriptor
 
     public SequenceDescriptor(UAnimSequence owner, AnimationDescriptor? outer = null) : base(owner, outer)
     {
-        var skeleton = owner.Skeleton.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
+        var skeleton = owner.Skeleton?.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
         var converted = skeleton.ConvertAnims(owner).Sequences.FirstOrDefault() ?? throw new InvalidOperationException($"Failed to convert animation asset {owner.Name} for skeleton {skeleton.Name}");
         converted.RetargetTracks(skeleton);
         _sequence = converted;

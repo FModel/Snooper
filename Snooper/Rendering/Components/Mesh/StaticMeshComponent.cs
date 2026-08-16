@@ -1,5 +1,7 @@
-﻿using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
+﻿using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Core;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
@@ -25,6 +27,16 @@ public class StaticMeshComponent : MeshComponent
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
 
         // TODO: use component.LODData to override some stuff (eg vertex colors)
+    }
+
+    protected StaticMeshComponent(FPackageIndex?[] materials, UMeshComponent component) : base(materials, component)
+    {
+
+    }
+
+    protected StaticMeshComponent(FPackageIndex?[] materials, Transform? transform = null, string? name = null) : base(materials, transform, name)
+    {
+
     }
 
     public override string Icon => "\uf1b2";

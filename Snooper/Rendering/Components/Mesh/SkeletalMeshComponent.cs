@@ -35,7 +35,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
         SetAnimation(animToPlay, playPosition);
     }
 
-    public SkeletalMeshComponent(UAnimationAsset animToPlay, float playPosition = 0f, float playRate = 1f) : this(animToPlay.Skeleton.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {animToPlay.Name}"))
+    public SkeletalMeshComponent(UAnimationAsset animToPlay, float playPosition = 0f, float playRate = 1f) : this(animToPlay.Skeleton?.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {animToPlay.Name}"))
     {
         SetAnimation(animToPlay, playPosition, playRate);
     }

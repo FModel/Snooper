@@ -20,7 +20,7 @@ public abstract class AnimationDescriptor : IControllable
 
         SkeletonDescriptor Create()
         {
-            var skeleton = owner.Skeleton.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
+            var skeleton = owner.Skeleton?.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
 
             var descriptor = new SkeletonDescriptor(skeleton.ReferenceSkeleton);
             descriptor.SetOwner(skeleton);

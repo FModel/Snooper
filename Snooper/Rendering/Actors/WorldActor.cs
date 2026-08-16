@@ -96,7 +96,7 @@ public class WorldActor : Actor
     private void ProcessWorldPartition(ULevel level)
     {
         if (!level.WorldSettings.TryLoad<AWorldSettings>(out var worldSettings) ||
-            !worldSettings.WorldPartition.TryLoad<UWorldPartition>(out var worldPartition))
+            worldSettings.WorldPartition == null || !worldSettings.WorldPartition.TryLoad<UWorldPartition>(out var worldPartition))
             return;
 
         Children.Add(new PartitionActor(worldPartition));
@@ -164,6 +164,8 @@ public class WorldActor : Actor
             //
         }
     }
+
+    public override string Icon => Settings.EarthEuropeIcon;
 
     public override void DrawControls()
     {
