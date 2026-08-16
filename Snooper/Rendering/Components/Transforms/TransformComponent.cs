@@ -2,9 +2,12 @@
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
+using Serilog;
 using Snooper.Core;
 using Snooper.Core.Managers;
+using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -73,7 +76,17 @@ public class SpatialComponent : ActorComponent
 
     protected virtual int InstanceCount => 1;
 
-    public string? AttachSocketName;
+    public string? AttachSocketName
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+
+            field = value;
+            MarkDirty(DirtyFlags.Transform);
+        }
+    }
 
     public Transform LocalTransform
     {
@@ -92,20 +105,96 @@ public class SpatialComponent : ActorComponent
         get;
         set
         {
-            if (this == value || field == value) return;
+            if (!CanRelateTo(value)) return;
 
-            field?._children.Remove(this);
+            field?.RemoveChild(this);
             field = value;
-
-            if (field != null && !field._children.Contains(this))
-                field._children.Add(this);
+            field?.AddChild(this);
 
             MarkDirty(DirtyFlags.Transform);
+            Actor?.IncrementRevision(); // this actor's component tree changed shape, views of it are stale
         }
+    }
+
+    private bool CanRelateTo(SpatialComponent? value)
+    {
+        if (Relation == value || this == value) return false;
+
+        if (value is not null && value.IsAttachedTo(this))
+        {
+            Log.Warning("{Component} cannot be attached to {Target}, which already hangs off it", Name, value.Name);
+            return false;
+        }
+
+        return true;
     }
 
     private readonly List<SpatialComponent> _children = [];
     public IReadOnlyList<SpatialComponent> Children => _children;
+
+    private void AddChild(SpatialComponent child)
+    {
+        if (!_children.Contains(child)) _children.Add(child);
+    }
+    private void RemoveChild(SpatialComponent child) => _children.Remove(child);
+
+    public bool IsAttachedTo(SpatialComponent other)
+    {
+        for (var current = Relation; current != null; current = current.Relation)
+        {
+            if (current == other) return true;
+        }
+        return false;
+    }
+
+    public Matrix4x4 GetRelationMatrix()
+    {
+        if (Relation is null) return Matrix4x4.Identity;
+
+        var relationMatrix = Relation.WorldMatrix;
+        if (!string.IsNullOrEmpty(AttachSocketName) && Relation is MeshComponent mesh)
+        {
+            relationMatrix = mesh.Descriptor.GetSocketModelMatrix(AttachSocketName) * relationMatrix;
+        }
+
+        return relationMatrix;
+    }
+
+    public bool AttachTo(SpatialComponent? newRelation, string? socket = null, bool keepWorldTransform = true)
+    {
+        if (newRelation == Relation && socket == AttachSocketName) return true;
+
+        var worldBefore = WorldMatrix;
+
+        Relation = newRelation;
+        if (Relation != newRelation) return false;
+
+        AttachSocketName = socket;
+        if (keepWorldTransform) KeepWorldTransform(worldBefore);
+
+        return true;
+    }
+
+    private void KeepWorldTransform(Matrix4x4 worldBefore)
+    {
+        if (_absPosition || _absRotation || _absScale)
+        {
+            Log.Debug("{Component} has absolute transform channels, keeping its local transform instead", Name);
+            return;
+        }
+
+        // the new parent may not have been through TransformSystem yet, and we are about to invert its matrix
+        Relation?.UpdateWorldMatrix();
+
+        if (!Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
+        {
+            Log.Warning("{Component} could not invert its new relation matrix, keeping its local transform instead", Name);
+            return;
+        }
+
+        Matrix4x4.Decompose(worldBefore * invRelation, out var scale, out var rotation, out var position);
+        SetLocalTransform(new Transform { Scale = scale, Rotation = rotation, Position = position });
+    }
 
     public Matrix4x4 WorldMatrix { get; private set; } = Matrix4x4.Identity;
 
@@ -148,9 +237,8 @@ public class SpatialComponent : ActorComponent
         }
         else
         {
-            var invRelation = Matrix4x4.Identity;
-            if (Relation is { } relation)
-                Matrix4x4.Invert(relation.WorldMatrix, out invRelation);
+            if (!Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
+                invRelation = Matrix4x4.Identity;
 
             Matrix4x4.Decompose(manipulated * invRelation, out var pScale, out var pRotation, out var pPosition);
             SetLocalTransform(new Transform { Scale = pScale, Rotation = pRotation, Position = pPosition });
@@ -202,12 +290,7 @@ public class SpatialComponent : ActorComponent
         {
             if (recursive) Relation.UpdateWorldMatrix();
 
-            var relationMatrix = Relation.WorldMatrix;
-            if (!string.IsNullOrEmpty(AttachSocketName) && Relation is MeshComponent mesh)
-            {
-                relationMatrix = mesh.Descriptor.GetSocketModelMatrix(AttachSocketName) * relationMatrix;
-            }
-
+            var relationMatrix = GetRelationMatrix();
             if (!_absPosition && !_absRotation && !_absScale)
             {
                 WorldMatrix = LocalTransform.ToMatrix() * relationMatrix;
@@ -348,19 +431,167 @@ public class SpatialComponent : ActorComponent
             EditorUI.PropertyWithToggle("Scale", ScaleButtons);
             edited |= EditorUI.DragAxes("Scale", ref t.Scale, _uniformScale, out _, 0.01f, 0.0001f);
 
-            if (isPivot && !string.IsNullOrEmpty(AttachSocketName))
-            {
-                EditorUI.Property("Attached To");
-                ImGui.TextUnformatted(AttachSocketName);
-                ImGui.SameLine();
-                ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
-                ImGui.TextUnformatted($"(in {Relation?.Name ?? "Unknown"})");
-                ImGui.PopStyleColor();
-            }
+            if (isPivot) DrawAttachmentControls();
 
             if (edited) SetLocalTransform(t, _instanceIndex);
         });
     }
+
+    /// <summary>
+    /// The scene root is the container everything lives in
+    /// </summary>
+    private bool IsSceneRoot(Actor? actor) => actor?.ActorManager is SceneManager manager && manager.RootActor == actor;
+    private bool IsDetached => Relation is null || IsSceneRoot(Relation.Actor);
+
+    private void DrawAttachmentControls()
+    {
+        DrawRelationCombo();
+        DrawSocketCombo();
+    }
+
+    private void DrawRelationCombo()
+    {
+        EditorUI.Property("Attached To");
+        if (!ImGui.BeginCombo("##AttachedTo", IsDetached ? "None" : Relation!.Name)) return;
+
+        if (ImGui.Selectable("None", IsDetached))
+        {
+            // detaching an actor's root means the actor itself goes back to the scene root
+            if (Actor is { RootComponent: { } root } actor && root == this) actor.Detach();
+            else AttachTo(null);
+        }
+
+        if (Actor is { } owner)
+        {
+            DrawAttachCandidates(owner);
+
+            // a root component hangs off the parent actor, so that actor's components are candidates too
+            if (this == owner.RootComponent && owner.Parent is { } parent && !IsSceneRoot(parent))
+                DrawAttachCandidates(parent);
+        }
+
+        ImGui.EndCombo();
+    }
+
+    private string _socketFilter = string.Empty;
+    private void DrawSocketCombo()
+    {
+        if (Relation is not MeshComponent mesh) return;
+
+        var sockets = mesh.Descriptor.Sockets;
+        var skeleton = mesh.Descriptor.Skeleton;
+        if (sockets.Length == 0 && skeleton is not { BoneCount: > 0 }) return;
+
+        EditorUI.Property("Socket/Bone");
+        if (!ImGui.BeginCombo("##AttachSocket", string.IsNullOrEmpty(AttachSocketName) ? "None" : AttachSocketName, ImGuiComboFlags.HeightLarge)) return;
+
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##SocketFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _socketFilter, 64);
+
+        BuildSocketEntries(sockets, skeleton);
+
+        unsafe
+        {
+            var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
+            clipper.Begin(_socketEntries.Count, ImGui.GetTextLineHeightWithSpacing());
+            while (clipper.Step())
+            {
+                for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                {
+                    DrawSocketEntry(_socketEntries[i]);
+                }
+            }
+
+            clipper.End();
+            clipper.Destroy();
+        }
+
+        ImGui.EndCombo();
+    }
+
+    private void DrawAttachCandidates(Actor owner)
+    {
+        var headerDrawn = false;
+        foreach (var component in owner.Components)
+        {
+            if (component is not SpatialComponent spatial || spatial == this || spatial.IsAttachedTo(this)) continue;
+
+            if (!headerDrawn)
+            {
+                EditorUI.ListHeader($"{owner.Icon}  {owner.Name}");
+                headerDrawn = true;
+            }
+
+            var selected = Relation == spatial;
+            if (ImGui.Selectable($"{spatial.Icon}  {spatial.Name}##Attach{spatial.Id}", selected))
+                AttachTo(spatial, AttachSocketName);
+            if (selected) ImGui.SetItemDefaultFocus();
+        }
+    }
+
+    private readonly record struct SocketEntry(string Label, string? Value, bool IsHeader);
+    private readonly List<SocketEntry> _socketEntries = [];
+
+    /// <summary>
+    /// Flattens the filtered sockets and bones into one list, headers included, so a single clipper covers it all.
+    /// </summary>
+    private void BuildSocketEntries(ISocketDescriptor?[] sockets, SkeletonDescriptor? skeleton)
+    {
+        _socketEntries.Clear();
+        _socketEntries.Add(new SocketEntry("None", null, false));
+
+        var socketCount = 0;
+        foreach (var socket in sockets)
+        {
+            if (socket is not null && Matches(socket.Name)) socketCount++;
+        }
+
+        if (socketCount > 0)
+        {
+            _socketEntries.Add(new SocketEntry($"Sockets ({socketCount})", null, true));
+            foreach (var socket in sockets)
+            {
+                if (socket is not null && Matches(socket.Name))
+                    _socketEntries.Add(new SocketEntry(socket.Name, socket.Name, false));
+            }
+        }
+
+        if (skeleton is not { BoneCount: > 0 }) return;
+
+        var boneCount = 0;
+        for (var i = 0; i < skeleton.BoneCount; i++)
+        {
+            if (Matches(skeleton.GetBoneName(i))) boneCount++;
+        }
+
+        if (boneCount == 0) return;
+
+        _socketEntries.Add(new SocketEntry($"Bones ({boneCount})", null, true));
+        for (var i = 0; i < skeleton.BoneCount; i++)
+        {
+            var bone = skeleton.GetBoneName(i);
+            if (Matches(bone)) _socketEntries.Add(new SocketEntry(bone, bone, false));
+        }
+    }
+
+    private void DrawSocketEntry(SocketEntry entry)
+    {
+        if (entry.IsHeader)
+        {
+            EditorUI.ListHeader(entry.Label);
+            return;
+        }
+
+        var selected = entry.Value == AttachSocketName;
+        if (ImGui.Selectable(entry.Label, selected))
+        {
+            // keep the local transform: picking a socket means "put it there", not "hold it where it is"
+            AttachTo(Relation, entry.Value, keepWorldTransform: false);
+        }
+        if (selected) ImGui.SetItemDefaultFocus();
+    }
+
+    private bool Matches(string name) => _socketFilter.Length == 0 || name.Contains(_socketFilter, StringComparison.OrdinalIgnoreCase);
     #endregion
 
     public override object Clone() => new SpatialComponent(this);

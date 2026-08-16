@@ -62,14 +62,10 @@ public class SceneHierarchyWidget : PanelWidget
         var style = ImGui.GetStyle();
         var addBtnWidth = ImGui.CalcTextSize(Settings.AddIcon).X + style.FramePadding.X * 2;
         var collapseBtnWidth = ImGui.CalcTextSize(CollapseAllIcon).X + style.FramePadding.X * 2;
-        var iconWidth = ImGui.CalcTextSize(SearchIcon).X;
-        var inputWidth = ImGui.GetContentRegionAvail().X - iconWidth - addBtnWidth - collapseBtnWidth - style.ItemSpacing.X * 2;
+        var inputWidth = ImGui.GetContentRegionAvail().X - addBtnWidth - collapseBtnWidth - style.ItemSpacing.X * 2;
 
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextDisabled(SearchIcon);
-        ImGui.SameLine();
         ImGui.SetNextItemWidth(inputWidth);
-        if (ImGui.InputTextWithHint("##ActorSearch", "Search...", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputTextWithHint("##ActorFilter", $"{Settings.MagnifyingGlassIcon}  Filter Actors", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
         {
             _dirty = true;
         }
@@ -154,6 +150,10 @@ public class SceneHierarchyWidget : PanelWidget
             }
         }
         ImGui.EndChild();
+
+        // dropping on empty space detaches back to the scene root; rows are submitted first, so a row that
+        // already consumed the drop clears the payload before we get here
+        if (AttachmentDragDrop.DetachTarget()) _dirty = true;
     }
 
     private void DrawAddModal(Actor? actor)
@@ -220,6 +220,9 @@ public class SceneHierarchyWidget : PanelWidget
 
         actor.IsNodeOpen = ImGui.TreeNodeEx("##Actor", flags, $"{actor.Icon}  {actor.Name}");
         var toggledOpen = ImGui.IsItemToggledOpen();
+
+        AttachmentDragDrop.Source(actor);
+        if (AttachmentDragDrop.ActorTarget(actor)) _dirty = true;
 
         if (ImGui.BeginPopupContextItem("##ActorContext"))
         {

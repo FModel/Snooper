@@ -87,7 +87,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     internal void RegisterActor(Actor actor)
     {
         ActorCount++;
-        Revision++;
+        IncrementRevision();
 
         Log.Verbose("{Actor} entered the scene", actor.Name);
     }
@@ -95,10 +95,12 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     internal void UnregisterActor(Actor actor)
     {
         ActorCount--;
-        Revision++;
+        IncrementRevision();
 
         Log.Verbose("{Actor} left the scene", actor.Name);
     }
+
+    internal void IncrementRevision() => Revision++;
 
     internal void RegisterComponent(ActorComponent component)
     {

@@ -27,6 +27,7 @@ public class InspectorWidget : PanelWidget
 
     private int    _lastActorId        = -1;
     private int    _lastComponentCount = -1;
+    private uint   _lastRevision;
     private string _search             = "";
     private bool   _dirty              = true;
 
@@ -45,10 +46,12 @@ public class InspectorWidget : PanelWidget
 
         var actorId = actor.Id;
         var componentCount = actor.Components.Count;
-        if (actorId != _lastActorId || componentCount != _lastComponentCount)
+        var revision = actor.Revision;
+        if (actorId != _lastActorId || componentCount != _lastComponentCount || revision != _lastRevision)
         {
             _lastActorId = actorId;
             _lastComponentCount = componentCount;
+            _lastRevision = revision;
             _dirty = true;
         }
 
@@ -73,15 +76,8 @@ public class InspectorWidget : PanelWidget
 
     private void DrawSearchBar()
     {
-        var style = ImGui.GetStyle();
-        var iconWidth = ImGui.CalcTextSize(SearchIcon).X;
-        var inputW = ImGui.GetContentRegionAvail().X - iconWidth - style.ItemSpacing.X;
-
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextDisabled(SearchIcon);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(inputW);
-        if (ImGui.InputTextWithHint("##ComponentSearch", "Search...", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        ImGui.SetNextItemWidth(-1);
+        if (ImGui.InputTextWithHint("##ComponentFilter", $"{Settings.MagnifyingGlassIcon}  Filter Components", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
         {
             _dirty = true;
         }
@@ -175,6 +171,9 @@ public class InspectorWidget : PanelWidget
 
         var toggledOpen = ImGui.IsItemToggledOpen();
 
+        AttachmentDragDrop.Source(component);
+        if (AttachmentDragDrop.ComponentTarget(component)) _dirty = true;
+
         if (ImGui.BeginPopupContextItem("##ComponentContext"))
         {
             ImGui.TextDisabled(component.Name);
@@ -267,8 +266,6 @@ public class InspectorWidget : PanelWidget
             }
         }
 
-        // TODO: drag and drop
-
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !toggledOpen)
         {
             if (component.Actor?.ActorManager is InterfaceManager manager)
@@ -310,10 +307,8 @@ public class InspectorWidget : PanelWidget
 
         // Pass 1 – mark EVERY component reachable from the spatial tree,
         //          regardless of open/closed state (closed ≠ orphaned).
-        foreach (var component in actor.Components)
-        {
-            _reachable.Add(component.Id);
-        }
+        if (actor.RootComponent != null)
+            MarkReachable(actor.RootComponent, actor.Id);
 
         // Pass 2 – populate the visible flat list from the spatial tree.
         if (actor.RootComponent != null)
@@ -332,6 +327,21 @@ public class InspectorWidget : PanelWidget
             component.NodeDepth = 0;
             component.NodeIndex = _flatNodes.Count;
             _flatNodes.Add(new FlatEntry(component, component is SpatialComponent));
+        }
+    }
+
+    /// <summary>
+    /// Walks the whole spatial tree ignoring open/closed state, so pass 3 can tell an orphan from a collapsed node.
+    /// The <see cref="HashSet{T}.Add"/> result doubles as a visited guard against a cycle in the relation graph.
+    /// </summary>
+    private void MarkReachable(SpatialComponent component, int actorId)
+    {
+        if (!_reachable.Add(component.Id)) return;
+
+        foreach (var child in component.Children)
+        {
+            if (child.Actor?.Id != actorId) continue;
+            MarkReachable(child, actorId);
         }
     }
 

@@ -122,6 +122,13 @@ public static class EditorUI
         ImGui.TextUnformatted(value);
     }
 
+    public static void ListHeader(string label)
+    {
+        ImGui.PushStyleVar(ImGuiStyleVar.SeparatorTextPadding, ImGui.GetStyle().SeparatorTextPadding with { Y = 0f });
+        ImGui.SeparatorText(label);
+        ImGui.PopStyleVar();
+    }
+
     public static void Property(string label)
     {
         ImGui.TableNextRow();

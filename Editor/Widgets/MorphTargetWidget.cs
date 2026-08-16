@@ -79,16 +79,12 @@ public class MorphTargetWidget : PanelWidget
     private void DrawToolbar(SkinnedMeshComponent mesh, float[] weights)
     {
         var style = ImGui.GetStyle();
-        var iconWidth = ImGui.CalcTextSize(Settings.MagnifyingGlassIcon).X;
         var activeWidth = ImGui.CalcTextSize("Active only").X + ImGui.GetFrameHeight() + style.ItemInnerSpacing.X;
         var resetWidth = ImGui.CalcTextSize($"{Settings.LoopIcon}  Reset All").X + style.FramePadding.X * 2;
-        var inputWidth = MathF.Max(ImGui.GetContentRegionAvail().X - iconWidth - activeWidth - resetWidth - style.ItemSpacing.X * 3, ImGui.GetFrameHeight() * 3);
+        var inputWidth = MathF.Max(ImGui.GetContentRegionAvail().X - activeWidth - resetWidth - style.ItemSpacing.X * 3, ImGui.GetFrameHeight() * 3);
 
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextDisabled(Settings.MagnifyingGlassIcon);
-        ImGui.SameLine();
         ImGui.SetNextItemWidth(inputWidth);
-        if (ImGui.InputTextWithHint("##MorphSearch", "Search...", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputTextWithHint("##MorphFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
         {
             _dirty = true;
         }

@@ -191,7 +191,7 @@ public class ShaderProgram(string vertex, string fragment) : Program
             _uniformsLocation.Add(name, location);
             if (location == -1)
             {
-                Log.Warning("{Name} uniform not found in shader.", name);
+                Log.Debug("{Name} uniform not found in shader.", name);
                 // throw new Exception($"{name} uniform not found in shader.");
             }
         }

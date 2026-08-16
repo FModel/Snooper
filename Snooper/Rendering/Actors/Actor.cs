@@ -1,5 +1,6 @@
 using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports;
+using Serilog;
 using Snooper.Core;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Components;
@@ -61,6 +62,8 @@ public class Actor : TreeNode
     }
 
     public ActorManager? ActorManager { get; private set; }
+
+    public uint Revision { get; private set; }
 
     internal void SetScene(ActorManager? manager, EEndPlayReason reason)
     {
@@ -135,6 +138,89 @@ public class Actor : TreeNode
             ct.ThrowIfCancellationRequested();
             child.Export(session, ct);
         }
+    }
+
+    internal void IncrementRevision() => Revision++;
+
+    public bool IsDescendantOf(Actor other)
+    {
+        for (var current = _parent; current != null; current = current._parent)
+        {
+            if (current == other) return true;
+        }
+        return false;
+    }
+
+    public bool AttachTo(Actor newParent, SpatialComponent? attachTo = null, string? socket = null, bool keepWorldTransform = true)
+    {
+        if (!CanAttachTo(newParent, attachTo, out var relation)) return false;
+
+        if (_parent != newParent) MoveUnder(newParent);
+        RootComponent?.AttachTo(relation, socket, keepWorldTransform);
+
+        Log.Verbose("{Actor} attached to {Target}", Name, relation?.Name ?? newParent.Name);
+        return true;
+    }
+
+    private bool CanAttachTo(Actor newParent, SpatialComponent? attachTo, out SpatialComponent? relation)
+    {
+        relation = attachTo ?? newParent.RootComponent;
+
+        if (newParent == this)
+        {
+            Log.Warning("{Actor} cannot be attached to itself", Name);
+            return false;
+        }
+        if (newParent.IsDescendantOf(this))
+        {
+            Log.Warning("{Actor} cannot be attached to {Target}, which is already below it", Name, newParent.Name);
+            return false;
+        }
+        if (_parent is null)
+        {
+            Log.Warning("{Actor} has no parent to be moved away from", Name);
+            return false;
+        }
+        if (RootComponent is { } root && relation is not null && relation.IsAttachedTo(root))
+        {
+            Log.Warning("{Actor} cannot be attached to {Target}, which already hangs off its root", Name, relation.Name);
+            return false;
+        }
+
+        return true;
+    }
+
+    private void MoveUnder(Actor newParent)
+    {
+        var oldParent = _parent!;
+        var manager = ActorManager;
+
+        if (manager is null || newParent.ActorManager != manager)
+        {
+            // this actor is not yet part of the scene, or the new parent is in a different scene somehow
+            oldParent.Children.Remove(this);
+            newParent.Children.Add(this);
+            return;
+        }
+
+        oldParent.Children.RemoveQuiet(this);
+        newParent.Children.AddQuiet(this);
+
+        _parent = newParent;
+        UpdateHierarchyDepth();
+
+        manager.IncrementRevision();
+    }
+
+    public bool Detach(bool keepWorldTransform = true)
+    {
+        if (ActorManager is not SceneManager { RootActor: { } root })
+        {
+            Log.Warning("{Actor} has no scene root to be detached to", Name);
+            return false;
+        }
+
+        return root != this && AttachTo(root, root.RootComponent, null, keepWorldTransform);
     }
 
     internal void OnChildAdded(Actor actor)

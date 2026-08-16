@@ -227,7 +227,7 @@ public class LogWidget : PanelWidget
 
         ImGui.SetNextItemWidth(SearchWidth);
         ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(1f, 1f, 1f, 0.04f));
-        if (ImGui.InputTextWithHint("##LogSearch", "Filter", ref _search, 128))
+        if (ImGui.InputTextWithHint("##LogFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128))
         {
             dirty = true;
         }
