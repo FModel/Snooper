@@ -139,4 +139,13 @@ public class FontAtlasTexture : Texture2D
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
         GL.GenerateTextureMipmap(Handle);
     }
+
+    public static void Invalidate() => _instance?.Dispose();
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _instance = null;
+    }
 }

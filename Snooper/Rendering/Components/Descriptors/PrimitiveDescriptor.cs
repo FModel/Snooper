@@ -92,6 +92,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
         using var dto = new StaticMeshDto(owner);
+        if (dto.LODs.Count == 0) throw new InvalidOperationException(); // just so we fallback to collection groups
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)

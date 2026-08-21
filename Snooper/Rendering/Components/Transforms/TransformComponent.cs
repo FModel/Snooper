@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.FastGeoStreaming;
 using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Serilog;
@@ -58,6 +59,12 @@ public class SpatialComponent : ActorComponent
         _originalAbsPosition = _absPosition;
         _originalAbsRotation = _absRotation;
         _originalAbsScale = _absScale;
+        _originalTransform = Snapshot();
+    }
+
+    protected SpatialComponent(FFastGeoComponent component) : base(component)
+    {
+        LocalTransform = component.LocalTransform;
         _originalTransform = Snapshot();
     }
 

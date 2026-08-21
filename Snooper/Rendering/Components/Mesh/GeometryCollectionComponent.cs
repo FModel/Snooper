@@ -5,6 +5,7 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
+using Serilog;
 using Snooper.Core;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Components.Descriptors;
@@ -33,8 +34,11 @@ public class GeometryCollectionComponent : StaticMeshComponent
         {
             descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(geometryCollection, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
         }
-        catch
+        catch (Exception e)
         {
+            Log.Error(e, "Failed to create geometry collection descriptor for {Name}", geometryCollection.Name);
+            CreateInstances(geometryCollection);
+
             MeshVertex[] vertices =
             [
                 new(new FVector(-0.5f, -0.5f, -0.5f), FVector.ZeroVector, FVector4.ZeroVector, FMeshUVFloat.ZeroVector),
@@ -58,7 +62,6 @@ public class GeometryCollectionComponent : StaticMeshComponent
             descriptor = new PrimitiveDescriptor<Vertex>(bounds ?? new FBox(FVector.ZeroVector, FVector.OneVector), () => new Geometry(vertices, indices, null, null));
         }
 
-        CreateInstances(geometryCollection);
         return descriptor;
     }
 

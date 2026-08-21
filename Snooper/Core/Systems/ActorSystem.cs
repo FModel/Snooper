@@ -1,7 +1,6 @@
 ﻿using Serilog;
 using Serilog.Context;
 using Serilog.Core;
-using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;

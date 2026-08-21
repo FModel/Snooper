@@ -28,6 +28,11 @@ public sealed class AudioSystem : ComputeRenderSystem<AudioComponent>, IControll
     private const float MinDb = -35f;
     private const float MaxDb = 0f;
 
+    public AudioSystem()
+    {
+        IsEnabled = false;
+    }
+
     protected override void OnLoad()
     {
         base.OnLoad();

@@ -117,6 +117,14 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         foreach (var (type, shader) in Shaders)
             yield return new MemoryDetail($"{type} Shader", shader);
     }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        foreach (var shader in Shaders.Values)
+            shader.Dispose();
+    }
 }
 
 public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type = PrimitiveType.Triangles)

@@ -1,5 +1,6 @@
 ﻿using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.FastGeoStreaming;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using ImGuiNET;
@@ -25,6 +26,11 @@ public abstract class ActorComponent : TreeNode
     }
 
     protected ActorComponent(UActorComponent component) : base(component)
+    {
+
+    }
+
+    protected ActorComponent(FFastGeoComponent component) : base($"Component{component.ComponentIndex}_{component.DetailMode.ToString()}")
     {
 
     }

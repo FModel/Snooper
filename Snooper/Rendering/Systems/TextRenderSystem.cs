@@ -65,4 +65,11 @@ public class TextRenderSystem : PrimitiveSystem<Vector4, TextRenderComponent, Pe
 
         ImGui.Image(FontAtlasTexture.Instance.GetPointer(), new Vector2(width, width * aspect));
     }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        FontAtlasTexture.Invalidate();
+    }
 }
