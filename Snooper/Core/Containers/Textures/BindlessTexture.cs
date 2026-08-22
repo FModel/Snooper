@@ -5,12 +5,14 @@ namespace Snooper.Core.Containers.Textures;
 
 public class BindlessTexture(Texture texture) : ArbHandledObject, IControllable
 {
+    public Texture Texture { get; } = texture;
+
     public override void Generate()
     {
         if (ArbHandle > 0)
             throw new InvalidOperationException("Bindless texture already generated.");
 
-        ArbHandle = GL.Arb.GetTextureHandle(texture);
+        ArbHandle = GL.Arb.GetTextureHandle(Texture);
     }
 
     public void MakeResident()
@@ -31,13 +33,15 @@ public class BindlessTexture(Texture texture) : ArbHandledObject, IControllable
 
     private bool IsResident() => GL.Arb.IsTextureHandleResident(ArbHandle);
 
-    public IntPtr GetPointer() => texture.GetPointer();
+    public IntPtr GetPointer() => Texture.GetPointer();
 
-    public void DrawControls() => texture.DrawControls();
+    public void DrawControls() => Texture.DrawControls();
 
     public override void Dispose()
     {
         if (ArbHandle > 0)
             MakeNonResident();
+
+        Texture.Dispose();
     }
 }

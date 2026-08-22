@@ -86,6 +86,11 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
         {
 
         }
+
+        public void DrawSummary(int layerIndex = 0)
+        {
+
+        }
     }
 
     private class Geometry : PrimitiveData<Vector2>

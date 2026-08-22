@@ -58,6 +58,11 @@ public abstract class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
         {
 
         }
+
+        public void DrawSummary(int layerIndex = 0)
+        {
+
+        }
     }
 
     protected abstract class DebugGeometry : PrimitiveData;

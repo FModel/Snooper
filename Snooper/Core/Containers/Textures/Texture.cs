@@ -23,9 +23,11 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
         set
         {
             field = value;
-            FormatName = value.ToString();
+            FormatName = value.ToString() ?? "";
         }
     }
+
+    public bool IsSrgb => FormatInfo.IsSrgb;
 
     public string FormatName { get; private set; } = string.Empty;
 
@@ -131,19 +133,14 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
         ImGui.Image(GetPointer(), new Vector2(previewSize, previewSize), Vector2.Zero, Vector2.One, Vector4.One, Vector4.One / 2);
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
         {
-            // TODO: Open texture in new window
+            WindowRequests.Request(Settings.TextureInspectorWindow, this);
         }
 
         ImGui.SameLine();
 
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Name);
-        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
-        ImGui.SetWindowFontScale(0.85f);
-        ImGui.TextUnformatted($"{Guid.ToString(EGuidFormats.UniqueObjectGuid)}");
-        ImGui.TextUnformatted($"{Width}x{Height} pixels ({GetFormattedSpace()})");
-        ImGui.SetWindowFontScale(1.0f);
-        ImGui.PopStyleVar();
+        EditorUI.Caption($"{Guid.ToString(EGuidFormats.UniqueObjectGuid)}", $"{Width}x{Height} pixels ({GetFormattedSpace()})");
         ImGui.EndGroup();
     }
 

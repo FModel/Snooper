@@ -11,7 +11,7 @@ namespace Editor.Widgets;
 
 public class MorphTargetWidget : PanelWidget
 {
-    public override string PanelTitle => Settings.MorphTargetsWindow;
+    public override string PanelTitle => Settings.MorphEditorWindow;
     public override PanelGroup Group => PanelGroup.Tools;
 
     public override bool IsOpen { get; set; } // this widget is opened on demand

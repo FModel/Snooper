@@ -529,11 +529,7 @@ public sealed class ExportModal
         ImGui.TextUnformatted(ex.Message);
         if (!string.IsNullOrEmpty(ex.StackTrace))
         {
-            ImGui.SetWindowFontScale(0.85f);
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
-            ImGui.TextUnformatted(ex.StackTrace);
-            ImGui.PopStyleColor();
-            ImGui.SetWindowFontScale(1.0f);
+            EditorUI.Caption(ex.StackTrace);
         }
         ImGui.EndTooltip();
     }

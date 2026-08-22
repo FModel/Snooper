@@ -126,19 +126,19 @@ public class ViewportWidget : PanelWidget
         GizmoButton(TranslateIcon, OPERATION.TRANSLATE, "Translate"); ImGui.SameLine();
         GizmoButton(RotateIcon, OPERATION.ROTATE, "Rotate"); ImGui.SameLine();
         GizmoButton(ScaleIcon, OPERATION.SCALE, "Scale"); ImGui.SameLine();
-        VerticalSeparator(style.FramePadding.Y); ImGui.SameLine();
-        ToggleButton(_localSpace ? LocalIcon : WorldIcon, ref _localSpace, _localSpace ? "Local Space" : "World Space");
+        // VerticalSeparator(style.FramePadding.Y); ImGui.SameLine();
+        // ToggleButton(_localSpace ? LocalIcon : WorldIcon, ref _localSpace, _localSpace ? "Local Space" : "World Space");
         ImGui.EndDisabled();
 
-        ImGui.SameLine();
-        VerticalSeparator(style.FramePadding.Y);
-        ImGui.SameLine();
-
-        var isOrbital = camera.ViewType == CameraType.Orbital;
-        if (ToggleButton(isOrbital ? OrbitalIcon : FreeIcon, ref isOrbital, isOrbital ? "Orbital Camera" : "Free Camera"))
-        {
-            camera.ViewType = isOrbital ? CameraType.Orbital : CameraType.Free;
-        }
+        // ImGui.SameLine();
+        // VerticalSeparator(style.FramePadding.Y);
+        // ImGui.SameLine();
+        //
+        // var isOrbital = camera.ViewType == CameraType.Orbital;
+        // if (ToggleButton(isOrbital ? OrbitalIcon : FreeIcon, ref isOrbital, isOrbital ? "Orbital Camera" : "Free Camera"))
+        // {
+        //     camera.ViewType = isOrbital ? CameraType.Orbital : CameraType.Free;
+        // }
 
         // ImGui.SameLine();
         // VerticalSeparator(style.FramePadding.Y);

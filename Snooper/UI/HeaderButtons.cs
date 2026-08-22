@@ -32,11 +32,7 @@ public sealed class HeaderButtons(string headerLabel)
         var btnSize = new Vector2(ImGui.GetFrameHeight());
         var padRight = style.FramePadding.X;
 
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
-        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 1f, 1f, 0.08f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(1f, 1f, 1f, 0.15f));
+        EditorUI.PushIconButtonStyle();
 
         for (var i = 0; i < _entries.Count; i++)
         {
@@ -54,10 +50,12 @@ public sealed class HeaderButtons(string headerLabel)
             if (tint.HasValue) ImGui.PopStyleColor();
             ImGui.EndDisabled();
 
-            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(entry.Tooltip());
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            {
+                EditorUI.Tooltip(entry.Tooltip());
+            }
         }
 
-        ImGui.PopStyleColor(3);
-        ImGui.PopStyleVar(2);
+        EditorUI.PopIconButtonStyle();
     }
 }

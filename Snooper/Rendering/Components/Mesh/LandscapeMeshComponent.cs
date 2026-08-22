@@ -195,30 +195,14 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
         public IPerMaterialData? Raw { get; private set; }
 
-        private int _selectedWeightmap;
         public void DrawControls()
         {
-            EditorUI.Property("Heightmap Texture");
-            if (_heightmap != null)
-            {
-                _heightmap.DrawControls();
-            }
-            else ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "None");
 
-            EditorUI.Property($"Weightmaps ({weightmaps.Length})");
+        }
 
-            var maxWeightmap = weightmaps.Length - 1;
+        public void DrawSummary(int layerIndex = 0)
+        {
 
-            ImGui.BeginDisabled(maxWeightmap == 0);
-            ImGui.SliderInt("##WeightmapSlider", ref _selectedWeightmap, 0, maxWeightmap);
-            ImGui.EndDisabled();
-
-            EditorUI.Property("Weightmap Texture");
-            if (_weightmaps?[_selectedWeightmap] is { } weightmap)
-            {
-                weightmap.DrawControls();
-            }
-            else ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "None");
         }
     }
 

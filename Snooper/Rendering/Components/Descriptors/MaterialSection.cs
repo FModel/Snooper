@@ -21,6 +21,7 @@ public class MaterialSection(uint index)
             if (field == value) return;
 
             field = value;
+            Override = null;
             if (field != null) _onMaterialDataContainerSet?.Invoke(this);
         }
     }
@@ -37,7 +38,59 @@ public class MaterialSection(uint index)
         }
     }
 
-    public IMaterialDataContainer? MaterialDataContainer => CacheKey != null ? MaterialCache.Resolve(CacheKey) : InlineContainer;
+    private string? _originalCacheKey;
+    private bool _hasOriginalCacheKey;
+
+    public bool IsSwapped => _hasOriginalCacheKey && _originalCacheKey != CacheKey;
+    public bool IsEdited => Override != null || IsSwapped;
+
+    public MaterialDataContainer? Override { get; private set; }
+    public IMaterialDataContainer? MaterialDataContainer => Override ?? (CacheKey != null ? MaterialCache.Resolve(CacheKey) : InlineContainer);
+
+    public void SwapMaterial(string cacheKey)
+    {
+        if (string.IsNullOrEmpty(cacheKey) || cacheKey == CacheKey) return;
+
+        if (!_hasOriginalCacheKey)
+        {
+            _originalCacheKey = CacheKey;
+            _hasOriginalCacheKey = true;
+        }
+
+        CacheKey = cacheKey;
+    }
+
+    public MaterialDataContainer? BeginEdit()
+    {
+        if (Override != null) return Override;
+        if (MaterialDataContainer is not MaterialDataContainer source) return null;
+        if (!source.IsGpuDataReady) return null;
+
+        return Override = source.Clone();
+    }
+
+    public void CommitEdit()
+    {
+        if (Override is not { } edited) return;
+
+        edited.FinalizeGpuData();
+        ContainerReady();
+    }
+
+    public void RevertEdit()
+    {
+        if (!IsEdited) return;
+
+        Override = null;
+
+        if (IsSwapped)
+        {
+            CacheKey = _originalCacheKey;
+            return; // TextureCache will call ContainerReady anyway
+        }
+
+        ContainerReady();
+    }
 
     private Action<MaterialSection>? _onMaterialDataContainerSet;
     public event Action<MaterialSection>? OnMaterialDataContainerSet

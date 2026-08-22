@@ -162,7 +162,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (container.Raw is not TPerMaterialData raw)
             throw new InvalidOperationException($"Material data container raw type {container.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
 
-        // TODO: remove duplicates in GPU memory
         _materialData.QueueUpdate(allocation, raw);
     }
 

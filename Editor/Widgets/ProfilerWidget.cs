@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using Snooper;
 using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
@@ -32,7 +33,7 @@ public class ProfilerWidget
     public void DrawMemoryTable(IMemoryDetailsProvider provider)
     {
         ImGui.BeginDisabled(_navStack.Count == 0);
-        if (ImGui.Button("\uf104"))
+        if (ImGui.Button(Settings.AngleLeftIcon))
         {
             _navStack.Pop();
             _selectedLeafNode = string.Empty;

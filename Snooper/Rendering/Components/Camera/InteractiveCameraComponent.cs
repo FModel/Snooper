@@ -27,7 +27,7 @@ public class InteractiveCameraComponent : CameraComponent
     {
         get;
         set => field = MathF.Max(1f, value);
-    } = 10f;
+    } = 1f;
 
     private Vector3 _velocity = Vector3.Zero;
     private float _zoomVelocity = 0f;

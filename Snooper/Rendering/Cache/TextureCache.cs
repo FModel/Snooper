@@ -5,6 +5,7 @@ using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Descriptors;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Snooper.Rendering.Cache;
 
@@ -14,9 +15,8 @@ public static class TextureCache
 
     private static int _totalTexturesRequested;
 
-    public static int LoadedTextureCount => _textures.Count;
+    public static int LoadedTextureCount => _bindless.Count;
     public static int PendingTextureCount => _loadQueue.Count;
-    public static int BindlessTextureCount => _bindless.Count;
     public static bool IsLoading => PendingTextureCount > 0;
 
     public static float LoadingProgress
@@ -29,7 +29,6 @@ public static class TextureCache
         }
     }
 
-    private static readonly ConcurrentDictionary<FGuid, Texture> _textures = new();
     private static readonly ConcurrentDictionary<FGuid, BindlessTexture> _bindless = new();
     private static readonly ConcurrentQueue<Texture> _loadQueue = new();
     private static readonly ConcurrentDictionary<FGuid, byte> _knownGuids = new();
@@ -37,6 +36,13 @@ public static class TextureCache
     private static readonly ConcurrentDictionary<FGuid, ConcurrentBag<ContainerDependency>> _dependencies = new();
     private static readonly ConcurrentDictionary<string, ContainerLoadState> _states = new();
     private static readonly ConcurrentDictionary<string, byte> _registeredKeys = new();
+
+    public static IEnumerable<Texture> GetLoaded()
+    {
+        foreach (var bindless in _bindless.Values)
+            yield return bindless.Texture;
+    }
+    public static bool TryGetBindless(FGuid guid, [MaybeNullWhen(false)] out BindlessTexture bindless) => _bindless.TryGetValue(guid, out bindless);
 
     public static void Add(MaterialSection section)
     {
@@ -136,8 +142,6 @@ public static class TextureCache
 
     private static void OnTextureReady(FGuid guid, Texture texture)
     {
-        _textures.TryAdd(guid, texture);
-
         var bindless = new BindlessTexture(texture);
         bindless.Generate();
         bindless.MakeResident();
@@ -175,13 +179,10 @@ public static class TextureCache
 
     public static void ClearAndDispose()
     {
-        foreach (var texture in _bindless.Values)
-            texture.Dispose();
-        foreach (var texture in _textures.Values)
-            texture.Dispose();
+        foreach (var bindless in _bindless.Values)
+            bindless.Dispose();
 
-        Log.Information("Clearing texture cache with {Count} entries", _textures.Count);
-        _textures.Clear();
+        Log.Information("Clearing texture cache with {Count} entries", _bindless.Count);
         _bindless.Clear();
         _loadQueue.Clear();
         _knownGuids.Clear();
@@ -196,8 +197,8 @@ public static class TextureCache
         get
         {
             long total = 0;
-            foreach (var texture in _textures.Values)
-                total += texture.Allocated;
+            foreach (var bindless in _bindless.Values)
+                total += bindless.Texture.Allocated;
             return total;
         }
     }
@@ -207,16 +208,16 @@ public static class TextureCache
         get
         {
             long total = 0;
-            foreach (var texture in _textures.Values)
-                total += texture.Used;
+            foreach (var bindless in _bindless.Values)
+                total += bindless.Texture.Used;
             return total;
         }
     }
 
     public static IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        foreach (var texture in _textures.Values)
-            yield return new MemoryDetail(texture.Name, texture);
+        foreach (var bindless in _bindless.Values)
+            yield return new MemoryDetail(bindless.Texture.Name, bindless.Texture);
     }
 
     private readonly struct ContainerDependency(string containerKey, string textureKey)

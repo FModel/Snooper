@@ -1,5 +1,6 @@
 using System.Numerics;
 using ImGuiNET;
+using Snooper;
 using Snooper.Core;
 
 namespace Editor.Widgets;
@@ -272,7 +273,7 @@ public class ProfilerOverlayWidget
 
             drawList.AddText(new Vector2(x + square + 6f, y + 1f), Color(0.85f, 0.85f, 0.88f), task.Name);
             if (drillable)
-                drawList.AddText(new Vector2(x + square + 6f + ImGui.CalcTextSize(task.Name).X + 3f, y + 1f), Color(0.5f, 0.5f, 0.55f), "\uf105");
+                drawList.AddText(new Vector2(x + square + 6f + ImGui.CalcTextSize(task.Name).X + 3f, y + 1f), Color(0.5f, 0.5f, 0.55f), Settings.AngleRightIcon);
 
             var timing = task.HasGpu ? $"{cpuMs:F2} / {gpuMs:F2} ms" : $"{cpuMs:F2} ms";
             var timingWidth = ImGui.CalcTextSize(timing).X;

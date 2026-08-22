@@ -26,4 +26,6 @@ public interface IMaterialDataContainer : IControllable
     public void SetBindlessTexture(string key, BindlessTexture bindless);
 
     public void FinalizeGpuData();
+
+    public void DrawSummary(int layerIndex = 0);
 }

@@ -122,6 +122,27 @@ public static class EditorUI
         ImGui.TextUnformatted(value);
     }
 
+    public static void Caption(params string[] lines)
+    {
+        if (lines.Length == 0) return;
+
+        PushCaptionStyle();
+        foreach (var line in lines) ImGui.TextUnformatted(line);
+        PopCaptionStyle();
+    }
+
+    public static void PushCaptionStyle()
+    {
+        ImGui.SetWindowFontScale(0.85f);
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+    }
+
+    public static void PopCaptionStyle()
+    {
+        ImGui.PopStyleColor();
+        ImGui.SetWindowFontScale(1.0f);
+    }
+
     public static void ListHeader(string label)
     {
         ImGui.PushStyleVar(ImGuiStyleVar.SeparatorTextPadding, ImGui.GetStyle().SeparatorTextPadding with { Y = 0f });
@@ -139,33 +160,86 @@ public static class EditorUI
         ImGui.SetNextItemWidth(-1);
     }
 
+    public static void PushIconButtonStyle()
+    {
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
+        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 1f, 1f, 0.08f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(1f, 1f, 1f, 0.15f));
+    }
+
+    public static void PopIconButtonStyle()
+    {
+        ImGui.PopStyleColor(3);
+        ImGui.PopStyleVar(2);
+    }
+
+    public static void VerticalSeparator(float? paddingY = null)
+    {
+        var pad = paddingY ?? ImGui.GetStyle().FramePadding.Y;
+        var size = new Vector2(1f, ImGui.GetFrameHeight());
+        var pos = ImGui.GetCursorScreenPos();
+
+        ImGui.GetWindowDrawList().AddLine(
+            pos with { Y = pos.Y + pad },
+            pos with { Y = pos.Y + size.Y - pad },
+            ImGui.GetColorU32(ImGuiCol.Separator), size.X);
+
+        ImGui.Dummy(size);
+    }
+
+    public static bool IconButton(string icon, string? tooltip = null, bool enabled = true, Vector4? textColor = null)
+    {
+        PushIconButtonStyle();
+
+        var height = ImGui.GetFrameHeight();
+        var width = MathF.Max(height, ImGui.CalcTextSize(icon).X + ImGui.GetStyle().FramePadding.X * 2.0f);
+
+        ImGui.BeginDisabled(!enabled);
+        if (textColor.HasValue) ImGui.PushStyleColor(ImGuiCol.Text, textColor.Value);
+        var clicked = ImGui.Button(icon, new Vector2(width, height));
+        if (textColor.HasValue) ImGui.PopStyleColor();
+        ImGui.EndDisabled();
+
+        PopIconButtonStyle();
+
+        if (tooltip is not null && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) Tooltip(tooltip);
+        return clicked;
+    }
+
     public static void PropertyWithToggle(string label, params PropertyToggleButton[] buttons)
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
         ImGui.AlignTextToFramePadding();
 
+        var visibleCount = 0;
+        foreach (var button in buttons)
+        {
+            if (button.Visible?.Invoke() ?? true) visibleCount++;
+        }
+
         var style = ImGui.GetStyle();
         var frameHeight = ImGui.GetFrameHeight();
         var startX = ImGui.GetCursorPosX();
         var colW = ImGui.GetContentRegionAvail().X;
         var labelEndX = startX + ImGui.CalcTextSize(label).X + style.ItemSpacing.X;
-        var firstBtnX = startX + colW - frameHeight * buttons.Length;
+        var firstBtnX = startX + colW - frameHeight * visibleCount;
 
         ImGui.TextUnformatted(label);
 
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
-        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 1f, 1f, 0.08f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(1f, 1f, 1f, 0.15f));
+        PushIconButtonStyle();
 
+        var slot = 0;
         for (var i = 0; i < buttons.Length; i++)
         {
-            var btnX = firstBtnX + frameHeight * i;
+            var btn = buttons[i];
+            if (!(btn.Visible?.Invoke() ?? true)) continue;
+
+            var btnX = firstBtnX + frameHeight * slot++;
             if (btnX < labelEndX) continue; // not enough space – skip rather than overlap the label
 
-            var btn = buttons[i];
             var isEnabled = btn.Enabled?.Invoke() ?? true;
             var tint = btn.TextColor?.Invoke();
 
@@ -179,28 +253,27 @@ public static class EditorUI
 
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && btn.Tooltip is not null)
             {
-                ImGui.BeginTooltip();
-                var parts = btn.Tooltip().Split(['\n'], StringSplitOptions.RemoveEmptyEntries);
-                ImGui.TextUnformatted(parts[0]);
-                if (parts.Length > 1)
-                {
-                    ImGui.Spacing();
-                    ImGui.SetWindowFontScale(0.85f);
-                    for (var j = 1; j < parts.Length; j++)
-                    {
-                        ImGui.TextDisabled(parts[j]);
-                    }
-                    ImGui.SetWindowFontScale(1.0f);
-                }
-                ImGui.EndTooltip();
+                Tooltip(btn.Tooltip.Invoke());
             }
         }
 
-        ImGui.PopStyleColor(3);
-        ImGui.PopStyleVar(2);
+        PopIconButtonStyle();
 
         ImGui.TableSetColumnIndex(1);
         ImGui.SetNextItemWidth(-1);
+    }
+
+    public static void Tooltip(string text)
+    {
+        ImGui.BeginTooltip();
+        var parts = text.Split(['\n'], StringSplitOptions.RemoveEmptyEntries);
+        ImGui.TextUnformatted(parts[0]);
+        if (parts.Length > 1)
+        {
+            ImGui.Spacing();
+            Caption(parts[1..]);
+        }
+        ImGui.EndTooltip();
     }
 
     public static void CollapsingTable(string label, ImGuiTreeNodeFlags flags, Action draws)
@@ -211,9 +284,9 @@ public static class EditorUI
         }
     }
 
-    public static void PropertyValueTable(string label, Action draws)
+    public static void PropertyValueTable(string label, Action draws, bool indent = true)
     {
-        ImGui.Indent();
+        if (indent) ImGui.Indent();
         if (ImGui.BeginTable(label + "ControlsTable", 2))
         {
             ImGui.TableSetupColumn("Property", ImGuiTableColumnFlags.WidthStretch, 1.0f);
@@ -223,7 +296,7 @@ public static class EditorUI
 
             ImGui.EndTable();
         }
-        ImGui.Unindent();
+        if (indent) ImGui.Unindent();
     }
 
     public static void TogglableTreeNode(string label, ref bool enabled, Action? content = null, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth)

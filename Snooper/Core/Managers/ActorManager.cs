@@ -244,9 +244,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
 
     public virtual void DrawControls()
     {
-        ImGui.SetWindowFontScale(0.85f);
-        ImGui.TextDisabled($"API: {Renderer.Name} | GPU: {Renderer.DeviceInfo.Name}");
-        ImGui.SetWindowFontScale(1.0f);
+        EditorUI.Caption($"API: {Renderer.Name} | GPU: {Renderer.DeviceInfo.Name}");
 
         ImGui.SeparatorText("General");
 

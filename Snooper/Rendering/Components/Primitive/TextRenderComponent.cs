@@ -137,6 +137,11 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
         {
 
         }
+
+        public void DrawSummary(int layerIndex = 0)
+        {
+
+        }
     }
 
     private class Geometry : PrimitiveData<Vector4>

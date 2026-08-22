@@ -343,7 +343,7 @@ public class SpatialComponent : ActorComponent
     private const string HeaderLabel = "Transform";
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
         .Add(
-            () => "\uf0e2",
+            () => Settings.ArrowRotateLeftIcon,
             () => IsLocalTransformDirty(_instanceIndex) ? "Reset to original transform" : "No changes to reset",
             () => ResetLocalTransform(_instanceIndex),
             () => IsLocalTransformDirty(_instanceIndex),
@@ -352,12 +352,12 @@ public class SpatialComponent : ActorComponent
 
     private PropertyToggleButton[] InstanceNavButtons => field ??= [
         new PropertyToggleButton(
-            () => "\uf104",
+            () => Settings.AngleLeftIcon,
             () => { _instanceIndex = _instanceIndex < 0 ? InstanceCount - 1 : _instanceIndex - 1; TeleportTo(); },
             () => "Previous"
         ),
         new PropertyToggleButton(
-            () => "\uf105",
+            () => Settings.AngleRightIcon,
             () => { _instanceIndex = _instanceIndex >= InstanceCount - 1 ? -1 : _instanceIndex + 1; TeleportTo(); },
             () => "Next"
         )
@@ -418,10 +418,8 @@ public class SpatialComponent : ActorComponent
                 {
                     ImGui.BeginTooltip();
                     ImGui.TextUnformatted($"0 = Pivot\n1..{InstanceCount} = Instance Index");
-                    ImGui.SetWindowFontScale(0.85f);
                     ImGui.Spacing();
-                    ImGui.TextDisabled("Changes to pivot transform will affect all instances");
-                    ImGui.SetWindowFontScale(1.0f);
+                    EditorUI.Caption("Changes to pivot transform will affect all instances");
                     ImGui.EndTooltip();
                 }
             }

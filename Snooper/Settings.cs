@@ -68,6 +68,10 @@ public static class Settings
     public const string KeyboardIcon = "\uf11c";
     public const string CircleInfoIcon = "\uf05a";
     public const string EarthEuropeIcon = "\uf7a2";
+    public const string ArrowRotateLeftIcon = "\uf0e2";
+    public const string AngleLeftIcon = "\uf104";
+    public const string AngleRightIcon = "\uf105";
+    public const string RightLeftIcon = "\uf362";
 
     public const string ViewportWindow = $"{CubeIcon}  Viewport";
     public const string SceneHierarchyWindow = $"{RoadIcon}  Hierarchy";
@@ -77,7 +81,9 @@ public static class Settings
     public const string WorldSettingsWindow = $"{GearIcon}  Render World Settings";
     public const string SystemsWindow = $"{ChartPieIcon}  Systems";
     public const string ContentWindow = $"{BoxArchiveIcon}  Content";
-    public const string MorphTargetsWindow = $"{BarsProgressIcon}  Morph Targets";
+    public const string MorphEditorWindow = $"{BarsProgressIcon}  Morph Editor";
+    public const string MaterialEditorWindow = $"{PaletteIcon}  Material Editor";
+    public const string TextureInspectorWindow = $"{TextureIcon}  Texture Inspector";
 
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";

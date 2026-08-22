@@ -14,6 +14,7 @@ namespace Editor.Managers;
 public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : InterfaceManager(wnd, fileProvider)
 {
     private readonly MainMenuBarWidget _mainMenuBar = new();
+    private static readonly MaterialEditorWidget _materialEditor = new();
 
     internal IReadOnlyList<IPanelWidget> Panels { get; } =
     [
@@ -26,6 +27,8 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         new SystemsWidget(),
         new ContentWidget(),
         new MorphTargetWidget(),
+        _materialEditor,
+        new TextureInspectorWidget(),
     ];
 
     internal readonly ViewportAxisWidget _viewportAxis = new();
@@ -61,6 +64,8 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
 
         _jsonViewer.DrawAll();
         ExportModal.Instance.Draw();
+        TexturePickerModal.Instance.Draw();
+        MaterialPickerModal.Instance.Draw();
     }
 
     private void OpenPanel(string title)
@@ -84,5 +89,6 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     {
         _skeletonOverlay.Reset();
         _splineOverlay.Reset();
+        _materialEditor.Reset();
     }
 }
