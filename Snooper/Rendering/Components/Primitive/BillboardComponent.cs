@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Texture;
+using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
@@ -8,6 +9,7 @@ using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Primitives;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Primitive;
 
@@ -41,6 +43,35 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
     {
         Descriptor = new PrimitiveDescriptor<Vector2>(new CullingBounds(Vector3.Zero, Vector3.One / 4), () => new Geometry());
         Materials[0].InlineContainer = new MaterialDataContainer(new EmbeddedTexture2D($"Rendering.Resources.{sprite}.png"));
+    }
+
+    private const string HeaderLabel = "Billboard";
+    private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
+        .Add(() => IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, () => "Toggle Visibility",
+            () => { IsVisible = !IsVisible; }, null,
+            () => IsVisible ? null : Settings.RedColor);
+
+    public override void DrawControls()
+    {
+        base.DrawControls();
+
+        var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+        HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
+
+        if (!open) return;
+
+        EditorUI.PropertyValueTable(HeaderLabel, () =>
+        {
+            if (Materials[0].MaterialDataContainer is not { } container)
+            {
+                EditorUI.Property(string.Empty);
+                ImGui.TextColored(Settings.OrangeColor, "No material data container available.");
+            }
+            else
+            {
+                container.DrawControls();
+            }
+        });
     }
 
     public override string Icon => "\uf51b";
@@ -84,12 +115,10 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
 
         public void DrawControls()
         {
+            EditorUI.Property("Sprite");
+            EditorUI.DrawThumbnail(_sprite?.Texture, "S", 2.0f);
 
-        }
-
-        public void DrawSummary(int layerIndex = 0)
-        {
-
+            EditorUI.Text("Opacity Mask", $"{opacityMask:F2}");
         }
     }
 

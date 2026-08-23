@@ -29,6 +29,7 @@ public class TextureInspectorWidget : PanelWidget
     private static readonly Vector4 _redChannel = new(1.0f, 0.35f, 0.35f, 1.0f);
     private static readonly Vector4 _greenChannel = new(0.35f, 1.0f, 0.35f, 1.0f);
     private static readonly Vector4 _blueChannel = new(0.45f, 0.6f, 1.0f, 1.0f);
+    private static readonly Vector4 _alphaChannel = new(0.8f, 0.8f, 0.8f, 1.0f);
 
     private Texture? _texture;
     private float _zoom = 1.0f;
@@ -38,6 +39,7 @@ public class TextureInspectorWidget : PanelWidget
     private bool _red = true;
     private bool _green = true;
     private bool _blue = true;
+    private bool _alpha;
 
     private Vector2? _hoveredTexel;
 
@@ -73,7 +75,7 @@ public class TextureInspectorWidget : PanelWidget
             ImGui.TextColored(Settings.OrangeColor, "sRGB");
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("This preview looks darker than the texture really is");
+                ImGui.SetTooltip("This texture is gamma-corrected for display.");
             }
         }
 
@@ -108,14 +110,16 @@ public class TextureInspectorWidget : PanelWidget
         ChannelToggle("G", ref _green, _greenChannel);
         ImGui.SameLine();
         ChannelToggle("B", ref _blue, _blueChannel);
+        ImGui.SameLine();
+        ChannelToggle("A", ref _alpha, _alphaChannel, "blend", "ignore");
 
         ImGui.Separator();
     }
 
-    private static void ChannelToggle(string channel, ref bool enabled, Vector4 color)
+    private static void ChannelToggle(string channel, ref bool enabled, Vector4 color, string enable = "show", string disable = "hide")
     {
         var tint = enabled ? color : ImGui.GetStyle().Colors[(int) ImGuiCol.TextDisabled];
-        if (EditorUI.IconButton(channel, $"{channel} Channel\nClick to {(enabled ? "hide" : "show")} it", textColor: tint))
+        if (EditorUI.IconButton(channel, $"{channel} Channel\nClick to {(enabled ? disable : enable)} it", textColor: tint))
         {
             enabled = !enabled;
         }
@@ -181,7 +185,13 @@ public class TextureInspectorWidget : PanelWidget
         DrawGrid(drawList, imageMin, canvasMin, canvasMax);
 
         var tint = ImGui.ColorConvertFloat4ToU32(new Vector4(_red ? 1.0f : 0.0f, _green ? 1.0f : 0.0f, _blue ? 1.0f : 0.0f, 1.0f));
-        drawList.AddImage(texture.GetPointer(), imageMin, imageMin + scaled, Vector2.Zero, Vector2.One, tint);
+
+        using (ImGuiDrawCallbacks.Instance.EncodeSrgb(drawList, texture.IsSrgb))
+        using (ImGuiDrawCallbacks.Instance.IgnoreAlpha(drawList, !_alpha))
+        {
+            drawList.AddImage(texture.GetPointer(), imageMin, imageMin + scaled, Vector2.Zero, Vector2.One, tint);
+        }
+
         drawList.AddRect(imageMin, imageMin + scaled, ImGui.GetColorU32(ImGuiCol.Border));
 
         drawList.PopClipRect();

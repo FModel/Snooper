@@ -1,5 +1,6 @@
 using System.Numerics;
 using ImGuiNET;
+using Snooper.Core.Containers.Textures;
 using Snooper.Rendering;
 
 namespace Snooper.UI;
@@ -274,6 +275,37 @@ public static class EditorUI
             Caption(parts[1..]);
         }
         ImGui.EndTooltip();
+    }
+
+    public static void DrawThumbnail(Texture? texture, string slotLabel, float size = 1.0f, int channel = -1)
+    {
+        var dimensions = new Vector2(ImGui.GetFrameHeight() * size);
+        var origin = ImGui.GetCursorScreenPos();
+
+        var clicked = ImGui.InvisibleButton($"##Thumb_{slotLabel}", dimensions);
+        var drawList = ImGui.GetWindowDrawList();
+
+        if (texture is null)
+        {
+            var labelSize = ImGui.CalcTextSize(slotLabel);
+            drawList.AddText(origin + (dimensions - labelSize) * 0.5f, ImGui.GetColorU32(ImGuiCol.TextDisabled), slotLabel);
+        }
+        else using (ImGuiDrawCallbacks.Instance.IsolateChannel(drawList, channel))
+        {
+            drawList.AddImage(texture.GetPointer(), origin, origin + dimensions);
+        }
+
+        drawList.AddRect(origin, origin + dimensions, ImGui.GetColorU32(ImGuiCol.Border));
+
+        if (ImGui.IsItemHovered())
+        {
+            Tooltip(texture is null ? $"{slotLabel}: none" : $"{slotLabel}: {texture.Name}\n{texture.Width}x{texture.Height}, {texture.FormatName}, {texture.GetFormattedSpace()}");
+        }
+
+        if (clicked && texture is not null)
+        {
+            WindowRequests.Request(Settings.TextureInspectorWindow, texture);
+        }
     }
 
     public static void CollapsingTable(string label, ImGuiTreeNodeFlags flags, Action draws)

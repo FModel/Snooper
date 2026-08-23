@@ -66,7 +66,7 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
     public bool IsTranslucent => BlendMode is not EBlendMode.BLEND_Opaque;
 
     public IPerMaterialData? Raw { get; private set; }
-    public bool IsGpuDataReady => Raw is PerMaterialMeshData { IsReady: true };
+    public bool IsGpuDataReady => Raw is { IsReady: true };
 
     internal MaterialDataContainer(string name, MaterialLayer[] layers, EBlendMode blendMode)
     {
@@ -200,18 +200,18 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
     public void DrawSummary(int layerIndex = 0)
     {
         layerIndex = Math.Clamp(layerIndex, 0, _layers.Length - 1);
-        var thumbnailSize = ImGui.GetFrameHeight() * 2.0f;
+        const float size = 2.0f;
 
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Name);
 
         EditorUI.Caption($"Layer {layerIndex + 1}/{_layers.Length}, {BlendMode.GetDescription()}");
 
-        DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Diffuse), "D", thumbnailSize);
+        EditorUI.DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Diffuse), "D", size);
         ImGui.SameLine();
-        DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Normal), "N", thumbnailSize);
+        EditorUI.DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Normal), "N", size);
         ImGui.SameLine();
-        DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Specular), "S", thumbnailSize);
+        EditorUI.DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Specular), "S", size);
 
         if (!IsGpuDataReady)
         {
@@ -219,38 +219,5 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
         }
 
         ImGui.EndGroup();
-    }
-
-    public static void DrawThumbnail(Texture? texture, string slotLabel, float size = 48.0f)
-    {
-        var dimensions = new Vector2(size);
-        var origin = ImGui.GetCursorScreenPos();
-
-        var clicked = ImGui.InvisibleButton($"##Thumb_{slotLabel}", dimensions);
-        var drawList = ImGui.GetWindowDrawList();
-
-        if (texture is null)
-        {
-            var labelSize = ImGui.CalcTextSize(slotLabel);
-            drawList.AddText(origin + (dimensions - labelSize) * 0.5f, ImGui.GetColorU32(ImGuiCol.TextDisabled), slotLabel);
-        }
-        else
-        {
-            drawList.AddImage(texture.GetPointer(), origin, origin + dimensions);
-        }
-
-        drawList.AddRect(origin, origin + dimensions, ImGui.GetColorU32(ImGuiCol.Border));
-
-        if (ImGui.IsItemHovered())
-        {
-            EditorUI.Tooltip(texture is null
-                ? $"{slotLabel}: none"
-                : $"{slotLabel}: {texture.Name}\n{texture.Width}x{texture.Height}, {texture.FormatName}, {texture.GetFormattedSpace()}");
-        }
-
-        if (clicked && texture is not null)
-        {
-            WindowRequests.Request(Settings.TextureInspectorWindow, texture);
-        }
     }
 }

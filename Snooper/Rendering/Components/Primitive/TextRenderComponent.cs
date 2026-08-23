@@ -99,15 +99,36 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
 
     public override string Icon => "\uf075";
 
+    private const string HeaderLabel = "Text";
+    private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
+        .Add(() => IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, () => "Toggle Visibility",
+            () => { IsVisible = !IsVisible; }, null,
+            () => IsVisible ? null : Settings.RedColor);
+
     public override void DrawControls()
     {
         base.DrawControls();
 
-        EditorUI.CollapsingTable("Text", ImGuiTreeNodeFlags.DefaultOpen, () =>
+        var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+        HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
+
+        if (!open) return;
+
+        EditorUI.PropertyValueTable(HeaderLabel, () =>
         {
             EditorUI.Text("Content", _text);
             EditorUI.Text("H-Align", _horizontalAlignment.GetDescription());
             EditorUI.Text("V-Align", _verticalAlignment.GetDescription());
+
+            if (Materials[0].MaterialDataContainer is not { } container)
+            {
+                EditorUI.Property(string.Empty);
+                ImGui.TextColored(Settings.OrangeColor, "No material data container available.");
+            }
+            else
+            {
+                container.DrawControls();
+            }
         });
     }
 
@@ -135,11 +156,8 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
 
         public void DrawControls()
         {
-
-        }
-
-        public void DrawSummary(int layerIndex = 0)
-        {
+            EditorUI.Property("Color");
+            ImGui.ColorButton("##FontColor", new Vector4(color, 1.0f), ImGuiColorEditFlags.NoPicker | ImGuiColorEditFlags.NoTooltip);
 
         }
     }

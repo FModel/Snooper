@@ -101,6 +101,70 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             Layers.TryGetValue("__LANDSCAPE_VISIBILITY__", out var visibility) ? visibility : null);
     }
 
+    private const string HeaderLabel = "Landscape";
+    private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
+        .Add(() => IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, () => "Toggle Visibility",
+            () => { IsVisible = !IsVisible; }, null,
+            () => IsVisible ? null : Settings.RedColor);
+
+    public override void DrawControls()
+    {
+        base.DrawControls();
+
+        var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+        HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
+
+        if (!open) return;
+
+        EditorUI.PropertyValueTable(HeaderLabel, () =>
+        {
+            var container = Materials[0].MaterialDataContainer as MaterialDataContainer;
+
+            EditorUI.Text("Size Quads", $"{SizeQuads}x{SizeQuads}");
+
+            EditorUI.Property("Layers");
+            if (Layers.Count == 0)
+            {
+                ImGui.TextDisabled("None");
+            }
+            else foreach (var (name, mapping) in Layers)
+            {
+                DrawLayer(name, mapping, container);
+            }
+
+            EditorUI.Property("Heightmap");
+            if (container is null)
+            {
+                ImGui.TextDisabled("None");
+            }
+            else
+            {
+                EditorUI.DrawThumbnail(container.GetHeightmap(), "H", 2.0f);
+            }
+        });
+    }
+
+    private static void DrawLayer(string name, LayerMapping mapping, MaterialDataContainer? container)
+    {
+        const string channelNames = "RGBA";
+        const float size = 2.0f;
+
+        var channel = (int)Math.Clamp(mapping.ChannelIndex, 0u, 3u);
+        var height = ImGui.GetFrameHeight() * size;
+
+        ImGui.ColorButton($"##DebugColor{name}", mapping.DebugColor, ImGuiColorEditFlags.NoPicker | ImGuiColorEditFlags.NoTooltip, new Vector2(height * 0.15f, height));
+        if (ImGui.IsItemHovered()) EditorUI.Tooltip($"{name}: layer debug color");
+
+        ImGui.SameLine();
+        EditorUI.DrawThumbnail(container?.GetWeightmap(mapping.TextureIndex), $"{channelNames[channel]}{mapping.TextureIndex}", size, channel);
+
+        ImGui.SameLine();
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted(name);
+        EditorUI.Caption($"Weightmap {mapping.TextureIndex}, Channel {channelNames[channel]}");
+        ImGui.EndGroup();
+    }
+
     public override string Icon => "\uf6fc";
 
     private class MaterialDataContainer(
@@ -195,12 +259,10 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
         public IPerMaterialData? Raw { get; private set; }
 
+        public Texture? GetHeightmap() => _heightmap?.Texture;
+        public Texture? GetWeightmap(uint index) => _weightmaps is not null && index < _weightmaps.Length ? _weightmaps[(int)index]?.Texture : null;
+
         public void DrawControls()
-        {
-
-        }
-
-        public void DrawSummary(int layerIndex = 0)
         {
 
         }

@@ -12,6 +12,7 @@ using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
+using Snooper.UI;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
 namespace Editor.Managers;
@@ -52,6 +53,9 @@ public class ImGuiController : IResizable, IDisposable
 
         _shader.Generate();
         _shader.Link();
+        ImGuiDrawCallbacks.Instance.Bind(
+            channel => _shader.SetUniform("in_channelSwizzle", channel),
+            encode => _shader.SetUniform("in_encodeSrgb", encode));
 
         CheckForErrors("End of ImGui setup");
     }
@@ -144,6 +148,8 @@ public class ImGuiController : IResizable, IDisposable
             _shader.Use();
             _shader.SetUniform("projection_matrix", Matrix4x4.CreateOrthographicOffCenter(0.0f, io.DisplaySize.X, io.DisplaySize.Y, 0.0f, -1.0f, 1.0f));
             _shader.SetUniform("in_fontTexture", 0);
+            _shader.SetUniform("in_channelSwizzle", -1);
+            _shader.SetUniform("in_encodeSrgb", false);
             CheckForErrors("Projection");
 
             GL.Enable(EnableCap.Blend);
@@ -171,6 +177,15 @@ public class ImGuiController : IResizable, IDisposable
                 for (var j = 0; j < cmd.CmdBuffer.Size; j++)
                 {
                     var pcmd = cmd.CmdBuffer[j];
+                    if (pcmd.UserCallback != IntPtr.Zero)
+                    {
+                        if (pcmd.UserCallback == ImGuiDrawCallbacks.Marker)
+                        {
+                            ImGuiDrawCallbacks.Instance.Invoke((int) pcmd.UserCallbackData);
+                        }
+                        continue;
+                    }
+
                     GL.BindTextureUnit(0, (uint)pcmd.TextureId);
                     CheckForErrors("Texture");
 
@@ -190,6 +205,8 @@ public class ImGuiController : IResizable, IDisposable
                     CheckForErrors("Draw");
                 }
             }
+
+            ImGuiDrawCallbacks.Instance.Clear();
 
             _vbo.Unbind();
             _ebo.Unbind();

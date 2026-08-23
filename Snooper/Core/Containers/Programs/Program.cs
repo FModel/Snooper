@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using System.Diagnostics;
+using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Programs;
 
@@ -29,6 +30,7 @@ public abstract class Program : HandledObject, ICloneable
         GL.UseProgram(0);
     }
 
+    [Conditional("DEBUG")]
     protected void VerifyCurrent()
     {
         if (Handle != GL.GetInteger(GetPName.CurrentProgram))

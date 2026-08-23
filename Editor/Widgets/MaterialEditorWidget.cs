@@ -179,7 +179,7 @@ public class MaterialEditorWidget : PanelWidget
     {
         ImGui.PushID($"{layerIndex}_{slot}");
 
-        MaterialDataContainer.DrawThumbnail(texture, slot.ToString()[..1], 72.0f);
+        EditorUI.DrawThumbnail(texture, slot.ToString()[..1], 3);
         ImGui.SameLine();
 
         ImGui.BeginGroup();

@@ -314,9 +314,9 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             {
                 ImGui.TextDisabled("Loading...");
             }
-            else if (section.MaterialDataContainer is not { } container)
+            else if (section.MaterialDataContainer is not MaterialDataContainer container)
             {
-                ImGui.TextDisabled("None");
+                ImGui.TextColored(Settings.OrangeColor, "No material data container available.");
             }
             else
             {
