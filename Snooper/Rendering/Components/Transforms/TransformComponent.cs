@@ -95,7 +95,7 @@ public class SpatialComponent : ActorComponent
         }
     }
 
-    public Transform LocalTransform
+    protected Transform LocalTransform
     {
         get;
         private set
@@ -167,7 +167,7 @@ public class SpatialComponent : ActorComponent
         return relationMatrix;
     }
 
-    public bool AttachTo(SpatialComponent? newRelation, string? socket = null, bool keepWorldTransform = true)
+    public bool AttachTo(SpatialComponent? newRelation, string? socket = null)
     {
         if (newRelation == Relation && socket == AttachSocketName) return true;
 
@@ -177,7 +177,8 @@ public class SpatialComponent : ActorComponent
         if (Relation != newRelation) return false;
 
         AttachSocketName = socket;
-        if (keepWorldTransform) KeepWorldTransform(worldBefore);
+        if (socket == null) KeepWorldTransform(worldBefore);
+        else SetLocalTransform(Transform.Identity);
 
         return true;
     }
@@ -276,14 +277,17 @@ public class SpatialComponent : ActorComponent
 
     public virtual Matrix4x4[] GetWorldMatrices(int index = -1) => [WorldMatrix];
 
-    protected virtual (Vector3, float) GetTeleportPosition(CameraComponent camera) => (GizmoMatrix.Translation, 2.50f);
+    protected virtual (Vector3, float) GetTeleportPosition(CameraComponent camera, Quaternion rotation) => (GizmoMatrix.Translation, 2.50f);
 
     public void TeleportTo()
     {
-        if (Actor?.ActorManager is not SceneManager { MainViewport.Camera: { } camera })
+        if (Actor?.ActorManager is not SceneManager manager)
             return;
 
-        var (center, distance) = GetTeleportPosition(camera);
+        var camera = manager.MainViewport?.Camera ?? manager.RootActor?.Children.OfType<CameraActor>().FirstOrDefault()?.CameraComponent;
+        if (camera is null) return;
+
+        var (center, distance) = GetTeleportPosition(camera, camera.LocalTransform.Rotation);
         camera.TeleportTo(center, distance);
     }
 
@@ -590,8 +594,7 @@ public class SpatialComponent : ActorComponent
         var selected = entry.Value == AttachSocketName;
         if (ImGui.Selectable(entry.Label, selected))
         {
-            // keep the local transform: picking a socket means "put it there", not "hold it where it is"
-            AttachTo(Relation, entry.Value, keepWorldTransform: false);
+            AttachTo(Relation, entry.Value);
         }
         if (selected) ImGui.SetItemDefaultFocus();
     }

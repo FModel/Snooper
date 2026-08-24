@@ -82,7 +82,7 @@ public class SceneManager : ActorManager
 
         if (RootActor != null && MainViewport?.Camera is { } camera && camera.IsDirty(DirtyFlags.Transform))
         {
-            UpdatePartitionActorsRecursive(RootActor, camera.LocalTransform.Position);
+            UpdatePartitionActorsRecursive(RootActor, camera.GetLocalTransform().Position);
         }
 
         base.Update(delta);

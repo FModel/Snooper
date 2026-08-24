@@ -58,7 +58,7 @@ public class HierarchicalActor : Actor
     {
         foreach (var cell in Children.OfType<CellActor>().Where(x => x is { IsNonSpatiallyLoaded: false, DataLayers.Length: 0 }))
         {
-            var distance = Vector3.Distance(position, cell.RootComponent?.LocalTransform.Position ?? Vector3.Zero);
+            var distance = Vector3.Distance(position, cell.RootComponent?.GetLocalTransform().Position ?? Vector3.Zero);
             cell.IsVisible = distance > minDistance && distance <= LoadingRange;
         }
     }

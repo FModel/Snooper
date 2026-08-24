@@ -23,7 +23,7 @@ public class GridSystem : PrimitiveSystem<GridComponent>
         base.PreRender(camera, shader);
 
         shader.SetUniform("uFar", camera.FarClipPlane);
-        shader.SetUniform("uHeight", _component?.LocalTransform.Position.Y ?? 0);
+        shader.SetUniform("uHeight", _component?.GetLocalTransform().Position.Y ?? 0);
 
         if (_component is not null)
         {

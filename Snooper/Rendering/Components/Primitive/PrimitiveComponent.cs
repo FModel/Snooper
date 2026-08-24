@@ -163,17 +163,54 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     }
 
-    protected override (Vector3, float) GetTeleportPosition(CameraComponent camera)
+    protected override (Vector3, float) GetTeleportPosition(CameraComponent camera, Quaternion rotation)
     {
-        var vHalfFov = camera.FieldOfViewRadians / 2f;
-        var hHalfFov = MathF.Atan(MathF.Tan(vHalfFov) * camera.AspectRatio);
-        var limitingHalfFov = MathF.Min(vHalfFov, hHalfFov);
+        var upLimit = MathF.Tan(camera.FieldOfViewRadians / 2f);
+        var sideLimit = upLimit * camera.AspectRatio;
 
-        var sphereRadius = Descriptor.Bounds.Extents.Length();
-        var distance = sphereRadius / MathF.Tan(limitingHalfFov) * 1.25f;
+        var forward = Vector3.Transform(Settings.ForwardVector, rotation);
+        var right = Vector3.Transform(Settings.RightVector, rotation);
+        var up = Vector3.Transform(Settings.UpVector, rotation);
+
         var center = Vector3.Transform(Descriptor.Bounds.Center, GizmoMatrix);
 
+        var distance = 0f;
+        for (var i = 0; i < 8; i++)
+        {
+            var offset = Vector3.Transform(GetBoundsCorner(i), GizmoMatrix) - center;
+            var depth = Vector3.Dot(offset, -forward);
+
+            distance = MathF.Max(distance, MathF.Abs(Vector3.Dot(offset, right)) / sideLimit - depth);
+            distance = MathF.Max(distance, MathF.Abs(Vector3.Dot(offset, up)) / upLimit - depth);
+        }
+
         return (center, MathF.Max(distance, 0.1f));
+    }
+
+    private Vector3 GetBoundsCorner(int index)
+    {
+        var extents = Descriptor.Bounds.Extents;
+
+        return Descriptor.Bounds.Center + new Vector3(
+            (index & 1) == 0 ? -extents.X : extents.X,
+            (index & 2) == 0 ? -extents.Y : extents.Y,
+            (index & 4) == 0 ? -extents.Z : extents.Z);
+    }
+
+    public void SnapToGround()
+    {
+        var lowest = float.MaxValue;
+        for (var i = 0; i < 8; i++)
+        {
+            lowest = MathF.Min(lowest, Vector3.Transform(GetBoundsCorner(i), WorldMatrix).Y);
+        }
+
+        if (lowest == 0f || !Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
+            return;
+
+        var transform = GetLocalTransform();
+        transform.Position -= Vector3.TransformNormal(new Vector3(0f, lowest, 0f), invRelation);
+        SetLocalTransform(transform);
     }
 
     protected override void BeginPlay(ActorManager scene)
@@ -288,13 +325,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
             ImGui.BeginGroup();
             ImGui.SetNextItemWidth(-1);
-            if (ImGui.BeginCombo("##SectionCombo", $"{_sectionIndex}: {GetMaterialName(selected.MaterialIndex)}"))
+            if (ImGui.BeginCombo("##SectionCombo", $"{_sectionIndex}: {selected.Name}"))
             {
                 for (var i = 0; i < lod.Sections.Length; i++)
                 {
                     var isSelected = i == _sectionIndex;
 
-                    if (ImGui.Selectable($"{i}: {GetMaterialName(lod.Sections[i].MaterialIndex)}##Section{i}", isSelected))
+                    if (ImGui.Selectable($"{i}: {lod.Sections[i].Name}##Section{i}", isSelected))
                     {
                         _sectionIndex = i;
                         _materialLayerIndex = 0;
@@ -330,11 +367,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             }
         });
     }
-
-    private string GetMaterialName(uint materialIndex) =>
-        materialIndex < Materials.Length && Materials[materialIndex] is { } section
-            ? section.MaterialDataContainer?.Name ?? Settings.NoName
-            : Settings.NoName;
 
     private void DrawInfoPopup()
     {

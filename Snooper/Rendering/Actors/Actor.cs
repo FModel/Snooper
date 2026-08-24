@@ -151,12 +151,12 @@ public class Actor : TreeNode
         return false;
     }
 
-    public bool AttachTo(Actor newParent, SpatialComponent? attachTo = null, string? socket = null, bool keepWorldTransform = true)
+    public bool AttachTo(Actor newParent, SpatialComponent? attachTo = null, string? socket = null)
     {
         if (!CanAttachTo(newParent, attachTo, out var relation)) return false;
 
         if (_parent != newParent) MoveUnder(newParent);
-        RootComponent?.AttachTo(relation, socket, keepWorldTransform);
+        RootComponent?.AttachTo(relation, socket);
 
         Log.Verbose("{Actor} attached to {Target}", Name, relation?.Name ?? newParent.Name);
         return true;
@@ -212,7 +212,7 @@ public class Actor : TreeNode
         manager.IncrementRevision();
     }
 
-    public bool Detach(bool keepWorldTransform = true)
+    public bool Detach()
     {
         if (ActorManager is not SceneManager { RootActor: { } root })
         {
@@ -220,7 +220,7 @@ public class Actor : TreeNode
             return false;
         }
 
-        return root != this && AttachTo(root, root.RootComponent, null, keepWorldTransform);
+        return root != this && AttachTo(root, root.RootComponent);
     }
 
     internal void OnChildAdded(Actor actor)

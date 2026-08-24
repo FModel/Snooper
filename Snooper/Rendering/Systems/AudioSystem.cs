@@ -86,7 +86,7 @@ public sealed class AudioSystem : ComputeRenderSystem<AudioComponent>, IControll
         if (component.IsDirty(DirtyFlags.Transform))
         {
             source.SetPosition(component.WorldMatrix.Translation);
-            source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));
+            source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.GetLocalTransform().Rotation));
         }
 
         if (component.ShouldPlay && !source.IsPlaying)
@@ -104,8 +104,9 @@ public sealed class AudioSystem : ComputeRenderSystem<AudioComponent>, IControll
         if (_context == ALContext.Null) return;
 
         var position = camera.WorldMatrix.Translation;
-        var forward = Vector3.Transform(Vector3.UnitZ, camera.LocalTransform.Rotation);
-        var up      = Vector3.Transform(Vector3.UnitY, camera.LocalTransform.Rotation);
+        var rotation = camera.GetLocalTransform().Rotation;
+        var forward = Vector3.Transform(Vector3.UnitZ, rotation);
+        var up      = Vector3.Transform(Vector3.UnitY, rotation);
 
         ALC.MakeContextCurrent(_context);
         AL.Listener(ALListener3f.Position, position.X, position.Y, position.Z);
@@ -140,7 +141,7 @@ public sealed class AudioSystem : ComputeRenderSystem<AudioComponent>, IControll
 
         var source = new AudioSource(buffer);
         source.SetPosition(component.WorldMatrix.Translation);
-        source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.LocalTransform.Rotation));
+        source.SetDirection(Vector3.Transform(Vector3.UnitZ, component.GetLocalTransform().Rotation));
         source.SetLooping(true);
         source.SetGain(component.VolumeMultiplier * LinearToLogarithmicVolume(_volume));
         source.SetReferenceDistance(component.AttenuationDistance);

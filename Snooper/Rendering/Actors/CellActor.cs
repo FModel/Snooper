@@ -100,7 +100,7 @@ public class CellActor : StreamableActor
         var w = new WorldActor(world.Load<UWorld>());
         if (w.RootComponent != null && RootComponent != null)
         {
-            w.RootComponent.SetLocalTransform(RootComponent.LocalTransform.Inverse());
+            w.RootComponent.SetLocalTransform(RootComponent.GetLocalTransform().Inverse());
         }
 
         Children.Add(w);

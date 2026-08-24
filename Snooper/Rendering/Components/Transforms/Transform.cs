@@ -11,6 +11,8 @@ public class Transform() : ICloneable
     public Quaternion Rotation = Quaternion.Identity;
     public Vector3 Scale = Vector3.One;
 
+    private const float Deg2Rad = MathF.PI / 180.0f;
+
     private Transform(Transform other) : this()
     {
         Position = other.Position;
@@ -30,6 +32,11 @@ public class Transform() : ICloneable
     }
 
     public Transform(Quaternion rotation) : this(Vector3.Zero, rotation)
+    {
+
+    }
+
+    public Transform(Vector3 position, Vector3 rotation) : this(position, Quaternion.CreateFromYawPitchRoll(rotation.X * Deg2Rad, rotation.Y * Deg2Rad, rotation.Z * Deg2Rad))
     {
 
     }
