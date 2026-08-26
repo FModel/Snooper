@@ -18,9 +18,9 @@ public sealed class ImGuiDrawCallbacks
 
     internal void Bind(Action<int> isolateChannel, Action<bool> encodeSrgb)
     {
-        if (_isolateChannel != null) throw new InvalidOperationException("ImGuiDrawCallbacks is already bound.");
         _isolateChannel = isolateChannel;
         _encodeSrgb = encodeSrgb;
+        Clear();
     }
 
     private void Add(ImDrawListPtr drawList, Action action)

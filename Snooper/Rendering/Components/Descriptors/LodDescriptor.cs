@@ -20,7 +20,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
     public SectionDescriptor[] Sections { get; }
 
     private TPrimitiveData<TVertex>? _primitive;
-    private readonly Func<TPrimitiveData<TVertex>>? _factory;
+    private Func<TPrimitiveData<TVertex>>? _factory;
 
     public LodDescriptor(TPrimitiveData<TVertex> primitive, bool castShadow = false)
     {
@@ -107,6 +107,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
             throw new InvalidOperationException("Cannot create primitive: no factory available.");
 
         _primitive = _factory();
+        _factory = null;
         return _primitive;
     }
 

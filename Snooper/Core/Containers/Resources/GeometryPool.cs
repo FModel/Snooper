@@ -105,7 +105,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
                 maxLod++;
             }
 
-            return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], Math.Min(maxLod, Settings.MaxNumberOfLods) - 1, o);
+            var lodCount = Math.Min(maxLod, Settings.MaxNumberOfLods);
+            return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], lodCount > 0 ? lodCount - 1 : 0, o);
         }
     }
 

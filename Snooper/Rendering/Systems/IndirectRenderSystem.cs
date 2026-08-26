@@ -91,7 +91,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             material.OnMaterialDataContainerSet += section =>
             {
                 TextureCache.Add(section);
-                // component.IsOpaque &= !section.IsTranslucent;
+                component.IsOpaque &= !section.IsTranslucent;
             };
         }
     }

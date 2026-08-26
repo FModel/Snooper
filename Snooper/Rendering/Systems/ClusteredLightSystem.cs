@@ -92,8 +92,8 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
 
     private int _numClusters;
     private int _numWorkGroups;
-    private int _screenWidth = 1;
-    private int _screenHeight = 1;
+    private int _screenWidth = Settings.DefaultWidthHeight;
+    private int _screenHeight = Settings.DefaultWidthHeight;
 
     private bool _clustersDirty = true;
     private Matrix4x4 _lastClusterProjection;

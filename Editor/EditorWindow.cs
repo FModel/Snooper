@@ -64,13 +64,6 @@ public partial class EditorWindow : GameWindow
         };
     }
 
-    protected override void OnLoad()
-    {
-        base.OnLoad();
-
-        OnFramebufferResize(new FramebufferResizeEventArgs(ClientSize)); // we initialize a bunch of stuff to 1x1 by default until we know the true size of the framebuffer
-    }
-
     private void DoLoad()
     {
         GL.Enable(EnableCap.DepthTest);
@@ -91,6 +84,8 @@ public partial class EditorWindow : GameWindow
 
         CenterWindow();
         IsVisible = true;
+
+        OnFramebufferResize(new FramebufferResizeEventArgs(ClientSize)); // we initialize a bunch of stuff to 1x1 by default until we know the true size of the framebuffer
     }
 
     private readonly ConcurrentQueue<Action> _commands = new();

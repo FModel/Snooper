@@ -31,10 +31,10 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     public float AspectRatio { get; private set; } = 1.777778f;
 
     public float OrthoWidth { get; } = 15.0f;
-    public float OrthoNearClipPlane { get; private set; } = 0.1f;
+    public float OrthoNearClipPlane { get; private set; } = 0.01f;
     public float OrthoFarClipPlane { get; private set; } = 20000.0f;
 
-    public float PerspectiveNearClipPlane { get; private set; } = 0.1f;
+    public float PerspectiveNearClipPlane { get; private set; } = 0.01f;
     public float PerspectiveFarClipPlane { get; private set; } = 20000.0f;
 
     public CameraMode ProjectionMode { get; } = CameraMode.Perspective;

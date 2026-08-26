@@ -53,6 +53,7 @@ public abstract class ImGuiManager : SceneManager
         var scale = Math.Min(xScale, yScale);
 
         var io = ImGui.GetIO();
+        io.DisplaySize = new Vector2(Settings.DefaultWidthHeight);
 
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
         var assemblyName = assembly.GetName().Name;

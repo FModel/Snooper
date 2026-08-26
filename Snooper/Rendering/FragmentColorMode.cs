@@ -12,6 +12,7 @@ public static class FragmentColorMode
     public const uint BoneWeightPainting = 7;
     public const uint LODLevel = 8;
     public const uint MorphDisplacement = 9;
+    public const uint Uv = 10;
 
     public static readonly string[] Labels =
     [
@@ -25,5 +26,6 @@ public static class FragmentColorMode
         "Weight Painting",
         "LOD Level",
         "Morph Displacement",
+        "UV",
     ];
 }

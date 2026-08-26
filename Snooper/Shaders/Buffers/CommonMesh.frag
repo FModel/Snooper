@@ -32,6 +32,34 @@ struct Surface
     bool Discard; // masked out by the material's blend mode
 };
 
+vec3 UvGridColor(vec2 uv)
+{
+    const float cells = 8.0;
+    vec2 cell = uv * cells;
+
+    // pixel footprint of one cell, used both for AA width and the distance fade
+    vec2 fw = max(fwidth(cell), vec2(1e-5));
+    float fade = clamp(1.0 - max(fw.x, fw.y), 0.0, 1.0);
+
+    // checker, AA'd by filtering the square wave over the pixel footprint
+    vec2 t = abs(fract(cell * 0.5) - 0.5) * 2.0;
+    vec2 checkerAA = clamp((t - 0.5) / fw + 0.5, 0.0, 1.0);
+    float checker = mix(checkerAA.x, 1.0 - checkerAA.x, checkerAA.y);
+    vec3 color = mix(vec3(0.25), vec3(0.55), checker);
+
+    // cell borders
+    vec2 g = abs(fract(cell) - 0.5) / fw;
+    float line = 1.0 - clamp(min(g.x, g.y) - 0.5, 0.0, 1.0);
+    color = mix(color, vec3(0.85), line * fade);
+
+    // origin axes (u == 0 and v == 0), brighter so tiling direction is readable
+    vec2 a = abs(uv) / max(fwidth(uv), vec2(1e-5));
+    float axis = 1.0 - clamp(min(a.x, a.y) - 1.0, 0.0, 1.0);
+    color = mix(color, vec3(1.0), axis * fade);
+
+    return color;
+}
+
 Surface ResolveSurface(PerDrawData draw, PerMaterialData material)
 {
     Surface surface;
@@ -69,6 +97,10 @@ Surface ResolveSurface(PerDrawData draw, PerMaterialData material)
     if (vColorMode == 6) // Normals
     {
         surface.Color = surface.Normal;
+    }
+    else if (vColorMode == 10) // UV
+    {
+        surface.Color = UvGridColor(fs_in.vTexCoords);
     }
 
     return surface;
