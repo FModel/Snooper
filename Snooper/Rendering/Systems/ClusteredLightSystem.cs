@@ -53,20 +53,22 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     private const int WorkGroupSize = 64;
     private const int MaxLightsPerCluster = 128;
 
-    private abstract class LightBindings : Bindings
+    internal abstract class LightBindings : Bindings
     {
         public const uint LightData = BaseMaxBinding + 1;
         public const uint LightClusterData = BaseMaxBinding + 2;
         public const uint LightIndexList = BaseMaxBinding + 3;
         public const uint LightClusterAabbs = BaseMaxBinding + 4;
-        public const uint MaxBinding = LightClusterAabbs;
+        public const uint ShadowViews = BaseMaxBinding + 5;
+        public const uint MaxBinding = ShadowViews;
 
         public static readonly string[] OwnDefines =
         [
             Define("LIGHT_DATA", LightData),
             Define("LIGHT_CLUSTER_DATA", LightClusterData),
             Define("LIGHT_INDEX_LIST", LightIndexList),
-            Define("LIGHT_CLUSTER_AABBS", LightClusterAabbs)
+            Define("LIGHT_CLUSTER_AABBS", LightClusterAabbs),
+            Define("SHADOW_VIEWS", ShadowViews)
         ];
     }
 

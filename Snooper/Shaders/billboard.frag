@@ -23,8 +23,9 @@ out vec4 FragColor;
 
 void main()
 {
-    PerDrawData draw = uDrawDataBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
+    PerDrawStatic draw = uDrawStatic[gDrawID];
+    PerDrawCulled culled = FetchCulled(gDrawID);
+    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
 
     vec4 color = vec4(1.0);
     if (materialData.IsReady)
@@ -36,7 +37,8 @@ void main()
         }
     }
 
-    FragColor = pow(color, vec4(1.0 / 2.2));
+    vec4 gamma = pow(color, vec4(1.0 / 2.2));
+    FragColor = vec4(gamma.rgb * gamma.a, gamma.a); // premultiplied, see the forward pass blend state
 
     gPicking = draw.PickingId;
 }

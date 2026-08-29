@@ -1,192 +1,154 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL4;
-using Serilog;
 using Snooper.Core.Containers;
+using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
+using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
 
-public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadowTexture>, IControllable
+public class ShadowFramebuffer(int resolution = Settings.ShadowResolution, int cascadeCount = Settings.MaxShadowCascades) : Framebuffer<EShadowTexture>, IControllable
 {
-    public override int Width => _cascades.Width;
-    public override int Height => _cascades.Height;
-    public int CascadeCount => _cascades.Depth;
-    public float Bias = 0.001f;
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct ShadowViewData(ShadowMapView view)
+    {
+        public readonly Matrix4x4 ViewProjection = view.ViewProjection;
+        public readonly float TexelWorldSize = view.TexelWorldSize;
+        public readonly float DepthScale = view.DepthScale;
+        public readonly float SplitFar = view.SplitFar;
+        public readonly uint Slot = (uint) view.Slot;
+    }
 
-    public readonly float[] CascadePlaneDistances = new float[cascadeCount];
-    public readonly Matrix4x4[] CascadeMatrices = new Matrix4x4[cascadeCount];
+    private const int MaxSlots = Settings.MaxShadowViews < 32 ? Settings.MaxShadowViews : 32;
 
-    // TODO: could be further improved by downscaling the shadow map for cascades that are further away
-    private readonly Texture2DArray _cascades = new(size, size, cascadeCount, SizedInternalFormat.DepthComponent16, PixelFormat.DepthComponent, PixelType.Float, "Shadow - Depth");
-    private float _lambda = 0.85f;
-    private float _maxFarPlane = 150.0f;
+    private static readonly int[] _resolutions = [512, 1024, 2048, 4096];
 
-    // cache for dirty checks
-    private float _lastLambda;
-    private float _lastMaxFarPlane;
-    private float _lastNearClipPlane;
-    private float _lastFarClipPlane;
+    public float Softness = 1.0f;
+    public float NormalOffset = 1.0f;
+    public float Blend = 0.1f;
+    public float SlopeBias = 2.0f;
+    public float ConstantBias = 1.0f;
+    public bool StaggerUpdates = true;
+
+    public override int Width => _atlas.Width;
+    public override int Height => _atlas.Height;
+    public int SlotCount => _atlas.Depth;
+    public int CascadeCount => _sun.CascadeCount;
+
+    private Texture2DArray _atlas = CreateAtlas(resolution, Math.Clamp(cascadeCount, 1, MaxSlots));
+    private readonly SunCascades _sun = new(cascadeCount);
+    private readonly ShaderStorageBuffer<ShadowViewData> _viewBuffer = new(BufferUsageHint.DynamicDraw);
+    private readonly ShadowViewData[] _viewData = new ShadowViewData[MaxSlots];
+    private BufferAllocation _viewAllocation;
+    private uint _compareSampler;
+
+    private uint _usedSlots;
+    private uint _renderMask;
+    private ulong _frame;
+
+    private int _resolutionIndex = Math.Max(0, Array.IndexOf(_resolutions, resolution));
+    private int? _pendingResolution;
+    private int? _pendingCascadeCount;
+
+    private static Texture2DArray CreateAtlas(int resolution, int slots) => new(resolution, resolution, slots, SizedInternalFormat.DepthComponent32f, PixelFormat.DepthComponent, PixelType.Float, "Shadow - Depth");
 
     public override void Generate()
     {
-        _cascades.Generate();
-        _cascades.Reset<int>(Width, Height, []);
-        GL.TextureParameter(_cascades, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TextureParameter(_cascades, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        GL.TextureParameter(_cascades, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToBorder);
-        GL.TextureParameter(_cascades, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToBorder);
-        GL.TextureParameter(_cascades, TextureParameterName.TextureBorderColor, [1.0f, 1.0f, 1.0f, 1.0f]);
+        GL.CreateSamplers(1, out _compareSampler);
+        GL.SamplerParameter(_compareSampler, SamplerParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+        GL.SamplerParameter(_compareSampler, SamplerParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+        GL.SamplerParameter(_compareSampler, SamplerParameterName.TextureWrapS, (int) TextureWrapMode.ClampToBorder);
+        GL.SamplerParameter(_compareSampler, SamplerParameterName.TextureWrapT, (int) TextureWrapMode.ClampToBorder);
+        GL.SamplerParameter(_compareSampler, SamplerParameterName.TextureBorderColor, [1.0f, 1.0f, 1.0f, 1.0f]);
+        GL.SamplerParameter(_compareSampler, SamplerParameterName.TextureCompareMode, (int) TextureCompareMode.CompareRefToTexture);
+        GL.SamplerParameter(_compareSampler, SamplerParameterName.TextureCompareFunc, (int) DepthFunction.Less);
+
+        _viewBuffer.Generate();
+        _viewAllocation = _viewBuffer.AddRange(_viewData);
 
         base.Generate();
-        BindLayer(0);
+
+        GenerateAtlas();
+        AllocateSunSlots();
+    }
+
+    private void GenerateAtlas()
+    {
+        _atlas.Generate();
+        _atlas.Reset<int>(Width, Height, []);
+
+        GL.TextureParameter(_atlas, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
+        GL.TextureParameter(_atlas, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        GL.TextureParameter(_atlas, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToBorder);
+        GL.TextureParameter(_atlas, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToBorder);
+        GL.TextureParameter(_atlas, TextureParameterName.TextureBorderColor, [1.0f, 1.0f, 1.0f, 1.0f]);
+
+        var clearDepth = 1.0f;
+        GL.ClearTexImage(_atlas, 0, PixelFormat.DepthComponent, PixelType.Float, ref clearDepth);
+
+        BindSlot(0);
         GL.NamedFramebufferDrawBuffer(Handle, DrawBufferMode.None);
         GL.NamedFramebufferReadBuffer(Handle, ReadBufferMode.None);
 
         CheckStatus();
     }
 
-    public void BindLayer(int layer) => GL.NamedFramebufferTextureLayer(Handle, FramebufferAttachment.DepthAttachment, _cascades, 0, layer);
+    public void BindSlot(int slot) => GL.NamedFramebufferTextureLayer(Handle, FramebufferAttachment.DepthAttachment, _atlas, 0, slot);
 
-    public IViewProjectionProvider[] UpdateCascades(CameraComponent camera, DirectionalLightComponent light)
+    public void ApplyPendingChanges()
     {
-        UpdatePlaneDistances(camera);
-        return UpdateViewProjectionProvider(camera, light);
+        if (_pendingCascadeCount is { } cascadeCount)
+        {
+            _pendingCascadeCount = null;
+
+            FreeSlots(_sun.FirstSlot, _sun.CascadeCount);
+            _sun.SetCascadeCount(cascadeCount);
+            AllocateSunSlots();
+        }
+
+        if (_pendingResolution is { } newResolution)
+        {
+            _pendingResolution = null;
+
+            if (newResolution != Width)
+            {
+                RebuildAtlas(newResolution, SlotCount);
+            }
+        }
     }
 
-    private void UpdatePlaneDistances(CameraComponent camera)
+    public ShadowMapView[] UpdateSun(CameraComponent camera, DirectionalLightComponent light)
     {
-        if (MathF.Abs(_lastLambda - _lambda) < float.Epsilon &&
-            MathF.Abs(_lastMaxFarPlane - _maxFarPlane) < float.Epsilon &&
-            MathF.Abs(_lastNearClipPlane - camera.NearClipPlane) < float.Epsilon &&
-            MathF.Abs(_lastFarClipPlane - camera.FarClipPlane) < float.Epsilon)
+        var views = _sun.Update(camera, light, Width, StaggerRun(_sun.FirstSlot, _sun.CascadeCount));
+
+        foreach (var view in views)
         {
-            return;
+            _viewData[view.Slot] = new ShadowViewData(view);
         }
+        _viewBuffer.Update(_viewAllocation, _viewData);
 
-        _lastLambda = _lambda;
-        _lastMaxFarPlane = _maxFarPlane;
-        _lastNearClipPlane = camera.NearClipPlane;
-        _lastFarClipPlane = camera.FarClipPlane;
-
-        var near = _lastNearClipPlane;
-        var far = MathF.Min(_lastMaxFarPlane, _lastFarClipPlane);
-
-        for (int i = 0; i < CascadeCount; i++)
-        {
-            var p = (i + 1) / (float)CascadeCount;
-            var log = near * MathF.Pow(far / near, p);
-            var lin = near + (far - near) * p;
-
-            CascadePlaneDistances[i] = float.Lerp(lin, log, _lastLambda);
-        }
-
-        Log.Debug("Updated shadow cascade plane distances: {Distances}", CascadePlaneDistances);
+        _frame++;
+        return views;
     }
 
-    private IViewProjectionProvider[] UpdateViewProjectionProvider(CameraComponent camera, DirectionalLightComponent light)
+    public bool NeedsRender(int slot) => (_renderMask & (1u << slot)) != 0;
+
+    internal void BindForRendering(ShaderProgram shader, uint unit)
     {
-        Matrix4x4.Decompose(light.WorldMatrix, out _, out var rotation, out _);
-        var lightDir = Vector3.Transform(Settings.ForwardVector, rotation);
+        _atlas.Bind(unit);
+        GL.BindSampler(unit, _compareSampler);
+        _viewBuffer.Bind(ClusteredLightSystem.LightBindings.ShadowViews);
 
-        var aspect = camera.AspectRatio;
-        var tanHalfFov = MathF.Tan(camera.FieldOfViewRadians * 0.5f);
-        var up = camera.Up;
-
-        var cascadeCameras = new IViewProjectionProvider[CascadeCount];
-        for (var cascadeIndex = 0; cascadeIndex < cascadeCameras.Length; cascadeIndex++)
-        {
-            var cascadeNear = cascadeIndex == 0 ? _lastNearClipPlane : CascadePlaneDistances[cascadeIndex - 1];
-            var cascadeFar = CascadePlaneDistances[cascadeIndex];
-
-            var nearHeight = 2.0f * tanHalfFov * cascadeNear;
-            var nearWidth = nearHeight * aspect;
-            var farHeight = 2.0f * tanHalfFov * cascadeFar;
-            var farWidth = farHeight * aspect;
-
-            var frustumCorners = new Vector3[]
-            {
-                // near plane
-                new(-nearWidth / 2,  nearHeight / 2, -cascadeNear),
-                new( nearWidth / 2,  nearHeight / 2, -cascadeNear),
-                new( nearWidth / 2, -nearHeight / 2, -cascadeNear),
-                new(-nearWidth / 2, -nearHeight / 2, -cascadeNear),
-                // far plane
-                new(-farWidth / 2,  farHeight / 2, -cascadeFar),
-                new( farWidth / 2,  farHeight / 2, -cascadeFar),
-                new( farWidth / 2, -farHeight / 2, -cascadeFar),
-                new(-farWidth / 2, -farHeight / 2, -cascadeFar),
-            };
-
-            for (var i = 0; i < frustumCorners.Length; i++)
-            {
-                frustumCorners[i] = Vector3.Transform(frustumCorners[i], camera.InverseViewMatrix);
-            }
-
-            var center = Vector3.Zero;
-            foreach (var corner in frustumCorners)
-            {
-                center += corner;
-            }
-            center /= frustumCorners.Length;
-
-            var radius = 0.0f;
-            foreach (var corner in frustumCorners)
-            {
-                float distance = Vector3.Distance(corner, center);
-                radius = MathF.Max(radius, distance);
-            }
-
-            var lightPos = center + lightDir * (radius * 2.0f);
-            var viewMatrix = Matrix4x4.CreateLookAt(lightPos, center, up);
-
-            var lightSpaceCorners = new Vector3[frustumCorners.Length];
-            for (int i = 0; i < frustumCorners.Length; i++)
-            {
-                lightSpaceCorners[i] = Vector3.Transform(frustumCorners[i], viewMatrix);
-            }
-
-            var min = lightSpaceCorners[0];
-            var max = lightSpaceCorners[0];
-            for (var i = 1; i < lightSpaceCorners.Length; i++)
-            {
-                min = Vector3.Min(min, lightSpaceCorners[i]);
-                max = Vector3.Max(max, lightSpaceCorners[i]);
-            }
-
-            var casterExtension = radius * 1.5f;
-            min.Z -= casterExtension;
-            max.Z += casterExtension;
-
-            var extent = MathF.Max(max.X - min.X, max.Y - min.Y) * 0.5f;
-            extent = MathF.Ceiling(extent * 16f) / 16f; // snap to 1/16 units
-
-            var worldUnitsPerTexel = extent * 2f / Width;
-            var centerLs = (min + max) * 0.5f;
-
-            centerLs.X = MathF.Floor(centerLs.X / worldUnitsPerTexel) * worldUnitsPerTexel;
-            centerLs.Y = MathF.Floor(centerLs.Y / worldUnitsPerTexel) * worldUnitsPerTexel;
-
-            var left   = centerLs.X - extent;
-            var right  = centerLs.X + extent;
-            var bottom = centerLs.Y - extent;
-            var top    = centerLs.Y + extent;
-            var nearZ = -max.Z;
-            var farZ  = -min.Z;
-
-            var projectionMatrix = Matrix4x4.CreateOrthographicOffCenter(
-                left, right,
-                bottom, top,
-                nearZ, farZ
-            );
-
-            cascadeCameras[cascadeIndex] = new ShadowViewProjectionProvider(viewMatrix, projectionMatrix);
-            CascadeMatrices[cascadeIndex] = viewMatrix * projectionMatrix;
-        }
-
-        return cascadeCameras;
+        shader.SetUniform("shadowMap", (int) unit);
+        shader.SetUniform("uShadowCascadeCount", _sun.CascadeCount);
+        shader.SetUniform("uShadowSoftness", Softness);
+        shader.SetUniform("uShadowNormalOffset", NormalOffset);
+        shader.SetUniform("uShadowBlend", Blend);
     }
 
     public override void Bind(EShadowTexture texture, uint unit)
@@ -194,7 +156,75 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadow
         if (texture != EShadowTexture.Depth)
             throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid shadow texture type");
 
-        _cascades.Bind(unit);
+        _atlas.Bind(unit);
+    }
+
+    private void AllocateSunSlots()
+    {
+        if (!TryAllocateSlots(_sun.CascadeCount, out var firstSlot))
+            throw new InvalidOperationException($"Not enough shadow map slots for {_sun.CascadeCount} sun cascades.");
+
+        _sun.FirstSlot = firstSlot;
+    }
+
+    private bool TryAllocateSlots(int count, out int firstSlot)
+    {
+        firstSlot = -1;
+        if (count is <= 0 or > MaxSlots) return false;
+
+        var mask = SlotMask(count);
+        for (var start = 0; start + count <= MaxSlots; start++)
+        {
+            if ((_usedSlots & (mask << start)) != 0) continue;
+            if (!TryGrow(start + count)) return false;
+
+            _usedSlots |= mask << start;
+            firstSlot = start;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void FreeSlots(int firstSlot, int count)
+    {
+        if (firstSlot < 0 || count <= 0) return;
+        _usedSlots &= ~(SlotMask(count) << firstSlot);
+    }
+
+    private bool TryGrow(int slots)
+    {
+        if (slots <= SlotCount) return true;
+        if (slots > MaxSlots) return false;
+
+        RebuildAtlas(Width, slots);
+        return true;
+    }
+
+    private void RebuildAtlas(int resolution, int slots)
+    {
+        _atlas.Dispose();
+        _atlas = CreateAtlas(resolution, slots);
+
+        GenerateAtlas();
+        _renderMask = _usedSlots;
+    }
+
+    private uint SlotMask(int count) => (uint) ((1UL << count) - 1UL);
+
+    private uint StaggerRun(int firstSlot, int count)
+    {
+        var local = 0u;
+        for (var i = 0; i < count; i++)
+        {
+            if (!StaggerUpdates || i == 0 || _frame % (1UL << i) == 0)
+            {
+                local |= 1u << i;
+            }
+        }
+
+        _renderMask = (_renderMask & ~(SlotMask(count) << firstSlot)) | (local << firstSlot);
+        return local;
     }
 
     public override void Resize(int newWidth, int newHeight)
@@ -208,12 +238,29 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadow
     {
         EditorUI.PropertyValueTable("Shadows", () =>
         {
-            EditorUI.Text("Resolution", $"{Width} px");
-            EditorUI.DragFloat("Lambda", ref _lambda, 0.01f, 0.0f, 1.0f, "%.2f");
-            EditorUI.DragFloat("Max Far Plane", ref _maxFarPlane, 1.0f, 1.0f, 10000.0f, "%.1f units");
-            EditorUI.DragFloat("Bias", ref Bias, 0.000001f, 0.000005f, 0.05f, "%.6f");
-            EditorUI.Text("Cascade Count", $"{CascadeCount}");
-            EditorUI.Text("Cascade Planes", $"{string.Join(", ", CascadePlaneDistances)} units");
+            if (EditorUI.SliderInt("Resolution", ref _resolutionIndex, 0, _resolutions.Length - 1, $"{_resolutions[_resolutionIndex]} px"))
+            {
+                _pendingResolution = _resolutions[_resolutionIndex];
+            }
+
+            var cascades = _sun.CascadeCount;
+            if (EditorUI.SliderInt("Cascades", ref cascades, 1, Settings.MaxShadowCascades, "%d"))
+            {
+                _pendingCascadeCount = cascades;
+            }
+
+            _sun.DrawControls();
+
+            EditorUI.DragFloat("Softness", ref Softness, 0.05f, 0.0f, 4.0f, "%.2f texels");
+            EditorUI.DragFloat("Normal Offset", ref NormalOffset, 0.05f, 0.0f, 4.0f, "%.2f");
+            EditorUI.DragFloat("Blend", ref Blend, 0.01f, 0.0f, 0.5f, "%.2f");
+            EditorUI.DragFloat("Slope Bias", ref SlopeBias, 0.05f, 0.0f, 16.0f, "%.2f");
+            EditorUI.DragFloat("Constant Bias", ref ConstantBias, 0.05f, 0.0f, 16.0f, "%.2f");
+            EditorUI.Checkbox("Stagger Updates", ref StaggerUpdates);
+
+            EditorUI.Text("Slots", $"{BitOperations.PopCount(_usedSlots)}/{SlotCount}");
+            EditorUI.Text("Splits", $"{string.Join(", ", _sun.Splits)} units");
+            EditorUI.Text("Texel Size", $"{_sun.Views[0].TexelWorldSize:F3} .. {_sun.Views[^1].TexelWorldSize:F3} units");
         });
     }
 
@@ -222,7 +269,8 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadow
         get
         {
             long total = 0;
-            total += _cascades.Allocated;
+            total += _atlas.Allocated;
+            total += _viewBuffer.Allocated;
             return total;
         }
     }
@@ -232,20 +280,24 @@ public class ShadowFramebuffer(int size, int cascadeCount) : Framebuffer<EShadow
         get
         {
             long total = 0;
-            total += _cascades.Used;
+            total += _atlas.Used;
+            total += _viewBuffer.Used;
             return total;
         }
     }
 
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail("Cascade Textures", _cascades);
+        yield return new MemoryDetail("Shadow Atlas", _atlas);
+        yield return new MemoryDetail("Shadow Views", _viewBuffer);
     }
 
     public override void Dispose()
     {
         base.Dispose();
 
-        _cascades.Dispose();
+        GL.DeleteSampler(_compareSampler);
+        _viewBuffer.Dispose();
+        _atlas.Dispose();
     }
 }

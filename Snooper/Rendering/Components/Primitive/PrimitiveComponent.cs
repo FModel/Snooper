@@ -205,7 +205,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             lowest = MathF.Min(lowest, Vector3.Transform(GetBoundsCorner(i), WorldMatrix).Y);
         }
 
-        if (lowest == 0f || !Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
+        if (lowest >= 0f || !Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
             return;
 
         var transform = GetLocalTransform();

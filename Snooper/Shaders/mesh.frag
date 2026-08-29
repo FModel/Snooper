@@ -9,8 +9,9 @@ out vec4 FragColor;
 
 void main()
 {
-    PerDrawData draw = uDrawDataBuffer[gDrawID];
-    Surface surface = ResolveSurface(draw, uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex]);
+    PerDrawStatic draw = uDrawStatic[gDrawID];
+    PerDrawCulled culled = FetchCulled(gDrawID);
+    Surface surface = ResolveSurface(uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex]);
 
     if (surface.Discard)
     {
@@ -57,7 +58,7 @@ void main()
     );
 
     finalColor = pow(finalColor, vec3(1.0 / 2.2));
-    FragColor = vec4(finalColor, surface.Opacity);
+    FragColor = vec4(finalColor * surface.Opacity, surface.Additive ? 0.0 : surface.Opacity);
 
     gPicking = draw.PickingId;
 }

@@ -10,7 +10,7 @@
 //                  calls each enabled one in turn, so variants compose (DeformVertex,
 //                  GetVertexDebugColor).
 //   single-claim - the variant defines OVERRIDE_<HOOK> and supplies the body, replacing
-//                  the default (GetVertexBaseColor, GetSurfaceColor). Two claimants is a
+//                  the default (GetSurfaceColor, ...). Two claimants is a
 //                  redefinition error, which is the failure we want.
 //
 // Stage macros are set by the including header, never by a variant:
@@ -39,15 +39,12 @@ struct MeshVertex
 
 // Deform the vertex in object space, before the instance matrix is applied.
 // Under MESH_DEPTH_ONLY only Position is meaningful.
-void DeformVertex(PerDrawData draw, int instance, inout MeshVertex v);
+void DeformVertex(PerDrawStatic draw, PerDrawCulled culled, int instance, inout MeshVertex v);
 
 #if !defined(MESH_DEPTH_ONLY)
-// Base colour for vs_out.vFragColor, used as-is when no debug mode is active.
-vec3 GetVertexBaseColor(PerDrawData draw, int instance);
-
 // Extra uFragmentColorMode entries. Return true to claim the mode, which keeps the
 // built-in chain from running.
-bool GetVertexDebugColor(PerDrawData draw, int instance, uint mode, inout vec3 color);
+bool GetVertexDebugColor(PerDrawStatic draw, PerDrawCulled culled, int instance, uint mode, inout vec3 color);
 #endif
 
 #endif
@@ -55,7 +52,7 @@ bool GetVertexDebugColor(PerDrawData draw, int instance, uint mode, inout vec3 c
 #if defined(MESH_FRAGMENT_STAGE)
 // Final surface colour. vertexColor is the interpolated vs_out.vFragColor, which is how a
 // variant hands per-vertex work to the fragment stage without touching the VS_OUT block.
-vec3 GetSurfaceColor(PerDrawData draw, PerMaterialData material, LayerData layer, vec3 vertexColor);
+vec3 GetSurfaceColor(PerMaterialData material, LayerData layer, vec3 vertexColor);
 #endif
 
 // ------------------------------------------------------------------ variant registry
@@ -70,11 +67,11 @@ vec3 GetSurfaceColor(PerDrawData draw, PerMaterialData material, LayerData layer
 // --------------------------------------------------------- dispatchers and defaults
 #if defined(MESH_VERTEX_STAGE)
 
-void DeformVertex(PerDrawData draw, int instance, inout MeshVertex v)
+void DeformVertex(PerDrawStatic draw, PerDrawCulled culled, int instance, inout MeshVertex v)
 {
 #if defined(SKINNED_MESH_VERTEX)
-    MorphDeformVertex(draw, instance, v); // reshape the bind pose first
-    SkinDeformVertex(draw, instance, v); // then skin the result to the current pose
+    MorphDeformVertex(draw, culled, instance, v); // reshape the bind pose first
+    SkinDeformVertex(draw, culled, instance, v); // then skin the result to the current pose
 #endif
 #if defined(SPLINE_VERTEX)
     SplineDeformVertex(draw, instance, v); // then bend the result along the spline
@@ -83,18 +80,11 @@ void DeformVertex(PerDrawData draw, int instance, inout MeshVertex v)
 
 #if !defined(MESH_DEPTH_ONLY)
 
-#if !defined(OVERRIDE_VERTEX_BASE_COLOR)
-vec3 GetVertexBaseColor(PerDrawData draw, int instance)
-{
-    return vec3(0.5); // Clay
-}
-#endif
-
-bool GetVertexDebugColor(PerDrawData draw, int instance, uint mode, inout vec3 color)
+bool GetVertexDebugColor(PerDrawStatic draw, PerDrawCulled culled, int instance, uint mode, inout vec3 color)
 {
 #if defined(SKINNED_MESH_VERTEX)
-    if (SkinVertexDebugColor(draw, instance, mode, color)) return true;
-    if (MorphVertexDebugColor(draw, instance, mode, color)) return true;
+    if (SkinVertexDebugColor(draw, culled, instance, mode, color)) return true;
+    if (MorphVertexDebugColor(draw, culled, instance, mode, color)) return true;
 #endif
     return false;
 }
@@ -103,7 +93,7 @@ bool GetVertexDebugColor(PerDrawData draw, int instance, uint mode, inout vec3 c
 #endif
 
 #if defined(MESH_FRAGMENT_STAGE) && !defined(OVERRIDE_SURFACE_COLOR)
-vec3 GetSurfaceColor(PerDrawData draw, PerMaterialData material, LayerData layer, vec3 vertexColor)
+vec3 GetSurfaceColor(PerMaterialData material, LayerData layer, vec3 vertexColor)
 {
     return layer.diffuse.rgb;
 }

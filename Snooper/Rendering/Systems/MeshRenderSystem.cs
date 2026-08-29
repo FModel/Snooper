@@ -10,7 +10,8 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : PrimitiveSystem<Vertex, TComponent, PerInstanceData, PerMaterialMeshData>, IMeshRenderSystem where TComponent : MeshComponent
+public abstract class MeshRenderSystem<TComponent>(string[]? defines = null, int viewCount = Settings.MaxCullingViews)
+    : PrimitiveSystem<Vertex, TComponent, PerInstanceData, PerMaterialMeshData>(PrimitiveType.Triangles, viewCount), IMeshRenderSystem where TComponent : MeshComponent
 {
     protected override bool AllowDerivation => true;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
@@ -48,25 +49,21 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null) : P
         _shadowShader.Link();
     }
 
-    public void RenderShadowCascade(IViewProjectionProvider cascade)
+    public void RenderShadowCascade(ShadowMapView cascade)
     {
         using (Scope())
         {
-            if (IsCulled)
-            {
-                using (Profiler.Cull())
-                {
-                    Resources.Cull(cascade, CommandBufferType.Opaque, true); // cull against this cascade's own frustum
-                }
-            }
+            const CommandBufferType buffer = CommandBufferType.Opaque;
+            var view = cascade.ViewIndex;
 
             _shadowShader.Use();
-            _shadowShader.SetUniform("uViewProjection", cascade.ViewMatrix * cascade.ProjectionMatrix);
+            _shadowShader.SetUniform("uViewProjection", cascade.ViewProjection);
+            _shadowShader.SetUniform("uViewBase", Resources.GetViewBase(buffer, view));
 
             using (Profiler.Draw())
             {
                 BindSystemBuffers();
-                Resources.Render(CommandBufferType.Opaque); // Only render opaque meshes for shadows
+                Resources.Render(buffer, view);
             }
 
             _shadowShader.Unuse();

@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Containers.Framebuffers;
 using Snooper.Rendering.Systems;
 
 namespace Snooper.Rendering.Managers;
@@ -29,23 +30,13 @@ public readonly struct BlurStageContext(int radius, GeometryRenderer geometry) :
     public readonly GeometryRenderer Geometry = geometry;
 }
 
-public readonly struct LitStageContext(CameraComponent camera, GeometryRenderer geometry, ClusteredLightSystem? lightSystem, bool ambientOcclusion = true, ShadowStageContext? shadowContext = null) : IStageContext
+public readonly struct LitStageContext(CameraComponent camera, GeometryRenderer geometry, ClusteredLightSystem? lightSystem, bool ambientOcclusion = true, ShadowFramebuffer? shadows = null) : IStageContext
 {
     public readonly CameraComponent Camera = camera;
     public readonly GeometryRenderer Geometry = geometry;
     public readonly ClusteredLightSystem? LightSystem = lightSystem;
     public readonly bool AmbientOcclusion = ambientOcclusion;
-    public readonly ShadowStageContext? ShadowContext = shadowContext;
-}
-
-public readonly struct ShadowStageContext(int width, int height, int depth, float bias, float[] planeDistances, Matrix4x4[] matrices) : IStageContext
-{
-    public readonly int Width = width;
-    public readonly int Height = height;
-    public readonly int Depth = depth;
-    public readonly float Bias = bias;
-    public readonly float[] PlaneDistances = planeDistances;
-    public readonly Matrix4x4[] Matrices = matrices;
+    public readonly ShadowFramebuffer? Shadows = shadows;
 }
 
 public readonly struct ClusterDebugStageContext(CameraComponent camera, GeometryRenderer geometry, ClusteredLightSystem? lightSystem, bool antiAliasing, int mode, float overlay, bool showGrid) : IStageContext

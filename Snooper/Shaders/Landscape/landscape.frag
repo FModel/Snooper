@@ -153,8 +153,9 @@ vec3 getColorFromHeight(float height)
 
 void main()
 {
-    PerDrawData draw = uDrawDataBuffer[gDrawID];
-    PerMaterialData material = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
+    PerDrawStatic draw = uDrawStatic[gDrawID];
+    PerDrawCulled culled = FetchCulled(gDrawID);
+    PerMaterialData material = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
 
     vec3 color = vec3(1.0);
     if (!material.IsReady || uColorMode == 0)
@@ -163,7 +164,7 @@ void main()
     }
     else if (uColorMode == 1)
     {
-        color = getColorFromWeightmap(material, uWeightMappingBuffer[draw.BaseMaterial + draw.MaterialIndex]);
+        color = getColorFromWeightmap(material, uWeightMappingBuffer[draw.BaseMaterial + culled.MaterialIndex]);
     }
 
     gPosition = fs_in.vViewPos;

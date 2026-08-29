@@ -37,7 +37,7 @@ public struct PerInstanceSkinningData
     public uint BaseMorphWeight;
 }
 
-public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(["SKINNED_MESH_VERTEX", ..SkinnedBindings.OwnDefines])
+public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(["SKINNED_MESH_VERTEX", $"MAX_NUMBER_OF_LODS {Settings.MaxNumberOfLods}", ..SkinnedBindings.OwnDefines])
 {
     private abstract class SkinnedBindings : Bindings
     {

@@ -3,7 +3,6 @@ using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
@@ -13,7 +12,25 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
     private readonly ShaderStorageBuffer<PerMeshData> _meshes = new();
     private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new();
     private readonly ShaderStorageBuffer<SectionOffsets> _sections = new();
-    private readonly ComputeShader _compute = new("culling.comp");
+    private readonly ComputeShader _compute = new("culling.comp")
+    {
+        Defines = [$"MAX_CULLING_VIEWS {Settings.MaxCullingViews}", ..CullingBindings.OwnDefines]
+    };
+
+    private abstract class CullingBindings : Bindings
+    {
+        public const uint DrawCommands = BaseMaxBinding + 1;
+        public const uint CullLodData = BaseMaxBinding + 2;
+        public const uint CullSections = BaseMaxBinding + 3;
+        public const uint MaxBinding = CullSections;
+
+        public static readonly string[] OwnDefines =
+        [
+            Define("DRAW_COMMANDS", DrawCommands),
+            Define("CULL_LOD_DATA", CullLodData),
+            Define("CULL_SECTIONS", CullSections)
+        ];
+    }
 
     public void Generate()
     {
@@ -61,31 +78,43 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
     public void BindMeshData() => _meshes.Bind(Bindings.MeshData);
 
-    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, IndirectDrawBuffer commands, bool shadowPass = false) where TInstanceData : unmanaged, IPerInstanceData
+    private readonly Plane[] _planes = new Plane[Settings.MaxCullingViews * 6];
+    private readonly Vector4[] _lodReferences = new Vector4[Settings.MaxCullingViews];
+
+    public void Cull<TInstanceData>(ReadOnlySpan<CullView> views, ShaderStorageBuffer<TInstanceData> instances, IndirectDrawBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
     {
-        var matrix = camera.ViewMatrix * camera.ProjectionMatrix;
-        var planes = new Plane[6];
-        planes[0] = new Plane(matrix.M14 + matrix.M11, matrix.M24 + matrix.M21, matrix.M34 + matrix.M31, matrix.M44 + matrix.M41); // Near
-        planes[1] = new Plane(matrix.M14 - matrix.M11, matrix.M24 - matrix.M21, matrix.M34 - matrix.M31, matrix.M44 - matrix.M41); // Far
-        planes[2] = new Plane(matrix.M14 + matrix.M12, matrix.M24 + matrix.M22, matrix.M34 + matrix.M32, matrix.M44 + matrix.M42); // Left
-        planes[3] = new Plane(matrix.M14 - matrix.M12, matrix.M24 - matrix.M22, matrix.M34 - matrix.M32, matrix.M44 - matrix.M42); // Right
-        planes[4] = new Plane(matrix.M14 + matrix.M13, matrix.M24 + matrix.M23, matrix.M34 + matrix.M33, matrix.M44 + matrix.M43); // Bottom
-        planes[5] = new Plane(matrix.M14 - matrix.M13, matrix.M24 - matrix.M23, matrix.M34 - matrix.M33, matrix.M44 - matrix.M43); // Top
+        var viewCount = Math.Min(views.Length, commands.ViewCount);
+        if (viewCount <= 0 || commands.Capacity == 0) return;
+
+        for (var i = 0; i < viewCount; i++)
+        {
+            var matrix = views[i].ViewProjection;
+            var b = i * 6;
+            _planes[b + 0] = new Plane(matrix.M14 + matrix.M11, matrix.M24 + matrix.M21, matrix.M34 + matrix.M31, matrix.M44 + matrix.M41); // Near
+            _planes[b + 1] = new Plane(matrix.M14 - matrix.M11, matrix.M24 - matrix.M21, matrix.M34 - matrix.M31, matrix.M44 - matrix.M41); // Far
+            _planes[b + 2] = new Plane(matrix.M14 + matrix.M12, matrix.M24 + matrix.M22, matrix.M34 + matrix.M32, matrix.M44 + matrix.M42); // Left
+            _planes[b + 3] = new Plane(matrix.M14 - matrix.M12, matrix.M24 - matrix.M22, matrix.M34 - matrix.M32, matrix.M44 - matrix.M42); // Right
+            _planes[b + 4] = new Plane(matrix.M14 + matrix.M13, matrix.M24 + matrix.M23, matrix.M34 + matrix.M33, matrix.M44 + matrix.M43); // Bottom
+            _planes[b + 5] = new Plane(matrix.M14 - matrix.M13, matrix.M24 - matrix.M23, matrix.M34 - matrix.M33, matrix.M44 - matrix.M43); // Top
+
+            _lodReferences[i] = new Vector4(views[i].LodReferencePosition, views[i].LodProjectionScale);
+        }
 
         _compute.Use();
-        _compute.SetUniform("uFrustumPlanes", planes);
-        _compute.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
-        _compute.SetUniform("uCameraPosition", camera.InverseViewMatrix.Translation);
-        _compute.SetUniform("uShadowPass", shadowPass);
+        _compute.SetUniform("uFrustumPlanes", _planes);
+        _compute.SetUniform("uLodReference", _lodReferences);
+        _compute.SetUniform("uViewCount", (uint) viewCount);
+        _compute.SetUniform("uViewCapacity", (uint) commands.Capacity);
 
-        commands.Commands.Bind(Bindings.DrawCommands);
-        commands.DrawData.Bind(Bindings.DrawData);
+        commands.Commands.Bind(CullingBindings.DrawCommands);
+        commands.StaticData.Bind(Bindings.DrawStatic);
+        commands.CulledData.Bind(Bindings.DrawCulled);
         instances.Bind(Bindings.InstanceData);
         BindMeshData();
-        _primitives.Bind(Bindings.CullLodData);
-        _sections.Bind(Bindings.CullSections);
+        _primitives.Bind(CullingBindings.CullLodData);
+        _sections.Bind(CullingBindings.CullSections);
 
-        GL.DispatchCompute(commands.Capacity, 1, 1);
+        GL.DispatchCompute(commands.Capacity, viewCount, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
         _compute.Unuse();
     }

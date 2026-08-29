@@ -48,10 +48,14 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         var computeSystems = systems.OfType<IComputeRenderSystem>().ToArray();
         _geometry.DoRenderPass("Compute Pass", new ComputeRenderContext(camera, computeSystems));
 
-        if (_shadows && directionalLight is { Actor.IsVisible: true })
+        var castsShadows = _shadows && directionalLight is { IsEnabled: true, Actor.IsVisible: true };
+        var cullViews = _geometry.UpdateViews(camera, castsShadows ? directionalLight : null);
+        _geometry.DoRenderPass("Cull Pass", new CullRenderContext(geometrySystems, cullViews));
+
+        if (castsShadows)
         {
             var meshSystems = geometrySystems.OfType<IMeshRenderSystem>().ToArray();
-            _geometry.DoRenderPass("Shadow Pass", new ShadowRenderContext(camera, directionalLight, meshSystems));
+            _geometry.DoRenderPass("Shadow Pass", new ShadowRenderContext(meshSystems));
         }
 
         var context = new GeometryRenderContext(camera, geometrySystems);
@@ -69,7 +73,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         }
 
         var geometryContext = new GeometryStageContext(_geometry);
-        var litContext = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, _shadows ? _geometry.GetShadowContext() : null);
+        var litContext = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, _shadows ? _geometry._shadows : null);
         _postProcess.DoStagePass("Lighting Pass", litContext);
         _postProcess.DoStagePass("Combine Pass", geometryContext);
         _postProcess.DoStagePass("Picking Pass", geometryContext);

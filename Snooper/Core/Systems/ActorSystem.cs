@@ -115,10 +115,10 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         if (MaxBindingUsed is not { } max) return;
 
         var limit = ActorManager?.Renderer.DeviceInfo.MaxShaderStorageBufferBindings;
-        if (max > limit)
+        if (max >= limit)
         {
             // TODO: should we actually limit or let it crash?
-            Log.Warning("{SystemName} uses {MaxBindingUsed} shader storage buffer bindings, which exceeds the device limit of {Limit}. This may cause rendering issues.", DisplayName, max, limit);
+            Log.Warning("{Max} shader storage buffer bindings was required, but the device only supports {Limit}. This may cause rendering issues.", max, limit);
         }
     }
 

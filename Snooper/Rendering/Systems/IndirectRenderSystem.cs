@@ -13,7 +13,7 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type) : ActorSystem<TComponent>, IMemoryDetailsProvider, IGeometryRenderSystem
+public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type, int viewCount = 1) : ActorSystem<TComponent>, IMemoryDetailsProvider, IGeometryRenderSystem
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData
@@ -25,7 +25,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
 
     protected abstract Action<uint> VertexLayout { get; }
 
-    protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; } = new(type);
+    protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; } = new(type, viewCount);
     protected virtual IEnumerable<(uint Binding, IIndexedBind Buffer)> SystemBuffers => [];
 
     protected override void OnLoad()
@@ -112,6 +112,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             buffer.Bind(binding);
         }
     }
+
+    public abstract void Cull(ReadOnlySpan<CullView> views);
 
     public void Render(CameraComponent camera, CommandBufferType type)
     {

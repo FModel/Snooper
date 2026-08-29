@@ -1,5 +1,3 @@
-using Serilog;
-
 namespace Snooper.Core.Containers.Buffers;
 
 public enum CommandBufferType
@@ -9,9 +7,9 @@ public enum CommandBufferType
     Mask
 }
 
-public class CommandBufferSet : IMemoryDetailsProvider, IDisposable
+public class CommandBufferSet(int viewCount = 1) : IMemoryDetailsProvider, IDisposable
 {
-    private readonly IndirectDrawBuffer _opaque = new();
+    private readonly IndirectDrawBuffer _opaque = new(viewCount);
     private readonly IndirectDrawBuffer _transparent = new();
     private readonly IndirectDrawBuffer _mask = new();
 

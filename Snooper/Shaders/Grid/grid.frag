@@ -21,6 +21,8 @@ void main()
     color = mix(color, vec4(uMajorColor, major * uMajorOpacity), major);
     color = ApplyAxes(color, hit, 1.0);
 
-    FragColor = vec4(color.rgb * uColor, color.a * hit.fade * uOpacity);
-    if (FragColor.a <= 0.0) discard;
+    float coverage = color.a * hit.fade * uOpacity;
+    if (coverage <= 0.0) discard;
+
+    FragColor = vec4(color.rgb * uColor * coverage, coverage); // premultiplied, see the forward pass blend state
 }

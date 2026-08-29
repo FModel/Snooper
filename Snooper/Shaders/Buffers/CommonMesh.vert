@@ -83,9 +83,10 @@ void CommonMeshMain()
 
     int id = gl_BaseInstance + gl_InstanceID;
     mat4 matrix = uInstanceDataBuffer[id].Matrix;
-    PerDrawData draw = uDrawDataBuffer[gl_DrawID];
+    PerDrawStatic draw = uDrawStatic[gl_DrawID];
+    PerDrawCulled culled = FetchCulled(uint(gl_DrawID));
 
-    DeformVertex(draw, id, vertex);
+    DeformVertex(draw, culled, id, vertex);
 
     vec4 viewPos = uViewMatrix * matrix * vertex.Position;
     gl_Position = uProjectionMatrix * viewPos;
@@ -100,10 +101,10 @@ void CommonMeshMain()
     vs_out.vTexCoords = aTexCoords;
     vs_out.TBN = mat3(T, cross(N, T) * vertex.Normal.w, N);
 
-    vec3 color = GetVertexBaseColor(draw, id);
+    vec3 color = vec3(0.5);
     vColorMode = uFragmentColorMode != 0 ? uFragmentColorMode : uMeshDataBuffer[draw.MeshIndex].ColorMode;
 
-    if (!GetVertexDebugColor(draw, id, vColorMode, color))
+    if (!GetVertexDebugColor(draw, culled, id, vColorMode, color))
     {
         if (vColorMode == 2) // ComponentId
         {
@@ -117,13 +118,13 @@ void CommonMeshMain()
         {
             color = hashColor(uint(gl_DrawID));
         }
-        else if (vColorMode == 5 && draw.BaseColor != 0xFFFFFFFFu) // VertexColor
+        else if (vColorMode == 5 && culled.BaseColor != 0xFFFFFFFFu) // VertexColor
         {
-            color = UnpackColor(uVertexColorBuffer[draw.BaseColor + (gl_VertexID - gl_BaseVertex)]).rgb;
+            color = UnpackColor(uVertexColorBuffer[culled.BaseColor + (gl_VertexID - gl_BaseVertex)]).rgb;
         }
         else if (vColorMode == 8) // LODLevel
         {
-            color = hashColor(draw.Lod);
+            color = hashColor(culled.Lod);
         }
     }
 

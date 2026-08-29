@@ -63,7 +63,7 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
     public int LayerCount => _layers.Length;
 
     public bool HasTextures => true;
-    public bool IsTranslucent => BlendMode is not EBlendMode.BLEND_Opaque;
+    public bool IsTranslucent => BlendMode is not (EBlendMode.BLEND_Opaque or EBlendMode.BLEND_Masked);
 
     public IPerMaterialData? Raw { get; private set; }
     public bool IsGpuDataReady => Raw is { IsReady: true };

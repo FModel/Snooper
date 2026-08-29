@@ -92,8 +92,13 @@ public static class Settings
     public const int NumberOfSamples = 4;
     public const float GlobalScale = 0.01f;
 
+    public const int MaxShadowCascades = 4;
+    public const int MaxLocalShadowCasters = 4;
+    public const int ShadowResolution = 2048;
+    public const int MaxShadowViews = MaxShadowCascades + MaxLocalShadowCasters;
+    public const int MaxCullingViews = 1 + MaxShadowViews;
+
     public const int TessellationQuadCount = 4; // change this to increase the resolution of the base landscape mesh (power of 2)
-    public static float TessellationScaleFactor => 1.0f / TessellationQuadCount;
-    public static int TessellationQuadCountTotal => TessellationQuadCount * TessellationQuadCount;
-    public static int TessellationIndicesPerQuad => TessellationQuadCountTotal * 4;
+    public const int TessellationQuadCountTotal = TessellationQuadCount * TessellationQuadCount;
+    public const int TessellationIndicesPerQuad = TessellationQuadCountTotal * 4;
 }

@@ -27,9 +27,10 @@ struct Surface
 {
     vec3 Color;
     vec3 Specular;
-    vec3 Normal;  // world space, tangent basis already applied
+    vec3 Normal;   // world space, tangent basis already applied
     float Opacity;
-    bool Discard; // masked out by the material's blend mode
+    bool Discard;  // masked out by the material's blend mode
+    bool Additive; // contributes light without covering what is behind it
 };
 
 vec3 UvGridColor(vec2 uv)
@@ -60,13 +61,14 @@ vec3 UvGridColor(vec2 uv)
     return color;
 }
 
-Surface ResolveSurface(PerDrawData draw, PerMaterialData material)
+Surface ResolveSurface(PerMaterialData material)
 {
     Surface surface;
     surface.Color = fs_in.vFragColor;
     surface.Specular = vec3(0.0, 0.0, 0.6);
     surface.Opacity = 1.0;
     surface.Discard = false;
+    surface.Additive = false;
 
     vec3 normal = vec3(0.0, 0.0, 1.0);
 
@@ -85,10 +87,11 @@ Surface ResolveSurface(PerDrawData draw, PerMaterialData material)
         }
         else if (blendMode == 3u) // additive
         {
-            surface.Opacity = layer.diffuse.r;
+            surface.Additive = true;
+            surface.Opacity = layer.diffuse.a;
         }
 
-        surface.Color = GetSurfaceColor(draw, material, layer, fs_in.vFragColor);
+        surface.Color = GetSurfaceColor(material, layer, fs_in.vFragColor);
         surface.Specular = layer.specular;
         normal = layer.normal;
     }

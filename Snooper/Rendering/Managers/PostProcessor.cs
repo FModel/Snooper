@@ -114,16 +114,10 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                     shader.SetUniform("uSunColor", light.Color);
                     shader.SetUniform("uSunIntensity", light.GetFinalIntensity());
 
-                    if (ctx.ShadowContext is { } shadows)
+                    if (ctx.Shadows is { } shadows)
                     {
                         shader.SetUniform("useShadows", true);
-                        shader.SetUniform("uShadowMapSize", new Vector3(shadows.Width, shadows.Height, shadows.Depth));
-                        shader.SetUniform("uShadowBias", shadows.Bias);
-                        shader.SetUniform("uCascadePlaneDistances", shadows.PlaneDistances);
-                        shader.SetUniform("uLightViewProjectionMatrices", shadows.Matrices);
-
-                        ctx.Geometry.Bind(EShadowTexture.Depth, 5);
-                        shader.SetUniform("shadowMap", 5);
+                        shadows.BindForRendering(shader, 5);
                     }
                     else shader.SetUniform("useShadows", false);
                 }
@@ -163,7 +157,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         {
             SetupBindings = (ctx, shader) =>
             {
-                var cascadeCount = ctx.ShadowContext?.Depth ?? 4;
+                var cascadeCount = ctx.Shadows?.CascadeCount ?? 1;
                 var gridCols = (int)Math.Ceiling(Math.Sqrt(cascadeCount));
                 var gridRows = (int)Math.Ceiling((float)cascadeCount / gridCols);
                 var cellSize = new Vector2(1.0f / gridCols, 1.0f / gridRows);

@@ -12,8 +12,14 @@ uniform mat4 uViewMatrix;
 
 void main()
 {
-    PerDrawData draw = uDrawDataBuffer[gDrawID];
-    Surface surface = ResolveSurface(draw, uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex]);
+    PerDrawStatic draw = uDrawStatic[gDrawID];
+    PerDrawCulled culled = FetchCulled(gDrawID);
+    Surface surface = ResolveSurface(uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex]);
+
+    if (surface.Discard)
+    {
+        discard;
+    }
 
     gPosition = fs_in.vViewPos;
     gNormal = mat3(uViewMatrix) * surface.Normal;

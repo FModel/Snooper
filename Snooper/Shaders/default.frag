@@ -7,7 +7,8 @@ out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(0.0, 0.0, 1.0, 0.75);
+    float alpha = 0.75;
+    FragColor = vec4(vec3(0.0, 0.0, 1.0) * alpha, alpha); // premultiplied, see the forward pass blend state
 
-    gPicking = uDrawDataBuffer[gDrawID].PickingId;
+    gPicking = uDrawStatic[gDrawID].PickingId;
 }

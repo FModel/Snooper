@@ -6,7 +6,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Systems;
 
-public class SplineMeshRenderSystem() : MeshRenderSystem<SplineMeshComponent>(["SPLINE_VERTEX", ..SplineBindings.OwnDefines])
+public class SplineMeshRenderSystem() : MeshRenderSystem<SplineMeshComponent>(["SPLINE_VERTEX", ..SplineBindings.OwnDefines], 1)
 {
     private abstract class SplineBindings : Bindings
     {
@@ -21,7 +21,7 @@ public class SplineMeshRenderSystem() : MeshRenderSystem<SplineMeshComponent>(["
 
     public override uint Order => 24;
     public override uint? MaxBindingUsed => SplineBindings.MaxBinding;
-    protected override bool IsCulled => false; // TODO: alter the bounding box based on the spline params, then restore culling
+    protected override bool IsCulled => false; // TODO: alter the bounding box based on the spline params, then restore culling, then remove the view count of 1
 
     private readonly ShaderStorageBuffer<SplineMeshParams> _params = new();
     protected override IEnumerable<(uint, IIndexedBind)> SystemBuffers =>

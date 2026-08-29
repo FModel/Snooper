@@ -166,6 +166,21 @@ public class ShaderProgram(string vertex, string fragment) : Program
         GL.Uniform4(GetUniformLocation(name), x, y, z, w);
     }
 
+    public unsafe void SetUniform(string name, Vector4[] values)
+    {
+        var length = values.Length;
+        var vectors = stackalloc float[4 * length];
+        for (var i = 0; i < length; i++)
+        {
+            vectors[i * 4] = values[i].X;
+            vectors[i * 4 + 1] = values[i].Y;
+            vectors[i * 4 + 2] = values[i].Z;
+            vectors[i * 4 + 3] = values[i].W;
+        }
+
+        GL.Uniform4(GetUniformLocation(name), length, vectors);
+    }
+
     public unsafe void SetUniform(string name, Plane[] value)
     {
         var length = value.Length;

@@ -27,8 +27,9 @@ void main()
 {
     gDrawID = vDrawID[0];
 
-    PerDrawData draw = uDrawDataBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
+    PerDrawStatic draw = uDrawStatic[gDrawID];
+    PerDrawCulled culled = FetchCulled(gDrawID);
+    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
     float thickness = materialData.LineThickness;
 
     // Get the two line endpoints in clip space

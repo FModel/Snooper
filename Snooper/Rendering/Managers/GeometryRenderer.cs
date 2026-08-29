@@ -1,7 +1,11 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Textures;
+using Snooper.Core.Containers.Resources;
+using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Containers.Framebuffers;
 using Snooper.UI;
 
@@ -9,7 +13,7 @@ namespace Snooper.Rendering.Managers;
 
 public class GeometryRenderer(int originalWidth, int originalHeight) : IResizable, IMemoryDetailsProvider, IControllable, IDisposable
 {
-    private readonly ShadowFramebuffer _shadow = new(2048, 4);
+    internal readonly ShadowFramebuffer _shadows = new();
     private readonly DeferredFramebuffer _deferred = new(originalWidth, originalHeight);
     private readonly ForwardFramebuffer _forward = new(originalWidth, originalHeight);
     private readonly MaskFramebuffer _mask = new(originalWidth, originalHeight);
@@ -29,37 +33,54 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             }
         });
 
-        _shadow.Generate();
+        _passes.Add(new RenderPass<CullRenderContext>("Cull Pass")
+        {
+            Execute = ctx =>
+            {
+                foreach (var system in ctx.Systems)
+                {
+                    system.Cull(ctx.Views.Span);
+                }
+            }
+        });
+
+        _shadows.Generate();
         _passes.Add(new RenderPass<ShadowRenderContext>("Shadow Pass")
         {
             PrePass = _ =>
             {
-                _shadow.Bind();
-                GL.Clear(ClearBufferMask.DepthBufferBit);
+                _shadows.ApplyPendingChanges();
+                _shadows.Bind();
 
-                GL.Enable(EnableCap.CullFace);
-                GL.CullFace(TriangleFace.Front);
+                GL.Enable(EnableCap.DepthClamp);
+                GL.PolygonOffset(_shadows.SlopeBias, _shadows.ConstantBias);
+                GL.Enable(EnableCap.PolygonOffsetFill);
             },
             Execute = ctx =>
             {
-                var shadowCameras = _shadow.UpdateCascades(ctx.Camera, ctx.Light);
-                for (var cascadeIndex = 0; cascadeIndex < shadowCameras.Length; cascadeIndex++)
+                for (var i = 0; i < _shadowViews.Length; i++)
                 {
-                    _shadow.BindLayer(cascadeIndex);
+                    var view = _shadowViews[i];
+                    if (!_shadows.NeedsRender(view.Slot)) continue;
+
+                    using var _ = Profiler.Sample($"Cascade {i}");
+
+                    _shadows.BindSlot(view.Slot);
                     GL.Clear(ClearBufferMask.DepthBufferBit);
 
                     foreach (var system in ctx.Systems)
                     {
-                        system.RenderShadowCascade(shadowCameras[cascadeIndex]);
+                        system.RenderShadowCascade(view);
                     }
                 }
             },
             PostPass = _ =>
             {
-                GL.CullFace(TriangleFace.Back);
-                GL.Disable(EnableCap.CullFace);
+                GL.Disable(EnableCap.PolygonOffsetFill);
+                GL.PolygonOffset(0.0f, 0.0f);
+                GL.Disable(EnableCap.DepthClamp);
 
-                _shadow.Unbind();
+                _shadows.Unbind();
             }
         });
 
@@ -103,7 +124,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
 
                 GL.Enable(EnableCap.Blend);
                 GL.BlendFuncSeparate(
-                    BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha,
+                    BlendingFactorSrc.One, BlendingFactorDest.OneMinusSrcAlpha,
                     BlendingFactorSrc.One, BlendingFactorDest.OneMinusSrcAlpha);
             },
             Execute = ctx =>
@@ -152,16 +173,33 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
 
     public void Bind(EDeferredTexture texture, uint unit) => _deferred.Bind(texture, unit);
     public void Bind(EForwardTexture texture, uint unit) => _forward.Bind(texture, unit);
-    public void Bind(EShadowTexture texture, uint unit) => _shadow.Bind(texture, unit);
+    public void Bind(EShadowTexture texture, uint unit) => _shadows.Bind(texture, unit);
     public void Bind(EMaskTexture texture, uint unit) => _mask.Bind(texture, unit);
 
-    // TODO: improve, this is ugly
-    public ShadowStageContext GetShadowContext() => new(_shadow.Width, _shadow.Height, _shadow.CascadeCount,
-        _shadow.Bias, _shadow.CascadePlaneDistances, _shadow.CascadeMatrices);
+    private readonly CullView[] _cullViews = new CullView[Settings.MaxCullingViews];
+    private ShadowMapView[] _shadowViews = [];
+
+    public ReadOnlyMemory<CullView> UpdateViews(CameraComponent camera, DirectionalLightComponent? light)
+    {
+        _cullViews[0] = new CullView(camera, camera);
+        _shadowViews = light is null ? [] : _shadows.UpdateSun(camera, light);
+
+        var count = 1;
+        foreach (var view in _shadowViews)
+        {
+            var index = view.ViewIndex;
+            if (index >= _cullViews.Length) continue;
+
+            _cullViews[index] = new CullView(view, camera);
+            count = Math.Max(count, index + 1);
+        }
+
+        return _cullViews.AsMemory(0, count);
+    }
 
     public void Resize(int newWidth, int newHeight)
     {
-        _shadow.Resize(newWidth, newHeight); // won't do anything
+        _shadows.Resize(newWidth, newHeight); // won't do anything
         _deferred.Resize(newWidth, newHeight);
         _forward.Resize(newWidth, newHeight);
         _mask.Resize(newWidth, newHeight);
@@ -169,7 +207,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
 
     public Texture[] GetTextures() =>
     [
-        .._shadow.GetTextures(),
+        .._shadows.GetTextures(),
         .._deferred.GetTextures(),
         .._forward.GetTextures(),
         .._mask.GetTextures(),
@@ -177,7 +215,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
 
     public void DrawControls()
     {
-        _shadow.DrawControls();
+        _shadows.DrawControls();
     }
 
     public long Allocated
@@ -185,7 +223,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         get
         {
             long total = 0;
-            total += _shadow.Allocated;
+            total += _shadows.Allocated;
             total += _deferred.Allocated;
             total += _forward.Allocated;
             total += _mask.Allocated;
@@ -198,7 +236,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         get
         {
             long total = 0;
-            total += _shadow.Used;
+            total += _shadows.Used;
             total += _deferred.Used;
             total += _forward.Used;
             total += _mask.Used;
@@ -208,7 +246,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
 
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        yield return new MemoryDetail("Shadow", _shadow);
+        yield return new MemoryDetail("Shadow", _shadows);
         yield return new MemoryDetail("GBuffer", _deferred);
         yield return new MemoryDetail("Forward", _forward);
         yield return new MemoryDetail("Mask", _mask);
@@ -216,7 +254,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
 
     public void Dispose()
     {
-        _shadow.Dispose();
+        _shadows.Dispose();
         _deferred.Dispose();
         _forward.Dispose();
         _mask.Dispose();

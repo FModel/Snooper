@@ -5,7 +5,7 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Buffers;
 
-public sealed class DrawIndirectBuffer(BufferUsageHint usageHint = BufferUsageHint.StaticDraw) : Buffer<DrawElementsIndirectCommand>(BufferTarget.DrawIndirectBuffer, usageHint)
+public sealed class DrawIndirectBuffer(BufferUsageHint usageHint = BufferUsageHint.StaticDraw, int slices = 1) : Buffer<DrawElementsIndirectCommand>(BufferTarget.DrawIndirectBuffer, usageHint, slices)
 {
     public override GetPName PName => GetPName.DrawIndirectBufferBinding;
 

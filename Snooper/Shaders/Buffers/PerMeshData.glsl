@@ -4,7 +4,6 @@ struct PerMeshData
     float SphereRadius;
     vec3 Extents;
     uint MaxLOD;
-    vec2 DrawDistances; // min and max draw distances
     int OverrideLod; // -1 for automatic LOD selection, >= 0 to force a specific LOD
     uint ColorMode; // FragmentColorMode for this mesh, 0 to follow the global uniform
 };

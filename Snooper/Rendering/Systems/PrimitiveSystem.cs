@@ -10,8 +10,8 @@ using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Rendering.Systems;
 
-public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type = PrimitiveType.Triangles)
-    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(type)
+public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(PrimitiveType type = PrimitiveType.Triangles, int viewCount = 1)
+    : IndirectRenderSystem<TVertex, TComponent, TInstanceData, TPerMaterialData>(type, viewCount)
     where TVertex : unmanaged
     where TComponent : PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData>
     where TInstanceData : unmanaged, IPerInstanceData
@@ -54,6 +54,21 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         shader.SetUniform("uViewMatrix", camera.ViewMatrix);
         shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
         shader.SetUniform("uFragmentColorMode", ActorManager?.FragmentColor ?? FragmentColorMode.Disabled);
+        shader.SetUniform("uViewBase", 0u); // the main camera is always view 0
+    }
+
+    public override void Cull(ReadOnlySpan<CullView> views)
+    {
+        if (!IsEnabled || !IsCulled) return;
+
+        using (Scope())
+        using (Profiler.Cull())
+        {
+            foreach (var type in Shaders.Keys)
+            {
+                Resources.Cull(type == CommandBufferType.Opaque ? views : views[..1], type);
+            }
+        }
     }
 
     protected sealed override void OnRender(CameraComponent camera, CommandBufferType type)
@@ -62,15 +77,6 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         {
             // Log.Warning("No shader found for command buffer type {Type} in {System}.", type, DisplayName);
             return;
-        }
-
-        // this trigger a shader use, do it before pre-rendering to avoid conflicts
-        if (IsCulled)
-        {
-            using (Profiler.Cull())
-            {
-                Resources.Cull(camera, type);
-            }
         }
 
         using (Profiler.Draw())

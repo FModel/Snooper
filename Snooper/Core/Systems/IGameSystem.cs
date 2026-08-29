@@ -1,4 +1,5 @@
 ﻿using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 
@@ -23,6 +24,7 @@ public interface IComputeRenderSystem : IGameSystem
 /// </summary>
 public interface IGeometryRenderSystem : IGameSystem
 {
+    public void Cull(ReadOnlySpan<CullView> views);
     public void Render(CameraComponent camera, CommandBufferType type);
 }
 
@@ -31,6 +33,6 @@ public interface IGeometryRenderSystem : IGameSystem
 /// </summary>
 public interface IMeshRenderSystem : IGeometryRenderSystem
 {
-    public void RenderShadowCascade(IViewProjectionProvider cascade);
+    public void RenderShadowCascade(ShadowMapView cascade);
     public IEnumerable<MeshComponent> GetMeshComponents();
 }

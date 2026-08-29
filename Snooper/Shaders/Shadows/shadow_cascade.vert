@@ -23,7 +23,7 @@ void main()
     vertex.Tangent = vec3(0.0);
 
     int id = gl_BaseInstance + gl_InstanceID;
-    DeformVertex(uDrawDataBuffer[gl_DrawID], id, vertex);
+    DeformVertex(uDrawStatic[gl_DrawID], FetchCulled(uint(gl_DrawID)), id, vertex);
 
     gl_Position = uViewProjection * (uInstanceDataBuffer[id].Matrix * vertex.Position);
 }

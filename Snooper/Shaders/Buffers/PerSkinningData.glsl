@@ -45,8 +45,8 @@ struct PerMeshSkinningData // one entry per unique mesh, index-aligned with PerM
 {
     uint BaseBone; // offset of this mesh's bones in the inverse bind buffer
     uint MorphCount; // number of morph targets on this mesh, 0 when it has none
-    uint LOD_BaseBoneInfluence[8]; // Settings.MaxNumberOfLods
-    uint LOD_BaseMorphOffset[8];
+    uint LOD_BaseBoneInfluence[MAX_NUMBER_OF_LODS];
+    uint LOD_BaseMorphOffset[MAX_NUMBER_OF_LODS];
     uint Pad0;
     uint Pad1;
 };
@@ -68,12 +68,12 @@ layout(std430, binding = BINDING_SKIN_INSTANCE_DATA) readonly buffer PerInstance
 };
 
 // requires Buffers/PerDrawData.glsl to be included first
-void getSkinningBases(PerDrawData draw, uint instance, out uint baseBone, out uint basePose, out uint baseInfluence)
+void getSkinningBases(PerDrawStatic draw, PerDrawCulled culled, uint instance, out uint baseBone, out uint basePose, out uint baseInfluence)
 {
     PerMeshSkinningData skin = uSkinMeshDataBuffer[draw.MeshIndex];
     baseBone = skin.BaseBone;
     basePose = uSkinInstanceBuffer[instance].BasePose;
-    baseInfluence = skin.LOD_BaseBoneInfluence[draw.Lod];
+    baseInfluence = skin.LOD_BaseBoneInfluence[culled.Lod];
 }
 
 uvec2 unpackBoneInfluence(uint boneInfluence)

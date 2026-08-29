@@ -24,14 +24,17 @@ public record BufferAllocationMetadata(int AllocationId, int StartIndex, int Len
     public int EndIndex => StartIndex + Length - 1;
 }
 
-public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) : HandledObject, IBufferStatisticsProvider, IBind where T : unmanaged
+public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, int slices = 1) : HandledObject, IBufferStatisticsProvider, IBind where T : unmanaged
 {
     public abstract GetPName PName { get; }
+
+    public int TotalElements => Capacity * Slices;
     public int PreviousHandle { get; private set; }
 
     public event Action<uint, uint>? OnHandleChanged;
 
     public int Stride { get; } = Marshal.SizeOf<T>();
+    public int Slices { get; } = slices;
     public int Count { get; private set; }
     public int Capacity { get; private set; }
 
@@ -87,7 +90,10 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
                 Generate();
                 Allocate(Capacity);
 
-                GL.CopyNamedBufferSubData(oldBuffer, Handle, 0, 0, oldCapacity * Stride);
+                for (var i = 0; i < Slices; i++)
+                {
+                    GL.CopyNamedBufferSubData(oldBuffer, Handle, i * oldCapacity * Stride, i * Capacity * Stride, oldCapacity * Stride);
+                }
                 GL.DeleteBuffer(oldBuffer);
 
                 Log.Verbose("Buffer {OldBuffer} ({GetPName}) has a new handle {I}.", oldBuffer, PName, Handle);
@@ -119,7 +125,8 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         else if (size < Capacity)
             Capacity = size;
 
-        GL.NamedBufferData(Handle, Capacity * Stride, new T[Capacity], usageHint);
+        GL.NamedBufferData(Handle, TotalElements * Stride, IntPtr.Zero, usageHint); // reserve
+        ClearStorage(0, TotalElements * Stride); // zeroes
 
         // Count = 0;
         // _nextOffset = 0;
@@ -233,7 +240,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         if (!_allocations.TryGetValue(allocationId, out var metadata))
             throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
-        GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride, metadata.Length * Stride, new T[metadata.Length]);
+        ClearStorage(metadata.StartIndex * Stride, metadata.Length * Stride);
 
         _freeBlocks.Add(new FreeBlock(metadata.StartIndex, metadata.Length));
 
@@ -322,7 +329,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         if (!_bInitialized)
             throw new InvalidOperationException("Cannot clear a buffer that is not initialized.");
 
-        GL.NamedBufferData(Handle, Capacity * Stride, new T[Capacity], usageHint);
+        ClearStorage(0, TotalElements * Stride);
         Count = 0;
         _nextOffset = 0;
         _allocationIdCounter = 0;
@@ -330,13 +337,19 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
         _freeBlocks.Clear();
     }
 
+    private void ClearStorage(int offset, int size)
+    {
+        GL.ClearNamedBufferSubData(Handle, PixelInternalFormat.R8, offset, size, PixelFormat.Red, PixelType.UnsignedByte, IntPtr.Zero);
+    }
+
     public override void Dispose()
     {
         GL.DeleteBuffer(Handle);
     }
 
-    public override long Allocated => Capacity * Stride;
-    public override long Used => Count * Stride;
+    public override long Allocated => (long) TotalElements * Stride;
+    public override long Used => (long) Count * Slices * Stride;
+
     public BufferStatistics? GetBufferStatistics()
     {
         var allocations = _allocations.Values.OrderBy(a => a.StartIndex).ToList();

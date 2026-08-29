@@ -8,7 +8,7 @@
 #include "Buffers/PerSplineData.glsl"
 
 // Position only: the slice transform is not applied to the tangent basis.
-void SplineDeformVertex(PerDrawData draw, int instance, inout MeshVertex v)
+void SplineDeformVertex(PerDrawStatic draw, int instance, inout MeshVertex v)
 {
     vec3 uePos = v.Position.xzy;
     SplineMeshParams params = uSplineParameters[instance];

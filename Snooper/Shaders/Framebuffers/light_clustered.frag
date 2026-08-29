@@ -5,7 +5,7 @@ uniform sampler2D gNormal; // view space normal
 uniform sampler2D gColor; // albedo color (RGB: albedo, A: unused atm)
 uniform sampler2D gSpecular; // specular color (R: unused atm, G: metallic, B: roughness, A: unused atm)
 uniform sampler2D ssao;
-uniform sampler2DArray shadowMap;
+uniform sampler2DArrayShadow shadowMap;
 
 uniform bool useSsao;
 uniform bool useShadows;
@@ -25,42 +25,73 @@ uniform int uGridDimZ;
 uniform float uZNear;
 uniform float uZFar;
 
-uniform vec3 uShadowMapSize;
-uniform float uShadowBias;
-uniform float uCascadePlaneDistances[4];
-uniform mat4 uLightViewProjectionMatrices[4];
+uniform int uShadowCascadeCount;
+uniform float uShadowSoftness;
+uniform float uShadowNormalOffset;
+uniform float uShadowBlend;
 
 out vec4 FragColor;
 
 #include "pbr.glsl"
 #include "Buffers/PerLightData.glsl"
+#include "Buffers/ShadowViewData.glsl"
 
-float CalculateShadow(vec3 worldPos, float NdotL, int layer)
+const int SHADOW_PCF_TAPS = 3;
+
+float SampleShadowMap(ShadowViewData view, vec3 worldPos, vec3 worldNormal, float NdotL)
 {
-    vec4 fragPosLightSpace = uLightViewProjectionMatrices[layer] * vec4(worldPos, 1.0);
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
+    float sinTheta = sqrt(max(0.0, 1.0 - NdotL * NdotL));
+    float kernelWorld = view.texelWorldSize * (uShadowSoftness * float(SHADOW_PCF_TAPS - 1) + 1.0);
+    vec3 samplePos = worldPos + worldNormal * (kernelWorld * sinTheta * uShadowNormalOffset);
 
-    if (projCoords.z > 1.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
-    {
-        return 0.0;
-    }
+    vec4 clip = view.viewProjection * vec4(samplePos, 1.0);
+    vec3 coords = clip.xyz / clip.w * 0.5 + 0.5;
 
-    float bias = max(uShadowBias * (1.0 - NdotL), 0.000005);
-    bias /= uCascadePlaneDistances[layer];
+    if (coords.z >= 1.0)
+        return 0.0; // past this view's far plane
 
-    float currentDepth = projCoords.z;
-    vec2 texelSize = 1.0 / uShadowMapSize.xy;
+    float tanTheta = min(sinTheta / max(NdotL, 1e-3), 8.0);
+    float reference = coords.z - view.texelWorldSize * tanTheta * view.depthScale;
 
-    float shadow = 0.0;
-    for (int x = -1; x <= 1; ++x)
+    vec2 texelStep = uShadowSoftness / vec2(textureSize(shadowMap, 0).xy);
+    float layer = float(view.slot);
+
+    float lit = 0.0;
     for (int y = -1; y <= 1; ++y)
+    for (int x = -1; x <= 1; ++x)
     {
-        vec2 uv = projCoords.xy + vec2(float(x), float(y)) * texelSize;
-        float pcfDepth = texture(shadowMap, vec3(uv, layer)).r;
-        shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
+        vec2 uv = coords.xy + vec2(float(x), float(y)) * texelStep;
+        lit += texture(shadowMap, vec4(uv, layer, reference));
     }
-    shadow /= 9.0;
+
+    return 1.0 - lit / float(SHADOW_PCF_TAPS * SHADOW_PCF_TAPS);
+}
+
+float CalculateSunShadow(vec3 worldPos, vec3 worldNormal, float NdotL, float viewDepth)
+{
+    int layer = -1;
+    for (int i = 0; i < uShadowCascadeCount; ++i)
+    {
+        if (viewDepth < shadowViews[i].splitFar) { layer = i; break; }
+    }
+
+    if (layer < 0)
+        return 0.0;
+
+    float shadow = SampleShadowMap(shadowViews[layer], worldPos, worldNormal, NdotL);
+
+    float splitNear = layer == 0 ? uZNear : shadowViews[layer - 1].splitFar;
+    float splitFar = shadowViews[layer].splitFar;
+    float bandStart = mix(splitFar, splitNear, uShadowBlend);
+    float blend = clamp((viewDepth - bandStart) / max(splitFar - bandStart, 1e-4), 0.0, 1.0);
+
+    if (blend > 0.0)
+    {
+        float next = layer + 1 < uShadowCascadeCount
+            ? SampleShadowMap(shadowViews[layer + 1], worldPos, worldNormal, NdotL)
+            : 0.0;
+        shadow = mix(shadow, next, blend);
+    }
 
     return shadow;
 }
@@ -307,20 +338,7 @@ void main()
     float shadow = 0.0;
     if (useShadows && NdotL > 0.0)
     {
-        // view space depth (positive)
-        float depthValue = -viewPos.z;
-
-        int layer = 0;
-        for (int i = 0; i < int(uShadowMapSize.z); i++)
-        {
-            if (depthValue < uCascadePlaneDistances[i])
-            {
-                layer = i;
-                break;
-            }
-        }
-
-        shadow = CalculateShadow(worldPos, NdotL, layer);
+        shadow = CalculateSunShadow(worldPos, worldNormal, NdotL, -viewPos.z);
     }
 
     // Ambient lighting

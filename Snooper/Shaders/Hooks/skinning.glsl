@@ -7,10 +7,10 @@
 
 #include "Buffers/PerSkinningData.glsl"
 
-void SkinDeformVertex(PerDrawData draw, int instance, inout MeshVertex v)
+void SkinDeformVertex(PerDrawStatic draw, PerDrawCulled culled, int instance, inout MeshVertex v)
 {
     uint baseBone, basePose, baseInfluence;
-    getSkinningBases(draw, uint(instance), baseBone, basePose, baseInfluence);
+    getSkinningBases(draw, culled, uint(instance), baseBone, basePose, baseInfluence);
 
     uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[baseInfluence + (gl_VertexID - gl_BaseVertex)];
     uint startIndex = packedInfluenceOffset >> 8;
@@ -49,12 +49,12 @@ void SkinDeformVertex(PerDrawData draw, int instance, inout MeshVertex v)
 #if !defined(MESH_DEPTH_ONLY)
 // Mode 7: BoneInfluences / bone weight painting. The bases are refetched because the
 // deformation above keeps them local to itself; this is a debug-only path.
-bool SkinVertexDebugColor(PerDrawData draw, int instance, uint mode, inout vec3 color)
+bool SkinVertexDebugColor(PerDrawStatic draw, PerDrawCulled culled, int instance, uint mode, inout vec3 color)
 {
     if (mode != 7) return false;
 
     uint baseBone, basePose, baseInfluence;
-    getSkinningBases(draw, uint(instance), baseBone, basePose, baseInfluence);
+    getSkinningBases(draw, culled, uint(instance), baseBone, basePose, baseInfluence);
 
     uint packedInfluenceOffset = uVertexBoneInfluenceOffsetBuffer[baseInfluence + (gl_VertexID - gl_BaseVertex)];
     uint startIndex = packedInfluenceOffset >> 8;

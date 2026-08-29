@@ -69,8 +69,9 @@ void main()
 
     mat4 matrix = uInstanceDataBuffer[tcInstanceID[0]].Matrix;
 
-    PerDrawData draw = uDrawDataBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
+    PerDrawStatic draw = uDrawStatic[gDrawID];
+    PerDrawCulled culled = FetchCulled(gDrawID);
+    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
     if (!materialData.IsReady)
     {
         te_out.vViewPos = vec3(0.0);

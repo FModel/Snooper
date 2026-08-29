@@ -20,8 +20,9 @@ out vec4 FragColor;
 
 void main()
 {
-    PerDrawData draw = uDrawDataBuffer[gDrawID];
-    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + draw.MaterialIndex];
+    PerDrawStatic draw = uDrawStatic[gDrawID];
+    PerDrawCulled culled = FetchCulled(gDrawID);
+    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
 
     vec3 color = vec3(0.75);
     if (materialData.IsReady)
