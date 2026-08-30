@@ -80,6 +80,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
     private readonly Plane[] _planes = new Plane[Settings.MaxCullingViews * 6];
     private readonly Vector4[] _lodReferences = new Vector4[Settings.MaxCullingViews];
+    private readonly float[] _lodOrthoExtents = new float[Settings.MaxCullingViews];
 
     public void Cull<TInstanceData>(ReadOnlySpan<CullView> views, ShaderStorageBuffer<TInstanceData> instances, IndirectDrawBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
     {
@@ -98,11 +99,13 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
             _planes[b + 5] = new Plane(matrix.M14 - matrix.M13, matrix.M24 - matrix.M23, matrix.M34 - matrix.M33, matrix.M44 - matrix.M43); // Top
 
             _lodReferences[i] = new Vector4(views[i].LodReferencePosition, views[i].LodProjectionScale);
+            _lodOrthoExtents[i] = views[i].LodOrthoExtent;
         }
 
         _compute.Use();
         _compute.SetUniform("uFrustumPlanes", _planes);
         _compute.SetUniform("uLodReference", _lodReferences);
+        _compute.SetUniform("uLodOrthoExtent", _lodOrthoExtents);
         _compute.SetUniform("uViewCount", (uint) viewCount);
         _compute.SetUniform("uViewCapacity", (uint) commands.Capacity);
 

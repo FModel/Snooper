@@ -11,13 +11,14 @@ public readonly struct ShadowMapView : IViewProjectionProvider
     public Matrix4x4 ViewProjection { get; }
 
     public int Slot { get; }
+    public float OrthoExtent { get; }
     public float TexelWorldSize { get; }
     public float DepthScale { get; }
     public float SplitFar { get; }
 
     public int ViewIndex => Slot + 1;
 
-    public ShadowMapView(Matrix4x4 viewMatrix, Matrix4x4 projectionMatrix, int slot, float texelWorldSize, float depthScale, float splitFar)
+    public ShadowMapView(Matrix4x4 viewMatrix, Matrix4x4 projectionMatrix, int slot, float orthoExtent, float texelWorldSize, float depthScale, float splitFar)
     {
         ViewMatrix = viewMatrix;
         ProjectionMatrix = projectionMatrix;
@@ -26,6 +27,7 @@ public readonly struct ShadowMapView : IViewProjectionProvider
         ViewProjection = viewMatrix * projectionMatrix;
 
         Slot = slot;
+        OrthoExtent = orthoExtent;
         TexelWorldSize = texelWorldSize;
         DepthScale = depthScale;
         SplitFar = splitFar;

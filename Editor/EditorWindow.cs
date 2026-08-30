@@ -137,13 +137,27 @@ public partial class EditorWindow : GameWindow
         try
         {
             Manager.Render();
+            WaitForGpu();
+            SwapBuffers();
         }
         finally
         {
             Profiler.EndFrame();
         }
+    }
 
-        SwapBuffers();
+    private const int MaxFramesInFlight = 2;
+    private readonly Queue<IntPtr> _frameFences = new();
+    private void WaitForGpu()
+    {
+        using var _ = Profiler.Cpu("Wait for GPU");
+
+        _frameFences.Enqueue(GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, WaitSyncFlags.None));
+        if (_frameFences.Count <= MaxFramesInFlight) return;
+
+        var fence = _frameFences.Dequeue();
+        GL.ClientWaitSync(fence, ClientWaitSyncFlags.SyncFlushCommandsBit, long.MaxValue);
+        GL.DeleteSync(fence);
     }
 
     private void DoTextInput(TextInputEventArgs e)
@@ -167,6 +181,11 @@ public partial class EditorWindow : GameWindow
         {
             CursorState = CursorState.Normal;
             Manager.Dispose();
+
+            while (_frameFences.TryDequeue(out var fence))
+            {
+                GL.DeleteSync(fence);
+            }
         }
 
         base.Dispose(disposing);

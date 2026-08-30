@@ -98,7 +98,7 @@ public sealed class SunCascades
             // default [-1, 1] clip range, so window depth only ever spans [0.5, 1.0]
             var depthScale = 0.5f / depthRange;
 
-            Views[i] = new ShadowMapView(viewMatrix, projectionMatrix, FirstSlot + i, texelWorldSize, depthScale, far);
+            Views[i] = new ShadowMapView(viewMatrix, projectionMatrix, FirstSlot + i, radius, texelWorldSize, depthScale, far);
         }
 
         return Views;

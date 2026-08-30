@@ -39,6 +39,7 @@ layout(std430, binding = BINDING_CULL_SECTIONS) buffer SectionDescriptorsBuffer
 
 uniform vec4 uFrustumPlanes[MAX_CULLING_VIEWS * 6];
 uniform vec4 uLodReference[MAX_CULLING_VIEWS];
+uniform float uLodOrthoExtent[MAX_CULLING_VIEWS]; // > 0 marks the view orthographic, and is its half-width in world units
 
 uniform uint uViewCount;
 uniform uint uViewCapacity;
@@ -106,6 +107,7 @@ void main()
 
     vec3 lodRefPos = uLodReference[view].xyz;
     float lodScale = uLodReference[view].w;
+    float lodOrthoExtent = uLodOrthoExtent[view];
 
     uint localMin = 0xFFFFFFFFu;
     uint localMax = 0;
@@ -181,7 +183,9 @@ void main()
             else
             {
                 // Automatic LOD selection based on screen size
-                float screenRadius = mesh.SphereRadius * lodScale / sClosestDist[0];
+                float screenRadius = lodOrthoExtent > 0.0
+                    ? mesh.SphereRadius / lodOrthoExtent
+                    : mesh.SphereRadius * lodScale / sClosestDist[0];
                 float screenSize = screenRadius * 2.0;
 
                 for (uint i = 1u; i <= mesh.MaxLOD; ++i)
