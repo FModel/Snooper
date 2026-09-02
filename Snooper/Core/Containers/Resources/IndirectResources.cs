@@ -79,12 +79,12 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         const uint currentLod = 0u;
         var drawAllocations = new DrawBufferAllocation[descriptor.Lods[currentLod].Sections.Length];
 
-        var instanceCount = component.IsVisible ? (uint)instanceAllocation.Length : 0;
         var bufferType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
         var buffer = _commands.GetBuffer(bufferType);
         for (var i = 0u; i < drawAllocations.Length; i++)
         {
             var section = descriptor.Lods[currentLod].Sections[i];
+            var instanceCount = component.IsMaterialVisible(section.MaterialIndex) ? (uint)instanceAllocation.Length : 0u;
             var command = new DrawElementsIndirectCommand(section, instanceCount, geometryHandle, (uint)instanceAllocation.StartIndex);
             var draw = new PerDrawStatic(
                 geometryHandle,
@@ -119,11 +119,29 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             component.MarkClean(DirtyFlags.Opacity);
         }
 
+        if (component.IsDirty(DirtyFlags.Visibility))
+        {
+            foreach (var draw in metadata.DrawAllocations)
+            {
+                var data = component.IsMaterialVisible(draw.MaterialIndex) ? (uint)metadata.InstanceAllocation.Length : 0u;
+                var buffer = _commands.GetBuffer(draw.BufferType);
+                buffer.Commands.UpdateCustom(draw.Allocation.Command, data, DrawElementsIndirectCommand.InstanceCountOffset);
+                buffer.StaticData.UpdateCustom(draw.Allocation.Static, data, PerDrawStatic.OriginalInstanceCountOffset);
+            }
+
+            component.MarkClean(DirtyFlags.Visibility);
+        }
+
         if (component.IsDirty(DirtyFlags.Outline))
         {
             if (component.IsOutlined)
+            {
                 foreach (var draw in metadata.DrawAllocations)
+                {
+                    if (!component.IsMaterialVisible(draw.MaterialIndex)) continue;
                     _commands.Transfer(draw.Allocation, draw.BufferType, CommandBufferType.Mask);
+                }
+            }
 
             component.MarkClean(DirtyFlags.Outline);
         }
@@ -138,19 +156,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         {
             _instanceData.QueueUpdate(metadata.InstanceAllocation, component.GetPerInstanceData());
             component.MarkClean(DirtyFlags.InstanceData);
-        }
-
-        if (component.IsDirty(DirtyFlags.Visibility))
-        {
-            var originalInstanceCount = component.IsVisible ? (uint)metadata.InstanceAllocation.Length : 0u;
-            foreach (var draw in metadata.DrawAllocations)
-            {
-                var buffer = _commands.GetBuffer(draw.BufferType);
-                buffer.Commands.UpdateCustom(draw.Allocation.Command, originalInstanceCount, DrawElementsIndirectCommand.InstanceCountOffset);
-                buffer.StaticData.UpdateCustom(draw.Allocation.Static, originalInstanceCount, PerDrawStatic.OriginalInstanceCountOffset);
-            }
-
-            component.MarkClean(DirtyFlags.Visibility);
         }
     }
 

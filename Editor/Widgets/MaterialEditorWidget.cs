@@ -73,15 +73,15 @@ public class MaterialEditorWidget : PanelWidget
         for (var slot = 0; slot < materials.Length; slot++)
         {
             if (materials[slot] is not { } section) continue;
-            DrawMaterial(section, slot, selectionChanged, section.SectionId == selected?.SectionId);
+            DrawMaterial(primitive, section, slot, selectionChanged, section.SectionId == selected?.SectionId);
         }
     }
 
-    private void DrawMaterial(MaterialSection section, int slot, bool selectionChanged, bool isSelected)
+    private void DrawMaterial(IPrimitiveComponent primitive, MaterialSection section, int slot, bool selectionChanged, bool isSelected)
     {
         if (selectionChanged) ImGui.SetNextItemOpen(isSelected, ImGuiCond.Always);
         var open = ImGui.CollapsingHeader($"{slot}: {section.MaterialDataContainer?.Name ?? Settings.NoName}###Material{slot}", ImGuiTreeNodeFlags.AllowOverlap);
-        GetHeaderButtons(section, slot).Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
+        GetHeaderButtons(primitive, section, slot).Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
         if (selectionChanged && isSelected) ImGui.SetScrollHereY(0.5f);
         if (!open) return;
@@ -110,11 +110,14 @@ public class MaterialEditorWidget : PanelWidget
         ImGui.PopID();
     }
 
-    private HeaderButtons GetHeaderButtons(MaterialSection section, int slot)
+    private HeaderButtons GetHeaderButtons(IPrimitiveComponent primitive, MaterialSection section, int slot)
     {
         if (_headerButtons.TryGetValue(section.SectionId, out var existing)) return existing;
 
         var buttons = new HeaderButtons($"Material{slot}")
+            .Add(() => section.IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, () => "Toggle Visibility\nHide every section drawn with this material",
+                () => primitive.SetMaterialVisibility(section.Index, !section.IsVisible), null,
+                () => section.IsVisible ? null : Settings.RedColor)
             .Add(() => Settings.RightLeftIcon, () => "Swap\nPick another material the scene has already loaded",
                 () => MaterialPickerModal.Instance.Open(entry => SwapMaterial(section, entry.Key)),
                 () => section.MaterialDataContainer is MaterialDataContainer)

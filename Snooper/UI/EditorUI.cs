@@ -214,6 +214,7 @@ public static class EditorUI
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
         ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted(label);
 
         var visibleCount = 0;
         foreach (var button in buttons)
@@ -227,8 +228,6 @@ public static class EditorUI
         var colW = ImGui.GetContentRegionAvail().X;
         var labelEndX = startX + ImGui.CalcTextSize(label).X + style.ItemSpacing.X;
         var firstBtnX = startX + colW - frameHeight * visibleCount;
-
-        ImGui.TextUnformatted(label);
 
         PushIconButtonStyle();
 

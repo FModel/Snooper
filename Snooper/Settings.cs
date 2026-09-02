@@ -63,6 +63,7 @@ public static class Settings
     public const string PowerOffIcon = "\uf011";
     public const string PaletteIcon = "\uf53f";
     public const string EyeIcon = "\uf06e";
+    public const string EyeLowVisionIcon = "\uf2a8";
     public const string CameraIcon = "\uf030";
     public const string BookIcon = "\uf02d";
     public const string KeyboardIcon = "\uf11c";

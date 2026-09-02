@@ -131,7 +131,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         for (var i = 0u; i < _materials.Length; i++)
         {
             var index = i;
-            var section = new MaterialSection(index);
+            var section = new MaterialSection(index, IsVisible);
             Materials[index] = section;
 
             scene.ThreadManager.Enqueue(() =>

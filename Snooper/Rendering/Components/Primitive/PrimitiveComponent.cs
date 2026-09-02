@@ -23,6 +23,8 @@ public interface IPrimitiveComponent
     public bool IsOpaque { get; }
     public bool IsVisible { get; set; }
 
+    public void SetMaterialVisibility(uint materialIndex, bool visible);
+
     internal MaterialSection? SelectedMaterial { get; }
 }
 
@@ -64,7 +66,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             if (field == value) return;
 
             field = value;
-            MarkDirty(DirtyFlags.Visibility);
+            SetMaterialsVisible(value);
         }
     } = true;
 
@@ -213,6 +215,30 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         SetLocalTransform(transform);
     }
 
+    public bool IsMaterialVisible(uint materialIndex) => materialIndex >= Materials.Length || Materials[materialIndex] is not { IsVisible: false };
+    public void SetMaterialVisibility(uint materialIndex, bool visible)
+    {
+        if (materialIndex >= Materials.Length || Materials[materialIndex] is not { } material) return;
+        if (material.IsVisible == visible) return;
+
+        material.IsVisible = visible;
+        MarkVisibilityDirty();
+    }
+    private void SetMaterialsVisible(bool visible)
+    {
+        if (Materials is { } materials)
+        {
+            foreach (var material in materials)
+            {
+                material?.IsVisible = visible;
+            }
+        }
+
+        MarkVisibilityDirty();
+    }
+
+    private void MarkVisibilityDirty() => MarkDirty(DirtyFlags.Visibility | (IsOutlined ? DirtyFlags.Outline : DirtyFlags.None));
+
     protected override void BeginPlay(ActorManager scene)
     {
         base.BeginPlay(scene);
@@ -224,11 +250,20 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     private const string HeaderLabel = "Mesh";
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
-        .Add(() => IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, () => "Toggle Visibility",
+        .Add(() => MaterialVisibilityIcon, () => "Toggle Visibility",
             () => { IsVisible = !IsVisible; }, null,
-            () => IsVisible ? null : Settings.RedColor)
+            () => MaterialVisibilityColor)
         .Add("\uf0c5", "Copy Path", () => ImGui.SetClipboardText(Descriptor.Path))
         .Add("\uf05a", "Primitive Info", () => ImGui.OpenPopup("##PrimitiveInfo"));
+
+    private PropertyToggleButton[] SectionButtons => field ??=
+    [
+        new PropertyToggleButton(
+            () => MaterialVisibilityIcon,
+            () => ImGui.OpenPopup(SectionVisibilityPopup),
+            () => "Section Visibility",
+            textColor: () => MaterialVisibilityColor)
+    ];
 
     private PropertyToggleButton[] MaterialButtons => field ??=
     [
@@ -319,7 +354,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 EditorUI.Text("Draw Distance", $"Min: {DrawDistance.X}, Max: {DrawDistance.Y}");
             }
 
-            EditorUI.Property($"Sections ({lod.Sections.Length})");
+            EditorUI.PropertyWithToggle($"Sections ({lod.Sections.Length})", SectionButtons);
+            DrawSectionVisibilityPopup(lod);
             var selected = lod.Sections[_sectionIndex];
             _materialIndex = (int) selected.MaterialIndex;
 
@@ -342,7 +378,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 ImGui.EndCombo();
             }
 
-            EditorUI.Caption($"Material {selected.MaterialIndex}, {(selected.CastShadow && CastShadow ? "casts shadow" : "no shadow")}");
+            EditorUI.Caption($"Material {selected.MaterialIndex}, {(selected.CastShadow && CastShadow ? "casts shadow" : "no shadow")}{(SelectedMaterial is { IsVisible: false } ? ", hidden" : "")}");
             ImGui.Spacing();
             ImGui.EndGroup();
 
@@ -366,6 +402,64 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 ImGui.Text(string.Empty);
             }
         });
+    }
+
+    private const string SectionVisibilityPopup = "##SectionVisibility";
+    private bool HasHiddenMaterial => Array.Exists(Materials, x => x is { IsVisible: false });
+    private bool HasVisibleMaterial => Array.Exists(Materials, x => x is not { IsVisible: false });
+    private string MaterialVisibilityIcon => HasVisibleMaterial ? HasHiddenMaterial ? Settings.EyeLowVisionIcon : Settings.EyeIcon : Settings.EyeSlashIcon;
+    private Vector4? MaterialVisibilityColor => HasVisibleMaterial ? HasHiddenMaterial ? Settings.OrangeColor : null : Settings.RedColor;
+
+    private void DrawSectionVisibilityPopup(LodDescriptor<TVertex> lod)
+    {
+        if (!ImGui.BeginPopup(SectionVisibilityPopup)) return;
+
+        var sections = lod.Sections;
+        var frameHeight = ImGui.GetFrameHeight();
+
+        var nameWidth = 0f;
+        for (var i = 0; i < sections.Length; i++)
+        {
+            nameWidth = MathF.Max(nameWidth, ImGui.CalcTextSize($"{i}: {sections[i].Name}").X);
+        }
+
+        var style = ImGui.GetStyle();
+        var width = Math.Clamp(frameHeight + style.ItemSpacing.X + nameWidth + style.ScrollbarSize, frameHeight * 8f, frameHeight * 16f);
+
+        var anyVisible = HasVisibleMaterial;
+        if (EditorUI.IconButton(MaterialVisibilityIcon, anyVisible ? "Hide All" : "Show All", textColor: MaterialVisibilityColor))
+        {
+            SetMaterialsVisible(!anyVisible);
+        }
+        ImGui.SameLine();
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextDisabled($"{sections.Length} Section{(sections.Length != 1 ? "s" : "")}");
+        ImGui.Separator();
+
+        var height = Math.Min(sections.Length, 5) * ImGui.GetFrameHeightWithSpacing();
+        if (ImGui.BeginChild("##SectionList", new Vector2(width, height)))
+        {
+            for (var i = 0; i < sections.Length; i++)
+            {
+                var section = sections[i];
+                var material = section.MaterialIndex < Materials.Length ? Materials[section.MaterialIndex] : null;
+                var isVisible = material is not { IsVisible: false };
+
+                ImGui.PushID(i);
+                if (EditorUI.IconButton(isVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, null, material != null, isVisible ? null : Settings.RedColor) && material != null)
+                {
+                    SetMaterialVisibility(section.MaterialIndex, !isVisible);
+                }
+                ImGui.SameLine();
+                ImGui.AlignTextToFramePadding();
+                if (isVisible) ImGui.TextUnformatted($"{i}: {section.Name}");
+                else ImGui.TextDisabled($"{i}: {section.Name}");
+                ImGui.PopID();
+            }
+        }
+        ImGui.EndChild();
+
+        ImGui.EndPopup();
     }
 
     private void DrawInfoPopup()
