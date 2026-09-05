@@ -106,6 +106,7 @@ public partial class EditorWindow : GameWindow
     {
         IsEventDriven = false;
         IsVisible = true;
+        Focus();
 
         GLFW.PostEmptyEvent();
     }

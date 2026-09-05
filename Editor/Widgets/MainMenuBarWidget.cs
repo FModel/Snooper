@@ -3,6 +3,7 @@ using ImGuiNET;
 using Snooper;
 using Snooper.Core;
 using Snooper.Core.Hardware;
+using Snooper.Hosting;
 using Snooper.Rendering;
 using Snooper.Rendering.Systems;
 
@@ -38,11 +39,22 @@ public class MainMenuBarWidget
             ImGui.EndMenu();
         }
 
-        // var framerate = $"{ImGui.GetIO().Framerate:0} FPS";
-        // ImGui.SameLine(ImGui.GetWindowWidth() - ImGui.CalcTextSize(framerate).X - ImGui.GetStyle().ItemSpacing.X * 2.0f);
-        // ImGui.TextDisabled(framerate);
+        DrawPendingRequest();
 
         ImGui.EndMainMenuBar();
+    }
+
+    private static void DrawPendingRequest()
+    {
+        if (Bridge.PendingRequest is not { } request) return;
+
+        var text = $"{Settings.FolderOpenIcon}  {request.DisplayText} from {Bridge.Host.Name}";
+        const string cancel = $"{Settings.BanIcon}  Cancel";
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
+
+        ImGui.SameLine(ImGui.GetWindowWidth() - ImGui.CalcTextSize(text).X - ImGui.CalcTextSize(cancel).X - spacing * 4.0f);
+        ImGui.TextColored(Settings.OrangeColor, text);
+        if (ImGui.MenuItem(cancel)) Bridge.CancelRequest();
     }
 
     private static void DrawFileMenu(EditorManager editor)

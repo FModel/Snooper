@@ -9,6 +9,7 @@ using ImGuiNET;
 using Serilog;
 using Serilog.Events;
 using Snooper;
+using Snooper.Hosting;
 using Snooper.UI;
 
 namespace Editor.Modals;
@@ -57,7 +58,7 @@ public sealed class ExportModal
         _progress = new Progress<ExportProgress>(p => _currentProgress = p);
     }
 
-    public void Export(TreeNode node, string exportDirectory, ExportOptions options)
+    public void Export(TreeNode node)
     {
         Reset();
         _openPopup = true;
@@ -72,7 +73,7 @@ public sealed class ExportModal
             {
                 var session = new ExportSession();
                 node.Export(session, token);
-                _exportResults = await session.RunAsync(exportDirectory, options, _progress, token);
+                _exportResults = await session.RunAsync(Bridge.Host.ExportDirectory, Bridge.Host.CreateExportOptions(), _progress, token);
             }
             catch (OperationCanceledException)
             {

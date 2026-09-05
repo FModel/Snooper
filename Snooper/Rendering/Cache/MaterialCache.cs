@@ -9,6 +9,7 @@ using Snooper.Extensions;
 using System.Collections.Concurrent;
 using System.Numerics;
 using CUE4Parse.UE4.Objects.UObject;
+using Snooper.Hosting;
 
 namespace Snooper.Rendering.Cache;
 
@@ -103,7 +104,7 @@ public static class MaterialCache
     private static MaterialDataContainer? ParseMaterialParameters(UUnrealMaterial material, uint layerCount, UBuildingTextureData?[]? textureDataLayers)
     {
         var parameters = new CMaterialParams2();
-        material.GetParams(parameters, EMaterialDepth.TopLayerOnly);
+        material.GetParams(parameters, Bridge.Options.MaterialDepth);
 
         // whatever we will probably remove this Switch thing later
         var maxLayers = Math.Min(4, layerCount);

@@ -4,6 +4,7 @@ using CUE4Parse.FileProvider;
 using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
 using Snooper.Core.Systems;
+using Snooper.Hosting;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components;
@@ -78,6 +79,7 @@ public class SceneManager : ActorManager
 
     public override void Update(float delta)
     {
+        Bridge.Drain();
         DequeueViewports(1);
 
         if (RootActor != null && MainViewport?.Camera is { } camera && camera.IsDirty(DirtyFlags.Transform))
@@ -255,6 +257,7 @@ public class SceneManager : ActorManager
     {
         base.Dispose();
 
+        Bridge.Reset();
         WindowRequests.ClearPayloads();
         MeshCache.ClearAndDispose();
         MaterialCache.ClearAndDispose();

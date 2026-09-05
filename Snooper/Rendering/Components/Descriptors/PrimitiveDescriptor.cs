@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.FileProvider;
 using CUE4Parse_Conversion.Dto;
+using CUE4Parse_Conversion.Options;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
@@ -10,6 +11,7 @@ using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Meshes;
 using ImGuiNET;
 using Snooper.Extensions;
+using Snooper.Hosting;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Primitives;
 using Snooper.UI;
@@ -66,7 +68,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
-        using var dto = new StaticMeshDto(owner);
+        using var dto = new StaticMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)
@@ -91,7 +93,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
-        using var dto = new StaticMeshDto(owner);
+        using var dto = new StaticMeshDto(owner, Bridge.Options.NaniteMeshFormat);
         if (dto.LODs.Count == 0) throw new InvalidOperationException(); // just so we fallback to collection groups
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
@@ -112,7 +114,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
-        using var dto = new SkeletalMeshDto(owner);
+        using var dto = new SkeletalMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat, Bridge.Options.LoadMorphTargets);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)

@@ -1,7 +1,6 @@
 ﻿using ImGuiNET;
 using Snooper.Rendering.Actors;
 using System.Numerics;
-using CUE4Parse_Conversion.Options;
 using Editor.Managers;
 using Editor.Modals;
 using Serilog;
@@ -233,10 +232,7 @@ public class SceneHierarchyWidget : PanelWidget
             {
                 sa.Load();
             }
-            if (actor.RootComponent is SkeletalMeshComponent sk && ImGui.MenuItem("\uf04b  Set Animation"))
-            {
-                sk.SetAnimation(null); // TODO
-            }
+            if (actor.RootComponent is SkeletalMeshComponent sk) AssetRequestMenu.Animation(sk);
             if (actor.RootComponent is DirectionalLightComponent dirLight)
             {
                 var lightSystem = actor.ActorManager?.GetSystem<ClusteredLightSystem>();
@@ -269,7 +265,7 @@ public class SceneHierarchyWidget : PanelWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-                ExportModal.Instance.Export(actor, "./exports_v2", new ExportOptions());
+                ExportModal.Instance.Export(actor);
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))

@@ -4,6 +4,7 @@ using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 using Snooper.Extensions;
+using Snooper.Hosting;
 
 namespace Snooper.Core.Containers.Textures;
 
@@ -30,7 +31,7 @@ public class Texture2D(int width, int height,
             return;
         }
 
-        var mipIndex = _owner.GetMipIndexByMaxSize(Settings.MaxTextureMipSize);
+        var mipIndex = _owner.GetMipIndexByMaxSize(Bridge.Options.MaxTextureMipSize);
         if (mipIndex < 0)
             throw new InvalidOperationException("No suitable mip found for the given max texture size.");
 
@@ -39,7 +40,7 @@ public class Texture2D(int width, int height,
         if (_owner.PlatformData is { FirstMipToSerialize: >= 0, VTData: { } vt } && vt.IsInitialized())
         {
             // TODO: decode somewhere else, Generate runs in the render thread
-            var textureData = _owner.DecodeMip(mipIndex, ETexturePlatform.DesktopMobile); // TODO: decode settings
+            var textureData = _owner.DecodeMip(mipIndex, Bridge.Options.TexturePlatform);
             mipData = textureData.Data;
             width = textureData.Width;
             height = textureData.Height;

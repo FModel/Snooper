@@ -3,7 +3,6 @@ using ImGuiNET;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Transforms;
 using System.Numerics;
-using CUE4Parse_Conversion.Options;
 using Editor.Modals;
 using Snooper.Rendering.Actors;
 using Serilog;
@@ -67,10 +66,12 @@ public class InspectorWidget : PanelWidget
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGui.GetColorU32(ImGuiCol.HeaderHovered));
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGui.GetColorU32(ImGuiCol.ButtonActive));
         var width = ImGui.GetContentRegionAvail().X;
+        ImGui.BeginDisabled();
         if (ImGui.Button($"{Settings.AddIcon}  Add Component", new Vector2(width, 0)))
         {
 
         }
+        ImGui.EndDisabled();
         ImGui.PopStyleColor(3);
     }
 
@@ -179,10 +180,7 @@ public class InspectorWidget : PanelWidget
             ImGui.TextDisabled(component.Name);
             ImGui.Separator();
 
-            if (component is SkeletalMeshComponent sk && ImGui.MenuItem("\uf04b  Set Animation"))
-            {
-                sk.SetAnimation(null); // TODO
-            }
+            if (component is SkeletalMeshComponent sk) AssetRequestMenu.Animation(sk);
             if (component is DirectionalLightComponent dirLight)
             {
                 var lightSystem = component.Actor?.ActorManager?.GetSystem<ClusteredLightSystem>();
@@ -213,7 +211,7 @@ public class InspectorWidget : PanelWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-                ExportModal.Instance.Export(component, "./exports_v2", new ExportOptions());
+                ExportModal.Instance.Export(component);
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))
