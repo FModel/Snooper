@@ -63,14 +63,14 @@ public sealed class SequenceDescriptor : SequenceBaseDescriptor
 
     public bool IsAnimatingBone(uint skeletonIndex) => _sequence.OriginalSequence.FindTrackForBoneIndex((int) skeletonIndex) >= 0;
 
-    public Matrix4x4 GetBoneMatrix(uint skeletonIndex, float localTime, bool scale = true)
+    public Matrix4x4 GetBoneMatrix(uint skeletonIndex, float localTime, FTransform bindBonePose)
     {
-        var boneOrientation = FQuat.Identity;
-        var bonePosition = FVector.ZeroVector;
-        var boneScale = FVector.OneVector;
+        var boneOrientation = bindBonePose.Rotation;
+        var bonePosition = bindBonePose.Translation;
+        var boneScale = bindBonePose.Scale3D;
 
         // we are indexing into tracks but tracks are added for each skeleton bone
         _sequence.Tracks[(int) skeletonIndex].GetBoneTransform(localTime * FrameRate, FrameCount, ref boneOrientation, ref bonePosition, ref boneScale);
-        return new Transform(bonePosition, boneOrientation, scale ? boneScale : FVector.OneVector).ToMatrix();
+        return new Transform(bonePosition, boneOrientation, boneScale).ToMatrix();
     }
 }

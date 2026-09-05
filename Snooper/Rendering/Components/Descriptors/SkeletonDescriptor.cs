@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion.Dto;
 using CUE4Parse.UE4.Assets.Exports.Animation;
+using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Extensions;
@@ -10,26 +11,15 @@ using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public readonly struct BoneDescriptor
+public readonly struct BoneDescriptor(string name, int parentIndex, FTransform transform)
 {
-    public readonly string Name;
-    public readonly int ParentIndex;
-    public readonly Matrix4x4 BindPoseLocalMatrix;
+    internal readonly FTransform _transform = transform;
+
+    public readonly string Name = name;
+    public readonly int ParentIndex = parentIndex;
+    public readonly Matrix4x4 BindPoseLocalMatrix = new Transform(transform).ToMatrix();
 
     public bool IsRoot => ParentIndex < 0;
-
-    public BoneDescriptor(string name, int parentIndex, Matrix4x4 bindPoseLocalMatrix)
-    {
-        Name = name;
-        ParentIndex = parentIndex;
-
-        if (IsRoot && Matrix4x4.Decompose(bindPoseLocalMatrix, out _, out var rotation, out var position))
-        {
-            // some games scale their root bone for some reason which offsets all others (FarFarWest)
-            bindPoseLocalMatrix = Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(position);
-        }
-        BindPoseLocalMatrix = bindPoseLocalMatrix;
-    }
 }
 
 public class SkeletonDescriptor : IControllable
@@ -71,8 +61,7 @@ public class SkeletonDescriptor : IControllable
         for (var boneIndex = 0u; boneIndex < BoneCount; boneIndex++)
         {
             var info = reference.FinalRefBoneInfo[boneIndex];
-            var matrix = new Transform(reference.FinalRefBonePose[boneIndex]).ToMatrix();
-            var descriptor = new BoneDescriptor(info.Name.Text, info.ParentIndex, matrix);
+            var descriptor = new BoneDescriptor(info.Name.Text, info.ParentIndex, reference.FinalRefBonePose[boneIndex]);
 
             BoneLocalMatrices[boneIndex] = descriptor.BindPoseLocalMatrix;
             BoneDescriptors[boneIndex] = descriptor;
@@ -92,8 +81,7 @@ public class SkeletonDescriptor : IControllable
         for (var boneIndex = 0u; boneIndex < BoneCount; boneIndex++)
         {
             var bone = bones[(int) boneIndex];
-            var matrix = new Transform(bone.Transform).ToMatrix();
-            var descriptor = new BoneDescriptor(bone.Name, bone.ParentIndex, matrix);
+            var descriptor = new BoneDescriptor(bone.Name, bone.ParentIndex, bone.Transform);
 
             BoneLocalMatrices[boneIndex] = descriptor.BindPoseLocalMatrix;
             BoneDescriptors[boneIndex] = descriptor;

@@ -284,8 +284,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
                     !animation.TryGetSegment(skeletonIndex, time, out var segment))
                     continue;
 
-                var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
-                skeleton.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, scale);
+                skeleton.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, skeleton.BoneDescriptors[boneIndex]._transform);
             }
         }
         else

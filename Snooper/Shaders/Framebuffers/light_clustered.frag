@@ -361,7 +361,7 @@ void main()
         vec3 sunContrib = vec3(0.0);
         if (useSunLight && NdotL > 0.0)
         {
-            sunContrib = albedo * uSunColor * NdotL * uSunIntensity * (1.0 - shadow * 0.8);
+            sunContrib = albedo * uSunColor * NdotL * uSunIntensity * (1.0 - shadow);
         }
 
         vec3 lighting = ambient + sunContrib;
