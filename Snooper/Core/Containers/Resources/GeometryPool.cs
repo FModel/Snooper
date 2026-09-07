@@ -18,6 +18,29 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation m
     public int OverrideLod { get; internal set; } = overrideLod;
 }
 
+public readonly struct VertexArrayLayout(uint vao, uint vbo, int stride)
+{
+    public VertexArrayLayout Float(uint location, int size, VertexAttribType type = VertexAttribType.Float, bool normalized = false, int offset = 0)
+    {
+        GL.VertexArrayAttribFormat(vao, location, size, type, normalized, 0);
+        return Enable(location, offset);
+    }
+
+    public VertexArrayLayout Integer(uint location, int size, VertexAttribIType type = VertexAttribIType.UnsignedInt, int offset = 0)
+    {
+        GL.VertexArrayAttribIFormat(vao, location, size, type, 0);
+        return Enable(location, offset);
+    }
+
+    private VertexArrayLayout Enable(uint location, int offset)
+    {
+        GL.VertexArrayVertexBuffer(vao, location, vbo, offset, stride);
+        GL.VertexArrayAttribBinding(vao, location, location);
+        GL.EnableVertexArrayAttrib(vao, location);
+        return this;
+    }
+}
+
 public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where TVertex : unmanaged
 {
     private readonly VertexArray _vao = new();
@@ -27,7 +50,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     private readonly CullingResources _culling = new();
 
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
-    private Action<uint>? _vertexLayoutSetter;
+    private Action<VertexArrayLayout>? _vertexLayoutSetter;
 
     public void Generate()
     {
@@ -41,7 +64,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _vbo.OnHandleChanged += (_, _) => BindBuffersToVao();
     }
 
-    public void SetVertexLayout(Action<uint> setter)
+    public void SetVertexLayout(Action<VertexArrayLayout> setter)
     {
         _vertexLayoutSetter = setter;
         BindBuffersToVao();
@@ -49,10 +72,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     private void BindBuffersToVao()
     {
-        GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
         GL.VertexArrayElementBuffer(_vao, _ebo);
-
-        _vertexLayoutSetter?.Invoke(_vao);
+        _vertexLayoutSetter?.Invoke(new VertexArrayLayout(_vao, _vbo, _vbo.Stride));
     }
 
     public void Allocate(AllocationCounts counts)

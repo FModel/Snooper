@@ -23,7 +23,7 @@ namespace Snooper.Rendering.Components.Mesh;
 /// <summary>
 /// Packed vertex layout — 20 bytes total<br/>
 ///     loc 0: uvec2  — pos.x|pos.y (half2), pos.z|0 (half2)         [offset  0, 8 bytes]<br/>
-///     loc 1: uint   — normal  xyzw RGB10A2 SNorm                   [offset  8, 4 bytes]<br/>
+///     loc 1: uint   — normal  xyz RGB10A2 SNorm, w = basis sign    [offset  8, 4 bytes]<br/>
 ///     loc 2: uint   — tangent xyz RGB10A2 SNorm, w = texLayer(0-3) [offset 12, 4 bytes]<br/>
 ///     loc 3: uint   — uv.x|uv.y (half2)                            [offset 16, 4 bytes]<br/>
 /// </summary>
@@ -43,10 +43,11 @@ public readonly struct Vertex(Vector3 position, Vector4 normal, Vector3 tangent,
         return hx | (hy << 16);
     }
 
-    private static uint PackRgb10A2Snorm(Vector4 v) => PackRgb10A2Snorm(v.X, v.Y, v.Z, Snorm10(v.W));
+    private static uint PackRgb10A2Snorm(Vector4 v) => PackRgb10A2Snorm(v.X, v.Y, v.Z, Snorm2(v.W));
     private static uint PackRgb10A2Snorm(Vector3 v, uint texLayer) => PackRgb10A2Snorm(v.X, v.Y, v.Z, texLayer & 0x3u);
     private static uint PackRgb10A2Snorm(float x, float y, float z, uint w) => Snorm10(x) | (Snorm10(y) << 10) | (Snorm10(z) << 20) | (w << 30);
     private static uint Snorm10(float f) => (uint)(int)MathF.Round(Math.Clamp(f, -1f, 1f) * 511f) & 0x3FFu;
+    private static uint Snorm2(float f) => f < 0f ? 3u : 1u;
 }
 
 public unsafe struct PerMaterialMeshData : IPerMaterialData
@@ -189,7 +190,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             {
                 var vertex = vertices[i];
                 var position = new Vector3(vertex.Position.X, vertex.Position.Z, vertex.Position.Y) * Settings.GlobalScale;
-                var normal = new Vector4(vertex.Normal.X, vertex.Normal.Z, vertex.Normal.Y, vertex.Normal.W);
+                var normal = new Vector4(vertex.Normal.X, vertex.Normal.Z, vertex.Normal.Y, -vertex.Normal.W);
                 var tangent = new Vector3(vertex.Tangent.X, vertex.Tangent.Z, vertex.Tangent.Y);
                 var texCoord = new Vector2(vertex.Uv.U, vertex.Uv.V);
                 var texLayer = extraUvs != null ? (uint)Math.Floor(extraUvs[i].U) : 0u;
@@ -219,7 +220,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             {
                 var vertex = vertices[i];
                 var position = new Vector3(vertex.Position.X, vertex.Position.Z, vertex.Position.Y) * Settings.GlobalScale;
-                var normal = new Vector4(vertex.Normal.X, vertex.Normal.Z, vertex.Normal.Y, vertex.Normal.W);
+                var normal = new Vector4(vertex.Normal.X, vertex.Normal.Z, vertex.Normal.Y, -vertex.Normal.W);
                 var tangent = new Vector3(vertex.Tangent.X, vertex.Tangent.Z, vertex.Tangent.Y);
                 var texCoord = new Vector2(vertex.Uv.U, vertex.Uv.V);
                 var texLayer = extraUvs != null ? (uint)Math.Floor(extraUvs[i].U) : 0u;

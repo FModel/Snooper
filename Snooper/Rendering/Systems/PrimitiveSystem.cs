@@ -141,12 +141,7 @@ public class PrimitiveSystem<TComponent, TInstanceData, TPerMaterialData>(Primit
 {
     public override uint Order => 20;
 
-    protected override Action<uint> VertexLayout { get; } = vao =>
-    {
-        GL.VertexArrayAttribFormat(vao, 0, 3, VertexAttribType.Float, false, 0);
-        GL.EnableVertexArrayAttrib(vao, 0);
-        GL.VertexArrayAttribBinding(vao, 0, 0);
-    };
+    protected override Action<VertexArrayLayout> VertexLayout { get; } = layout => layout.Float(0, 3);
 }
 
 public class PrimitiveSystem<TComponent>(PrimitiveType type = PrimitiveType.Triangles)

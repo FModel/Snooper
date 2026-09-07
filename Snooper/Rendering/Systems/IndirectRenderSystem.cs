@@ -23,7 +23,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public override ActorSystemType SystemType => ActorSystemType.Rendering;
     protected override bool AllowDerivation => false;
 
-    protected abstract Action<uint> VertexLayout { get; }
+    protected abstract Action<VertexArrayLayout> VertexLayout { get; }
 
     protected IndirectResources<TVertex, TInstanceData, TPerMaterialData> Resources { get; } = new(type, viewCount);
     protected virtual IEnumerable<(uint Binding, IIndexedBind Buffer)> SystemBuffers => [];

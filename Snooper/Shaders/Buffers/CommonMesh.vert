@@ -5,7 +5,7 @@
 #define MESH_VERTEX_STAGE
 
 layout (location = 0) in uvec2 aPosHalf;       // half2(pos.xy) | half2(pos.zw)
-layout (location = 1) in uint  aNormalPacked;  // RGB10A2: bits 0-9=nx, 10-19=ny, 20-29=nz, 30-31=nw
+layout (location = 1) in vec4  aNormal;        // RGB10A2 snorm expanded by the vertex fetch, w = tangent basis sign (-1 or +1)
 layout (location = 2) in uint  aTangentPacked; // RGB10A2: bits 0-9=tx, 10-19=ty, 20-29=tz, 30-31=texLayer
 layout (location = 3) in uint  aTexCoordsHalf; // half2(uv.xy) packed
 
@@ -68,11 +68,7 @@ void CommonMeshMain()
 
     MeshVertex vertex;
     vertex.Position = vec4(posXY, posZW);
-    vertex.Normal = normalize(vec4(
-        Unpack10Snorm(aNormalPacked),
-        Unpack10Snorm(aNormalPacked >> 10u),
-        Unpack10Snorm(aNormalPacked >> 20u),
-        Unpack10Snorm(aNormalPacked >> 30u)));
+    vertex.Normal = vec4(normalize(aNormal.xyz), aNormal.w);
     vertex.Tangent = normalize(vec3(
         Unpack10Snorm(aTangentPacked),
         Unpack10Snorm(aTangentPacked >> 10u),
@@ -91,6 +87,7 @@ void CommonMeshMain()
     vec4 viewPos = uViewMatrix * matrix * vertex.Position;
     gl_Position = uProjectionMatrix * viewPos;
 
+    float handedness = vertex.Normal.w * sign(determinant(mat3(matrix)));
     mat3 nMatrix = transpose(inverse(mat3(matrix)));
     vec3 T = normalize(nMatrix * vertex.Tangent);
     vec3 N = normalize(nMatrix * vertex.Normal.xyz);
@@ -99,7 +96,7 @@ void CommonMeshMain()
     vTexLayer = texLayer;
     vs_out.vViewPos = viewPos.xyz;
     vs_out.vTexCoords = aTexCoords;
-    vs_out.TBN = mat3(T, cross(N, T) * vertex.Normal.w, N);
+    vs_out.TBN = mat3(T, cross(N, T) * handedness, N);
 
     vec3 color = vec3(0.5);
     vColorMode = uFragmentColorMode != 0 ? uFragmentColorMode : uMeshDataBuffer[draw.MeshIndex].ColorMode;

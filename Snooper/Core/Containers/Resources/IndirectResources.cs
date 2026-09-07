@@ -41,7 +41,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _materialData.Generate();
     }
 
-    public void SetVertexLayout(Action<uint> setter) => _geometry.SetVertexLayout(setter);
+    public void SetVertexLayout(Action<VertexArrayLayout> setter) => _geometry.SetVertexLayout(setter);
 
     public void Allocate(AllocationCounts counts)
     {
