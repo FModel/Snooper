@@ -191,6 +191,10 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
 
             Systems.Add(system.Order, system);
             system.Load();
+
+            if (system is IResizable resizable)
+                resizable.Resize(_width, _height); // resize right away for the screen-sized resources to get allocated (ClusteredLightSystem)
+
             count++;
         }
     }
@@ -232,8 +236,13 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         }
     }
 
+    private int _width;
+    private int _height;
     public virtual void Resize(int newWidth, int newHeight)
     {
+        _width = newWidth;
+        _height = newHeight;
+
         foreach (var system in Systems.Values.OfType<IResizable>())
             system.Resize(newWidth, newHeight);
     }

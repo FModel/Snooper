@@ -11,8 +11,11 @@ public sealed class ShaderStorageBuffer<T>(BufferUsageHint usageHint = BufferUsa
 
     public void Bind(uint index)
     {
-        if (!IsAllocated) return; // iGPUs don't like binding unallocated buffers
-        GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, Handle);
+        // iGPUs don't like binding unallocated buffers, and unlike some other buffers, we never unbind SSBOs
+        // silently skipping the bind leaves whatever another system bound at this index in place
+        // that's too risky, so we unbind the slot instead so an unallocated buffer reads as out of range
+        // TODO: we should properly unbind SSBOs, and skip if unallocated
+        GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, IsAllocated ? Handle : 0);
     }
 
     public void QueueUpdate(BufferAllocation allocation, T data) => _batcher.Add(allocation, data);

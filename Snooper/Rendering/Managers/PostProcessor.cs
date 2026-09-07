@@ -95,7 +95,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                     shader.SetUniform("ssao", 4);
                 }
 
-                if (ctx.LightSystem is { IsEnabled: true } system)
+                if (ctx.LightSystem is { IsEnabled: true, HasClusters: true } system)
                 {
                     system.BindForRendering();
                     shader.SetUniform("useLighting", true);
@@ -191,7 +191,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("uShowGrid", ctx.ShowGrid);
                 shader.SetUniform("uMaxLightsPerCluster", ClusteredLightSystem.MaxLightsPerClusterLimit);
 
-                if (ctx.LightSystem is { IsEnabled: true } system)
+                if (ctx.LightSystem is { IsEnabled: true, HasClusters: true } system)
                 {
                     system.BindForRendering();
                     shader.SetUniform("uHasLights", true);
