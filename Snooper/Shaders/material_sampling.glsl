@@ -9,9 +9,9 @@ struct PerMaterialData
     uint LayerTextureFlags;
 
     // Fixed arrays for up to 4 layers
-    sampler2D Diffuse[4];
-    sampler2D Normal[4];
-    sampler2D Specular[4];
+    uvec2 Diffuse[4];
+    uvec2 Normal[4];
+    uvec2 Specular[4];
 
     // Per-layer material properties
     // Roughness: 2 floats per layer (min, max) * 4 layers = 8 floats
@@ -54,7 +54,7 @@ vec4 SampleLayerDiffuse(PerMaterialData materialData, uint layer, vec2 uv)
 
     if (HasLayerTexture(materialData, layer, 0u))
     {
-        return texture(materialData.Diffuse[layer], uv);
+        return texture(sampler2D(materialData.Diffuse[layer]), uv);
     }
 
     return vec4(1.0);
@@ -68,7 +68,7 @@ vec3 SampleLayerNormal(PerMaterialData materialData, uint layer, vec2 uv)
 
     if (HasLayerTexture(materialData, layer, 1u))
     {
-        vec2 xy = texture(materialData.Normal[layer], uv).rg * 2.0 - 1.0;
+        vec2 xy = texture(sampler2D(materialData.Normal[layer]), uv).rg * 2.0 - 1.0;
         float z = sqrt(max(0.0, 1.0 - dot(xy, xy)));
         return normalize(vec3(xy, z));
     }
@@ -84,7 +84,7 @@ vec3 SampleLayerSpecular(PerMaterialData materialData, uint layer, vec2 uv)
 
     if (HasLayerTexture(materialData, layer, 2u))
     {
-        vec3 spec = texture(materialData.Specular[layer], uv).rgb;
+        vec3 spec = texture(sampler2D(materialData.Specular[layer]), uv).rgb;
         vec2 roughness = GetLayerRoughness(materialData, layer);
         spec.b = mix(roughness.x, roughness.y, spec.b);
         return spec;

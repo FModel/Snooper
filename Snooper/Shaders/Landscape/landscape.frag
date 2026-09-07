@@ -11,8 +11,8 @@ struct PerMaterialData
     bool IsReady;
     uint WeightmapCount;
 
-    sampler2D Heightmap;
-    sampler2D Weightmaps[4];
+    uvec2 Heightmap;
+    uvec2 Weightmaps[4];
     uint EnabledChannels[4];
 
     vec2 HeightmapScaleBias;
@@ -77,7 +77,8 @@ vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping 
 
     for (int i = 0; i < weightmapCount; i++)
     {
-        vec2 weightmapSize = textureSize(materialData.Weightmaps[i], 0);
+        sampler2D weightmap = sampler2D(materialData.Weightmaps[i]);
+        vec2 weightmapSize = textureSize(weightmap, 0);
         vec2 texelSize = 1.0 / weightmapSize;
         vec2 weightmapUvSize = vec2(uSizeQuads) / weightmapSize;
 
@@ -85,7 +86,7 @@ vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping 
         uv2 = uv2 * (1.0 - texelSize) + 0.5 * texelSize;
 
         uint mask = materialData.EnabledChannels[i];
-        vec4 weightmapColor = texture(materialData.Weightmaps[i], uv2);
+        vec4 weightmapColor = texture(weightmap, uv2);
         for (int c = 0; c < 4; c++)
         {
             if (!channelEnabled(mask, c))

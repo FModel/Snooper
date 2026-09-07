@@ -6,7 +6,7 @@ struct PerMaterialData
 {
     bool IsReady;
     float OpacityMask;
-    sampler2D Sprite;
+    uvec2 Sprite;
 };
 
 layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
@@ -30,7 +30,7 @@ void main()
     vec4 color = vec4(1.0);
     if (materialData.IsReady)
     {
-        color = texture(materialData.Sprite, vTexCoords);
+        color = texture(sampler2D(materialData.Sprite), vTexCoords);
         if (color.a < materialData.OpacityMask)
         {
             discard;

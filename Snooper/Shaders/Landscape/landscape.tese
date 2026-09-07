@@ -10,8 +10,8 @@ struct PerMaterialData
     bool IsReady;
     uint WeightmapCount;
 
-    sampler2D Heightmap;
-    sampler2D Weightmaps[4];
+    uvec2 Heightmap;
+    uvec2 Weightmaps[4];
     uint EnabledChannels[4];
 
     vec2 HeightmapScaleBias;
@@ -88,7 +88,7 @@ void main()
     // pushing the vertex out of clip space when the channel value > 0.5.
     if (materialData.VisibilityTextureIndex != 0xFFFFFFFFu)
     {
-        sampler2D weightmap = materialData.Weightmaps[materialData.VisibilityTextureIndex];
+        sampler2D weightmap = sampler2D(materialData.Weightmaps[materialData.VisibilityTextureIndex]);
 
         vec2 weightmapSize = textureSize(weightmap, 0);
         vec2 weightmapTexelSize = 1.0 / weightmapSize;
@@ -107,14 +107,15 @@ void main()
         }
     }
 
-    vec2 heightmapSize = textureSize(materialData.Heightmap, 0);
+    sampler2D heightmap = sampler2D(materialData.Heightmap);
+    vec2 heightmapSize = textureSize(heightmap, 0);
     vec2 heightmapTexelSize = 1.0 / heightmapSize;
     vec2 heightmapUvSize = vec2(uSizeQuads) / heightmapSize;
 
     vec2 uv = materialData.HeightmapScaleBias + subPatchOffset * heightmapUvSize + vec2(u, v) * (heightmapUvSize * quadFraction);
     uv = uv * (1.0 - heightmapTexelSize) + 0.5 * heightmapTexelSize;
 
-    vec4 color = texture(materialData.Heightmap, uv);
+    vec4 color = texture(heightmap, uv);
     float R = color.r * 255.0;
     float G = color.g * 255.0;
     te_out.vHeight = ((R * 256.0) + G - 32768.0) / 128.0 * uGlobalScale;
