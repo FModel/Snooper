@@ -10,6 +10,7 @@ public class DeviceInfo
     public ExtensionSupport ExtensionSupport { get; } = new();
     public GpuMemoryInfo Memory { get; } = new();
 
+    public static bool IsIntel { get; private set; }
     public static string GlslDefines { get; private set; } = string.Empty;
 
     public void Load()
@@ -20,6 +21,7 @@ public class DeviceInfo
         ExtensionSupport.Load();
         Memory.Load(ExtensionSupport);
 
-        GlslDefines = Vendor.Contains("Intel", StringComparison.OrdinalIgnoreCase) ? "#define BINDLESS_RAW_HANDLES\n" : string.Empty;
+        IsIntel = Vendor.Contains("Intel", StringComparison.OrdinalIgnoreCase);
+        GlslDefines = IsIntel ? "#define BINDLESS_RAW_HANDLES\n" : string.Empty;
     }
 }
