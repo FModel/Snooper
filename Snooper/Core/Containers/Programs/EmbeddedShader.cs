@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Hardware;
 
 namespace Snooper.Core.Containers.Programs;
 
@@ -25,7 +26,7 @@ public class EmbeddedShader(string vertex, string fragment, Assembly? assembly =
             content = string.Join("\n", Defines.Select(d => $"#define {d}")) + "\n" + content;
         }
 
-        content = string.Join('\n', "#version 460 core", "", Bindings.GlslDefines, "", content);
+        content = string.Join('\n', "#version 460 core", "", Bindings.GlslDefines, DeviceInfo.GlslDefines, content);
 
         return base.CompileShader(type, content);
     }

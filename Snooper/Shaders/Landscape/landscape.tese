@@ -4,14 +4,15 @@ layout (quads, fractional_odd_spacing, ccw) in;
 
 #include "Buffers/PerDrawData.glsl"
 #include "Buffers/PerInstanceData.glsl"
+#include "Buffers/bindless.glsl"
 
 struct PerMaterialData
 {
     bool IsReady;
     uint WeightmapCount;
 
-    uvec2 Heightmap;
-    uvec2 Weightmaps[4];
+    TEXTURE_HANDLE Heightmap;
+    TEXTURE_HANDLE Weightmaps[4];
     uint EnabledChannels[4];
 
     vec2 HeightmapScaleBias;
@@ -88,7 +89,7 @@ void main()
     // pushing the vertex out of clip space when the channel value > 0.5.
     if (materialData.VisibilityTextureIndex != 0xFFFFFFFFu)
     {
-        sampler2D weightmap = sampler2D(materialData.Weightmaps[materialData.VisibilityTextureIndex]);
+        sampler2D weightmap = TO_SAMPLER(materialData.Weightmaps[materialData.VisibilityTextureIndex]);
 
         vec2 weightmapSize = textureSize(weightmap, 0);
         vec2 weightmapTexelSize = 1.0 / weightmapSize;
@@ -107,7 +108,7 @@ void main()
         }
     }
 
-    sampler2D heightmap = sampler2D(materialData.Heightmap);
+    sampler2D heightmap = TO_SAMPLER(materialData.Heightmap);
     vec2 heightmapSize = textureSize(heightmap, 0);
     vec2 heightmapTexelSize = 1.0 / heightmapSize;
     vec2 heightmapUvSize = vec2(uSizeQuads) / heightmapSize;

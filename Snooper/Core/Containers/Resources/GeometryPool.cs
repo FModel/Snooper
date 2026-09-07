@@ -1,8 +1,6 @@
-﻿using System.Numerics;
-using CUE4Parse.UE4.Objects.Core.Misc;
+﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
@@ -18,25 +16,34 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation m
     public int OverrideLod { get; internal set; } = overrideLod;
 }
 
-public readonly struct VertexArrayLayout(uint vao, uint vbo, int stride)
+public readonly struct VertexArrayLayout
 {
-    public VertexArrayLayout Float(uint location, int size, VertexAttribType type = VertexAttribType.Float, bool normalized = false, int offset = 0)
+    private const uint BindingIndex = 0;
+
+    private readonly uint _vao;
+
+    public VertexArrayLayout(uint vao, uint vbo, int stride)
     {
-        GL.VertexArrayAttribFormat(vao, location, size, type, normalized, 0);
-        return Enable(location, offset);
+        _vao = vao;
+        GL.VertexArrayVertexBuffer(vao, BindingIndex, vbo, 0, stride);
     }
 
-    public VertexArrayLayout Integer(uint location, int size, VertexAttribIType type = VertexAttribIType.UnsignedInt, int offset = 0)
+    public VertexArrayLayout Float(uint location, int size, VertexAttribType type = VertexAttribType.Float, bool normalized = false, uint offset = 0)
     {
-        GL.VertexArrayAttribIFormat(vao, location, size, type, 0);
-        return Enable(location, offset);
+        GL.VertexArrayAttribFormat(_vao, location, size, type, normalized, offset);
+        return Enable(location);
     }
 
-    private VertexArrayLayout Enable(uint location, int offset)
+    public VertexArrayLayout Integer(uint location, int size, VertexAttribIType type = VertexAttribIType.UnsignedInt, uint offset = 0)
     {
-        GL.VertexArrayVertexBuffer(vao, location, vbo, offset, stride);
-        GL.VertexArrayAttribBinding(vao, location, location);
-        GL.EnableVertexArrayAttrib(vao, location);
+        GL.VertexArrayAttribIFormat(_vao, location, size, type, offset);
+        return Enable(location);
+    }
+
+    private VertexArrayLayout Enable(uint location)
+    {
+        GL.VertexArrayAttribBinding(_vao, location, BindingIndex);
+        GL.EnableVertexArrayAttrib(_vao, location);
         return this;
     }
 }

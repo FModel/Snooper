@@ -1,6 +1,8 @@
 ﻿// Material sampling utilities for multi-layer materials
 // Shared between geometry.frag and mesh.frag
 
+#include "Buffers/bindless.glsl"
+
 struct PerMaterialData
 {
     bool IsReady;
@@ -9,9 +11,9 @@ struct PerMaterialData
     uint LayerTextureFlags;
 
     // Fixed arrays for up to 4 layers
-    uvec2 Diffuse[4];
-    uvec2 Normal[4];
-    uvec2 Specular[4];
+    TEXTURE_HANDLE Diffuse[4];
+    TEXTURE_HANDLE Normal[4];
+    TEXTURE_HANDLE Specular[4];
 
     // Per-layer material properties
     // Roughness: 2 floats per layer (min, max) * 4 layers = 8 floats
@@ -54,7 +56,7 @@ vec4 SampleLayerDiffuse(PerMaterialData materialData, uint layer, vec2 uv)
 
     if (HasLayerTexture(materialData, layer, 0u))
     {
-        return texture(sampler2D(materialData.Diffuse[layer]), uv);
+        return texture(TO_SAMPLER(materialData.Diffuse[layer]), uv);
     }
 
     return vec4(1.0);
@@ -68,7 +70,7 @@ vec3 SampleLayerNormal(PerMaterialData materialData, uint layer, vec2 uv)
 
     if (HasLayerTexture(materialData, layer, 1u))
     {
-        vec2 xy = texture(sampler2D(materialData.Normal[layer]), uv).rg * 2.0 - 1.0;
+        vec2 xy = texture(TO_SAMPLER(materialData.Normal[layer]), uv).rg * 2.0 - 1.0;
         float z = sqrt(max(0.0, 1.0 - dot(xy, xy)));
         return normalize(vec3(xy, z));
     }
@@ -84,7 +86,7 @@ vec3 SampleLayerSpecular(PerMaterialData materialData, uint layer, vec2 uv)
 
     if (HasLayerTexture(materialData, layer, 2u))
     {
-        vec3 spec = texture(sampler2D(materialData.Specular[layer]), uv).rgb;
+        vec3 spec = texture(TO_SAMPLER(materialData.Specular[layer]), uv).rgb;
         vec2 roughness = GetLayerRoughness(materialData, layer);
         spec.b = mix(roughness.x, roughness.y, spec.b);
         return spec;

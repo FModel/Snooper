@@ -10,6 +10,8 @@ public class DeviceInfo
     public ExtensionSupport ExtensionSupport { get; } = new();
     public GpuMemoryInfo Memory { get; } = new();
 
+    public static string GlslDefines { get; private set; } = string.Empty;
+
     public void Load()
     {
         Name = GL.GetString(StringName.Renderer);
@@ -17,5 +19,7 @@ public class DeviceInfo
         MaxShaderStorageBufferBindings = GL.GetInteger(GetPName.MaxShaderStorageBufferBindings);
         ExtensionSupport.Load();
         Memory.Load(ExtensionSupport);
+
+        GlslDefines = Vendor.Contains("Intel", StringComparison.OrdinalIgnoreCase) ? "#define BINDLESS_RAW_HANDLES\n" : string.Empty;
     }
 }

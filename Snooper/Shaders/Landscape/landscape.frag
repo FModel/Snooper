@@ -6,13 +6,15 @@ layout (location = 2) out vec4 gColor;
 layout (location = 3) out vec4 gSpecular;
 layout (location = 4) out uint gPicking;
 
+#include "Buffers/bindless.glsl"
+
 struct PerMaterialData
 {
     bool IsReady;
     uint WeightmapCount;
 
-    uvec2 Heightmap;
-    uvec2 Weightmaps[4];
+    TEXTURE_HANDLE Heightmap;
+    TEXTURE_HANDLE Weightmaps[4];
     uint EnabledChannels[4];
 
     vec2 HeightmapScaleBias;
@@ -77,7 +79,7 @@ vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping 
 
     for (int i = 0; i < weightmapCount; i++)
     {
-        sampler2D weightmap = sampler2D(materialData.Weightmaps[i]);
+        sampler2D weightmap = TO_SAMPLER(materialData.Weightmaps[i]);
         vec2 weightmapSize = textureSize(weightmap, 0);
         vec2 texelSize = 1.0 / weightmapSize;
         vec2 weightmapUvSize = vec2(uSizeQuads) / weightmapSize;

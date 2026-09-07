@@ -2,11 +2,13 @@
 
 layout (location = 1) out uint gPicking;
 
+#include "Buffers/bindless.glsl"
+
 struct PerMaterialData
 {
     bool IsReady;
     float OpacityMask;
-    uvec2 Sprite;
+    TEXTURE_HANDLE Sprite;
 };
 
 layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
@@ -30,7 +32,7 @@ void main()
     vec4 color = vec4(1.0);
     if (materialData.IsReady)
     {
-        color = texture(sampler2D(materialData.Sprite), vTexCoords);
+        color = texture(TO_SAMPLER(materialData.Sprite), vTexCoords);
         if (color.a < materialData.OpacityMask)
         {
             discard;
