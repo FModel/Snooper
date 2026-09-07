@@ -11,6 +11,7 @@ public sealed class ShaderStorageBuffer<T>(BufferUsageHint usageHint = BufferUsa
 
     public void Bind(uint index)
     {
+        if (!IsAllocated) return; // iGPUs don't like binding unallocated buffers
         GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, index, Handle);
     }
 
