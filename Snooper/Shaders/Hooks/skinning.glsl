@@ -19,9 +19,9 @@ void SkinDeformVertex(PerDrawStatic draw, PerDrawCulled culled, int instance, in
     vec4 pos = v.Position;
     vec4 uePos = vec4(0.0);
 #if !defined(MESH_DEPTH_ONLY)
-    vec4 normal = v.Normal;
+    vec3 normal = v.Normal.xyz;
     vec3 tangent = v.Tangent;
-    vec4 ueNormal = vec4(0.0);
+    vec3 ueNormal = vec3(0.0);
     vec3 ueTangent = vec3(0.0);
 #endif
 
@@ -34,14 +34,14 @@ void SkinDeformVertex(PerDrawStatic draw, PerDrawCulled culled, int instance, in
         mat4 skinningMatrix = uPoseBuffer[basePose + boneIndex] * uInverseBindBuffer[baseBone + boneIndex];
         uePos += skinningMatrix * pos * weight;
 #if !defined(MESH_DEPTH_ONLY)
-        ueNormal += skinningMatrix * normal * weight;
+        ueNormal += mat3(skinningMatrix) * normal * weight;
         ueTangent += mat3(skinningMatrix) * tangent * weight;
 #endif
     }
 
     v.Position = uePos;
 #if !defined(MESH_DEPTH_ONLY)
-    v.Normal = ueNormal;
+    v.Normal = vec4(ueNormal, v.Normal.w);
     v.Tangent = ueTangent;
 #endif
 }

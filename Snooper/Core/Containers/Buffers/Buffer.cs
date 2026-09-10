@@ -38,7 +38,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
     public int Count { get; private set; }
     public int Capacity { get; private set; }
 
-    private bool _bInitialized;
+    protected bool IsAllocated;
     private readonly Dictionary<int, BufferAllocationMetadata> _allocations = new();
     private readonly SortedSet<FreeBlock> _freeBlocks = new(Comparer<FreeBlock>.Create((a, b) =>
     {
@@ -52,12 +52,12 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
 
     public override void Generate()
     {
-        if (_bInitialized)
+        if (IsAllocated)
             throw new InvalidOperationException("Buffer is already initialized.");
 
         GL.CreateBuffers(1, out uint handle);
         Handle = handle;
-        _bInitialized = false;
+        IsAllocated = false;
     }
 
     public void Bind()
@@ -78,11 +78,11 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         var oldCapacity = Capacity;
         Capacity = (int) Math.Max(Capacity * factor, newSize);
 
-        if (_bInitialized)
+        if (IsAllocated)
         {
             Log.Warning("Resizing buffer {0} ({1}) from {2} to {3} (asked: {4}) (initialized!!!!!!)", Handle, PName, oldCapacity, Capacity, newSize);
 
-            _bInitialized = false;
+            IsAllocated = false;
             if (copy)
             {
                 var oldBuffer = Handle;
@@ -109,7 +109,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
 
     public void Reallocate(int size)
     {
-        _bInitialized = false;
+        IsAllocated = false;
         Allocate(size);
     }
 
@@ -117,7 +117,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
     public void Allocate(int size)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size);
-        if (_bInitialized)
+        if (IsAllocated)
             throw new InvalidOperationException("Buffer is already initialized. Use Update method to modify data.");
 
         if (size > Capacity)
@@ -133,7 +133,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         // _allocationIdCounter = 0;
         // _allocations.Clear();
         // _freeBlocks.Clear();
-        _bInitialized = true;
+        IsAllocated = true;
     }
 
     public BufferAllocation Add(T data) => AddInternal([data]);
@@ -143,7 +143,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         var length = data.Length;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
 
-        if (!_bInitialized)
+        if (!IsAllocated)
         {
             Allocate(length);
         }
@@ -176,7 +176,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
         ArgumentOutOfRangeException.ThrowIfNegative(index);
 
-        if (!_bInitialized)
+        if (!IsAllocated)
         {
             Allocate(index + length);
         }
@@ -196,7 +196,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
     public void Update(int allocationId, T[] data) => UpdateInternal(allocationId, data);
     private void UpdateInternal(int allocationId, T[] data, bool batched = false)
     {
-        if (!_bInitialized)
+        if (!IsAllocated)
             throw new InvalidOperationException("Buffer is not initialized. Use Add method to initialize it.");
 
         if (!_allocations.TryGetValue(allocationId, out var metadata))
@@ -215,7 +215,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
     public void UpdateCustom<TCustom>(BufferAllocation allocation, TCustom data, int offset) where TCustom : unmanaged => UpdateCustomInternal(allocation.AllocationId, data, offset);
     private void UpdateCustomInternal<TCustom>(int allocationId, TCustom data, int offset) where TCustom : unmanaged
     {
-        if (!_bInitialized)
+        if (!IsAllocated)
             throw new InvalidOperationException("Buffer is not initialized. Use Add method to initialize it.");
 
         if (!_allocations.TryGetValue(allocationId, out var metadata))
@@ -304,7 +304,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         var length = sourceAllocation.Length;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
 
-        if (!_bInitialized)
+        if (!IsAllocated)
         {
             Allocate(length);
         }
@@ -326,7 +326,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
 
     public void Clear()
     {
-        if (!_bInitialized)
+        if (!IsAllocated)
             throw new InvalidOperationException("Cannot clear a buffer that is not initialized.");
 
         ClearStorage(0, TotalElements * Stride);

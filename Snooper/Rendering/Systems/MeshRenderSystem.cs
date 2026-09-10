@@ -25,21 +25,12 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null, int
         Defines = defines
     };
 
-    protected override Action<uint> VertexLayout { get; } = vao =>
-    {
-        GL.VertexArrayAttribIFormat(vao, 0, 2, VertexAttribIType.UnsignedInt, 0);
-        GL.VertexArrayAttribIFormat(vao, 1, 1, VertexAttribIType.UnsignedInt, 8);
-        GL.VertexArrayAttribIFormat(vao, 2, 1, VertexAttribIType.UnsignedInt, 12);
-        GL.VertexArrayAttribIFormat(vao, 3, 1, VertexAttribIType.UnsignedInt, 16);
-        GL.EnableVertexArrayAttrib(vao, 0);
-        GL.EnableVertexArrayAttrib(vao, 1);
-        GL.EnableVertexArrayAttrib(vao, 2);
-        GL.EnableVertexArrayAttrib(vao, 3);
-        GL.VertexArrayAttribBinding(vao, 0, 0);
-        GL.VertexArrayAttribBinding(vao, 1, 0);
-        GL.VertexArrayAttribBinding(vao, 2, 0);
-        GL.VertexArrayAttribBinding(vao, 3, 0);
-    };
+    // see MeshComponent packed vertex layout
+    protected override Action<VertexArrayLayout> VertexLayout { get; } = layout => layout
+        .Integer(0, 2)
+        .Float(1, 4, VertexAttribType.Int2101010Rev, normalized: true, offset: 8)
+        .Integer(2, 1, offset: 12)
+        .Integer(3, 1, offset: 16);
 
     protected override void OnLoad()
     {

@@ -38,12 +38,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
             Defines = LandscapeBindings.OwnDefines
         }
     };
-    protected override Action<uint> VertexLayout { get; } = vao =>
-    {
-        GL.VertexArrayAttribFormat(vao, 0, 2, VertexAttribType.Float, false, 0);
-        GL.EnableVertexArrayAttrib(vao, 0);
-        GL.VertexArrayAttribBinding(vao, 0, 0);
-    };
+    protected override Action<VertexArrayLayout> VertexLayout { get; } = layout => layout.Float(0, 2);
 
     private readonly ShaderStorageBuffer<Vector2> _scales = new();
     private readonly ShaderStorageBuffer<WeightHighlightMapping> _mapping = new();

@@ -91,6 +91,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     public int GridDimensionX { get; private set; }
     public int GridDimensionY { get; private set; }
     public int GridDimensionZ => 16;
+    public bool HasClusters => _numClusters > 0;
 
     private int _numClusters;
     private int _numWorkGroups;
@@ -161,7 +162,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
 
     private void BuildClusters(CameraComponent camera)
     {
-        if (_numClusters == 0) return;
+        if (!HasClusters) return;
 
         _clusterBuildProgram.Use();
         _clusterBuildProgram.SetUniform("uScreenWidth", _screenWidth);
@@ -183,7 +184,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
 
     private void CullLights(CameraComponent camera)
     {
-        if (_numClusters == 0 || _lightDataBuffer.Count == 0)
+        if (!HasClusters || _lightDataBuffer.Count == 0)
         {
             return;
         }
@@ -255,6 +256,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         GridDimensionY = (_screenHeight + TileSize - 1) / TileSize;
         _numClusters = GridDimensionX * GridDimensionY * GridDimensionZ;
         _numWorkGroups = (_numClusters + WorkGroupSize - 1) / WorkGroupSize;
+        if (!HasClusters) return;
 
         _clusterAABBBuffer.Reallocate(_numClusters);
         _clusterDataBuffer.Reallocate(_numClusters);

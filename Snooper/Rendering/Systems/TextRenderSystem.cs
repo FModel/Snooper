@@ -20,15 +20,9 @@ public class TextRenderSystem : PrimitiveSystem<Vector4, TextRenderComponent, Pe
     {
         [CommandBufferType.Transparent] = new EmbeddedShader("text")
     };
-    protected override Action<uint> VertexLayout { get; } = vao =>
-    {
-        GL.VertexArrayAttribFormat(vao, 0, 2, VertexAttribType.Float, false, 0);
-        GL.VertexArrayAttribFormat(vao, 1, 2, VertexAttribType.Float, false, 8);
-        GL.EnableVertexArrayAttrib(vao, 0);
-        GL.EnableVertexArrayAttrib(vao, 1);
-        GL.VertexArrayAttribBinding(vao, 0, 0);
-        GL.VertexArrayAttribBinding(vao, 1, 0);
-    };
+    protected override Action<VertexArrayLayout> VertexLayout { get; } = layout => layout
+        .Float(0, 2)
+        .Float(1, 2, offset: 8);
 
     protected override void OnLoad()
     {

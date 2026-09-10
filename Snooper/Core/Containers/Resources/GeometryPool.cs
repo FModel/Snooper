@@ -1,8 +1,7 @@
-﻿using System.Numerics;
-using CUE4Parse.UE4.Objects.Core.Misc;
+﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Rendering.Components.Camera;
+using Snooper.Core.Hardware;
 using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Core.Containers.Resources;
@@ -18,6 +17,51 @@ public class GeometryHandle(uint firstIndex, uint baseVertex, BufferAllocation m
     public int OverrideLod { get; internal set; } = overrideLod;
 }
 
+public readonly struct VertexArrayLayout
+{
+    private readonly uint _vao;
+    private readonly uint _vbo;
+    private readonly int _stride;
+
+    public VertexArrayLayout(uint vao, uint vbo, int stride)
+    {
+        _vao = vao;
+        _vbo = vbo;
+        _stride = stride;
+
+        if (!DeviceInfo.IsIntel)
+        {
+            GL.VertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+        }
+    }
+
+    public VertexArrayLayout Float(uint location, int size, VertexAttribType type = VertexAttribType.Float, bool normalized = false, uint offset = 0)
+    {
+        GL.VertexArrayAttribFormat(_vao, location, size, type, normalized, DeviceInfo.IsIntel ? 0 : offset);
+        return Enable(location, offset);
+    }
+
+    public VertexArrayLayout Integer(uint location, int size, VertexAttribIType type = VertexAttribIType.UnsignedInt, uint offset = 0)
+    {
+        GL.VertexArrayAttribIFormat(_vao, location, size, type, DeviceInfo.IsIntel ? 0 : offset);
+        return Enable(location, offset);
+    }
+
+    private VertexArrayLayout Enable(uint location, uint offset)
+    {
+        var binding = 0u;
+        if (DeviceInfo.IsIntel)
+        {
+            binding = location;
+            GL.VertexArrayVertexBuffer(_vao, binding, _vbo, (nint)offset, _stride);
+        }
+
+        GL.VertexArrayAttribBinding(_vao, location, binding);
+        GL.EnableVertexArrayAttrib(_vao, location);
+        return this;
+    }
+}
+
 public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where TVertex : unmanaged
 {
     private readonly VertexArray _vao = new();
@@ -27,7 +71,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     private readonly CullingResources _culling = new();
 
     private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
-    private Action<uint>? _vertexLayoutSetter;
+    private Action<VertexArrayLayout>? _vertexLayoutSetter;
 
     public void Generate()
     {
@@ -41,7 +85,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _vbo.OnHandleChanged += (_, _) => BindBuffersToVao();
     }
 
-    public void SetVertexLayout(Action<uint> setter)
+    public void SetVertexLayout(Action<VertexArrayLayout> setter)
     {
         _vertexLayoutSetter = setter;
         BindBuffersToVao();
@@ -49,10 +93,8 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     private void BindBuffersToVao()
     {
-        GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
         GL.VertexArrayElementBuffer(_vao, _ebo);
-
-        _vertexLayoutSetter?.Invoke(_vao);
+        _vertexLayoutSetter?.Invoke(new VertexArrayLayout(_vao, _vbo, _vbo.Stride));
     }
 
     public void Allocate(AllocationCounts counts)
