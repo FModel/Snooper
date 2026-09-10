@@ -256,6 +256,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         GridDimensionY = (_screenHeight + TileSize - 1) / TileSize;
         _numClusters = GridDimensionX * GridDimensionY * GridDimensionZ;
         _numWorkGroups = (_numClusters + WorkGroupSize - 1) / WorkGroupSize;
+        if (!HasClusters) return;
 
         _clusterAABBBuffer.Reallocate(_numClusters);
         _clusterDataBuffer.Reallocate(_numClusters);
