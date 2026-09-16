@@ -265,7 +265,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         EditorUI.TogglableTreeNode("Lighting", light?.IsEnabled ?? false, () => light?.DrawControls(), toggle =>
         {
             light?.IsEnabled = toggle;
-            light?.DirectionalLight?.IsEnabled = !toggle;
+            light?.DirectionalLight?.SetVisibility(!toggle);
             // TODO: auto disable shadows
         });
         ImGui.EndDisabled();

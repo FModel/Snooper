@@ -34,19 +34,12 @@ public abstract class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
     }
 
     private const string HeaderLabel = "Wireframe";
-    private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
-        .Add(() => IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, () => "Toggle Visibility",
-            () => { IsVisible = !IsVisible; }, null,
-            () => IsVisible ? null : Settings.RedColor);
 
     public override void DrawControls()
     {
         base.DrawControls();
 
-        var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
-        HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
-
-        if (!open) return;
+        if (!ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen)) return;
 
         EditorUI.PropertyValueTable(HeaderLabel, () =>
         {

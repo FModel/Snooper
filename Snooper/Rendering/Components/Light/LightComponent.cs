@@ -22,8 +22,6 @@ public abstract class LightComponent : BillboardComponent
 
     internal BufferAllocation? _allocation;
 
-    public bool IsEnabled { get; internal set; }
-
     public LightComponent(ULightComponent component, string sprite) : base(component, sprite)
     {
         Intensity = component.Intensity;
@@ -49,7 +47,7 @@ public abstract class LightComponent : BillboardComponent
     public LightData GetLightData()
     {
         var data = new LightData();
-        SetLightData(ref data);
+        if (IsVisible && IsActorVisibleRecursive) SetLightData(ref data);
         return data;
     }
 

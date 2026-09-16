@@ -108,9 +108,9 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         {
             if (field == value) return;
 
-            if (field != null) field.IsEnabled = false;
+            if (field != null) field.SetVisibility(false);
             field = value;
-            if (field != null) field.IsEnabled = true;
+            if (field != null) field.SetVisibility(true);
         }
     }
 
@@ -294,8 +294,8 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         EditorUI.PropertyValueTable("Lighting Table", () =>
         {
             ImGui.BeginDisabled(DirectionalLight == null);
-            var check = DirectionalLight?.IsEnabled ?? false;
-            if (EditorUI.Checkbox("Sun Light", ref check)) DirectionalLight?.IsEnabled = check;
+            var check = DirectionalLight?.IsVisible ?? false;
+            if (EditorUI.Checkbox("Sun Light", ref check)) DirectionalLight?.SetVisibility(check);
             ImGui.EndDisabled();
 
             EditorUI.Text("Lights", $"{ComponentsCount}/{Capacity}");

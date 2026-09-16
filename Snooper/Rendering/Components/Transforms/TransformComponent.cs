@@ -52,6 +52,15 @@ public class SpatialComponent : ActorComponent
         LocalTransform = component.GetRelativeTransform();
         AttachSocketName = component.GetOrDefault<FName?>("AttachSocketName")?.Text;
 
+        if (component.TryGetValue(out bool visible, "bVisible"))
+        {
+            _isVisible = visible;
+        }
+        else if (component.TryGetValue(out bool hidden, "bHiddenInGame", "bIsHidden"))
+        {
+            _isVisible = !hidden;
+        }
+
         _absPosition = component.GetOrDefault<bool>("bAbsoluteLocation");
         _absRotation = component.GetOrDefault<bool>("bAbsoluteRotation");
         _absScale = component.GetOrDefault<bool>("bAbsoluteScale");
@@ -69,6 +78,29 @@ public class SpatialComponent : ActorComponent
     }
 
     private Transform Snapshot() => new() { Position = LocalTransform.Position, Rotation = LocalTransform.Rotation, Scale = LocalTransform.Scale };
+
+    private bool _isVisible = true;
+    public virtual bool IsVisible
+    {
+        get => _isVisible;
+        protected set => _isVisible = value;
+    }
+
+    protected bool IsActorVisibleRecursive => Actor?.IsVisibleRecursive ?? true;
+
+    public void SetVisibility(bool visible, bool propagateToChildren = false)
+    {
+        IsVisible = visible;
+        if (!propagateToChildren) return;
+
+        foreach (var child in _children)
+        {
+            child.SetVisibility(visible, true);
+        }
+    }
+
+    protected internal virtual string VisibilityIcon => IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon;
+    protected internal virtual Vector4? VisibilityColor => IsVisible ? null : Settings.RedColor;
 
     private bool _absPosition;
     private bool _absRotation;

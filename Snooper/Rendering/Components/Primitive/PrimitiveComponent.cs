@@ -4,7 +4,6 @@ using CUE4Parse.UE4.Assets.Exports.FastGeoStreaming;
 using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Snooper.Core;
-using Snooper.Core.Managers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Camera;
@@ -18,13 +17,8 @@ namespace Snooper.Rendering.Components.Primitive;
 
 public interface IPrimitiveComponent
 {
-    public ResourcesMetadata? Metadata { get; }
     public MaterialSection[] Materials { get; }
-    public bool IsOpaque { get; }
-    public bool IsVisible { get; set; }
-
     public void SetMaterialVisibility(uint materialIndex, bool visible);
-
     internal MaterialSection? SelectedMaterial { get; }
 }
 
@@ -58,17 +52,17 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         }
     }
 
-    public bool IsVisible
+    public sealed override bool IsVisible
     {
-        get;
-        set
+        get => base.IsVisible;
+        protected set
         {
-            if (field == value) return;
+            if (base.IsVisible == value) return;
 
-            field = value;
+            base.IsVisible = value;
             SetMaterialsVisible(value);
         }
-    } = true;
+    }
 
     public readonly bool CastShadow = true;
     public readonly Vector2 DrawDistance = Vector2.Zero;
@@ -96,15 +90,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        if (component.TryGetValue(out bool visible, "bVisible"))
-        {
-            IsVisible = visible;
-        }
-        else if (component.TryGetValue(out bool hidden, "bHiddenInGame", "bIsHidden"))
-        {
-            IsVisible = !hidden;
-        }
-
         if (component.TryGetValue(out bool castShadow, "CastShadow", "bCastStaticShadow", "bCastDynamicShadow"))
         {
             CastShadow = castShadow;
@@ -199,7 +184,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             (index & 4) == 0 ? -extents.Z : extents.Z);
     }
 
-    public void SnapToGround()
+    public bool SnapToGround()
     {
         var lowest = float.MaxValue;
         for (var i = 0; i < 8; i++)
@@ -207,15 +192,16 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             lowest = MathF.Min(lowest, Vector3.Transform(GetBoundsCorner(i), WorldMatrix).Y);
         }
 
-        if (lowest >= 0f || !Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
-            return;
+        if (lowest >= -0.001f || !Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
+            return false;
 
         var transform = GetLocalTransform();
         transform.Position -= Vector3.TransformNormal(new Vector3(0f, lowest, 0f), invRelation);
         SetLocalTransform(transform);
+        return true;
     }
 
-    public bool IsMaterialVisible(uint materialIndex) => materialIndex >= Materials.Length || Materials[materialIndex] is not { IsVisible: false };
+    public bool IsMaterialVisible(uint materialIndex) => IsActorVisibleRecursive && (materialIndex >= Materials.Length || Materials[materialIndex] is not { IsVisible: false });
     public void SetMaterialVisibility(uint materialIndex, bool visible)
     {
         if (materialIndex >= Materials.Length || Materials[materialIndex] is not { } material) return;
@@ -224,7 +210,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         material.IsVisible = visible;
         MarkVisibilityDirty();
     }
-    private void SetMaterialsVisible(bool visible)
+    protected void SetMaterialsVisible(bool visible)
     {
         if (Materials is { } materials)
         {
@@ -238,31 +224,25 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     }
 
     private void MarkVisibilityDirty() => MarkDirty(DirtyFlags.Visibility | (IsOutlined ? DirtyFlags.Outline : DirtyFlags.None));
-
-    protected override void BeginPlay(ActorManager scene)
-    {
-        base.BeginPlay(scene);
-
-        if (Actor is { IsVisible: false }) IsVisible = false;
-    }
+    internal override void OnActorVisibilityChanged() => MarkVisibilityDirty();
 
     public override string Icon => "\ue4e2";
 
+    protected internal override string VisibilityIcon => HasVisibleMaterial ? HasHiddenMaterial ? Settings.EyeLowVisionIcon : Settings.EyeIcon : Settings.EyeSlashIcon;
+    protected internal override Vector4? VisibilityColor => HasVisibleMaterial ? HasHiddenMaterial ? Settings.OrangeColor : null : Settings.RedColor;
+
     private const string HeaderLabel = "Mesh";
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
-        .Add(() => MaterialVisibilityIcon, () => "Toggle Visibility",
-            () => { IsVisible = !IsVisible; }, null,
-            () => MaterialVisibilityColor)
         .Add("\uf0c5", "Copy Path", () => ImGui.SetClipboardText(Descriptor.Path))
         .Add("\uf05a", "Primitive Info", () => ImGui.OpenPopup("##PrimitiveInfo"));
 
     private PropertyToggleButton[] SectionButtons => field ??=
     [
         new PropertyToggleButton(
-            () => MaterialVisibilityIcon,
+            () => VisibilityIcon,
             () => ImGui.OpenPopup(SectionVisibilityPopup),
             () => "Section Visibility",
-            textColor: () => MaterialVisibilityColor)
+            textColor: () => VisibilityColor)
     ];
 
     private PropertyToggleButton[] MaterialButtons => field ??=
@@ -407,8 +387,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     private const string SectionVisibilityPopup = "##SectionVisibility";
     private bool HasHiddenMaterial => Array.Exists(Materials, x => x is { IsVisible: false });
     private bool HasVisibleMaterial => Array.Exists(Materials, x => x is not { IsVisible: false });
-    private string MaterialVisibilityIcon => HasVisibleMaterial ? HasHiddenMaterial ? Settings.EyeLowVisionIcon : Settings.EyeIcon : Settings.EyeSlashIcon;
-    private Vector4? MaterialVisibilityColor => HasVisibleMaterial ? HasHiddenMaterial ? Settings.OrangeColor : null : Settings.RedColor;
 
     private void DrawSectionVisibilityPopup(LodDescriptor<TVertex> lod)
     {
@@ -427,7 +405,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         var width = Math.Clamp(frameHeight + style.ItemSpacing.X + nameWidth + style.ScrollbarSize, frameHeight * 8f, frameHeight * 16f);
 
         var anyVisible = HasVisibleMaterial;
-        if (EditorUI.IconButton(MaterialVisibilityIcon, anyVisible ? "Hide All" : "Show All", textColor: MaterialVisibilityColor))
+        if (EditorUI.IconButton(VisibilityIcon, anyVisible ? "Hide All" : "Show All", textColor: VisibilityColor))
         {
             SetMaterialsVisible(!anyVisible);
         }
@@ -512,12 +490,12 @@ public class PrimitiveComponent<TVertex, TPerMaterialData> : PrimitiveComponent<
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-
+        if (!IsVisible) SetMaterialsVisible(false);
     }
 
     protected PrimitiveComponent(USceneComponent component) : base(component)
     {
-
+        if (!IsVisible) SetMaterialsVisible(false);
     }
 
     public sealed override MaterialSection[] Materials { get; } = [new(0)];

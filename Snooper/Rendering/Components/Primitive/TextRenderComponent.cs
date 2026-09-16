@@ -100,19 +100,12 @@ public class TextRenderComponent : PrimitiveComponent<Vector4, PerInstanceData, 
     public override string Icon => "\uf075";
 
     private const string HeaderLabel = "Text";
-    private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
-        .Add(() => IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, () => "Toggle Visibility",
-            () => { IsVisible = !IsVisible; }, null,
-            () => IsVisible ? null : Settings.RedColor);
 
     public override void DrawControls()
     {
         base.DrawControls();
 
-        var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
-        HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
-
-        if (!open) return;
+        if (!ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen)) return;
 
         EditorUI.PropertyValueTable(HeaderLabel, () =>
         {

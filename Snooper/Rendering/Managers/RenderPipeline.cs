@@ -48,7 +48,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         var computeSystems = systems.OfType<IComputeRenderSystem>().ToArray();
         _geometry.DoRenderPass("Compute Pass", new ComputeRenderContext(camera, computeSystems));
 
-        var castsShadows = _shadows && directionalLight is { IsEnabled: true, Actor.IsVisible: true };
+        var castsShadows = _shadows && directionalLight is { IsVisible: true, Actor.IsVisibleRecursive: true };
         var cullViews = _geometry.UpdateViews(camera, castsShadows ? directionalLight : null);
         _geometry.DoRenderPass("Cull Pass", new CullRenderContext(geometrySystems, cullViews));
 

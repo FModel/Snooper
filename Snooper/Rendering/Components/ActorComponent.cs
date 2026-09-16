@@ -35,6 +35,11 @@ public abstract class ActorComponent : TreeNode
 
     }
 
+    internal virtual void OnActorVisibilityChanged()
+    {
+        // the owning actor, or one above it, was shown or hidden
+    }
+
     private DebugComponent? _visualization;
     protected virtual DebugComponent? CreateDebugVisualization() => null;
 
@@ -56,7 +61,7 @@ public abstract class ActorComponent : TreeNode
             Actor.Components.Add(_visualization);
         }
 
-        _visualization.IsVisible = visible;
+        _visualization.SetVisibility(visible);
     }
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;

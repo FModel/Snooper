@@ -112,13 +112,11 @@ public class Actor : TreeNode
             if (field == value) return;
 
             field = value;
-
-            foreach (var component in Components.OfType<IPrimitiveComponent>())
-                component.IsVisible = field;
-            foreach (var child in Children)
-                child.IsVisible = field;
+            OnHierarchyChanged();
         }
     } = true;
+
+    public bool IsVisibleRecursive { get; private set; } = true;
 
     public void ToggleVisibility()
     {
@@ -207,7 +205,7 @@ public class Actor : TreeNode
         newParent.Children.AddQuiet(this);
 
         _parent = newParent;
-        UpdateHierarchyDepth();
+        OnHierarchyChanged();
 
         manager.IncrementRevision();
     }
@@ -232,7 +230,7 @@ public class Actor : TreeNode
 
         actor._parent = this;
         actor.RootComponent?.Relation = RootComponent;
-        actor.UpdateHierarchyDepth();
+        actor.OnHierarchyChanged();
 
         actor.SetScene(ActorManager, EEndPlayReason.Destroyed);
     }
@@ -248,7 +246,7 @@ public class Actor : TreeNode
 
         actor._parent = null;
         actor.RootComponent?.Relation = null;
-        actor.UpdateHierarchyDepth();
+        actor.OnHierarchyChanged();
     }
 
     internal void OnComponentAdded(ActorComponent component)
@@ -290,6 +288,17 @@ public class Actor : TreeNode
         }
     }
 
+    private void OnHierarchyChanged()
+    {
+        NodeDepth = (_parent?.NodeDepth ?? -1) + 1;
+        IsVisibleRecursive = IsVisible && (_parent?.IsVisibleRecursive ?? true);
+
+        foreach (var component in Components)
+            component.OnActorVisibilityChanged();
+        foreach (var child in Children)
+            child.OnHierarchyChanged();
+    }
+
     public override void SetOutlined(bool state)
     {
         foreach (var c in Components)
@@ -309,12 +318,7 @@ public class Actor : TreeNode
             if (field) IsNodeOpen = true;
         }
     }
-    private void UpdateHierarchyDepth()
-    {
-        NodeDepth = (_parent?.NodeDepth ?? -1) + 1;
-        foreach (var child in Children)
-            child.UpdateHierarchyDepth();
-    }
+
     public override void DrawControls()
     {
 

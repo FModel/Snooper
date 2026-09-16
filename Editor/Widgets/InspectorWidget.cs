@@ -165,7 +165,7 @@ public class InspectorWidget : PanelWidget
         if (!hasChildren) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
         else ImGui.SetNextItemOpen(component.IsNodeOpen, ImGuiCond.Always);
 
-        if (warn) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0f, 1f));
+        if (warn) ImGui.PushStyleColor(ImGuiCol.Text, Settings.OrangeColor);
         var nodeOpen = ImGui.TreeNodeEx("##Component", flags, $"{(warn ? $"{WarnIcon}  " : "")}{component.Icon}  {component.Name}");
         component.IsNodeOpen = nodeOpen;
         if (warn) ImGui.PopStyleColor();
@@ -188,7 +188,11 @@ public class InspectorWidget : PanelWidget
                 if (ImGui.MenuItem("\uf185  Make Sun Light")) lightSystem!.DirectionalLight = dirLight;
                 ImGui.EndDisabled();
             }
-            if (ImGui.MenuItem("\uf124  Teleport To") && component is SpatialComponent spatial) spatial.TeleportTo();
+            if (component is SpatialComponent spatial)
+            {
+                if (ImGui.MenuItem($"{Settings.EyeIcon}  Toggle Visibility")) spatial.SetVisibility(!spatial.IsVisible, ImGui.GetIO().KeyShift);
+                if (ImGui.MenuItem("\uf124  Teleport To")) spatial.TeleportTo();
+            }
             if (ImGui.MenuItem("\uf1c9  Open JSON"))
             {
                 if (component.Actor?.ActorManager is EditorManager manager)
@@ -230,7 +234,7 @@ public class InspectorWidget : PanelWidget
             {
                 if (warn)
                 {
-                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.Text, Settings.OrangeColor);
                     ImGui.TextUnformatted($"{WarnIcon}  Orphaned component not attached to the tree.");
                     ImGui.PopStyleColor();
                     ImGui.Separator();
@@ -276,17 +280,31 @@ public class InspectorWidget : PanelWidget
             if (nodeOpen) ImGui.TreePop();
         }
 
-        var btnW = ImGui.CalcTextSize(FileIcon).X + style.FramePadding.X * 2;
-        ImGui.SameLine(rightEdge - btnW);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
-        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        if (ImGui.Button(FileIcon))
         {
-            if (component.Actor?.ActorManager is EditorManager manager)
-                manager._jsonViewer.Open(component);
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
+            ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+            if (component is SpatialComponent spatial)
+            {
+                var btnW = ImGui.CalcTextSize(spatial.VisibilityIcon).X + style.FramePadding.X * 2;
+                ImGui.SameLine(rightEdge - btnW);
+                var textColor = spatial.VisibilityColor;
+                if (textColor != null) ImGui.PushStyleColor(ImGuiCol.Text, textColor.Value);
+                if (ImGui.Button(spatial.VisibilityIcon)) spatial.SetVisibility(!spatial.IsVisible, ImGui.GetIO().KeyShift);
+                if (textColor != null) ImGui.PopStyleColor();
+            }
+            else
+            {
+                var btnW = ImGui.CalcTextSize(FileIcon).X + style.FramePadding.X * 2;
+                ImGui.SameLine(rightEdge - btnW);
+                if (ImGui.Button(FileIcon))
+                {
+                    if (component.Actor?.ActorManager is EditorManager manager)
+                        manager._jsonViewer.Open(component);
+                }
+            }
+            ImGui.PopStyleColor();
+            ImGui.PopStyleVar();
         }
-        ImGui.PopStyleColor();
-        ImGui.PopStyleVar();
 
         ImGui.PopID();
     }
