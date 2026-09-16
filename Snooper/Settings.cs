@@ -38,6 +38,7 @@ public static class Settings
 
     public const string TrashIcon = "\uf1f8";
     public const string AddIcon = "\uf055";
+    public const string ClipboardListIcon = "\uf46d";
     public const string EyeSlashIcon = "\uf070";
     public const string FocusIcon = "\uf05b";
     public const string JobIcon = "\uf085";

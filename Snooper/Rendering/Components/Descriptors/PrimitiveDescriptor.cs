@@ -3,6 +3,7 @@ using CUE4Parse.FileProvider;
 using CUE4Parse_Conversion.Dto;
 using CUE4Parse_Conversion.Options;
 using CUE4Parse.UE4.Assets.Exports.Animation;
+using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
@@ -105,7 +106,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Sockets = [];
     }
 
-    private PrimitiveDescriptor(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    private PrimitiveDescriptor(USkinnedAsset owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
         Path = owner.GetCleanPath();
@@ -213,7 +214,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UGeometryCollection owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(new FGuid((uint)owner.Name.GetHashCode()), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
-    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(USkinnedAsset owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(FGuid.Random(), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory)

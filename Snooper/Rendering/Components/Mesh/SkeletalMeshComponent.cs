@@ -2,6 +2,7 @@
 using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
+using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using ImGuiNET;
 using Snooper.Core;
@@ -25,7 +26,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
         Playback = other.Playback;
     }
 
-    public SkeletalMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh, transform)
+    public SkeletalMeshComponent(USkinnedAsset skinnedAsset, Transform? transform = null) : base(skinnedAsset, transform)
     {
 
     }

@@ -1,6 +1,6 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Animation;
+using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
-using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
@@ -19,9 +19,9 @@ public class MeshActor : Actor
         Components.Add(new GeometryCollectionComponent(geometryCollection, transform));
     }
 
-    public MeshActor(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh)
+    public MeshActor(USkinnedAsset skinnedAsset, Transform? transform = null) : base(skinnedAsset)
     {
-        Components.Add(new SkeletalMeshComponent(skeletalMesh, transform));
+        Components.Add(new SkeletalMeshComponent(skinnedAsset, transform));
     }
 
     public MeshActor(UAnimationAsset animation, float playPosition = 0f, float playRate = 1f) : base(animation)

@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
+using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
@@ -24,9 +25,9 @@ public abstract class SkinnedMeshComponent : MeshComponent
         _morphWeights = (float[]?) other._morphWeights?.Clone();
     }
 
-    protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, Transform? transform = null) : base(skeletalMesh.Materials, transform, skeletalMesh.Name)
+    protected SkinnedMeshComponent(USkinnedAsset skinnedAsset, Transform? transform = null) : base(skinnedAsset.Materials, transform, skinnedAsset.Name)
     {
-        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skinnedAsset, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 
     protected SkinnedMeshComponent(USkeleton skeleton, Transform? transform = null) : base([], transform, skeleton.Name)

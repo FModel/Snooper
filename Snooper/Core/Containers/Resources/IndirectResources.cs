@@ -99,7 +99,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             drawAllocations[i] = new DrawBufferAllocation(buffer.Add(command, draw, new PerDrawCulled(geometryHandle, section)), bufferType, section.MaterialIndex);
         }
 
-        component.MarkClean(DirtyFlags.All);
+        component.MarkClean(DirtyFlags.InstanceData | DirtyFlags.Visibility | DirtyFlags.Opacity | DirtyFlags.Outline | DirtyFlags.ManualLodSwap);
         return new ResourcesMetadata(geometryHandle, instanceAllocation, materialAllocation, drawAllocations);
     }
 
