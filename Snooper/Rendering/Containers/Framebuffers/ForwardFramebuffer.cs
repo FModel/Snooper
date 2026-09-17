@@ -11,7 +11,7 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : Framebu
 
     private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, name: "Forward - Color");
     private readonly PickingTexture _picking = new(originalWidth, originalHeight, name: "Forward - Picking");
-    private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
+    private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.DepthComponent32f, false);
 
     public override void Generate()
     {
@@ -30,7 +30,7 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : Framebu
         GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment0, _color, 0);
         GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment1, _picking, 0);
         GL.NamedFramebufferDrawBuffers(Handle, 2, [DrawBuffersEnum.ColorAttachment0, DrawBuffersEnum.ColorAttachment1]);
-        GL.NamedFramebufferRenderbuffer(Handle, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, _depth);
+        GL.NamedFramebufferRenderbuffer(Handle, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, _depth);
 
         CheckStatus();
     }

@@ -309,9 +309,9 @@ public class SceneHierarchyWidget : PanelWidget
         {
             var btnW = ImGui.CalcTextSize(Settings.EyeIcon).X + style.FramePadding.X * 2;
             ImGui.SameLine(rightEdge - btnW);
-            var isHidden = !actor.IsVisible;
+            var isHidden = !actor.IsVisibleRecursive;
             if (isHidden) ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
-            if (ImGui.Button(actor.IsVisible ? Settings.EyeIcon : Settings.EyeSlashIcon)) actor.ToggleVisibility();
+            if (ImGui.Button(actor.IsVisibleRecursive ? Settings.EyeIcon : Settings.EyeSlashIcon)) actor.ToggleVisibility();
             if (isHidden) ImGui.PopStyleColor();
         }
         ImGui.PopStyleVar();

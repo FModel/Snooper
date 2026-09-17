@@ -23,6 +23,11 @@ public class Renderbuffer(int width, int height, RenderbufferStorage storage, bo
         RenderbufferStorage.Rg32f => 8,
         RenderbufferStorage.Rgb32f => 12,
         RenderbufferStorage.Rgba32f => 16,
+        RenderbufferStorage.DepthComponent16 => 2,
+        RenderbufferStorage.DepthComponent24 => 3,
+        RenderbufferStorage.DepthComponent32f => 4,
+        RenderbufferStorage.Depth24Stencil8 => 4,
+        RenderbufferStorage.Depth32fStencil8 => 5,
         _ => 4
     };
 

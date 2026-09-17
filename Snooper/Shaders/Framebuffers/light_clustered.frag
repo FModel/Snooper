@@ -45,7 +45,8 @@ float SampleShadowMap(ShadowViewData view, vec3 worldPos, vec3 worldNormal, floa
     vec3 samplePos = worldPos + worldNormal * (kernelWorld * sinTheta * uShadowNormalOffset);
 
     vec4 clip = view.viewProjection * vec4(samplePos, 1.0);
-    vec3 coords = clip.xyz / clip.w * 0.5 + 0.5;
+    vec3 ndc = clip.xyz / clip.w;
+    vec3 coords = vec3(ndc.xy * 0.5 + 0.5, ndc.z); // ZERO_TO_ONE clip control: depth is already [0, 1]
 
     if (coords.z >= 1.0)
         return 0.0; // past this view's far plane

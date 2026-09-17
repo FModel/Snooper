@@ -53,10 +53,10 @@ void main()
 
     // Unproject the 4 screen corners to view space
     vec4 corners[4];
-    corners[0] = uInverseProjectionMatrix * vec4(minNDC.x, minNDC.y, 0.0, 1.0);
-    corners[1] = uInverseProjectionMatrix * vec4(maxNDC.x, minNDC.y, 0.0, 1.0);
-    corners[2] = uInverseProjectionMatrix * vec4(minNDC.x, maxNDC.y, 0.0, 1.0);
-    corners[3] = uInverseProjectionMatrix * vec4(maxNDC.x, maxNDC.y, 0.0, 1.0);
+    corners[0] = uInverseProjectionMatrix * vec4(minNDC.x, minNDC.y, 1.0, 1.0);
+    corners[1] = uInverseProjectionMatrix * vec4(maxNDC.x, minNDC.y, 1.0, 1.0);
+    corners[2] = uInverseProjectionMatrix * vec4(minNDC.x, maxNDC.y, 1.0, 1.0);
+    corners[3] = uInverseProjectionMatrix * vec4(maxNDC.x, maxNDC.y, 1.0, 1.0);
 
     // Perspective divide and scale to near/far depths
     vec3 minPoint = vec3(1e10);

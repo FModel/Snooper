@@ -170,5 +170,5 @@ float ComputeDepth(vec3 position)
 {
     vec4 clipPosition = uProjectionMatrix * uViewMatrix * vec4(position, 1.0);
     float ndcDepth = clipPosition.z / clipPosition.w;
-    return (gl_DepthRange.diff * ndcDepth + gl_DepthRange.near + gl_DepthRange.far) * 0.5;
+    return gl_DepthRange.near + gl_DepthRange.diff * ndcDepth;
 }

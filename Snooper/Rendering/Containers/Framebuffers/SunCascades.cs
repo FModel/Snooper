@@ -94,9 +94,9 @@ public sealed class SunCascades
                 -radius, radius,
                 0.0f, depthRange);
 
-            // System.Numerics emits a D3D style [0, 1] clip depth while this context still runs GL's
-            // default [-1, 1] clip range, so window depth only ever spans [0.5, 1.0]
-            var depthScale = 0.5f / depthRange;
+            // System.Numerics emits a [0, 1] clip depth and the context runs ZERO_TO_ONE clip control,
+            // so window depth spans the full [0, 1] over the ortho depth range
+            var depthScale = 1.0f / depthRange;
 
             Views[i] = new ShadowMapView(viewMatrix, projectionMatrix, FirstSlot + i, radius, texelWorldSize, depthScale, far);
         }

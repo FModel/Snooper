@@ -52,6 +52,10 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
                 _shadows.ApplyPendingChanges();
                 _shadows.Bind();
 
+                // cascades are orthographic and stay non-reversed
+                GL.DepthFunc(DepthFunction.Less);
+                GL.ClearDepth(1.0);
+
                 GL.Enable(EnableCap.DepthClamp);
                 GL.PolygonOffset(_shadows.SlopeBias, _shadows.ConstantBias);
                 GL.Enable(EnableCap.PolygonOffsetFill);
@@ -80,6 +84,9 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
                 GL.PolygonOffset(0.0f, 0.0f);
                 GL.Disable(EnableCap.DepthClamp);
 
+                GL.ClearDepth(0.0);
+                GL.DepthFunc(DepthFunction.Greater);
+
                 _shadows.Unbind();
             }
         });
@@ -91,7 +98,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             {
                 _deferred.Bind();
                 GL.ClearColor(0, 0, 0, 0);
-                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
                 GL.Disable(EnableCap.Blend);
             },

@@ -14,7 +14,7 @@ public class DeferredFramebuffer(int originalWidth, int originalHeight) : Frameb
     private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, name: "Deferred - Color");
     private readonly ResizableTexture2D _specular = new(originalWidth, originalHeight, name: "Deferred - Specular");
     private readonly PickingTexture _picking = new(originalWidth, originalHeight, name: "Deferred - Picking");
-    private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.Depth24Stencil8, false);
+    private readonly Renderbuffer _depth = new(originalWidth, originalHeight, RenderbufferStorage.DepthComponent32f, false);
 
     public override void Generate()
     {
@@ -59,7 +59,7 @@ public class DeferredFramebuffer(int originalWidth, int originalHeight) : Frameb
             DrawBuffersEnum.ColorAttachment3,
             DrawBuffersEnum.ColorAttachment4,
         ]);
-        GL.NamedFramebufferRenderbuffer(Handle, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, _depth);
+        GL.NamedFramebufferRenderbuffer(Handle, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, _depth);
 
         CheckStatus();
     }

@@ -66,8 +66,10 @@ public partial class EditorWindow : GameWindow
 
     private void DoLoad()
     {
+        GL.ClipControl(ClipOrigin.LowerLeft, ClipDepthMode.ZeroToOne);
         GL.Enable(EnableCap.DepthTest);
-        GL.DepthFunc(DepthFunction.Less);
+        GL.DepthFunc(DepthFunction.Greater);
+        GL.ClearDepth(0.0);
 
         GL.Enable(EnableCap.Blend);
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);

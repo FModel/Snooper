@@ -40,14 +40,14 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
             }
         }
 
-        GL.DepthFunc(DepthFunction.Lequal);
+        GL.DepthFunc(DepthFunction.Gequal);
         GL.DepthMask(false);
     }
 
     protected override void PostRender(CameraComponent camera, ShaderProgram shader)
     {
         GL.DepthMask(true);
-        GL.DepthFunc(DepthFunction.Less);
+        GL.DepthFunc(DepthFunction.Greater);
         shader.Unuse();
     }
 

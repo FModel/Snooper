@@ -21,8 +21,8 @@ void main()
     mat4 inverseViewProjection = inverseView * inverse(uProjectionMatrix);
 
     vs_out.cameraPosition = inverseView[3].xyz;
-    vs_out.nearPoint = UnprojectPoint(inverseViewProjection, aPos.xy, -1.0);
-    vs_out.farPoint = UnprojectPoint(inverseViewProjection, aPos.xy, 1.0);
+    vs_out.nearPoint = UnprojectPoint(inverseViewProjection, aPos.xy, 1.0);
+    vs_out.farPoint = UnprojectPoint(inverseViewProjection, aPos.xy, 0.0);
 
     gl_Position = vec4(aPos, 1.0);
 }

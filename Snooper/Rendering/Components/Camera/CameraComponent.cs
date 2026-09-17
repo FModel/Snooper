@@ -137,12 +137,17 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         Matrix4x4.Decompose(WorldMatrix, out _, out var rotation, out var position);
 
         ViewMatrix = Matrix4x4.CreateLookAt(position, position - Vector3.Transform(Settings.ForwardVector, rotation), Vector3.Transform(Settings.UpVector, rotation));
-        ProjectionMatrix = ProjectionMode switch
+        var projection = ProjectionMode switch
         {
             CameraMode.Orthographic => Matrix4x4.CreateOrthographic(OrthoWidth * AspectRatio, OrthoWidth, OrthoNearClipPlane, OrthoFarClipPlane),
             CameraMode.Perspective => Matrix4x4.CreatePerspectiveFieldOfView(FieldOfViewRadians, AspectRatio, PerspectiveNearClipPlane, PerspectiveFarClipPlane),
             _ => throw new ArgumentOutOfRangeException()
         };
+
+        var reverse = Matrix4x4.Identity;
+        reverse.M33 = -1.0f;
+        reverse.M43 = 1.0f;
+        ProjectionMatrix = projection * reverse;
     }
 
     public override string Icon => "\uf030";

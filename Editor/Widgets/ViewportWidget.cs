@@ -182,6 +182,15 @@ public class ViewportWidget : PanelWidget
         ImGui.PopFont();
     }
 
+    private bool IsGizmoVisible(CameraComponent camera, in Matrix4x4 matrix)
+    {
+        if (ImGuizmo.IsUsing()) return true;
+        if (camera.ProjectionMode == CameraMode.Orthographic) return true;
+
+        var viewPosition = Vector3.Transform(matrix.Translation, camera.ViewMatrix);
+        return viewPosition.Z < -camera.NearClipPlane;
+    }
+
     private void DrawComponentControlsOverlay(CameraComponent camera, ActorComponent? component, Vector2 contentPos, Vector2 contentSize)
     {
         var view = camera.ViewMatrix;
@@ -204,7 +213,7 @@ public class ViewportWidget : PanelWidget
                 if (manager._splineOverlay.SelectedHandle != -1 && manager._splineOverlay.SelectedSpline is not null)
                 {
                     var handleMatrix = manager._splineOverlay.SelectedHandleMatrix;
-                    if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.TRANSLATE, MODE.WORLD, ref handleMatrix.M11))
+                    if (IsGizmoVisible(camera, handleMatrix) && ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.TRANSLATE, MODE.WORLD, ref handleMatrix.M11))
                     {
                         manager._splineOverlay.ApplyGizmoMatrix(handleMatrix);
                         manager._splineOverlay.SelectedSpline.MarkDirty(DirtyFlags.Spline);
@@ -222,7 +231,7 @@ public class ViewportWidget : PanelWidget
                 {
                     var matrix = skeleton.BoneMatrices[boneIndex] * mesh.GizmoMatrix;
 
-                    if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
+                    if (IsGizmoVisible(camera, matrix) && ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
                     {
                         Matrix4x4.Invert(mesh.GizmoMatrix, out var invGizmo);
                         skeleton.MoveBone(boneIndex, matrix * invGizmo);
@@ -234,7 +243,7 @@ public class ViewportWidget : PanelWidget
             case DirectionalLightComponent light:
             {
                 var matrix = light.GizmoMatrix;
-                if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.ROTATE_X | OPERATION.ROTATE_Y | OPERATION.ROTATE_SCREEN | OPERATION.TRANSLATE_Z, MODE.LOCAL, ref matrix.M11))
+                if (IsGizmoVisible(camera, matrix) && ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.ROTATE_X | OPERATION.ROTATE_Y | OPERATION.ROTATE_SCREEN | OPERATION.TRANSLATE_Z, MODE.LOCAL, ref matrix.M11))
                 {
                     light.ApplyGizmoMatrix(matrix);
                 }
@@ -243,7 +252,7 @@ public class ViewportWidget : PanelWidget
             case SpatialComponent spatial when !_selectMode:
             {
                 var matrix = spatial.GizmoMatrix;
-                if (ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, _localSpace ? MODE.LOCAL : MODE.WORLD, ref matrix.M11))
+                if (IsGizmoVisible(camera, matrix) && ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, _localSpace ? MODE.LOCAL : MODE.WORLD, ref matrix.M11))
                 {
                     spatial.ApplyGizmoMatrix(matrix);
                 }

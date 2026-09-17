@@ -16,7 +16,7 @@ void main()
     vec4 color = forward + deferred * (1.0 - forward.a);
 
     float mask = texture(maskTexture, vTexCoords).r;
-    if (mask <= 0.0 || mask >= 1.0)
+    if (mask <= 0.0)
     {
         bool nearMesh = false;
         for (int y = -outlineThickness; y <= outlineThickness && !nearMesh; ++y)
@@ -28,7 +28,7 @@ void main()
                 vec2 offset = vec2(float(x), float(y)) * texelSize;
                 float neighbor = texture(maskTexture, vTexCoords + offset).r;
 
-                if (neighbor > 0.0 && neighbor < 1.0)
+                if (neighbor > 0.0)
                 {
                     nearMesh = true;
                     break;
