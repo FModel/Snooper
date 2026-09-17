@@ -100,7 +100,7 @@ void main()
 
         if (texture(weightmap, visUv)[materialData.VisibilityChannelIndex] > 0.5)
         {
-            gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+            gl_Position = vec4(2.0, 2.0, -1.0, 1.0);
             te_out.vViewPos = vec3(0.0);
             te_out.TBN = mat3(uViewMatrix);
             te_out.vHeight = 0.0;
