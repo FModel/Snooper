@@ -14,7 +14,6 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
     public ShaderStorageBuffer<PerDrawStatic> StaticData { get; } = new(usageHint);
 
     public readonly int ViewCount = viewCount >= 1 ? viewCount : throw new ArgumentOutOfRangeException(nameof(viewCount), viewCount, "A draw buffer needs at least one slice.");
-    public int MaskViewIndex => ViewCount - 1;
     public int Capacity => Commands.Capacity;
     public int Extent => Commands.Extent;
     public int Stride => Commands.Stride;
@@ -53,8 +52,12 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
         return new DrawAllocation(commandAllocation, dataAllocation, outputAllocation);
     }
 
-    public int GetViewBase(int view) => (view < ViewCount ? view : 0) * Capacity;
+    public int GetViewBase(int view) => (view < MaskViewIndex ? view : 0) * Capacity;
     public nint GetViewOffset(int view) => GetViewBase(view) * Stride;
+
+    public int MaskViewIndex => ViewCount - 1;
+    public int MaskViewBase => MaskViewIndex * Capacity;
+    public nint MaskViewOffset => MaskViewBase * Stride;
 
     public void Remove(DrawAllocation allocation)
     {

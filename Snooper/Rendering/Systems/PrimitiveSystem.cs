@@ -110,9 +110,8 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
             BindSystemBuffers();
             foreach (var type in Shaders.Keys)
             {
-                var view = Resources.GetMaskView(type);
-                _maskShader.SetUniform("uViewBase", Resources.GetViewBase(type, view));
-                Resources.Render(type, view);
+                _maskShader.SetUniform("uViewBase", Resources.GetMaskViewBase(type));
+                Resources.RenderMask(type);
             }
             PostRender(camera, _maskShader);
         }

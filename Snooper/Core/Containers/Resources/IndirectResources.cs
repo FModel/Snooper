@@ -195,12 +195,23 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public void Cull(ReadOnlySpan<CullView> views, CommandBufferType type) => _geometry.Cull(views, _instanceData, _commands.GetBuffer(type));
     public void BuildMask(CommandBufferType type) => _geometry.Cull([], _instanceData, _commands.GetBuffer(type));
 
-    public int GetMaskView(CommandBufferType type) => _commands.GetBuffer(type).MaskViewIndex;
     public uint GetViewBase(CommandBufferType type, int view) => (uint) _commands.GetBuffer(type).GetViewBase(view);
+    public uint GetMaskViewBase(CommandBufferType type) => (uint) _commands.GetBuffer(type).MaskViewBase;
 
     public void Render(CommandBufferType type, int view = 0)
     {
         var buffer = _commands.GetBuffer(type);
+        Render(buffer, buffer.GetViewOffset(view));
+    }
+
+    public void RenderMask(CommandBufferType type)
+    {
+        var buffer = _commands.GetBuffer(type);
+        Render(buffer, buffer.MaskViewOffset);
+    }
+
+    private void Render(IndirectDrawBuffer buffer, nint offset)
+    {
         if (buffer.Extent == 0) return;
 
         buffer.Commands.Bind();
@@ -209,7 +220,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _instanceData.Bind(Bindings.InstanceData);
         _materialData.Bind(Bindings.MaterialData);
 
-        _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, buffer.GetViewOffset(view), buffer.Extent, buffer.Stride));
+        _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, offset, buffer.Extent, buffer.Stride));
 
         buffer.Commands.Unbind();
     }
