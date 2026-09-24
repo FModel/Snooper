@@ -4,6 +4,7 @@ using Editor.Modals;
 using ImGuiNET;
 using Snooper;
 using Snooper.Core;
+using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Extensions;
 using Snooper.Rendering.Cache;
@@ -27,13 +28,16 @@ public class MaterialEditorWidget : PanelWidget
     public override bool IsOpen { get; set; }
 
     private static readonly EBlendMode[] _blendModes = Enum.GetValues<EBlendMode>().Distinct().ToArray();
+    private static readonly EMaterialShadingModel[] _shadingModels = Enum.GetValues<EMaterialShadingModel>().Distinct().ToArray();
     private static readonly string[] _blendModeLabels = _blendModes.Select(static mode => mode.GetDescription()).ToArray();
+    private static readonly string[] _shadingModelLabels = _shadingModels.Select(static mode => mode.GetDescription()).ToArray();
 
     private readonly Dictionary<int, HeaderButtons> _headerButtons = [];
 
     private int _lastComponentId = -1;
     private int _lastSelectedSectionId = -1;
     private bool _edited;
+    private string _parameterSearch = string.Empty;
 
     public void Reset()
     {
@@ -80,7 +84,8 @@ public class MaterialEditorWidget : PanelWidget
     private void DrawMaterial(IPrimitiveComponent primitive, MaterialSection section, int slot, bool selectionChanged, bool isSelected)
     {
         if (selectionChanged) ImGui.SetNextItemOpen(isSelected, ImGuiCond.Always);
-        var open = ImGui.CollapsingHeader($"{slot}: {section.MaterialDataContainer?.Name ?? Settings.NoName}###Material{slot}", ImGuiTreeNodeFlags.AllowOverlap);
+        MaterialCache.TryGetNode(section.CacheKey, out var parsed);
+        var open = ImGui.CollapsingHeader($"{slot}: {section.MaterialDataContainer?.Name ?? parsed?.Name ?? Settings.NoName}###Material{slot}", ImGuiTreeNodeFlags.AllowOverlap);
         GetHeaderButtons(primitive, section, slot).Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
         if (selectionChanged && isSelected) ImGui.SetScrollHereY(0.5f);
@@ -88,23 +93,22 @@ public class MaterialEditorWidget : PanelWidget
 
         ImGui.PushID(section.SectionId);
         ImGui.Indent();
-        if (section.MaterialDataContainer is not { } resolved)
+        var container = section.MaterialDataContainer;
+        if (container is null && parsed is null)
         {
             ImGui.TextDisabled("This section has no material.");
         }
-        else if (resolved is not MaterialDataContainer material)
+        else if (ImGui.BeginTabBar("##MaterialTabs"))
         {
-            ImGui.TextDisabled($"{resolved.Name} is not an editable material type.");
-        }
-        else if (!material.IsGpuDataReady)
-        {
-            ImGui.TextColored(Settings.OrangeColor, "Uploading textures...");
-        }
-        else
-        {
-            _edited = false;
-            DrawMaterialTabs(section, material);
-            if (_edited) section.CommitEdit();
+            DrawContainerTabs(section, container);
+
+            if (parsed is not null && ImGui.BeginTabItem("Parameters##ParametersTab"))
+            {
+                DrawParameters(parsed);
+                ImGui.EndTabItem();
+            }
+
+            ImGui.EndTabBar();
         }
         ImGui.Unindent();
         ImGui.PopID();
@@ -130,25 +134,54 @@ public class MaterialEditorWidget : PanelWidget
         return buttons;
     }
 
-    private void DrawMaterialTabs(MaterialSection section, MaterialDataContainer material)
+    private void DrawContainerTabs(MaterialSection section, IMaterialDataContainer? container)
     {
-        if (!ImGui.BeginTabBar("##MaterialTabs")) return;
-
-        for (var i = 0; i < material.LayerCount; i++)
+        if (container is MaterialDataContainer { IsGpuDataReady: true } material)
         {
-            if (!ImGui.BeginTabItem($"Layer {i}##LayerTab{i}")) continue;
+            _edited = false;
+            for (var i = 0; i < material.LayerCount; i++)
+            {
+                if (!ImGui.BeginTabItem($"Layer {i}##LayerTab{i}")) continue;
 
-            DrawLayer(section, material, i);
-            ImGui.EndTabItem();
+                DrawLayer(section, material, i);
+                ImGui.EndTabItem();
+            }
+
+            if (ImGui.BeginTabItem("Global##GlobalTab"))
+            {
+                DrawGlobalProperties(section, material);
+                ImGui.EndTabItem();
+            }
+
+            if (_edited) section.CommitEdit();
+            return;
         }
 
-        if (ImGui.BeginTabItem("Global##GlobalTab"))
+        // nothing to edit yet, or ever
+        if (!ImGui.BeginTabItem("Material##MaterialTab")) return;
+
+        switch (container)
         {
-            DrawGlobalProperties(section, material);
-            ImGui.EndTabItem();
+            case null:
+                ImGui.TextColored(Settings.OrangeColor, "Could not be set up: no diffuse texture, color or normal map was found.");
+                break;
+            case MaterialDataContainer:
+                ImGui.TextColored(Settings.OrangeColor, "Uploading textures...");
+                break;
+            default:
+                ImGui.TextDisabled($"{container.Name} is not an editable material type.");
+                break;
         }
 
-        ImGui.EndTabBar();
+        ImGui.EndTabItem();
+    }
+
+    private void DrawParameters(MaterialNode node)
+    {
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##MaterialParameterFilter", $"{Settings.MagnifyingGlassIcon}  Filter by name or value", ref _parameterSearch, 128, ImGuiInputTextFlags.AutoSelectAll);
+
+        node.DrawControls(_parameterSearch);
     }
 
     private void DrawLayer(MaterialSection section, MaterialDataContainer material, int layerIndex)
@@ -190,7 +223,7 @@ public class MaterialEditorWidget : PanelWidget
 
         EditorUI.Caption(texture is null ? "None" : $"{texture.Name}\n{texture.Width}x{texture.Height}, {texture.FormatName}, {texture.GetFormattedSpace()}");
 
-        if (EditorUI.IconButton(Settings.TextureIcon, $"Swap\nPick another {slot} texture the scene has already loaded"))
+        if (EditorUI.IconButton(Settings.ImageIcon, $"Swap\nPick another {slot} texture the scene has already loaded"))
         {
             TexturePickerModal.Instance.Open(picked => SetTexture(section, layerIndex, slot, picked));
         }
@@ -220,6 +253,12 @@ public class MaterialEditorWidget : PanelWidget
             {
                 Edit(section, edited => edited.BlendMode = _blendModes[blendIndex]);
             }
+            EditorUI.Property("Shading Model");
+            var shadingIndex = (uint) Math.Max(0, Array.IndexOf(_shadingModels, material.ShadingModel));
+            if (EditorUI.LabelCombo("##ShadingModel", ref shadingIndex, _shadingModelLabels))
+            {
+                Edit(section, edited => edited.ShadingModel = _shadingModels[shadingIndex]);
+            }
             ImGui.EndDisabled();
 
             EditorUI.Text("Translucent", material.IsTranslucent ? "\uf00c" : "\uf00d");
@@ -236,7 +275,7 @@ public class MaterialEditorWidget : PanelWidget
         BindlessTexture? bindless = null;
         if (texture is not null && !TextureCache.TryGetBindless(texture.Guid, out bindless))
         {
-            Notifications.Push("material.texture", Settings.TextureIcon, $"{texture.Name} is no longer resident");
+            Notifications.Push("material.texture", Settings.ImageIcon, $"{texture.Name} is no longer resident");
             return;
         }
 

@@ -37,18 +37,13 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
     public int Slices { get; } = slices;
     public int Count { get; private set; }
     public int Capacity { get; private set; }
+    public int Extent { get; private set; }
 
     protected bool IsAllocated;
     private readonly Dictionary<int, BufferAllocationMetadata> _allocations = new();
-    private readonly SortedSet<FreeBlock> _freeBlocks = new(Comparer<FreeBlock>.Create((a, b) =>
-    {
-        var sizeCompare = a.Length.CompareTo(b.Length);
-        return sizeCompare != 0 ? sizeCompare : a.StartIndex.CompareTo(b.StartIndex);
-    }));
-    private int _nextOffset;
+    private readonly SortedList<int, int> _freeBlocks = new();
+
     private int _allocationIdCounter;
-    private int _deferMergeDepth;
-    private bool _mergeNeeded;
 
     public override void Generate()
     {
@@ -71,12 +66,12 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         GL.BindBuffer(target, PreviousHandle);
     }
 
-    private void ResizeIfNeeded(int newSize, double factor = 1.5, bool copy = false)
+    private void ResizeIfNeeded(int newSize, bool copy = false)
     {
         if (newSize <= Capacity) return;
 
         var oldCapacity = Capacity;
-        Capacity = (int) Math.Max(Capacity * factor, newSize);
+        Capacity = IsAllocated ? Math.Max(GetGrowCapacity(), newSize) : newSize;
 
         if (IsAllocated)
         {
@@ -105,6 +100,18 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
                 Allocate(Capacity);
             }
         }
+    }
+
+    private const int SmallCount = 512; // elements
+    private const int LargeCount = 4 * 1024 * 1024;
+    private const double SmallGrowth = 4.0;
+    private const double LargeGrowth = 1.25;
+
+    private int GetGrowCapacity()
+    {
+        var t = Math.Clamp(Math.Log2((double) Capacity / SmallCount) / Math.Log2((double) LargeCount / SmallCount), 0.0, 1.0);
+        var factor = Math.Exp((1.0 - t) * Math.Log(SmallGrowth) + t * Math.Log(LargeGrowth));
+        return (int) Math.Min(int.MaxValue, Math.Max(Capacity + 1.0, Math.Ceiling(Capacity * factor)));
     }
 
     public void Reallocate(int size)
@@ -241,20 +248,29 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
             throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
         ClearStorage(metadata.StartIndex * Stride, metadata.Length * Stride);
-
-        _freeBlocks.Add(new FreeBlock(metadata.StartIndex, metadata.Length));
-
-        if (_deferMergeDepth == 0)
-        {
-            MergeAdjacentFreeBlocks();
-        }
-        else
-        {
-            _mergeNeeded = true;
-        }
+        Free(metadata.StartIndex, metadata.Length);
 
         _allocations.Remove(allocationId);
         Count -= metadata.Length;
+    }
+
+    private void Free(int startIndex, int length)
+    {
+        _freeBlocks.Add(startIndex, length);
+        var index = _freeBlocks.IndexOfKey(startIndex);
+
+        if (index + 1 < _freeBlocks.Count && _freeBlocks.Keys[index + 1] == startIndex + length)
+        {
+            length += _freeBlocks.Values[index + 1];
+            _freeBlocks.RemoveAt(index + 1);
+            _freeBlocks[startIndex] = length;
+        }
+
+        if (index > 0 && _freeBlocks.Keys[index - 1] + _freeBlocks.Values[index - 1] == startIndex)
+        {
+            _freeBlocks[_freeBlocks.Keys[index - 1]] += length;
+            _freeBlocks.RemoveAt(index);
+        }
     }
 
     public void RemoveRange(BufferAllocation[] allocations)
@@ -271,31 +287,6 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         foreach (var allocationId in allocationIds)
         {
             RemoveInternal(allocationId);
-        }
-    }
-
-    public readonly struct DeferMergeScope(Buffer<T> buffer) : IDisposable
-    {
-        public void Dispose() => buffer.EndDeferMerge();
-    }
-
-    public DeferMergeScope DeferMerge()
-    {
-        BeginDeferMerge();
-        return new(this);
-    }
-
-    private void BeginDeferMerge() => _deferMergeDepth++;
-    private void EndDeferMerge()
-    {
-        if (_deferMergeDepth > 0)
-        {
-            _deferMergeDepth--;
-            if (_deferMergeDepth == 0 && _mergeNeeded && _freeBlocks.Count > 1)
-            {
-                MergeAdjacentFreeBlocks();
-                _mergeNeeded = false;
-            }
         }
     }
 
@@ -331,7 +322,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
 
         ClearStorage(0, TotalElements * Stride);
         Count = 0;
-        _nextOffset = 0;
+        Extent = 0;
         _allocationIdCounter = 0;
         _allocations.Clear();
         _freeBlocks.Clear();
@@ -353,7 +344,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
     public BufferStatistics? GetBufferStatistics()
     {
         var allocations = _allocations.Values.OrderBy(a => a.StartIndex).ToList();
-        var freeBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
+        var freeBlocks = _freeBlocks.Select(block => new FreeBlock(block.Key, block.Value)).ToList();
 
         return new BufferStatistics(Capacity, Count, Capacity - Count, allocations, freeBlocks, CalculateFragmentation());
     }
@@ -362,75 +353,34 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
     {
         var allocationId = _allocationIdCounter++;
 
-        FreeBlock? suitableBlock = null;
-        foreach (var block in _freeBlocks)
+        // first fit, lowest address first: keeps the extent short
+        for (var i = 0; i < _freeBlocks.Count; i++)
         {
-            if (block.Length >= length)
-            {
-                suitableBlock = block;
-                break;
-            }
+            var blockLength = _freeBlocks.Values[i];
+            if (blockLength < length) continue;
+
+            var startIndex = _freeBlocks.Keys[i];
+            _freeBlocks.RemoveAt(i);
+            if (blockLength > length) _freeBlocks.Add(startIndex + length, blockLength - length);
+
+            return (allocationId, startIndex);
         }
 
-        int startIndex;
-        if (suitableBlock.HasValue)
-        {
-            startIndex = suitableBlock.Value.StartIndex;
-            _freeBlocks.Remove(suitableBlock.Value);
-
-            // If the block is larger than needed, split it
-            if (suitableBlock.Value.Length > length)
-            {
-                var remainingBlock = new FreeBlock(
-                    startIndex + length,
-                    suitableBlock.Value.Length - length
-                );
-                _freeBlocks.Add(remainingBlock);
-            }
-        }
-        else
-        {
-            startIndex = _nextOffset;
-            _nextOffset += length;
-        }
-
-        return (allocationId, startIndex);
-    }
-
-    private void MergeAdjacentFreeBlocks()
-    {
-        if (_freeBlocks.Count == 0) return;
-
-        var sortedBlocks = _freeBlocks.OrderBy(fb => fb.StartIndex).ToList();
-        Log.Debug("Merging {Count} free blocks in buffer {Handle} ({PName})", sortedBlocks.Count, Handle, PName);
-
-        _freeBlocks.Clear();
-        for (var i = 0; i < sortedBlocks.Count; i++)
-        {
-            var current = sortedBlocks[i];
-
-            // try to merge with subsequent blocks
-            while (i + 1 < sortedBlocks.Count && current.StartIndex + current.Length == sortedBlocks[i + 1].StartIndex)
-            {
-                current = new FreeBlock(current.StartIndex, current.Length + sortedBlocks[i + 1].Length);
-                i++;
-            }
-
-            _freeBlocks.Add(current);
-        }
+        Extent += length;
+        return (allocationId, Extent - length);
     }
 
     private double CalculateFragmentation()
     {
         if (Capacity == 0 || _freeBlocks.Count == 0) return 0.0;
 
-        var totalFreeSpace = _freeBlocks.Sum(fb => fb.Length);
+        var totalFreeSpace = _freeBlocks.Values.Sum();
         if (totalFreeSpace == 0) return 0.0;
 
         // Fragmentation is high when we have many small free blocks
         // Perfect score (0%) = one contiguous free block
         // Worst score (100%) = many tiny free blocks
-        var largestFreeBlock = _freeBlocks.Max(fb => fb.Length);
+        var largestFreeBlock = _freeBlocks.Values.Max();
         return (1.0 - (double)largestFreeBlock / totalFreeSpace) * 100.0;
     }
 }

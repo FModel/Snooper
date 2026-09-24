@@ -1,182 +1,101 @@
 ﻿using System.Collections.Concurrent;
-using System.Diagnostics;
 using Serilog;
 
 namespace Snooper.Core.Managers;
 
-public class ThreadManager : IDisposable
+public static class ThreadManager
 {
     private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(ThreadManager));
 
-    private readonly Worker[] _workers;
-    private long _totalJobsEnqueued;
-    private int _nextWorkerIndex;
+    private static readonly ConcurrentQueue<Action> _jobs = new();
+    private static readonly SemaphoreSlim _available = new(0); // released once per job, what the workers sleep on
+    private static long _enqueued;
+    private static long _finished; // ran to the end or failed
+    private static int _busy;
 
-    public int WorkerCount => _workers.Length;
-    public long TotalJobsEnqueued => _totalJobsEnqueued;
-    public long TotalJobsProcessed => _workers.Sum(w => w.JobsProcessed);
-    public int CurrentQueuedJobs => _workers.Sum(w => w.QueueLength);
-    public float AverageJobTimeMs => _workers.Average(w => w.AverageJobTimeMs);
-    public float MaxJobTimeMs => _workers.Max(w => w.MaxJobTimeMs);
-    public WorkerStats[] GetWorkerStats() => _workers.Select(w => w.GetStats()).ToArray();
+    // last: the workers start pulling right away, from everything above
+    private static readonly Thread[] _workers = StartWorkers(Math.Max(1, Environment.ProcessorCount - 2));
 
-    public ThreadManager(int workerCount)
+    public static int WorkerCount => _workers.Length;
+    public static int BusyWorkers => Volatile.Read(ref _busy);
+    public static int CurrentQueuedJobs => _jobs.Count;
+    public static long TotalJobsProcessed => Interlocked.Read(ref _finished);
+
+    public static void Enqueue(Action job)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(workerCount, 0);
+        Interlocked.Increment(ref _enqueued); // before the job can be taken, so finished never runs ahead of enqueued
+        _jobs.Enqueue(job);
+        _available.Release();
+    }
 
-        _workers = new Worker[workerCount];
-        for (int i = 0; i < workerCount; i++)
+    public static void ClearAndDispose()
+    {
+        while (_jobs.TryDequeue(out _))
+            Interlocked.Decrement(ref _enqueued);
+
+        _batchStart = Interlocked.Read(ref _enqueued); // whatever was going on is not worth a bar anymore
+    }
+
+    private const int MinReportedBatch = 8;
+    private static long _batchStart; // jobs finished before the current batch, render thread only
+
+    public static void Update()
+    {
+        var finished = Interlocked.Read(ref _finished); // read first, enqueued can only be ahead of it
+        var enqueued = Interlocked.Read(ref _enqueued);
+
+        var total = (int) (enqueued - _batchStart);
+        if (total <= 0) return;
+
+        var done = (int) Math.Max(0, finished - _batchStart);
+        if (total >= MinReportedBatch)
         {
-            _workers[i] = new Worker($"WorkerThread_{i}");
+            var completed = done == total ? $"{total:N0} jobs processed" : null;
+            Progress.Report("work.jobs", Settings.JobIcon, "Processing jobs", done, total, completed);
         }
+
+        if (done == total)
+            _batchStart = enqueued;
     }
 
-    public void Enqueue(Action job)
+    private static Thread[] StartWorkers(int count)
     {
-        var workerIndex = Interlocked.Increment(ref _nextWorkerIndex) % _workers.Length;
-        _workers[workerIndex].Enqueue(job);
-        Interlocked.Increment(ref _totalJobsEnqueued);
-    }
-
-    public void EnqueueBatch(IList<Action> jobs)
-    {
-        var jobCount = jobs.Count;
-        if (jobCount == 0) return;
-
-        var startIndex = Interlocked.Add(ref _nextWorkerIndex, jobCount) - jobCount;
-        for (int i = 0; i < jobCount; i++)
+        var workers = new Thread[count];
+        for (var i = 0; i < count; i++)
         {
-            var workerIndex = (startIndex + i) % _workers.Length;
-            _workers[workerIndex].Enqueue(jobs[i]);
-        }
-
-        Interlocked.Add(ref _totalJobsEnqueued, jobCount);
-    }
-
-    public void Dispose()
-    {
-        foreach (var worker in _workers)
-        {
-            worker.Dispose();
-        }
-    }
-
-    public readonly struct WorkerStats
-    {
-        public string Name { get; init; }
-        public int QueueLength { get; init; }
-        public long JobsProcessed { get; init; }
-        public float AverageJobTimeMs { get; init; }
-        public float MaxJobTimeMs { get; init; }
-        public bool IsIdle { get; init; }
-    }
-
-    private class Worker : IDisposable
-    {
-        private readonly Thread _thread;
-        private readonly ConcurrentQueue<Action> _jobs = new();
-        private readonly ManualResetEventSlim _wakeup = new(false);
-        private readonly Stopwatch _timer = new();
-        private readonly object _lock = new();
-        private volatile bool _running = true;
-        private volatile bool _isIdle = true;
-
-        private long _jobsProcessed;
-        private float _totalJobTimeMs;
-        private float _maxJobTimeMs;
-
-        public int QueueLength => _jobs.Count;
-        public long JobsProcessed => _jobsProcessed;
-        public float AverageJobTimeMs
-        {
-            get
+            workers[i] = new Thread(Work)
             {
-                lock (_lock)
-                {
-                    return _jobsProcessed > 0 ? _totalJobTimeMs / _jobsProcessed : 0;
-                }
-            }
-        }
-        public float MaxJobTimeMs
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _maxJobTimeMs;
-                }
-            }
-        }
-
-        public Worker(string name)
-        {
-            _thread = new Thread(WorkLoop)
-            {
-                Name = name,
+                Name = $"WorkerThread_{i}",
                 IsBackground = true,
                 Priority = ThreadPriority.BelowNormal
             };
-            _thread.Start();
+            workers[i].Start();
         }
 
-        public void Enqueue(Action job)
-        {
-            _jobs.Enqueue(job);
-            _wakeup.Set();
-        }
+        return workers;
+    }
 
-        public WorkerStats GetStats()
+    private static void Work()
+    {
+        while (true)
         {
-            return new WorkerStats
+            _available.Wait();
+            if (!_jobs.TryDequeue(out var job)) continue; // the queue was cleared in between
+
+            Interlocked.Increment(ref _busy);
+            try
             {
-                Name = _thread.Name ?? Settings.NoName,
-                QueueLength = QueueLength,
-                JobsProcessed = JobsProcessed,
-                AverageJobTimeMs = AverageJobTimeMs,
-                MaxJobTimeMs = MaxJobTimeMs,
-                IsIdle = _isIdle
-            };
-        }
-
-        private void WorkLoop()
-        {
-            while (_running)
-            {
-                while (_jobs.TryDequeue(out var job))
-                {
-                    _isIdle = false;
-                    try
-                    {
-                        _timer.Restart();
-                        job();
-                        _timer.Stop();
-
-                        var elapsed = (float)_timer.Elapsed.TotalMilliseconds;
-                        lock (_lock)
-                        {
-                            _totalJobTimeMs += elapsed;
-                            if (elapsed > _maxJobTimeMs)
-                                _maxJobTimeMs = elapsed;
-                        }
-
-                        Interlocked.Increment(ref _jobsProcessed);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Error executing job in Worker thread");
-                    }
-                }
-
-                _isIdle = true;
-                _wakeup.Wait();
-                _wakeup.Reset();
+                job();
             }
-        }
-
-        public void Dispose()
-        {
-            _running = false;
-            _wakeup.Set();
+            catch (Exception e)
+            {
+                Log.Error(e, "Job failed on {Worker}", Thread.CurrentThread.Name);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _busy);
+                Interlocked.Increment(ref _finished);
+            }
         }
     }
 }

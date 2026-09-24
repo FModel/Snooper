@@ -195,13 +195,12 @@ public class HardwareOverlayWidget
         var scene = BeginCell();
         AddRow(scene, "ACTORS", $"{manager.ActorCount:N0}");
         AddRow(scene, "PRIMS", Profiler.Enabled ? $"{Profiler.TotalPrimitives:N0}" : "--");
-        AddRow(scene, "TEX", $"{TextureCache.LoadedTextureCount:N0} +{TextureCache.PendingTextureCount:N0}");
+        AddRow(scene, "TEX", $"{TextureCache.LoadedTextureCount:N0} +{TextureCache.PendingTextureCount:N0} -{TextureCache.EvictableTextureCount:N0}");
 
-        var threads = manager.ThreadManager;
         var jobs = BeginCell();
-        AddRow(jobs, "WORKERS", $"{threads.WorkerCount}");
-        AddRow(jobs, "QUEUED", $"{threads.CurrentQueuedJobs:N0}", threads.CurrentQueuedJobs > 0 ? Severity.Warn : Severity.None);
-        AddRow(jobs, "DONE", $"{threads.TotalJobsProcessed:N0}");
+        AddRow(jobs, "WORKERS", $"{ThreadManager.WorkerCount}");
+        AddRow(jobs, "QUEUED", $"{ThreadManager.CurrentQueuedJobs:N0}", ThreadManager.CurrentQueuedJobs > 0 ? Severity.Warn : Severity.None);
+        AddRow(jobs, "DONE", $"{ThreadManager.TotalJobsProcessed:N0}");
     }
 
     private void Measure()

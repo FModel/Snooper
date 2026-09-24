@@ -406,7 +406,7 @@ public class LogWidget : PanelWidget
     private static string LevelIcon(LogEventLevel level) => level switch
     {
         LogEventLevel.Fatal or LogEventLevel.Error => "\uf057",  // circle-xmark
-        LogEventLevel.Warning => "\uf071",  // triangle-exclamation
+        LogEventLevel.Warning => Settings.TriangleExclamationIcon,  // triangle-exclamation
         LogEventLevel.Information => "\uf05a",  // circle-info
         LogEventLevel.Debug => "\uf188",  // bug
         _ => "\uf5dc"   // brain

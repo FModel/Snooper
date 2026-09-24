@@ -101,6 +101,18 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     private bool _clustersDirty = true;
     private Matrix4x4 _lastClusterProjection;
 
+    public bool UseSceneLights
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+
+            field = value;
+            DirectionalLight?.SetVisibility(!value);
+        }
+    }
+
     internal DirectionalLightComponent? DirectionalLight
     {
         get;
@@ -110,7 +122,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
 
             if (field != null) field.SetVisibility(false);
             field = value;
-            if (field != null) field.SetVisibility(true);
+            if (field != null) field.SetVisibility(!UseSceneLights);
         }
     }
 
@@ -133,12 +145,12 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
 
         _lightCullingProgram.Generate();
         _lightCullingProgram.Link();
-
-        IsEnabled = false;
     }
 
     protected override void OnExecute(CameraComponent camera)
     {
+        if (!UseSceneLights) return;
+
         if (ConsumeClustersDirty(camera))
         {
             using (Profiler.Gpu("Build")) BuildClusters(camera);
@@ -190,7 +202,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         }
 
         _lightCullingProgram.Use();
-        _lightCullingProgram.SetUniform("uLightCount", _lightDataBuffer.Capacity);
+        _lightCullingProgram.SetUniform("uLightCount", _lightDataBuffer.Extent);
         _lightCullingProgram.SetUniform("uGridDimX", GridDimensionX);
         _lightCullingProgram.SetUniform("uGridDimY", GridDimensionY);
         _lightCullingProgram.SetUniform("uGridDimZ", GridDimensionZ);
@@ -217,11 +229,11 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         }
     }
 
-    protected override void OnActorComponentEnqueued(LightComponent component)
+    protected override void OnActorComponentAdded(LightComponent component)
     {
-        base.OnActorComponentEnqueued(component);
+        base.OnActorComponentAdded(component);
 
-        if (component is DirectionalLightComponent { CastShadows: true } dirLight)
+        if (DirectionalLight == null && component is DirectionalLightComponent { CastShadows: true } dirLight)
         {
             DirectionalLight = dirLight;
         }

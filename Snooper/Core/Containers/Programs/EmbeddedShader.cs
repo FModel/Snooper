@@ -26,7 +26,8 @@ public class EmbeddedShader(string vertex, string fragment, Assembly? assembly =
             content = string.Join("\n", Defines.Select(d => $"#define {d}")) + "\n" + content;
         }
 
-        content = string.Join('\n', "#version 460 core", "", Bindings.GlslDefines, DeviceInfo.GlslDefines, content);
+        var stageDefines = type == ShaderType.FragmentShader ? DeviceInfo.FragmentGlslDefines : string.Empty;
+        content = string.Join('\n', "#version 460 core", "", Bindings.GlslDefines, DeviceInfo.GlslDefines, stageDefines, content);
 
         return base.CompileShader(type, content);
     }

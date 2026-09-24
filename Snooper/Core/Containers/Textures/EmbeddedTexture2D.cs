@@ -27,7 +27,7 @@ public class EmbeddedTexture2D(string file,
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
 
-        OnTextureReadyForBindless();
+        IsReadyForBindless = true;
     }
 
     private void ProcessPixels(TextureFormatInfo info)

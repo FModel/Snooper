@@ -36,6 +36,6 @@ void main()
     gPosition = (uViewMatrix * vec4(hit.position, 1.0)).xyz;
     gNormal = mat3(uViewMatrix) * vec3(0.0, 1.0, 0.0); // the plane always faces straight up
     gColor = vec4(color.rgb * uColor, 1.0);
-    gSpecular = vec4(0.0, uMetallic, uRoughness, 1.0);
+    gSpecular = vec4(0.5, uMetallic, uRoughness, 1.0);
     gPicking = 0u;
 }

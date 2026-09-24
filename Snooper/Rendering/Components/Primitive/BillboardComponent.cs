@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
-using CUE4Parse.UE4.Assets.Exports.Texture;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
@@ -90,8 +89,8 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
 
         public void FinalizeGpuData()
         {
-            if (Raw is not null)
-                throw new InvalidOperationException("GPU data has already been finalized and sent.");
+            // if (Raw is not null)
+            //     throw new InvalidOperationException("GPU data has already been finalized and sent.");
 
             if (_sprite is null)
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");

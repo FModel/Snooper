@@ -63,12 +63,12 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         return _sections.AddRange(offsets);
     }
 
-    public BufferAllocation Add(PerMeshData mesh, PrimitiveOffsets lods)
+    public (BufferAllocation Mesh, BufferAllocation Primitives) Add(PerMeshData mesh, PrimitiveOffsets lods)
     {
         var meshAllocation = _meshes.Add(mesh);
         var lodAllocation = _primitives.Add(lods);
         Debug.Assert(meshAllocation.StartIndex == lodAllocation.StartIndex, "PerMeshData and PrimitiveOffsets buffers must stay index-aligned.");
-        return meshAllocation;
+        return (meshAllocation, lodAllocation);
     }
 
     public void UpdateOverrideLod(BufferAllocation allocation, int overrideLod)
@@ -84,8 +84,8 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
     public void Cull<TInstanceData>(ReadOnlySpan<CullView> views, ShaderStorageBuffer<TInstanceData> instances, IndirectDrawBuffer commands) where TInstanceData : unmanaged, IPerInstanceData
     {
-        var viewCount = Math.Min(views.Length, commands.ViewCount);
-        if (viewCount <= 0 || commands.Capacity == 0) return;
+        var viewCount = Math.Min(views.Length, commands.MaskViewIndex);
+        if (commands.Extent == 0) return;
 
         for (var i = 0; i < viewCount; i++)
         {
@@ -107,6 +107,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _compute.SetUniform("uLodReference", _lodReferences);
         _compute.SetUniform("uLodOrthoExtent", _lodOrthoExtents);
         _compute.SetUniform("uViewCount", (uint) viewCount);
+        _compute.SetUniform("uMaskView", (uint) commands.MaskViewIndex);
         _compute.SetUniform("uViewCapacity", (uint) commands.Capacity);
 
         commands.Commands.Bind(CullingBindings.DrawCommands);
@@ -117,20 +118,17 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _primitives.Bind(CullingBindings.CullLodData);
         _sections.Bind(CullingBindings.CullSections);
 
-        GL.DispatchCompute(commands.Capacity, viewCount, 1);
+        GL.DispatchCompute(commands.Extent, commands.ViewCount, 1);
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
         _compute.Unuse();
     }
 
-    public void Remove(int index)
+    public void Remove(BufferAllocation mesh, BufferAllocation primitives, List<BufferAllocation> sections)
     {
-        // _primitives.Bind();
-        // _primitives.Remove();
-        // _primitives.Unbind();
-        //
-        // _sections.Bind();
-        // _sections.Remove();
-        // _sections.Unbind();
+        _meshes.Remove(mesh);
+        _primitives.Remove(primitives);
+        foreach (var allocation in sections)
+            _sections.Remove(allocation);
     }
 
     public void Dispose()

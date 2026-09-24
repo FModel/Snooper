@@ -18,7 +18,6 @@ public class InspectorWidget : PanelWidget
     public override string PanelTitle => Settings.InspectorWindow;
     public override PanelGroup Group => PanelGroup.Editor;
 
-    private const string WarnIcon   = "\uf071";
     private const string FileIcon   = "\uf1c9";
     private const string SearchIcon = "\uf002";
 
@@ -57,6 +56,7 @@ public class InspectorWidget : PanelWidget
         DrawSearchBar();
 
         ImGui.SeparatorText($"{actor.Name} ({actor.Class ?? "N/A"} - {componentCount} Component{(componentCount != 1 ? "s" : "")})");
+        actor.DrawControls();
         DrawClippedTree(actor);
 
         (selectedComponent ?? actor.RootComponent)?.DrawControls();
@@ -166,7 +166,7 @@ public class InspectorWidget : PanelWidget
         else ImGui.SetNextItemOpen(component.IsNodeOpen, ImGuiCond.Always);
 
         if (warn) ImGui.PushStyleColor(ImGuiCol.Text, Settings.OrangeColor);
-        var nodeOpen = ImGui.TreeNodeEx("##Component", flags, $"{(warn ? $"{WarnIcon}  " : "")}{component.Icon}  {component.Name}");
+        var nodeOpen = ImGui.TreeNodeEx("##Component", flags, $"{(warn ? $"{Settings.TriangleExclamationIcon}  " : "")}{component.Icon}  {component.Name}");
         component.IsNodeOpen = nodeOpen;
         if (warn) ImGui.PopStyleColor();
 
@@ -235,7 +235,7 @@ public class InspectorWidget : PanelWidget
                 if (warn)
                 {
                     ImGui.PushStyleColor(ImGuiCol.Text, Settings.OrangeColor);
-                    ImGui.TextUnformatted($"{WarnIcon}  Orphaned component not attached to the tree.");
+                    ImGui.TextUnformatted($"{Settings.TriangleExclamationIcon}  Orphaned component not attached to the tree.");
                     ImGui.PopStyleColor();
                     ImGui.Separator();
                 }

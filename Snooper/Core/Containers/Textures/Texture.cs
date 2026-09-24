@@ -16,6 +16,8 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
 
     public int Width { get; protected set; }
     public int Height { get; protected set; }
+    public int MipCount { get; private set; } = 1;
+    public bool IsReadyForBindless { get; protected set; }
 
     protected ITextureFormatInfo FormatInfo
     {
@@ -71,25 +73,34 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
         GL.BindTextureUnit(unit, Handle);
     }
 
-    protected abstract void SetStorage(int levels);
-    protected abstract void SetPixels<T8>(T8[] pixels) where T8 : unmanaged;
+    public abstract void Prepare();
+    protected abstract void SetStorage();
+    protected abstract void SetPixels<T8>(int mip, int width, int height, T8[] pixels) where T8 : unmanaged;
 
-    protected internal void Reset<T8>(int newWidth, int newHeight, T8[] pixels, bool mipmapped = false) where T8 : unmanaged
+    protected internal void Reset<T8>(int newWidth, int newHeight, T8[][] pixels, bool mipmapped = false) where T8 : unmanaged
     {
         Width = newWidth;
         Height = newHeight;
 
-        var mipCount = mipmapped ? (int) Math.Floor(Math.Log2(Math.Max(Width, Height))) + 1 : 1;
-        SetStorage(mipCount);
+        var fullChain = (int) Math.Floor(Math.Log2(Math.Max(Width, Height))) + 1;
+        MipCount = pixels.Length > 1 ? Math.Min(pixels.Length, fullChain) : mipmapped ? fullChain : 1;
+        SetStorage();
 
-        if (mipCount > 1)
+        for (var mip = 0; mip < pixels.Length && mip < MipCount; mip++)
         {
-            GL.TextureParameter(Handle, TextureParameterName.TextureBaseLevel, 0);
-            GL.TextureParameter(Handle, TextureParameterName.TextureMaxLevel, mipCount - 1);
+            SetPixels(mip, Math.Max(1, Width >> mip), Math.Max(1, Height >> mip), pixels[mip]);
         }
 
-        if (pixels.Length == 0) return;
-        SetPixels(pixels);
+        if (MipCount > 1)
+        {
+            GL.TextureParameter(Handle, TextureParameterName.TextureBaseLevel, 0);
+            GL.TextureParameter(Handle, TextureParameterName.TextureMaxLevel, MipCount - 1);
+        }
+
+        if (mipmapped && pixels.Length == 1)
+        {
+            GL.GenerateTextureMipmap(Handle);
+        }
     }
 
     public void Swizzle()
@@ -118,12 +129,6 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
         return pixel;
     }
 
-    public event Action? TextureReadyForBindless;
-    protected void OnTextureReadyForBindless()
-    {
-        TextureReadyForBindless?.Invoke();
-    }
-
     public IntPtr GetPointer() => (IntPtr)Handle;
 
     public void DrawControls()
@@ -149,10 +154,25 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
 
     public override void Dispose()
     {
+        if (Handle == 0) return;
+
         GL.DeleteTexture(Handle);
+        Handle = 0;
+        IsReadyForBindless = false;
     }
 
-    public override long Allocated => FormatInfo.GetMemorySize(Width, Height);
+    public override long Allocated
+    {
+        get
+        {
+            long total = 0;
+            for (var level = 0; level < MipCount; level++)
+            {
+                total += FormatInfo.GetMemorySize(Math.Max(1, Width >> level), Math.Max(1, Height >> level));
+            }
+            return total;
+        }
+    }
     public override long Used => Allocated;
     public string GetFormattedSpace() => Allocated.GetReadableSize();
 }

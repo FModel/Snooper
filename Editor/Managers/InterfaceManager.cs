@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.FileProvider;
 using OpenTK.Windowing.Desktop;
-using Serilog;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 
@@ -31,8 +30,6 @@ public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvide
             if (scrollTo) root.ShouldScrollHere = true;
         }
 
-        actor.SetOutlined(true);
-
         Log.Debug("Selected Actor: {ActorName}", actor.Name);
         OnSelectionChanged(SelectedActor, SelectedComponent);
     }
@@ -47,14 +44,10 @@ public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvide
         if (component == null) return;
 
         component.IsNodeSelected = true;
-        if (scrollTo) component.ShouldScrollHere = true;
-        component.SetOutlined(true);
-
-        // select the owning actor so the scene hierarchy highlights it.
-        if (component.Actor is { } actor)
+        if (scrollTo)
         {
-            actor.IsNodeSelected = true;
-            if (scrollTo) actor.ShouldScrollHere = true;
+            component.ShouldScrollHere = true;
+            component.Actor?.ShouldScrollHere = true;
         }
 
         Log.Debug("Selected Component ID: {ComponentId}", component.Id);
@@ -74,7 +67,6 @@ public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvide
                 root.ShouldScrollHere = false;
             }
 
-            SelectedActor.SetOutlined(false);
             SelectedActor = null;
         }
 
@@ -82,15 +74,7 @@ public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvide
         {
             SelectedComponent.IsNodeSelected = false;
             SelectedComponent.ShouldScrollHere = false;
-            SelectedComponent.SetOutlined(false);
-
-            // actor was marked selected by SelectComponent
-            if (SelectedComponent.Actor is { } actor)
-            {
-                actor.IsNodeSelected = false;
-                actor.ShouldScrollHere = false;
-            }
-
+            SelectedComponent.Actor?.ShouldScrollHere = false;
             SelectedComponent = null;
         }
     }

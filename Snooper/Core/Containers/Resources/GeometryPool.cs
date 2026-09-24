@@ -62,6 +62,48 @@ public readonly struct VertexArrayLayout
     }
 }
 
+public sealed class CachedGeometry : IMemorySizeProvider
+{
+    public readonly string Name;
+    public readonly FGuid Guid;
+    public readonly GeometryHandle Handle;
+
+    internal readonly BufferAllocation _primitives;
+    internal readonly List<BufferAllocation> _indices;
+    internal readonly List<BufferAllocation> _vertices;
+    internal readonly List<BufferAllocation> _colors;
+    internal readonly List<BufferAllocation> _sections;
+
+    public int RefCount { get; internal set; }
+    public int LodCount => _indices.Count;
+    public int GetIndexCount(int lod) => _indices[lod].Length;
+    public int GetVertexCount(int lod) => _vertices[lod].Length;
+
+    public long Allocated { get; }
+    public long Used => Allocated;
+
+    public CachedGeometry(string name, FGuid guid, GeometryHandle handle, BufferAllocation primitives,
+        List<BufferAllocation> indices, List<BufferAllocation> vertices, List<BufferAllocation> colors,
+        List<BufferAllocation> sections, int indexStride, int vertexStride, int colorStride)
+    {
+        Name = name;
+        Guid = guid;
+        Handle = handle;
+
+        _primitives = primitives;
+        _indices = indices;
+        _vertices = vertices;
+        _colors = colors;
+        _sections = sections;
+
+        RefCount = 1;
+        Allocated =
+            indices.Sum(x => (long) x.Length) * indexStride +
+            vertices.Sum(x => (long) x.Length) * vertexStride +
+            colors.Sum(x => (long) x.Length) * colorStride;
+    }
+}
+
 public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where TVertex : unmanaged
 {
     private readonly VertexArray _vao = new();
@@ -70,7 +112,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     private readonly ShaderStorageBuffer<int> _colors = new();
     private readonly CullingResources _culling = new();
 
-    private readonly Dictionary<FGuid, GeometryHandle> _cache = new();
+    private readonly Dictionary<FGuid, CachedGeometry> _cache = new();
     private Action<VertexArrayLayout>? _vertexLayoutSetter;
 
     public void Generate()
@@ -110,13 +152,22 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
     {
         var lods = descriptor.Lods;
 
-        if (!_cache.TryGetValue(descriptor.Guid, out var handle))
+        if (_cache.TryGetValue(descriptor.Guid, out var cached))
         {
-            var (firstIndex, baseVertex, baseColor, maxLod, offsets) = CreateOffsets();
-            var mesh = new PerMeshData(descriptor.Bounds, maxLod, descriptor.ColorMode);
-            handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(mesh, offsets), baseColor, lods.Length > 1 ? -1 : 0);
-            _cache.Add(descriptor.Guid, handle);
+            cached.RefCount++;
+            return cached.Handle;
         }
+
+        var indices = new List<BufferAllocation>();
+        var vertices = new List<BufferAllocation>();
+        var colors = new List<BufferAllocation>();
+        var sections = new List<BufferAllocation>();
+
+        var (firstIndex, baseVertex, baseColor, maxLod, offsets) = CreateOffsets();
+        var mesh = new PerMeshData(descriptor.Bounds, maxLod, descriptor.ColorMode);
+        var (meshAllocation, primitivesAllocation) = _culling.Add(mesh, offsets);
+        var handle = new GeometryHandle(firstIndex, baseVertex, meshAllocation, baseColor, lods.Length > 1 ? -1 : 0);
+        _cache.Add(descriptor.Guid, new CachedGeometry(descriptor.Name ?? Settings.NoName, descriptor.Guid, handle, primitivesAllocation, indices, vertices, colors, sections, _ebo.Stride, _vbo.Stride, _colors.Stride));
 
         return handle;
 
@@ -126,22 +177,31 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
             var o = new PrimitiveOffsets();
             for (var i = 0; i < lods.Length && i < Settings.MaxNumberOfLods; i++)
             {
-                var primitive = lods[i].CreatePrimitive();
+                var primitive = lods[i].CreatePrimitive(); // cached, already created by MeshComponent.BeginPlay
                 if (primitive.Vertices is not { Length: > 0 } || primitive.Indices is not { Length: > 0 })
                 {
                     continue;
                     // throw new InvalidOperationException("Primitive data is not valid.");
                 }
 
-                o.LOD_FirstIndex[i] = (uint)_ebo.AddRange(primitive.Indices).StartIndex;
-                o.LOD_BaseVertex[i] = (uint)_vbo.AddRange(primitive.Vertices).StartIndex;
+                var indexAllocation = _ebo.AddRange(primitive.Indices);
+                var vertexAllocation = _vbo.AddRange(primitive.Vertices);
+                var sectionAllocation = _culling.Add(lods[i].Sections);
+                indices.Add(indexAllocation);
+                vertices.Add(vertexAllocation);
+                sections.Add(sectionAllocation);
+
+                o.LOD_FirstIndex[i] = (uint)indexAllocation.StartIndex;
+                o.LOD_BaseVertex[i] = (uint)vertexAllocation.StartIndex;
                 o.LOD_ScreenSize[i] = lods[i].ScreenSize;
                 o.LOD_SectionCount[i] = (uint)lods[i].Sections.Length;
-                o.LOD_SectionOffset[i] = (uint)_culling.Add(lods[i].Sections).StartIndex;
+                o.LOD_SectionOffset[i] = (uint)sectionAllocation.StartIndex;
 
-                if (primitive.Colors is { Length: > 0 } colors)
+                if (primitive.Colors is { Length: > 0 })
                 {
-                    o.LOD_BaseColor[i] = (uint)_colors.AddRange(colors).StartIndex;
+                    var colorAllocation = _colors.AddRange(primitive.Colors);
+                    colors.Add(colorAllocation);
+                    o.LOD_BaseColor[i] = (uint)colorAllocation.StartIndex;
                 }
 
                 maxLod++;
@@ -173,11 +233,15 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
     public void UpdateOverrideLod(GeometryHandle handle) => _culling.UpdateOverrideLod(handle.MeshAllocation, handle.OverrideLod);
 
-    public void Remove(GeometryHandle handle)
+    public void Remove(FGuid guid)
     {
-        // TODO: do this properly
-        // we need to keep track of all allocations made for this handle
-        // + this whole thing is cached, so we need to remove the handle only if it's the last reference
+        if (!_cache.TryGetValue(guid, out var cached) || --cached.RefCount > 0) return;
+
+        _cache.Remove(guid);
+        foreach (var allocation in cached._indices) _ebo.Remove(allocation);
+        foreach (var allocation in cached._vertices) _vbo.Remove(allocation);
+        foreach (var allocation in cached._colors) _colors.Remove(allocation);
+        _culling.Remove(cached.Handle.MeshAllocation, cached._primitives, cached._sections);
     }
 
     public void Dispose()

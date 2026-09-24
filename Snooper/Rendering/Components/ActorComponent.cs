@@ -191,20 +191,17 @@ public abstract class ActorComponent : TreeNode
     }
 
     public override string Icon => "\uf111";
-    public override void SetOutlined(bool state)
-    {
-        IsOutlined = state;
-        // TODO: we could get rid of the backing field, if we trigger a mask buffer clear another way
-    }
     public override bool ShouldScrollHere { get; set; }
-    public bool IsOutlined
+    public bool IsOutlined => IsNodeSelected || Actor?.IsOutlined == true;
+    public override bool IsNodeSelected
     {
-        get;
-        private set
+        get => base.IsNodeSelected;
+        set
         {
-            if (field == value) return;
+            if (base.IsNodeSelected == value) return;
 
-            field = value;
+            base.IsNodeSelected = value;
+            Actor?.HasSelectedComponent = value;
             MarkDirty(DirtyFlags.Outline);
         }
     }

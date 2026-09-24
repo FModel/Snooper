@@ -41,7 +41,8 @@ uniform vec4 uFrustumPlanes[MAX_CULLING_VIEWS * 6];
 uniform vec4 uLodReference[MAX_CULLING_VIEWS];
 uniform float uLodOrthoExtent[MAX_CULLING_VIEWS]; // > 0 marks the view orthographic, and is its half-width in world units
 
-uniform uint uViewCount;
+uniform uint uViewCount; // the views to cull, 0 the camera's, the rest shadow views
+uniform uint uMaskView; // the outlined draws only, seen from view 0
 uniform uint uViewCapacity;
 
 bool isVisible(uint planeBase, vec3 center, vec3 extents)
@@ -86,15 +87,18 @@ void main()
     uint threadId = gl_LocalInvocationID.x;
     uint threadCount = gl_WorkGroupSize.x;
 
-    if (drawId >= uViewCapacity || view >= uViewCount) return;
+    bool maskView = view == uMaskView;
+    bool shadowView = !maskView && view != 0u;
+    if (drawId >= uViewCapacity || (!maskView && view >= uViewCount)) return;
 
+    bool trustBounds = uViewCount > 0u; // if we call this with uViewCount == 0, we don't trust the bounds, won't cull anything, and lod will stay at what the upload set was
+    uint cullView = maskView ? 0u : view;
     uint slot = view * uViewCapacity + drawId;
-    uint planeBase = view * 6u;
-    bool shadowView = view != 0u;
+    uint planeBase = cullView * 6u;
 
     PerDrawStatic draw = uDrawStatic[drawId];
 
-    if (shadowView && draw.CastShadow == 0u)
+    if ((shadowView && draw.CastShadow == 0u) || (maskView && draw.Outlined == 0u))
     {
         uDrawCommandBuffer[slot].InstanceCount = 0;
         return;
@@ -105,9 +109,9 @@ void main()
     uint instanceCount = draw.OriginalInstanceCount;
     uint baseInstance = draw.OriginalBaseInstance;
 
-    vec3 lodRefPos = uLodReference[view].xyz;
-    float lodScale = uLodReference[view].w;
-    float lodOrthoExtent = uLodOrthoExtent[view];
+    vec3 lodRefPos = uLodReference[cullView].xyz;
+    float lodScale = uLodReference[cullView].w;
+    float lodOrthoExtent = uLodOrthoExtent[cullView];
 
     uint localMin = 0xFFFFFFFFu;
     uint localMax = 0;
@@ -120,14 +124,10 @@ void main()
 
         vec3 worldCenter = (modelMatrix * vec4(mesh.Center, 1.0)).xyz;
         mat3 m = mat3(modelMatrix);
-        vec3 worldExtents = vec3(
-            dot(abs(m[0]), mesh.Extents),
-            dot(abs(m[1]), mesh.Extents),
-            dot(abs(m[2]), mesh.Extents)
-        );
+        vec3 worldExtents = abs(m[0]) * mesh.Extents.x + abs(m[1]) * mesh.Extents.y + abs(m[2]) * mesh.Extents.z;
 
         float dist = length(lodRefPos - worldCenter);
-        if (isVisible(planeBase, worldCenter, worldExtents) && isWithinDrawDistance(draw.MinDrawDistance, draw.MaxDrawDistance, dist))
+        if (!trustBounds || (isVisible(planeBase, worldCenter, worldExtents) && isWithinDrawDistance(draw.MinDrawDistance, draw.MaxDrawDistance, dist)))
         {
             localMin = min(localMin, j);
             localMax = max(localMax, j);
@@ -173,7 +173,7 @@ void main()
         newCmd.InstanceCount = sMaxVisible[0] - sMinVisible[0] + 1;
 
         uint chosenLod = 0u;
-        if (mesh.MaxLOD > 0u)
+        if (mesh.MaxLOD > 0u && trustBounds)
         {
             // Check if LOD override is set (>= 0)
             if (mesh.OverrideLod >= 0)

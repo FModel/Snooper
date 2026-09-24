@@ -105,10 +105,9 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override int DirtyComponentsCount => DirtyComponents.Count;
     public override uint? MaxBindingUsed => null;
 
-    protected bool ClearMaskBuffer { get; private set; } = false;
-
     protected HashSet<TComponent> Components { get; } = [];
     protected HashSet<TComponent> DirtyComponents { get; } = [];
+    protected IEnumerable<TComponent> PendingComponents => _componentsToLoad.Where(component => component.Scene == ActorManager);
 
     protected override void OnLoad()
     {
@@ -124,18 +123,27 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 
     protected override void OnUpdate(float delta)
     {
-        DequeueComponents(5);
-        if (DirtyComponents.Count == 0) return;
+        var budget = ActorManager?.Budget;
+        var dequeued = 0;
 
-        var components = DirtyComponents.ToArray();
-        DirtyComponents.Clear();
-
-        PreOnUpdate(components);
-        foreach (var component in components)
+        while (true)
         {
-            OnComponentUpdate(component, delta);
+            // pending components join the dirty set one at a time while the frame budget lasts, at least one per frame
+            // so a queue always drains even when a single component is worth more than the whole budget
+            if (_componentsToLoad.Count > 0 && (dequeued == 0 || budget?.Exhausted != true))
+                dequeued += DequeueComponents(1);
+
+            if (DirtyComponents.Count == 0) return;
+
+            var components = DirtyComponents.ToArray();
+            DirtyComponents.Clear();
+            foreach (var component in components)
+            {
+                OnComponentUpdate(component, delta);
+            }
+
+            if (_componentsToLoad.Count == 0 || budget?.Exhausted != false) return;
         }
-        PostOnUpdate();
     }
 
     protected sealed override void OnRegisterComponent(ActorComponent component, Actor actor)
@@ -156,7 +164,6 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         }
 
         _componentsToLoad.Enqueue(actorComponent);
-        OnActorComponentEnqueued(actorComponent);
 
         Log.Verbose("Took {Component} of {Actor}, {Enqueued} waiting", actorComponent.Name, actor.Name, EnqueuedComponentsCount);
     }
@@ -179,11 +186,6 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 
     public IEnumerable<T> GetComponents<T>() where T : TComponent => Components.OfType<T>();
 
-    protected virtual void OnActorComponentEnqueued(TComponent component)
-    {
-
-    }
-
     protected virtual void OnActorComponentAdded(TComponent component)
     {
         component.OnRequestSystemUpdate += OnComponentRequestUpdate;
@@ -196,19 +198,9 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         DirtyComponents.Remove(component);
     }
 
-    protected virtual void PreOnUpdate(TComponent[] components)
-    {
-
-    }
-
     protected virtual void OnComponentUpdate(TComponent component, float delta)
     {
 
-    }
-
-    protected virtual void PostOnUpdate()
-    {
-        ClearMaskBuffer = false;
     }
 
     private void OnComponentRequestUpdate(ActorComponent component)
@@ -219,22 +211,17 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
         if (Components.Contains(actorComponent))
         {
             DirtyComponents.Add(actorComponent);
-
-            if (actorComponent.IsDirty(DirtyFlags.Outline))
-            {
-                ClearMaskBuffer = true;
-            }
         }
     }
 
     private readonly Queue<TComponent> _componentsToLoad = [];
-    private void DequeueComponents(int limit = 0)
+    private int DequeueComponents(int limit = 0)
     {
         var count = 0;
         while (_componentsToLoad.Count > 0 && (limit == 0 || count < limit))
         {
             var component = _componentsToLoad.Dequeue();
-            if (component.Scene != ActorManager) continue; // it may have ended play while it waited its turn
+            if (component.Scene != ActorManager) continue; // it ended play while it waited its turn
 
             if (Components.Add(component))
             {
@@ -242,5 +229,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
             }
             count++;
         }
+
+        return count;
     }
 }

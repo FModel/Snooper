@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using CUE4Parse.UE4.Objects.Core.Misc;
+﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core;
 using Snooper.Core.Containers;
@@ -32,6 +31,12 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     {
         base.OnLoad();
 
+        var seen = new HashSet<FGuid>();
+        foreach (var component in PendingComponents)
+        {
+            Count(component, seen.Add(component.Descriptor.Guid));
+        }
+
         Resources.Generate();
         Resources.Allocate(Counts);
 
@@ -43,16 +48,6 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         base.OnUpdate(delta);
 
         Resources.Flush();
-    }
-
-    protected override void PreOnUpdate(TComponent[] components)
-    {
-        base.PreOnUpdate(components);
-
-        if (ClearMaskBuffer)
-            Resources.ClearMaskBuffer();
-
-        Resources.BeginDeferMerge();
     }
 
     protected override void OnComponentUpdate(TComponent component, float delta)
@@ -88,19 +83,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             // material containers and textures are CPU cached globally, but duplicated on the GPU, per section, per component, per system...
 
             material.OnContainerReady += Resources.Update;
-            material.OnMaterialDataContainerSet += section =>
-            {
-                TextureCache.Add(section);
-                component.IsOpaque &= !section.IsTranslucent;
-            };
+            material.OnMaterialDataContainerSet += TextureCache.Add;
         }
-    }
-
-    protected override void PostOnUpdate()
-    {
-        base.PostOnUpdate();
-
-        Resources.EndDeferMerge();
     }
 
     private (uint Binding, IIndexedBind Buffer)[]? _systemBuffers;
@@ -122,11 +106,11 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         using (Scope())
         using (Profiler.Sample(DisplayName))
         {
-            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
             OnRender(camera, type);
-            if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
         }
     }
+
+    public abstract void RenderMask(CameraComponent camera);
 
     protected virtual void OnRender(CameraComponent camera, CommandBufferType type)
     {
@@ -138,27 +122,22 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         public uint RefCount;
         public int? UploadedBy; // save who actually uploaded the gpu mesh data in GeometryPool
     }
-    protected ConcurrentDictionary<FGuid, MeshEntry> Meshes { get; } = [];
+    protected Dictionary<FGuid, MeshEntry> Meshes { get; } = [];
 
     protected AllocationCounts Counts => field ??= CreateCounts();
     protected virtual AllocationCounts CreateCounts() => new();
 
-    protected override void OnActorComponentEnqueued(TComponent component)
+    protected virtual void Count(TComponent component, bool first)
     {
-        base.OnActorComponentEnqueued(component);
-
         Counts.Components++;
         Counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
         if (component.Descriptor.Lods.Length > 0)
             Counts.Draws += (uint)component.Descriptor.Lods[0].Sections.Length;
         Counts.Materials += (uint)component.Materials.Length;
 
-        var entry = Meshes.GetOrAdd(component.Descriptor.Guid, _ => new MeshEntry());
-        if (entry.RefCount++ > 0) return;
+        if (!first) return;
 
-        // past this point, we know that this is the first time this mesh has been added to the system
         Counts.UniqueComponents++;
-
         foreach (var lod in component.Descriptor.Lods)
         {
             Counts.Sections += (uint)lod.Sections.Length;
@@ -169,29 +148,29 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         }
     }
 
+    protected override void OnActorComponentAdded(TComponent component)
+    {
+        base.OnActorComponentAdded(component);
+
+        var guid = component.Descriptor.Guid;
+        if (!Meshes.TryGetValue(guid, out var entry))
+        {
+            Meshes[guid] = entry = new MeshEntry();
+        }
+
+        entry.RefCount++;
+    }
+
     protected override void OnActorComponentRemoved(TComponent component, EEndPlayReason reason)
     {
         base.OnActorComponentRemoved(component, reason);
 
-        // not used ig
-        Counts.Components--;
-        Counts.Instances -= component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
-        if (component.Descriptor.Lods.Length > 0)
-            Counts.Draws -= (uint)component.Descriptor.Lods[0].Sections.Length;
-        Counts.Materials -= (uint)component.Materials.Length;
-
-        if (Meshes.TryGetValue(component.Descriptor.Guid, out var entry) && --entry.RefCount == 0)
+        foreach (var material in component.Materials)
         {
-            Counts.UniqueComponents--;
-
-            foreach (var lod in component.Descriptor.Lods)
-            {
-                Counts.Sections -= (uint)lod.Sections.Length;
-                Counts.Indices -= lod.IndexCount;
-                Counts.Vertices -= lod.VertexCount;
-
-                if (lod.HasColoredVertices) Counts.ColoredVertices -= lod.VertexCount;
-            }
+            material.OnContainerReady -= Resources.Update;
+            material.OnMaterialDataContainerSet -= TextureCache.Add;
+            if (reason is EEndPlayReason.Destroyed)
+                TextureCache.Release(material);
         }
 
         // only a component leaving on its own gives its slot back: on a scene swap or a shutdown the
@@ -201,6 +180,12 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             Resources.Remove(component);
         }
         component.Metadata = null;
+
+        var guid = component.Descriptor.Guid;
+        if (Meshes.TryGetValue(guid, out var entry) && --entry.RefCount == 0)
+        {
+            Meshes.Remove(guid);
+        }
     }
 
     public override void Dispose()

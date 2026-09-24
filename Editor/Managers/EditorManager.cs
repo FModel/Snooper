@@ -5,6 +5,7 @@ using OpenTK.Windowing.Desktop;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Editor.Widgets;
+using Editor.Widgets.Cache;
 using Editor.Widgets.Timeline;
 using Snooper;
 using Snooper.UI;
@@ -25,6 +26,8 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         new LogWidget(),
         new WorldSettingsWidget(),
         new SystemsWidget(),
+        new CacheWidget(),
+        new WireframeWidget(),
         new ContentWidget(),
         new MorphTargetWidget(),
         _materialEditor,

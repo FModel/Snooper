@@ -213,7 +213,7 @@ public class SceneHierarchyWidget : PanelWidget
         var hasChildren = actor.Children.Count > 0 && !isSearching;
         var flags = ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.AllowOverlap |
                     ImGuiTreeNodeFlags.SpanFullWidth | ImGuiTreeNodeFlags.FramePadding;
-        if (actor.IsNodeSelected) flags |= ImGuiTreeNodeFlags.Selected;
+        if (actor.IsHighlighted) flags |= ImGuiTreeNodeFlags.Selected;
         if (!hasChildren) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
         else ImGui.SetNextItemOpen(actor.IsNodeOpen, ImGuiCond.Always);
 
@@ -228,9 +228,16 @@ public class SceneHierarchyWidget : PanelWidget
             ImGui.TextDisabled(actor.Name);
             ImGui.Separator();
 
-            if (actor is StreamableActor { IsLoaded: false } sa && ImGui.MenuItem("\uf019  Load Actor"))
+            if (actor is StreamableActor sa)
             {
-                sa.Load();
+                if (!sa.IsLoaded && ImGui.MenuItem($"{Settings.DownloadIcon}  Load Actor"))
+                {
+                    sa.Load();
+                }
+                if (sa.IsLoaded && ImGui.MenuItem($"{Settings.EjectIcon}  Unload Actor"))
+                {
+                    sa.Unload();
+                }
             }
             if (actor.RootComponent is SkeletalMeshComponent sk) AssetRequestMenu.Animation(sk);
             if (actor.RootComponent is DirectionalLightComponent dirLight)
@@ -298,10 +305,10 @@ public class SceneHierarchyWidget : PanelWidget
         ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
         if (actor is StreamableActor { IsLoaded: false } sa2)
         {
-            var icon = sa2.IsLoading ? "\uf110" : "\uf019";
+            var icon = sa2.IsLoading ? Settings.SpinnerIcon : "\uf019";
             var btnW = ImGui.CalcTextSize(icon).X + style.FramePadding.X * 2;
             ImGui.SameLine(rightEdge - btnW);
-            ImGui.BeginDisabled(sa2.IsLoading);
+            ImGui.BeginDisabled(!sa2.CanLoad);
             if (ImGui.Button(icon)) sa2.Load();
             ImGui.EndDisabled();
         }
@@ -341,7 +348,7 @@ public class SceneHierarchyWidget : PanelWidget
         foreach (var actor in actors)
         {
             if (!actor.ShouldScrollHere) continue;
-            if (actor.IsNodeSelected) return actor;
+            if (actor.IsHighlighted) return actor;
 
             if (FindScrollTarget(actor.Children) is { } found)
                 return found;

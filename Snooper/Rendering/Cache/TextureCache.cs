@@ -1,235 +1,399 @@
 ﻿using CUE4Parse.UE4.Objects.Core.Misc;
 using Serilog;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
+using Snooper.Core.Managers;
 using Snooper.Rendering.Components.Descriptors;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Snooper.Rendering.Cache;
 
+/// <summary>
+/// Owns every texture that lives on the GPU, and tells a material section when its container is ready to draw with.
+/// </summary>
 public static class TextureCache
 {
     private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(TextureCache));
 
-    private static int _totalTexturesRequested;
-
-    public static int LoadedTextureCount => _bindless.Count;
-    public static int PendingTextureCount => _loadQueue.Count;
-    public static bool IsLoading => PendingTextureCount > 0;
-
-    public static float LoadingProgress
+    internal sealed class TextureEntry(Texture texture)
     {
-        get
-        {
-            if (!IsLoading) return 1f;
-            if (_totalTexturesRequested == 0) return 1f;
-            return (float)LoadedTextureCount / _totalTexturesRequested;
-        }
+        public readonly Texture Texture = texture;
+        public BindlessTexture? Bindless; // null until it is uploaded
+        public bool Failed; // could not be decoded or uploaded, a container that needs it never completes
+        public int RefCount;
+        public LinkedListNode<TextureEntry>? Evictable; // its place in line while nothing references it
+        public readonly List<(ContainerEntry Container, string Slot)> Waiting = []; // who gets the handle when it lands
     }
 
-    private static readonly ConcurrentDictionary<FGuid, BindlessTexture> _bindless = new();
-    private static readonly ConcurrentQueue<Texture> _loadQueue = new();
-    private static readonly ConcurrentDictionary<FGuid, byte> _knownGuids = new();
+    internal sealed class ContainerEntry(string key, IMaterialDataContainer container)
+    {
+        public readonly string Key = key;
+        public readonly IMaterialDataContainer Container = container;
+        public readonly List<TextureEntry> Textures = []; // each one once
+        public readonly Dictionary<int, MaterialSection> Sections = [];
+        public int Remaining; // textures it still waits for
+        public bool Completed;
+    }
 
-    private static readonly ConcurrentDictionary<FGuid, ConcurrentBag<ContainerDependency>> _dependencies = new();
-    private static readonly ConcurrentDictionary<string, ContainerLoadState> _states = new();
-    private static readonly ConcurrentDictionary<string, byte> _registeredKeys = new();
+    private readonly record struct Request(MaterialSection Section, string? Key, IMaterialDataContainer? Container);
+
+    private static readonly ConcurrentQueue<Request> _requests = new();
+    private static readonly ConcurrentQueue<(TextureEntry Entry, Exception? Error)> _decoded = new();
+
+    private static readonly Dictionary<FGuid, TextureEntry> _textures = [];
+    private static readonly Dictionary<string, ContainerEntry> _containers = [];
+    private static readonly Dictionary<int, ContainerEntry> _sections = []; // section id > the container it uses
+    private static readonly Queue<MaterialSection> _ready = new(); // sections to tell their container is complete
+    private static readonly LinkedList<TextureEntry> _evictable = []; // least recently released first
+
+    public const long TextureBudgetBytes = 2L * 1024 * 1024 * 1024; // resident texture memory before unreferenced textures get evicted
+    private static int _pending;
+    private static int _resident;
+
+    private const int MinReportedBatch = 8;
+    private static int _batchTotal;
+    private static int _batchDone;
+
+    public static int LoadedTextureCount => _resident;
+    public static int PendingTextureCount => _pending;
+    public static int UploadQueueCount => _decoded.Count;
+    public static int EvictableTextureCount => _evictable.Count;
+    public static bool IsLoading => _pending > 0;
+    public static long ResidentBytes { get; private set; }
+
+    public static float LoadingProgress => _batchTotal > 0 ? (float) _batchDone / _batchTotal : 1f;
+
+    internal static IReadOnlyCollection<TextureEntry> Textures => _textures.Values;
+    internal static IReadOnlyCollection<ContainerEntry> Containers => _containers.Values;
+    internal static int NotifyQueueCount => _ready.Count;
 
     public static IEnumerable<Texture> GetLoaded()
     {
-        foreach (var bindless in _bindless.Values)
-            yield return bindless.Texture;
+        foreach (var entry in _textures.Values)
+        {
+            if (entry.Bindless is not null)
+                yield return entry.Texture;
+        }
     }
-    public static bool TryGetBindless(FGuid guid, [MaybeNullWhen(false)] out BindlessTexture bindless) => _bindless.TryGetValue(guid, out bindless);
+
+    public static bool TryGetBindless(FGuid guid, [MaybeNullWhen(false)] out BindlessTexture bindless)
+    {
+        bindless = _textures.TryGetValue(guid, out var entry) ? entry.Bindless : null;
+        return bindless is not null;
+    }
 
     public static void Add(MaterialSection section)
     {
         var cacheKey = section.CacheKey;
+        var inline = string.IsNullOrEmpty(cacheKey);
 
-        if (string.IsNullOrEmpty(cacheKey))
+        var container = inline ? section.InlineContainer : MaterialCache.Resolve(cacheKey!);
+        if (container is null) return;
+
+        _requests.Enqueue(new Request(section, inline ? $"__inline_{section.SectionId}" : cacheKey, container));
+    }
+
+    public static void Release(MaterialSection section) => _requests.Enqueue(new Request(section, null, null));
+
+    public static void Update(FrameBudget budget)
+    {
+        while (_requests.TryDequeue(out var request))
         {
-            var inline = section.InlineContainer;
-            if (inline is null) return;
+            if (request.Container is null) Drop(request.Section);
+            else Take(request.Section, request.Key!, request.Container);
+        }
 
-            if (!inline.HasTextures)
+        Notify(budget);
+        Upload(budget);
+        Evict();
+
+        if (_batchTotal >= MinReportedBatch)
+        {
+            var completed = _pending == 0 ? $"{_batchTotal:N0} textures uploaded" : null;
+            Progress.Report("work.textures", Settings.ImagesIcon, "Uploading textures", _batchDone, _batchTotal, completed);
+        }
+
+        if (_pending == 0)
+            _batchTotal = _batchDone = 0;
+    }
+
+    private static void Take(MaterialSection section, string key, IMaterialDataContainer container)
+    {
+        if (_sections.TryGetValue(section.SectionId, out var previous))
+        {
+            if (previous.Key == key)
             {
-                inline.FinalizeGpuData();
-                section.ContainerReady();
+                if (previous.Completed) _ready.Enqueue(section); // asked again for the same one, an edit reverted for example
                 return;
             }
 
-            var inlineKey = $"__inline_{section.SectionId}";
-            var inlineTextures = inline.GetTextures();
-            _states[inlineKey] = new ContainerLoadState(inline, inlineTextures.Count);
-            _states[inlineKey].Sections.Add(section);
-            foreach (var (key, texture) in inlineTextures)
-                QueueTexture(texture, inlineKey, key);
-            return;
+            Drop(section); // the section swapped materials
         }
 
-        var container = MaterialCache.Resolve(cacheKey);
-        if (container is null) return;
+        if (!_containers.TryGetValue(key, out var entry))
+            entry = Link(key, container);
 
-        if (!container.HasTextures)
+        entry.Sections[section.SectionId] = section;
+        _sections[section.SectionId] = entry;
+        foreach (var texture in entry.Textures)
+            Reference(texture);
+
+        if (entry.Completed) _ready.Enqueue(section);
+        else if (entry.Remaining == 0) Complete(entry); // nothing to wait for: no textures, or all of them resident already
+    }
+
+    private static void Drop(MaterialSection section)
+    {
+        if (!_sections.Remove(section.SectionId, out var entry)) return;
+
+        entry.Sections.Remove(section.SectionId);
+        foreach (var texture in entry.Textures)
+            Dereference(texture);
+
+        if (entry.Sections.Count > 0) return;
+
+        // nobody uses this container anymore, so it is forgotten. This is what keeps eviction simple: a texture without
+        // references has no container left pointing at its handle. Bringing the container back later is cheap.
+        _containers.Remove(entry.Key);
+        foreach (var texture in entry.Textures)
+            texture.Waiting.RemoveAll(x => x.Container == entry);
+    }
+
+    /// <summary>
+    /// Ties a container to its textures: the resident ones give their handle right away, the others are waited for.
+    /// </summary>
+    private static ContainerEntry Link(string key, IMaterialDataContainer container)
+    {
+        var entry = new ContainerEntry(key, container);
+        _containers.Add(key, entry);
+
+        if (!container.HasTextures) return entry;
+
+        foreach (var (slot, texture) in container.GetTextures())
         {
-            container.FinalizeGpuData();
-            section.ContainerReady();
-            return;
-        }
+            var item = GetOrLoad(texture);
+            if (!entry.Textures.Contains(item))
+                entry.Textures.Add(item);
 
-        var textures = container.GetTextures();
-
-        if (_registeredKeys.ContainsKey(cacheKey))
-        {
-            if (_states.TryGetValue(cacheKey, out var existing))
+            if (item.Bindless is { } bindless)
             {
-                // still loading — register this section so it gets notified when done
-                existing.Sections.Add(section);
+                container.SetBindlessTexture(slot, bindless);
+                continue;
             }
-            else
+
+            entry.Remaining++;
+            if (!item.Failed)
+                item.Waiting.Add((entry, slot));
+        }
+
+        return entry;
+    }
+
+    private static TextureEntry GetOrLoad(Texture texture)
+    {
+        if (_textures.TryGetValue(texture.Guid, out var entry)) return entry;
+
+        entry = new TextureEntry(texture);
+        _textures.Add(texture.Guid, entry);
+        _pending++;
+        _batchTotal++;
+
+        var loading = entry;
+        ThreadManager.Enqueue(() =>
+        {
+            Exception? error = null;
+            try
             {
-                // already fully loaded — fire immediately
-                section.ContainerReady();
+                loading.Texture.Prepare();
             }
-            return;
-        }
+            catch (Exception e)
+            {
+                error = e;
+            }
 
-        _registeredKeys.TryAdd(cacheKey, 0);
-        var state = new ContainerLoadState(container, textures.Count);
-        state.Sections.Add(section);
-        _states[cacheKey] = state;
+            _decoded.Enqueue((loading, error));
+        });
 
-        foreach (var (key, texture) in textures)
-            QueueTexture(texture, cacheKey, key);
+        return entry;
     }
 
-    private static void QueueTexture(Texture texture, string containerKey, string textureKey)
+    private static void Reference(TextureEntry texture)
     {
-        var guid = texture.Guid;
-        var dependency = new ContainerDependency(containerKey, textureKey);
+        texture.RefCount++;
+        if (texture.Evictable is not { } node) return;
 
-        if (_bindless.ContainsKey(guid))
-        {
-            ApplyBindlessToContainer(guid, dependency);
-            return;
-        }
-
-        _dependencies.GetOrAdd(guid, _ => []).Add(dependency);
-
-        if (_knownGuids.TryAdd(guid, 0))
-        {
-            _loadQueue.Enqueue(texture);
-            Interlocked.Increment(ref _totalTexturesRequested);
-        }
+        _evictable.Remove(node);
+        texture.Evictable = null;
     }
 
-    public static void Update() => ProcessTextureQueue(1);
-
-    private static void ProcessTextureQueue(int limit)
+    private static void Dereference(TextureEntry texture)
     {
-        var processed = 0;
-        while (processed < limit && _loadQueue.TryDequeue(out var texture))
-        {
-            texture.TextureReadyForBindless += () => OnTextureReady(texture.Guid, texture);
-            texture.Generate();
-
-            Log.Debug("Uploaded {Format:l} with size {Width}x{Height} ({Guid:l})", texture.FormatName, texture.Width, texture.Height, texture.Guid);
-            processed++;
-        }
+        texture.RefCount = Math.Max(0, texture.RefCount - 1);
+        if (texture is { RefCount: 0, Bindless: not null })
+            texture.Evictable ??= _evictable.AddLast(texture); // one still loading gets in line when it lands
     }
 
-    private static void OnTextureReady(FGuid guid, Texture texture)
+    private static void Complete(ContainerEntry entry)
     {
-        var bindless = new BindlessTexture(texture);
-        bindless.Generate();
-        bindless.MakeResident();
-        _bindless.TryAdd(guid, bindless);
+        entry.Container.FinalizeGpuData();
+        entry.Completed = true;
 
-        if (_dependencies.TryRemove(guid, out var dependencies))
-        {
-            foreach (var dependency in dependencies)
-                ApplyBindlessToContainer(guid, dependency);
-        }
+        foreach (var section in entry.Sections.Values)
+            _ready.Enqueue(section);
     }
 
-    private static void ApplyBindlessToContainer(FGuid guid, ContainerDependency dependency)
+    private const int MinNotifiedPerFrame = 64;
+
+    /// <summary>
+    /// Each section writes its material data to the GPU when told, which is why this is metered and not done on the spot.
+    /// A section that left in the meantime has no listener anymore and the call does nothing.
+    /// </summary>
+    private static void Notify(FrameBudget budget)
     {
-        if (!_bindless.TryGetValue(guid, out var bindless))
+        var notified = 0;
+        while ((notified < MinNotifiedPerFrame || !budget.Exhausted) && _ready.TryDequeue(out var section))
         {
-            Log.Warning("Attempted to apply non-existent bindless texture {Guid}", guid);
-            return;
-        }
-
-        if (!_states.TryGetValue(dependency.ContainerKey, out var state))
-            return;
-
-        state.Container.SetBindlessTexture(dependency.TextureKey, bindless);
-
-        var remaining = Interlocked.Decrement(ref state.RemainingTextures);
-        if (remaining > 0) return;
-
-        _states.TryRemove(dependency.ContainerKey, out _);
-        state.Container.FinalizeGpuData();
-
-        foreach (var section in state.Sections)
             section.ContainerReady();
+            notified++;
+        }
+    }
+
+    private static void Upload(FrameBudget budget)
+    {
+        var uploaded = 0;
+        while ((uploaded == 0 || !budget.Exhausted) && _decoded.TryDequeue(out var item))
+        {
+            var (entry, error) = item;
+            if (!_textures.TryGetValue(entry.Texture.Guid, out var current) || current != entry)
+                continue; // the cache was cleared while a worker still had it
+
+            uploaded++;
+            _pending--;
+            _batchDone++;
+
+            if (error is null)
+            {
+                try
+                {
+                    entry.Texture.Generate();
+                }
+                catch (Exception e)
+                {
+                    error = e;
+                }
+            }
+
+            if (error is not null || !entry.Texture.IsReadyForBindless)
+            {
+                if (error is not null) Log.Error(error, "Could not load {Name} ({Guid:l})", entry.Texture.Name, entry.Texture.Guid);
+                else Log.Warning("{Name} ({Guid:l}) generated nothing to bind", entry.Texture.Name, entry.Texture.Guid);
+
+                entry.Texture.Dispose();
+                entry.Failed = true;
+                entry.Waiting.Clear();
+                continue;
+            }
+
+            var texture = entry.Texture;
+            Log.Debug("Uploaded {Format:l} with size {Width}x{Height} and {MipCount} mips ({Guid:l})", texture.FormatName, texture.Width, texture.Height, texture.MipCount, texture.Guid);
+
+            var bindless = new BindlessTexture(texture);
+            bindless.Generate();
+            bindless.MakeResident();
+
+            entry.Bindless = bindless;
+            _resident++;
+            ResidentBytes += texture.Allocated;
+
+            foreach (var (container, slot) in entry.Waiting)
+            {
+                container.Container.SetBindlessTexture(slot, bindless);
+                if (--container.Remaining == 0)
+                    Complete(container);
+            }
+            entry.Waiting.Clear();
+
+            if (entry.RefCount == 0)
+                entry.Evictable ??= _evictable.AddLast(entry); // every section that wanted it left while it was loading
+        }
+    }
+
+    private static void Evict()
+    {
+        while (ResidentBytes > TextureBudgetBytes && _evictable.First is { } node)
+        {
+            var entry = node.Value;
+            var texture = entry.Texture;
+
+            _evictable.RemoveFirst();
+            entry.Evictable = null;
+            _textures.Remove(texture.Guid);
+
+            _resident--;
+            ResidentBytes -= texture.Allocated;
+            Log.Debug("Evicted {Name} {Width}x{Height} ({Guid:l})", texture.Name, texture.Width, texture.Height, texture.Guid);
+
+            entry.Bindless!.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Drops every section at once, for a scene transition. The textures stay resident without a reference: the next
+    /// scene takes back what it shares, the rest goes when the budget asks for it. Render thread.
+    /// </summary>
+    public static void Clear()
+    {
+        _requests.Clear();
+        _ready.Clear();
+        _sections.Clear();
+        _containers.Clear();
+
+        foreach (var texture in _textures.Values)
+        {
+            texture.RefCount = 0;
+            texture.Waiting.Clear();
+            if (texture.Bindless is not null)
+                texture.Evictable ??= _evictable.AddLast(texture);
+        }
     }
 
     public static void ClearAndDispose()
     {
-        foreach (var bindless in _bindless.Values)
-            bindless.Dispose();
+        Log.Information("Clearing texture cache with {Count} entries", _resident);
 
-        Log.Information("Clearing texture cache with {Count} entries", _bindless.Count);
-        _bindless.Clear();
-        _loadQueue.Clear();
-        _knownGuids.Clear();
-        _dependencies.Clear();
-        _states.Clear();
-        _registeredKeys.Clear();
-        _totalTexturesRequested = 0;
-    }
-
-    public static long Allocated
-    {
-        get
+        foreach (var texture in _textures.Values)
         {
-            long total = 0;
-            foreach (var bindless in _bindless.Values)
-                total += bindless.Texture.Allocated;
-            return total;
+            if (texture.Bindless is { } bindless) bindless.Dispose();
+            else texture.Texture.Dispose();
         }
+
+        _requests.Clear();
+        _decoded.Clear();
+        _textures.Clear();
+        _containers.Clear();
+        _sections.Clear();
+        _ready.Clear();
+        _evictable.Clear();
+
+        _batchTotal = 0;
+        _batchDone = 0;
+        _pending = 0;
+        _resident = 0;
+        ResidentBytes = 0;
     }
 
-    public static long Used
-    {
-        get
-        {
-            long total = 0;
-            foreach (var bindless in _bindless.Values)
-                total += bindless.Texture.Used;
-            return total;
-        }
-    }
+    public static long Allocated => ResidentBytes;
+    public static long Used => ResidentBytes;
 
     public static IEnumerable<MemoryDetail> GetMemoryDetails()
     {
-        foreach (var bindless in _bindless.Values)
-            yield return new MemoryDetail(bindless.Texture.Name, bindless.Texture);
-    }
-
-    private readonly struct ContainerDependency(string containerKey, string textureKey)
-    {
-        public readonly string ContainerKey = containerKey;
-        public readonly string TextureKey = textureKey;
-    }
-
-    private class ContainerLoadState(IMaterialDataContainer container, int textureCount)
-    {
-        public IMaterialDataContainer Container { get; } = container;
-        public int RemainingTextures = textureCount;
-        public List<MaterialSection> Sections { get; } = [];
+        foreach (var entry in _textures.Values)
+        {
+            if (entry.Bindless is not null)
+                yield return new MemoryDetail(entry.Texture.Name, entry.Evictable is null ? "Resident" : "Evictable", entry.Texture);
+        }
     }
 }

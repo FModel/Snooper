@@ -19,25 +19,24 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
     public bool HasSkinnedVertices { get; }
     public SectionDescriptor[] Sections { get; }
 
-    private TPrimitiveData<TVertex>? _primitive;
-    private Func<TPrimitiveData<TVertex>>? _factory;
+    private readonly Lazy<TPrimitiveData<TVertex>> _primitive;
+    public bool IsPrimitiveReady => _primitive.IsValueCreated;
 
     public LodDescriptor(TPrimitiveData<TVertex> primitive, bool castShadow = false)
     {
-        _primitive = primitive;
-        _factory = null;
+        _primitive = new Lazy<TPrimitiveData<TVertex>>(primitive);
 
         SourceLodIndex = 0;
-        IndexCount = (uint)(_primitive?.Indices?.Length ?? 0);
-        VertexCount = (uint)(_primitive?.Vertices?.Length ?? 0);
+        IndexCount = (uint)(primitive.Indices?.Length ?? 0);
+        VertexCount = (uint)(primitive.Vertices?.Length ?? 0);
         ScreenSize = 0.0f;
         LayerCount = 1;
-        HasColoredVertices = _primitive?.Colors?.Length > 0;
-        HasSkinnedVertices = _primitive?.BoneInfluences?.Length > 0 && _primitive?.BoneInfluenceCounts?.Length > 0;
+        HasColoredVertices = primitive.Colors?.Length > 0;
+        HasSkinnedVertices = primitive.BoneInfluences?.Length > 0 && primitive.BoneInfluenceCounts?.Length > 0;
         Sections = [new SectionDescriptor(0, IndexCount, 0, castShadow)];
     }
 
-    private LodDescriptor(uint sourceLodIndex, uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>>? factory)
+    private LodDescriptor(uint sourceLodIndex, uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>> factory)
     {
         SourceLodIndex = sourceLodIndex;
         IndexCount = indexCount;
@@ -47,7 +46,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         HasColoredVertices = hasColoredVertices;
         HasSkinnedVertices = hasSkinnedVertices;
         Sections = sections;
-        _factory = factory;
+        _primitive = new Lazy<TPrimitiveData<TVertex>>(factory, LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     internal static LodDescriptor<TVertex> FromLod<TMeshVertex>(MeshLodDto<TMeshVertex> lod, Func<TMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory, Action<FColor[]>? colorRemap = null) where TMeshVertex : struct, IMeshVertex
@@ -98,18 +97,7 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
             () => factory(cVertices, cIndices, cColors, cExtraUvs));
     }
 
-    internal TPrimitiveData<TVertex> CreatePrimitive()
-    {
-        if (_primitive != null)
-            return _primitive;
-
-        if (_factory == null)
-            throw new InvalidOperationException("Cannot create primitive: no factory available.");
-
-        _primitive = _factory();
-        _factory = null;
-        return _primitive;
-    }
+    internal TPrimitiveData<TVertex> CreatePrimitive() => _primitive.Value;
 
     public void DrawControls()
     {

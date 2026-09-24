@@ -104,14 +104,12 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
     private readonly SkinnedCounts _counts = new();
     protected override AllocationCounts CreateCounts() => _counts;
 
-    protected override void OnActorComponentEnqueued(SkinnedMeshComponent component)
+    protected override void Count(SkinnedMeshComponent component, bool first)
     {
-        base.OnActorComponentEnqueued(component);
+        base.Count(component, first);
 
         var descriptor = component.Descriptor;
-        var isUnique = Meshes[descriptor.Guid].RefCount == 1;
-
-        if (isUnique)
+        if (first)
         {
             foreach (var lod in descriptor.Lods)
             {
@@ -125,13 +123,13 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         if (descriptor.Skeleton is { } skeleton)
         {
             _counts.PoseBones += (uint)skeleton.BoneCount; // one pose per component
-            if (isUnique) _counts.UniqueBones += (uint)skeleton.BoneCount;
+            if (first) _counts.UniqueBones += (uint)skeleton.BoneCount;
         }
 
         if (descriptor.Morphs is { Count: > 0 } morphs)
         {
             _counts.MorphWeights += (uint)morphs.Count; // per component too, each drives its own morphs
-            if (isUnique)
+            if (first)
             {
                 for (var i = 0; i < morphs.Lods.Length && i < Settings.MaxNumberOfLods; i++)
                 {
@@ -194,7 +192,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
             var lods = descriptor.Lods;
             for (var i = 0; i < lods.Length && i < Settings.MaxNumberOfLods; i++)
             {
-                var primitive = lods[i].CreatePrimitive(); // cached, already created by GeometryPool.Add
+                var primitive = lods[i].CreatePrimitive(); // cached, already created by MeshComponent.BeginPlay
                 if (primitive is not { BoneInfluences: { Length: > 0 } boneInfluences, BoneInfluenceCounts: { Length: > 0 } boneInfluenceCounts })
                     continue;
 

@@ -163,7 +163,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
             {
                 foreach (var system in ctx.Systems)
                 {
-                    system.Render(ctx.Camera, CommandBufferType.Mask);
+                    system.RenderMask(ctx.Camera);
                 }
             },
             PostPass = _ =>

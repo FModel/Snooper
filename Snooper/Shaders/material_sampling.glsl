@@ -93,7 +93,7 @@ vec3 SampleLayerSpecular(PerMaterialData materialData, uint layer, vec2 uv)
     }
 
     vec2 roughness = GetLayerRoughness(materialData, layer);
-    return vec3(0.0, 0.0, roughness.y);
+    return vec3(0.5, 0.0, roughness.y);
 }
 
 // Sample all material properties for a layer
@@ -125,7 +125,13 @@ LayerData SampleLayer(PerMaterialData materialData, uint layer, vec2 uv)
     return result;
 }
 
+// GlobalFlags: bits 0-3 are the blend mode, bit 4 says the material is unlit
 uint GetBlendMode(PerMaterialData materialData)
 {
     return materialData.GlobalFlags & 0xFu;
+}
+
+bool IsUnlit(PerMaterialData materialData)
+{
+    return (materialData.GlobalFlags & 0x10u) != 0u;
 }

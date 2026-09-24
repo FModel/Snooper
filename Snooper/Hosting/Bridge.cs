@@ -61,7 +61,7 @@ public static class Bridge
         delivery.Request.Apply(delivery.Asset);
     }
 
-    internal static void Reset()
+    internal static void Clear()
     {
         CancelRequest();
         _delivery = null;

@@ -58,6 +58,7 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
 
     public string Name { get; }
     public EBlendMode BlendMode { get; internal set; }
+    public EMaterialShadingModel ShadingModel { get; internal set; }
 
     public IReadOnlyList<MaterialLayer> Layers => _layers;
     public int LayerCount => _layers.Length;
@@ -68,10 +69,11 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
     public IPerMaterialData? Raw { get; private set; }
     public bool IsGpuDataReady => Raw is { IsReady: true };
 
-    internal MaterialDataContainer(string name, MaterialLayer[] layers, EBlendMode blendMode)
+    internal MaterialDataContainer(string name, MaterialLayer[] layers, EBlendMode blendMode, EMaterialShadingModel shadingModel)
     {
         Name = name;
         BlendMode = blendMode;
+        ShadingModel = shadingModel;
 
         _layers = layers;
         _diffuses = new BindlessTexture?[layers.Length];
@@ -83,6 +85,7 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
     {
         Name = other.Name;
         BlendMode = other.BlendMode;
+        ShadingModel = other.ShadingModel;
 
         _layers = new MaterialLayer[other._layers.Length];
         for (var i = 0; i < _layers.Length; i++)
@@ -162,6 +165,7 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
         }
 
         uint globalFlags = (uint) BlendMode & 0xF;
+        if (ShadingModel == EMaterialShadingModel.MSM_Unlit) globalFlags |= 1u << 4;
 
         var data = new PerMaterialMeshData
         {
@@ -205,13 +209,15 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Name);
 
-        EditorUI.Caption($"Layer {layerIndex + 1}/{_layers.Length}, {BlendMode.GetDescription()}");
+        EditorUI.Caption($"Layer {layerIndex + 1}/{_layers.Length}, {BlendMode.GetDescription()}, {ShadingModel.GetDescription()}");
 
         EditorUI.DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Diffuse), "D", size);
         ImGui.SameLine();
         EditorUI.DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Normal), "N", size);
         ImGui.SameLine();
         EditorUI.DrawThumbnail(GetSlotTexture(layerIndex, MaterialTextureSlot.Specular), "S", size);
+        ImGui.SameLine();
+        ImGui.ColorButton("##DiffuseColor", new Vector4(_layers[layerIndex].DiffuseColor, 1f), ImGuiColorEditFlags.NoPicker, new Vector2(ImGui.GetFrameHeight() * size));
 
         if (!IsGpuDataReady)
         {

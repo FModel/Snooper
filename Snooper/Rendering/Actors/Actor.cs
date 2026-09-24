@@ -1,10 +1,10 @@
 using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports;
+using CUE4Parse.UE4.Assets.Exports.Actor;
 using Serilog;
 using Snooper.Core;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.UI;
 
@@ -38,6 +38,11 @@ public class Actor : TreeNode
     {
         Components = new ActorComponentCollection(this);
         Children = new ActorChildrenCollection(this);
+
+        if (actor is ALODActor)
+        {
+            IsVisible = false;
+        }
 
         if (actor.TryGetValue(out bool hidden, "bHidden"))
         {
@@ -80,9 +85,13 @@ public class Actor : TreeNode
             component.UpdatePlayState(reason);
         }
 
-        foreach (var child in Children.ToArray())
+        if (manager is not null)
         {
-            child.SetScene(manager, reason);
+            manager.Enter(Children);
+        }
+        else foreach (var child in Children.ToArray())
+        {
+            child.SetScene(null, reason);
         }
 
         EndPlayReason = EEndPlayReason.Destroyed;
@@ -206,6 +215,8 @@ public class Actor : TreeNode
 
         _parent = newParent;
         OnHierarchyChanged();
+        if (oldParent.IsOutlined != newParent.IsOutlined && !IsNodeSelected)
+            OnOutlineChanged();
 
         manager.IncrementRevision();
     }
@@ -299,13 +310,28 @@ public class Actor : TreeNode
             child.OnHierarchyChanged();
     }
 
-    public override void SetOutlined(bool state)
-    {
-        foreach (var c in Components)
-            c.SetOutlined(state);
+    public bool IsOutlined => IsNodeSelected || Parent?.IsOutlined == true;
+    public bool IsHighlighted => IsNodeSelected || HasSelectedComponent;
+    internal bool HasSelectedComponent { get; set; }
 
+    public override bool IsNodeSelected
+    {
+        get => base.IsNodeSelected;
+        set
+        {
+            if (base.IsNodeSelected == value) return;
+
+            base.IsNodeSelected = value;
+            if (Parent?.IsOutlined != true) OnOutlineChanged();
+        }
+    }
+
+    private void OnOutlineChanged()
+    {
+        foreach (var component in Components)
+            component.MarkDirty(DirtyFlags.Outline);
         foreach (var child in Children)
-            child.SetOutlined(state);
+            if (!child.IsNodeSelected) child.OnOutlineChanged();
     }
     public override bool ShouldScrollHere
     {

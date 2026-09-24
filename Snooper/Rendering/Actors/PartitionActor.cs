@@ -6,7 +6,7 @@ namespace Snooper.Rendering.Actors;
 
 public class PartitionActor : Actor
 {
-    public PartitionActor(UWorldPartition partition) : base(partition)
+    public PartitionActor(UWorldPartition partition, IEnumerable<string> layers) : base(partition)
     {
         Components.Add(new SpatialComponent(null, "PartitionRoot"));
 
@@ -16,33 +16,70 @@ public class PartitionActor : Actor
             {
                 foreach (var streamingData in set.RuntimeStreamingData.OrderBy(x => x.LoadingRange))
                 {
-                    Children.Add(new HierarchicalActor(streamingData));
+                    Children.Add(new HierarchicalActor(streamingData, GetMinRange(streamingData.Name.Text)));
+                }
+
+                float GetMinRange(string grid)
+                {
+                    foreach (var runtimePartition in set.RuntimePartitions)
+                    {
+                        var previous = runtimePartition.Name.Text;
+                        foreach (var setup in runtimePartition.HLODSetups)
+                        {
+                            if (!setup.bIsSpatiallyLoaded) continue;
+                            if (setup.Name.Text == grid)
+                                return set.RuntimeStreamingData.FirstOrDefault(x => x.Name.Text == previous).LoadingRange * Settings.GlobalScale;
+
+                            previous = setup.Name.Text;
+                        }
+                    }
+
+                    return 0f;
                 }
                 break;
             }
             case UWorldPartitionRuntimeSpatialHash spatial:
             {
-                foreach (var grid in spatial.StreamingGrids)
+                var minRange = 0f;
+                foreach (var grid in spatial.StreamingGrids.OrderBy(x => x.LoadingRange))
                 {
-                    Children.Add(new HierarchicalActor(grid));
+                    Children.Add(new HierarchicalActor(grid, minRange));
+                    minRange = grid.LoadingRange * Settings.GlobalScale;
                 }
                 break;
             }
         }
-    }
 
-    public void SetVisibilityByDistance(Vector3 position)
-    {
-        var hlods = Children.Where(x => x.IsVisible).OfType<HierarchicalActor>().ToArray();
-        for (var i = 0; i < hlods.Length; i++)
+        foreach (var layer in layers)
         {
-            hlods[i].SetVisibilityByDistance(position, i > 0 ? hlods[i - 1].LoadingRange : 0f);
+            SetDataLayerEnabled(layer, true);
         }
-
-        // TODO: no holes + no overlaps between HLODs
     }
 
-    public void SetVisibilityByDataLayer(string dataLayer, bool isVisible)
+    public void LoadAround(Vector3 position)
+    {
+        foreach (var hlod in Children.OfType<HierarchicalActor>().Where(x => x.IsVisible))
+        {
+            hlod.LoadAround(position);
+        }
+    }
+
+    public void UnloadAll()
+    {
+        foreach (var hlod in Children.OfType<HierarchicalActor>())
+        {
+            hlod.UnloadAll();
+        }
+    }
+
+    public override void DrawControls()
+    {
+        base.DrawControls();
+
+        HierarchicalActor.DrawLoadControls(this, LoadAround, UnloadAll);
+    }
+
+    public void SetDataLayerEnabled(string dataLayer, bool enabled)
     {
         var cells = Children
             .SelectMany(x => x.Children)
@@ -52,7 +89,7 @@ public class PartitionActor : Actor
 
         foreach (var cell in cells)
         {
-            cell.IsVisible = isVisible || cell.IsNonSpatiallyLoaded;
+            cell.IsVisible = enabled || cell.IsPersistent;
         }
     }
 }

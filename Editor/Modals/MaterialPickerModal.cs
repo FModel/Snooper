@@ -45,7 +45,7 @@ public sealed class MaterialPickerModal : AssetPickerModal<MaterialPickerModal.E
             ImGui.SameLine();
             ImGui.TextUnformatted(container.Name);
 
-            var detail = $"{container.LayerCount} layer{(container.LayerCount != 1 ? "s" : "")}, {container.BlendMode.GetDescription()}";
+            var detail = $"{container.LayerCount} layer{(container.LayerCount != 1 ? "s" : "")}, {container.BlendMode.GetDescription()}, {container.ShadingModel.GetDescription()}";
             ImGui.SameLine(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(detail).X);
             ImGui.TextDisabled(detail);
 

@@ -38,9 +38,6 @@ public class SystemsWidget : PanelWidget
                     ImGui.TextDisabled("Max Binding Used");
                     ImGui.TextUnformatted($"{system.MaxBindingUsed?.ToString() ?? "N/A"}");
                     ImGui.NextColumn();
-                    ImGui.TextDisabled("Show Wireframe");
-                    ImGui.Checkbox($"##ShowWireframe{system.Order}", ref system.ShowWireframe);
-                    ImGui.Spacing();
                     ImGui.TextDisabled("Is Enabled");
                     ImGui.Checkbox($"##Enabled{system.Order}", ref system.IsEnabled);
                 }

@@ -31,8 +31,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new();
     private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new();
 
-    private readonly List<Action> _geometryUpdates = []; // TODO: remove this hack
-
     public void Generate()
     {
         _geometry.Generate();
@@ -70,10 +68,13 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
 
         BufferAllocation? materialAllocation = null;
-        foreach (var material in component.Materials)
+        if (component.Materials.Length > 0)
         {
-            material.Allocation = _materialData.Add(new TPerMaterialData());
-            materialAllocation ??= material.Allocation;
+            materialAllocation = _materialData.AddRange(new TPerMaterialData[component.Materials.Length]);
+            foreach (var material in component.Materials)
+            {
+                material.Allocation = materialAllocation;
+            }
         }
 
         const uint currentLod = 0u;
@@ -94,7 +95,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                 (uint) component.Id,
                 command,
                 component.CastShadow,
-                component.DrawDistance);
+                component.DrawDistance,
+                component.IsOutlined);
 
             drawAllocations[i] = new DrawBufferAllocation(buffer.Add(command, draw, new PerDrawCulled(geometryHandle, section)), bufferType, section.MaterialIndex);
         }
@@ -134,13 +136,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         if (component.IsDirty(DirtyFlags.Outline))
         {
-            if (component.IsOutlined)
+            var outlined = component.IsOutlined ? 1u : 0u;
+            foreach (var draw in metadata.DrawAllocations)
             {
-                foreach (var draw in metadata.DrawAllocations)
-                {
-                    if (!component.IsMaterialVisible(draw.MaterialIndex)) continue;
-                    _commands.Transfer(draw.Allocation, draw.BufferType, CommandBufferType.Mask);
-                }
+                _commands.GetBuffer(draw.BufferType).StaticData.UpdateCustom(draw.Allocation.Static, outlined, PerDrawStatic.OutlinedOffset);
             }
 
             component.MarkClean(DirtyFlags.Outline);
@@ -148,7 +147,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
 
         if (component.IsDirty(DirtyFlags.ManualLodSwap))
         {
-            _geometryUpdates.Add(() => _geometry.UpdateOverrideLod(metadata.GeometryHandle));
+            _geometry.UpdateOverrideLod(metadata.GeometryHandle);
             component.MarkClean(DirtyFlags.ManualLodSwap);
         }
 
@@ -168,25 +167,10 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (container.Raw is not TPerMaterialData raw)
             throw new InvalidOperationException($"Material data container raw type {container.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
 
-        _materialData.QueueUpdate(allocation, raw);
+        _materialData.UpdateCustom(allocation, raw, (int) material.Index * _materialData.Stride);
     }
 
-    public void ClearMaskBuffer() => _commands.ClearMask();
-    public void BeginDeferMerge() => _commands.BeginDeferMerge();
-    public void EndDeferMerge() => _commands.EndDeferMerge();
-
-    public void Flush()
-    {
-        if (_geometryUpdates.Count > 0)
-        {
-            foreach (var update in _geometryUpdates)
-                update();
-            _geometryUpdates.Clear();
-        }
-
-        _instanceData.FlushUpdates();
-        _materialData.FlushUpdates();
-    }
+    public void Flush() => _instanceData.FlushUpdates();
 
     public void Remove(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
@@ -198,22 +182,26 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             metadata.InstanceAllocation.Length,
             metadata.MaterialAllocation?.Length);
 
-        _geometry.Remove(metadata.GeometryHandle);
+        _geometry.Remove(component.Descriptor.Guid);
         foreach (var draw in metadata.DrawAllocations)
             _commands.GetBuffer(draw.BufferType).Remove(draw.Allocation);
         _instanceData.Remove(metadata.InstanceAllocation);
         if (metadata.MaterialAllocation is { } materialAllocation)
             _materialData.Remove(materialAllocation);
+        foreach (var material in component.Materials)
+            material.Allocation = null;
     }
 
     public void Cull(ReadOnlySpan<CullView> views, CommandBufferType type) => _geometry.Cull(views, _instanceData, _commands.GetBuffer(type));
+    public void BuildMask(CommandBufferType type) => _geometry.Cull([], _instanceData, _commands.GetBuffer(type));
 
+    public int GetMaskView(CommandBufferType type) => _commands.GetBuffer(type).MaskViewIndex;
     public uint GetViewBase(CommandBufferType type, int view) => (uint) _commands.GetBuffer(type).GetViewBase(view);
 
     public void Render(CommandBufferType type, int view = 0)
     {
         var buffer = _commands.GetBuffer(type);
-        if (buffer.Capacity == 0) return;
+        if (buffer.Extent == 0) return;
 
         buffer.Commands.Bind();
         buffer.StaticData.Bind(Bindings.DrawStatic);
@@ -221,7 +209,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _instanceData.Bind(Bindings.InstanceData);
         _materialData.Bind(Bindings.MaterialData);
 
-        _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, buffer.GetViewOffset(view), buffer.Capacity, buffer.Stride));
+        _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, buffer.GetViewOffset(view), buffer.Extent, buffer.Stride));
 
         buffer.Commands.Unbind();
     }

@@ -54,7 +54,7 @@ public class LevelActor : UnrealActor
             foreach (var additionalWorld in additionalWorlds)
             {
                 if (!additionalWorld.TryLoad<UWorld>(out var w)) continue;
-                Children.Add(new WorldActor(w));
+                Children.Add(new CellActor(additionalWorld, w, true));
             }
         }
     }

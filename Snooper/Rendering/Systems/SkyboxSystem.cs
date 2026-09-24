@@ -51,9 +51,9 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
         shader.Unuse();
     }
 
-    protected override void OnActorComponentEnqueued(CubeComponent component)
+    protected override void OnActorComponentAdded(CubeComponent component)
     {
-        base.OnActorComponentEnqueued(component);
+        base.OnActorComponentAdded(component);
 
         if (_component is not null)
             throw new InvalidOperationException("Only one SkyboxComponent can be added to the system at a time.");

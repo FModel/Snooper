@@ -13,8 +13,10 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
     public ShaderStorageBuffer<PerDrawCulled> CulledData { get; } = new(usageHint, viewCount);
     public ShaderStorageBuffer<PerDrawStatic> StaticData { get; } = new(usageHint);
 
-    public readonly int ViewCount = viewCount;
+    public readonly int ViewCount = viewCount >= 1 ? viewCount : throw new ArgumentOutOfRangeException(nameof(viewCount), viewCount, "A draw buffer needs at least one slice.");
+    public int MaskViewIndex => ViewCount - 1;
     public int Capacity => Commands.Capacity;
+    public int Extent => Commands.Extent;
     public int Stride => Commands.Stride;
 
     public void Generate()
@@ -68,22 +70,6 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
         StaticData.Clear();
     }
 
-    public readonly struct DeferMergeScope(IndirectDrawBuffer buffer) : IDisposable
-    {
-        private readonly Buffer<DrawElementsIndirectCommand>.DeferMergeScope _commandScope = buffer.Commands.DeferMerge();
-        private readonly Buffer<PerDrawCulled>.DeferMergeScope _outputScope = buffer.CulledData.DeferMerge();
-        private readonly Buffer<PerDrawStatic>.DeferMergeScope _dataScope = buffer.StaticData.DeferMerge();
-
-        public void Dispose()
-        {
-            _commandScope.Dispose();
-            _outputScope.Dispose();
-            _dataScope.Dispose();
-        }
-    }
-
-    public DeferMergeScope DeferMerge() => new(this);
-
     public void Dispose()
     {
         Commands.Dispose();
@@ -103,7 +89,7 @@ public readonly struct DrawAllocation(BufferAllocation command, BufferAllocation
     public readonly BufferAllocation Static = @static;
 }
 
-public readonly struct PerDrawStatic(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, DrawElementsIndirectCommand command, bool castShadow, Vector2 drawDistances)
+public readonly struct PerDrawStatic(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, DrawElementsIndirectCommand command, bool castShadow, Vector2 drawDistances, bool outlined)
 {
     public readonly uint MeshIndex = geometry.MeshIndex; // index into the per-mesh buffers (PerMeshData, PrimitiveOffsets)
     public readonly uint SectionId = sectionId; // section index in the current model (0-X)
@@ -114,8 +100,10 @@ public readonly struct PerDrawStatic(GeometryHandle geometry, uint sectionId, ui
     public readonly uint CastShadow = section.CastShadow && castShadow ? 1u : 0u; // 0 or 1
     public readonly float MinDrawDistance = drawDistances.X;
     public readonly float MaxDrawDistance = drawDistances.Y;
+    public readonly uint Outlined = outlined ? 1u : 0u; // 0 or 1
 
     public static readonly int OriginalInstanceCountOffset = (int)Marshal.OffsetOf<PerDrawStatic>(nameof(OriginalInstanceCount));
+    public static readonly int OutlinedOffset = (int)Marshal.OffsetOf<PerDrawStatic>(nameof(Outlined));
 }
 
 public readonly struct PerDrawCulled(GeometryHandle geometry, SectionDescriptor section)

@@ -24,6 +24,6 @@ public class ColorTexture(FColor color) : Texture2D(1, 1)
         GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
         GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
         
-        OnTextureReadyForBindless();
+        IsReadyForBindless = true;
     }
 }

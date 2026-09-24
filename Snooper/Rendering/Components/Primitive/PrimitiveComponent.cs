@@ -223,7 +223,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         MarkVisibilityDirty();
     }
 
-    private void MarkVisibilityDirty() => MarkDirty(DirtyFlags.Visibility | (IsOutlined ? DirtyFlags.Outline : DirtyFlags.None));
+    private void MarkVisibilityDirty() => MarkDirty(DirtyFlags.Visibility);
     internal override void OnActorVisibilityChanged() => MarkVisibilityDirty();
 
     public override string Icon => "\ue4e2";
@@ -261,7 +261,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             () => Settings.PaletteIcon,
             () => WindowRequests.Request(Settings.MaterialEditorWindow),
             () => "Material Editor",
-            () => SelectedMaterial?.MaterialDataContainer != null)
+            () => Materials is { Length: > 0 })
     ];
 
     private PropertyToggleButton[] MorphButtons => field ??=

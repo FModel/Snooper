@@ -42,7 +42,9 @@ public static class Settings
     public const string EyeSlashIcon = "\uf070";
     public const string FocusIcon = "\uf05b";
     public const string JobIcon = "\uf085";
-    public const string TextureIcon = "\uf03e";
+    public const string ImageIcon = "\uf03e";
+    public const string ImagesIcon = "\uf302";
+    public const string DatabaseIcon = "\uf1c0";
     public const string CopyIcon = "\uf0c5";
     public const string SpeedIcon = "\uf3fd";
     public const string FovIcon = "\uf065";
@@ -53,6 +55,13 @@ public static class Settings
     public const string ChartGanttIcon = "\ue0e4";
     public const string BarsProgressIcon = "\uf828";
     public const string CubeIcon = "\uf1b2";
+    public const string CubesIcon = "\uf1b3";
+    public const string DiceD6Icon = "\uf6d1";
+    public const string TriangleExclamationIcon = "\uf071";
+    public const string SpinnerIcon = "\uf110";
+    public const string CityIcon = "\uf64f";
+    public const string DownloadIcon = "\uf019";
+    public const string EjectIcon = "\uf052";
     public const string RoadIcon = "\uf018";
     public const string BinocularsIcon = "\uf1e5";
     public const string GearIcon = "\uf013";
@@ -76,6 +85,7 @@ public static class Settings
     public const string AngleLeftIcon = "\uf104";
     public const string AngleRightIcon = "\uf105";
     public const string RightLeftIcon = "\uf362";
+    public const string DrawPolygonIcon = "\uf5ee";
 
     public const string ViewportWindow = $"{CubeIcon}  Viewport";
     public const string SceneHierarchyWindow = $"{RoadIcon}  Hierarchy";
@@ -87,7 +97,9 @@ public static class Settings
     public const string ContentWindow = $"{BoxArchiveIcon}  Content";
     public const string MorphEditorWindow = $"{BarsProgressIcon}  Morph Editor";
     public const string MaterialEditorWindow = $"{PaletteIcon}  Material Editor";
-    public const string TextureInspectorWindow = $"{TextureIcon}  Texture Inspector";
+    public const string TextureInspectorWindow = $"{ImageIcon}  Texture Inspector";
+    public const string CacheWindow = $"{DatabaseIcon}  Caches";
+    public const string WireframeWindow = $"{DrawPolygonIcon}  Wireframe";
 
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";

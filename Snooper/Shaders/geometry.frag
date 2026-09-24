@@ -9,6 +9,7 @@ layout (location = 4) out uint gPicking;
 uniform mat4 uViewMatrix;
 
 #include "Buffers/CommonMesh.frag"
+#include "Buffers/Wireframe.glsl"
 
 void main()
 {
@@ -21,10 +22,12 @@ void main()
         discard;
     }
 
+    ApplyWire(surface.Color, surface.Unlit, surface.Opacity);
+
     gPosition = fs_in.vViewPos;
     gNormal = mat3(uViewMatrix) * surface.Normal;
     gColor.rgb = surface.Color;
-    gColor.a = 1.0; // free space
+    gColor.a = surface.Unlit ? 0.0 : 1.0;
     gSpecular.rgb = surface.Specular;
     gSpecular.a = 1.0; // free space
     gPicking = draw.PickingId;

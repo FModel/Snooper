@@ -39,7 +39,7 @@ public class StaticMeshComponent : MeshComponent
 
     }
 
-    public override string Icon => "\uf1b2";
+    public override string Icon => Settings.CubeIcon;
 
     public override object Clone() => new StaticMeshComponent(this);
 }

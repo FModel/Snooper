@@ -20,5 +20,5 @@ public static class WindowRequests
 
     public static T? GetPayload<T>(string title) where T : class => _payloads.TryGetValue(title, out var payload) ? payload as T : null;
 
-    public static void ClearPayloads() => _payloads.Clear();
+    public static void Clear() => _payloads.Clear();
 }

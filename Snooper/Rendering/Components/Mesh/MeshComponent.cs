@@ -126,6 +126,15 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
     {
         base.BeginPlay(scene);
 
+        if (Descriptor.Lods.Any(lod => !lod.IsPrimitiveReady))
+        {
+            ThreadManager.Enqueue(() =>
+            {
+                foreach (var lod in Descriptor.Lods)
+                    lod.CreatePrimitive();
+            });
+        }
+
         var textureData = _textureData.ToArray();
         var layerCount = Descriptor.Lods[0].LayerCount;
 
@@ -133,9 +142,10 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         {
             var index = i;
             var section = new MaterialSection(index, IsVisible);
+            section.OnContainerReady += _ => IsOpaque &= !section.IsTranslucent;
             Materials[index] = section;
 
-            scene.ThreadManager.Enqueue(() =>
+            ThreadManager.Enqueue(() =>
             {
                 section.CacheKey = index == 0 && textureData.Length > 0
                     ? MaterialCache.GetOrCreateKeyFromTextureData(textureData, _materials[index], layerCount)

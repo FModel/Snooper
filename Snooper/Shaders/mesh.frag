@@ -2,8 +2,11 @@
 
 layout (location = 1) out uint gPicking;
 
+uniform mat4 uViewMatrix;
+
 #include "pbr.glsl"
 #include "Buffers/CommonMesh.frag"
+#include "Buffers/Wireframe.glsl"
 
 out vec4 FragColor;
 
@@ -18,12 +21,15 @@ void main()
         discard;
     }
 
+    ApplyWire(surface.Color, surface.Unlit, surface.Opacity);
+
     vec3 albedo = surface.Color;
     vec3 normal = surface.Normal;
+    float specular = surface.Specular.r;
     float metallic = surface.Specular.g;
     float roughness = surface.Specular.b;
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
-    vec3 V = normalize(-fs_in.vViewPos);
+    vec3 F0 = mix(vec3(0.08 * specular), albedo, metallic);
+    vec3 V = normalize(transpose(mat3(uViewMatrix)) * -fs_in.vViewPos);
 
     vec3 skyColor = vec3(1.0);
     vec3 groundColor = vec3(0.5);
@@ -43,19 +49,23 @@ void main()
     );
     float lightIntensity[3] = float[3](0.8, 0.6, 0.4);
 
-    vec3 finalColor = EvaluatePBR(
-        albedo,
-        normal,
-        V,
-        metallic,
-        roughness,
-        F0,
-        lightCount,
-        lightDirs,
-        lightColors,
-        lightIntensity,
-        ambient
-    );
+    vec3 finalColor = albedo;
+    if (!surface.Unlit)
+    {
+        finalColor = EvaluatePBR(
+            albedo,
+            normal,
+            V,
+            metallic,
+            roughness,
+            F0,
+            lightCount,
+            lightDirs,
+            lightColors,
+            lightIntensity,
+            ambient
+        );
+    }
 
     finalColor = pow(finalColor, vec3(1.0 / 2.2));
     FragColor = vec4(finalColor * surface.Opacity, surface.Additive ? 0.0 : surface.Opacity);

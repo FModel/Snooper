@@ -7,6 +7,7 @@ layout (location = 3) out vec4 gSpecular;
 layout (location = 4) out uint gPicking;
 
 #include "Buffers/bindless.glsl"
+#include "Buffers/Wireframe.glsl"
 
 struct PerMaterialData
 {
@@ -25,11 +26,9 @@ struct PerMaterialData
     uint VisibilityChannelIndex;
 };
 
-struct WeightHighlightMapping
+struct TileLayers
 {
-    uint WeightmapIndex;
-    uint ChannelIndex;
-    vec4 DebugColor;
+    int Layers[16]; // [weightmap * 4 + channel], an index into uLayerPalette plus one, 0 where no layer is painted
 };
 
 layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
@@ -42,9 +41,9 @@ layout(std430, binding = BINDING_LANDSCAPE_SCALES) restrict readonly buffer Land
     vec2 uLandscapeScales[];
 };
 
-layout(std430, binding = BINDING_LANDSCAPE_WEIGHT_MAPPING) restrict readonly buffer WeightMappingBuffer
+layout(std430, binding = BINDING_LANDSCAPE_WEIGHT_MAPPING) restrict readonly buffer TileLayersBuffer
 {
-    WeightHighlightMapping uWeightMappingBuffer[];
+    TileLayers uTileLayers[];
 };
 
 #include "Buffers/PerDrawData.glsl"
@@ -53,21 +52,30 @@ layout(std430, binding = BINDING_LANDSCAPE_WEIGHT_MAPPING) restrict readonly buf
 in TE_OUT {
     vec3 vViewPos;
     mat3 TBN;
-    float vHeight;
+    float vWorldHeight;
     vec2 vTessCoord;
 } fs_in;
+
+#define COLOR_SLOPE 0u
+#define COLOR_LAYERS 1u
+#define COLOR_HEIGHT 2u
+#define COLOR_TILES 3u
 
 uniform float uSizeQuads;
 uniform float uQuadCount;
 uniform uint uColorMode;
+uniform vec4 uLayerPalette[64]; // one color per layer name, shared by every tile
+uniform int uIsolatedLayer; // index into uLayerPalette to show that layer
+uniform float uSteepestSlope; // where the slope colors turn red
+uniform vec2 uHeightRange;
+uniform float uContourInterval;
+uniform mat4 uViewMatrix;
 
-bool channelEnabled(uint mask, int channel)
+// every painted layer in its own color, blended by weight
+vec3 getColorFromLayers(PerMaterialData materialData, TileLayers layers)
 {
-    return ((mask >> channel) & 1u) != 0u;
-}
+    const vec3 unpainted = vec3(0.25);
 
-vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping mapping)
-{
     float quadFraction = 1.0 / uQuadCount;
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
 
@@ -75,7 +83,7 @@ vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping 
 
     vec3 blendColor = vec3(0.0);
     float totalWeight = 0.0;
-    float colorWeight = 0.0;
+    float isolatedWeight = 0.0;
 
     for (int i = 0; i < weightmapCount; i++)
     {
@@ -87,32 +95,60 @@ vec3 getColorFromWeightmap(PerMaterialData materialData, WeightHighlightMapping 
         vec2 uv2 = materialData.WeightmapScaleBias + subPatchOffset * weightmapUvSize + fs_in.vTessCoord * (weightmapUvSize * quadFraction);
         uv2 = uv2 * (1.0 - texelSize) + 0.5 * texelSize;
 
-        uint mask = materialData.EnabledChannels[i];
         vec4 weightmapColor = texture(weightmap, uv2);
         for (int c = 0; c < 4; c++)
         {
-            if (!channelEnabled(mask, c))
-            {
-                continue;
-            }
+            int layer = layers.Layers[i * 4 + c] - 1;
+            if (layer < 0) continue; // the hole layer or an unused channel
 
             float weight = weightmapColor[c];
             totalWeight += weight;
-            blendColor += vec3(mix(0.0, 0.3, weight)) * weight;
+            blendColor += uLayerPalette[layer].rgb * weight;
 
-            if (i == mapping.WeightmapIndex && c == mapping.ChannelIndex)
+            if (layer == uIsolatedLayer)
             {
-                colorWeight += weight;
+                isolatedWeight = weight;
             }
         }
     }
 
-    if (totalWeight > 0.001)
-        blendColor /= totalWeight;
-
-    return mix(blendColor, mapping.DebugColor.rgb, colorWeight * mapping.DebugColor.a * 0.5);
+    if (uIsolatedLayer >= 0) return mix(unpainted, uLayerPalette[uIsolatedLayer].rgb, isolatedWeight);
+    return totalWeight > 0.001 ? blendColor / totalWeight : unpainted;
 }
 
+// flat ground green, yellow half way, red for the steepest slope
+vec3 getColorFromSlope(vec3 viewNormal)
+{
+    float up = clamp(dot(viewNormal, normalize(uViewMatrix[1].xyz)), -1.0, 1.0);
+    float slope = degrees(acos(up));
+
+    vec3 color = mix(vec3(0.15, 0.6, 0.15), vec3(0.9, 0.8, 0.1), smoothstep(uSteepestSlope * 0.1, uSteepestSlope * 0.55, slope));
+    return mix(color, vec3(0.85, 0.1, 0.05), smoothstep(uSteepestSlope * 0.55, uSteepestSlope, slope));
+}
+
+vec3 getColorFromId(uint id)
+{
+    id = id * 747796405u + 2891336453u;
+    id = ((id >> ((id >> 28u) + 4u)) ^ id) * 277803737u;
+    id = (id >> 22u) ^ id;
+
+    float hue = float(id & 0xFFFFu) / 65535.0;
+    vec3 rgb = clamp(abs(mod(hue * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+    return mix(vec3(1.0), rgb, 0.65) * 0.85;
+}
+
+// 1 on a line, 0 away from it
+float contourLine(float height, float interval, float width)
+{
+    float h = height / interval;
+    float change = fwidth(h);
+    float distanceToLine = abs(fract(h - 0.5) - 0.5) / max(change, 1e-6);
+    float line = 1.0 - clamp(distanceToLine - (width - 1.0), 0.0, 1.0);
+
+    return line * smoothstep(1e-4, 5e-4, change);
+}
+
+// deep water at -0.25, shore at 0, snow at 1
 vec3 getColorFromHeight(float height)
 {
     vec3 color = vec3(0.0);
@@ -160,21 +196,44 @@ void main()
     PerDrawCulled culled = FetchCulled(gDrawID);
     PerMaterialData material = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
 
-    vec3 color = vec3(1.0);
-    if (!material.IsReady || uColorMode == 0)
+    vec3 normal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
+
+    vec3 color = vec3(0.25);
+    if (uColorMode == COLOR_SLOPE)
     {
-        color = getColorFromHeight(fs_in.vHeight);
+        color = getColorFromSlope(normal);
     }
-    else if (uColorMode == 1)
+    else if (uColorMode == COLOR_LAYERS && material.IsReady)
     {
-        color = getColorFromWeightmap(material, uWeightMappingBuffer[draw.BaseMaterial + culled.MaterialIndex]);
+        color = getColorFromLayers(material, uTileLayers[draw.BaseMaterial + culled.MaterialIndex]);
+    }
+    else if (uColorMode == COLOR_HEIGHT)
+    {
+        float t = clamp((fs_in.vWorldHeight - uHeightRange.x) / max(uHeightRange.y - uHeightRange.x, 0.001), 0.0, 1.0);
+        color = getColorFromHeight(mix(-0.25, 1.0, t));
+    }
+    else if (uColorMode == COLOR_TILES)
+    {
+        color = getColorFromId(draw.PickingId);
     }
 
+    color = pow(color, vec3(2.2));
+    if (uContourInterval > 0.0)
+    {
+        // a thin line every interval, a thicker one every 5th
+        float line = max(contourLine(fs_in.vWorldHeight, uContourInterval, 1.0), contourLine(fs_in.vWorldHeight, uContourInterval * 5.0, 1.5));
+        color = mix(color, color * 0.15, line);
+    }
+
+    bool unlit = false;
+    float opacity = 1.0;
+    ApplyWire(color, unlit, opacity);
+
     gPosition = fs_in.vViewPos;
-    gNormal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
-    gColor.rgb = pow(color, vec3(3.2));
-    gColor.a = 1.0; // free space
-    gSpecular.rgb = vec3(0.0, 0.0, 0.0);
+    gNormal = normal;
+    gColor.rgb = color;
+    gColor.a = unlit ? 0.0 : 1.0;
+    gSpecular.rgb = vec3(0.5, 0.0, 1.0);
     gSpecular.a = 1.0; // free space
     gPicking = draw.PickingId;
 }

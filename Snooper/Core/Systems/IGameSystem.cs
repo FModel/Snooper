@@ -26,6 +26,7 @@ public interface IGeometryRenderSystem : IGameSystem
 {
     public void Cull(ReadOnlySpan<CullView> views);
     public void Render(CameraComponent camera, CommandBufferType type);
+    public void RenderMask(CameraComponent camera);
 }
 
 /// <summary>

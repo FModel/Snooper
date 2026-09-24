@@ -7,9 +7,9 @@ using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Extensions;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using CUE4Parse.UE4.Objects.UObject;
-using Snooper.Hosting;
 
 namespace Snooper.Rendering.Cache;
 
@@ -17,103 +17,104 @@ public static class MaterialCache
 {
     private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(MaterialCache));
 
-    private static readonly ConcurrentDictionary<string, Lazy<IMaterialDataContainer?>> _cache = new();
+    private static readonly ConcurrentDictionary<string, Lazy<MaterialNode?>> _nodes = new();
+    private static readonly ConcurrentDictionary<string, Lazy<(MaterialNode? Node, MaterialDataContainer? Container)>> _containers = new();
 
-    /// <summary>
-    /// Resolves a previously registered cache key to its container, blocking until the container is ready.
-    /// Returns null if the key is unknown or the container failed to load.
-    /// </summary>
-    public static IMaterialDataContainer? Resolve(string key)
-    {
-        if (string.IsNullOrEmpty(key)) return null;
-        return _cache.TryGetValue(key, out var lazy) ? lazy.Value : null;
-    }
-
-    public static IEnumerable<(string Key, MaterialDataContainer Container)> GetLoaded()
-    {
-        foreach (var (key, lazy) in _cache)
-        {
-            if (lazy is { IsValueCreated: true, Value: MaterialDataContainer container })
-                yield return (key, container);
-        }
-    }
-
-    /// <summary>
-    /// Returns the cache key and ensures a <see cref="Lazy{T}"/> entry exists for it,
-    /// without blocking on the actual container creation.
-    /// The container is created on first call to <see cref="Resolve"/>.
-    /// </summary>
     public static string GetOrCreateKey(FPackageIndex? materialObject, uint layerCount)
     {
-        if (materialObject == null) return string.Empty;
+        if (!TryGetPath(materialObject, out var path)) return string.Empty;
 
-        var path = materialObject.ResolvedObject?.GetPathName();
-        var newLazy = new Lazy<IMaterialDataContainer?>(() =>
+        var newLazy = new Lazy<(MaterialNode?, MaterialDataContainer?)>(() =>
         {
             Log.Debug("Cache miss for material {Path}, creating data container", path);
-            if (!materialObject.TryLoad(out var m) || m is not UUnrealMaterial material)
+            if (GetNode(materialObject) is not { } node)
             {
                 Log.Warning("Material {Path} could not be loaded or is not valid.", path);
-                return null;
+                return (null, null);
             }
-            return ParseMaterialParameters(material, layerCount, null);
+            return (node, ParseMaterialParameters(node, layerCount, null));
         }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-        _cache.GetOrAdd(path, newLazy);
+        _containers.GetOrAdd(path, newLazy);
         return path;
     }
 
     public static string GetOrCreateKeyFromTextureData(UBuildingTextureData?[] textureDataLayers, FPackageIndex? materialObject, uint layerCount)
     {
-        if (materialObject == null) return string.Empty;
+        if (!TryGetPath(materialObject, out var path)) return string.Empty;
 
-        var path = materialObject.ResolvedObject?.GetPathName();
         var dataHash = string.Join("|", textureDataLayers.Select(t => t?.GetPathName() ?? "null"));
         var key = $"__texdata__{path}__{dataHash}";
 
-        var newLazy = new Lazy<IMaterialDataContainer?>(() =>
+        var newLazy = new Lazy<(MaterialNode?, MaterialDataContainer?)>(() =>
         {
             Log.Debug("Cache miss for material {Path}, creating data container", path);
 
-            UUnrealMaterial? baseMaterial = null;
+            MaterialNode? node = null;
             foreach (var textureData in textureDataLayers)
             {
-                if (textureData?.OverrideMaterial.TryLoad<UUnrealMaterial>(out var overrideMaterial) == true)
+                if (textureData is { OverrideMaterial.IsNull: false } && GetNode(textureData.OverrideMaterial) is { } overridden)
                 {
-                    baseMaterial = overrideMaterial;
+                    node = overridden;
                     break;
                 }
             }
 
-            if (baseMaterial == null && materialObject.TryLoad(out var m) && m is UUnrealMaterial material)
-                baseMaterial = material;
-
-            if (baseMaterial == null)
+            node ??= GetNode(materialObject);
+            if (node == null)
             {
                 Log.Warning("Building texture data has no override material and no base material");
-                return null;
+                return (null, null);
             }
 
-            return ParseMaterialParameters(baseMaterial, layerCount, textureDataLayers);
+            return (node, ParseMaterialParameters(node, layerCount, textureDataLayers));
         }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-        _cache.GetOrAdd(key, newLazy);
+        _containers.GetOrAdd(key, newLazy);
         return key;
     }
 
-    private static MaterialDataContainer? ParseMaterialParameters(UUnrealMaterial material, uint layerCount, UBuildingTextureData?[]? textureDataLayers)
+    public static MaterialNode? GetNode(FPackageIndex index)
     {
-        var parameters = new CMaterialParams2();
-        material.GetParams(parameters, Bridge.Options.MaterialDepth);
+        return TryGetPath(index, out var path) ? GetNode(path, () => index.TryLoad<UUnrealMaterial>(out var material) ? material : null) : null;
+    }
 
-        // whatever we will probably remove this Switch thing later
+    public static MaterialNode? GetNode(string path, Func<UUnrealMaterial?> load)
+    {
+        var newLazy = new Lazy<MaterialNode?>(() => load() is { } material ? new MaterialNode(material) : null, LazyThreadSafetyMode.ExecutionAndPublication);
+        return _nodes.GetOrAdd(path, newLazy).Value;
+    }
+
+    public static bool TryGetNode(string? key, [MaybeNullWhen(false)] out MaterialNode node)
+    {
+        node = !string.IsNullOrEmpty(key) && _containers.TryGetValue(key, out var lazy) && lazy.IsValueCreated ? lazy.Value.Node : null;
+        return node is not null;
+    }
+
+    public static IMaterialDataContainer? Resolve(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return null;
+        return _containers.TryGetValue(key, out var lazy) ? lazy.Value.Container : null;
+    }
+
+    public static IEnumerable<(string Key, MaterialDataContainer Container)> GetLoaded()
+    {
+        foreach (var (key, lazy) in _containers)
+        {
+            if (lazy is { IsValueCreated: true, Value.Container: { } container })
+                yield return (key, container);
+        }
+    }
+
+    private static MaterialDataContainer? ParseMaterialParameters(MaterialNode node, uint layerCount, UBuildingTextureData?[]? textureDataLayers)
+    {
         var maxLayers = Math.Min(4, layerCount);
-        if (parameters.Switches.TryGetValue("Use 2 Materials", out var value1) && value1)
-            maxLayers = 2;
-        if (parameters.Switches.TryGetValue("Use 3 Materials", out var value2) && value2)
-            maxLayers = 3;
-        if (parameters.Switches.TryGetValue("Use 4 Materials", out var value3) && value3)
-            maxLayers = 4;
+        for (var count = 4u; count >= 2; count--)
+        {
+            if (!node.TryGetSwitch(out var enabled, $"Use {count} Materials") || !enabled) continue;
+            maxLayers = count;
+            break;
+        }
 
         var layers = new List<MaterialLayer>();
         for (var layerIndex = 0; layerIndex < maxLayers && layerIndex < CMaterialParams2.Diffuse.Length; layerIndex++)
@@ -121,61 +122,48 @@ public static class MaterialCache
             var layerTextureData = textureDataLayers != null && layerIndex < textureDataLayers.Length ? textureDataLayers[layerIndex] : null;
 
             var diffuse = layerTextureData?.Diffuse.Load<UTexture>();
-            if (diffuse == null && !parameters.TryGetTexture2d(out diffuse, CMaterialParams2.Diffuse[layerIndex]))
-            {
-                if (layerIndex == 0)
-                {
-                    if (!parameters.TryGetTexture2d(out diffuse, CMaterialParams2.FallbackDiffuse))
-                    {
-                        parameters.TryGetFirstTexture2d(out diffuse);
-                    }
-                }
+            if (diffuse == null && !node.TryGetTexture(out diffuse, CMaterialParams2.Diffuse[layerIndex]) && layerIndex == 0)
+                node.TryGetTexture(out diffuse, EMaterialTextureKind.Diffuse);
 
-                if (diffuse == null)
-                {
-                    // layer 0 has no diffuse, don't bother continuing
-                    if (layerIndex == 0)
-                        return null;
+            var normal = layerTextureData?.Normal.Load<UTexture>();
+            if (normal == null && !node.TryGetTexture(out normal, CMaterialParams2.Normals[layerIndex]) && layerIndex == 0)
+                node.TryGetTexture(out normal, EMaterialTextureKind.Normal);
 
-                    // no diffuse texture found for this layer, skip it
-                    continue;
-                }
-            }
+            var specular = layerTextureData?.Specular.Load<UTexture>();
+            if (specular == null && !node.TryGetTexture(out specular, CMaterialParams2.SpecularMasks[layerIndex]) && layerIndex == 0)
+                node.TryGetTexture(out specular, EMaterialTextureKind.SpecularMasks);
 
+            var hasColor = false;
             var diffuseColor = Vector3.One;
             if (layerTextureData?.TintColor is { } tintColor)
             {
+                hasColor = true;
                 diffuseColor = new Vector3(tintColor.R / 255f, tintColor.G / 255f, tintColor.B / 255f);
             }
-            else if (parameters.TryGetLinearColor(out var color, CMaterialParams2.DiffuseColors[layerIndex]))
+            else if (node.TryGetVector(out var color, CMaterialParams2.DiffuseColors[layerIndex]))
             {
+                hasColor = true;
                 color = color.ToSRGB();
                 diffuseColor = new Vector3(color.R, color.G, color.B);
             }
 
-            var normal = layerTextureData?.Normal.Load<UTexture>();
-            if (normal == null)
+            if (diffuse == null)
             {
-                parameters.TryGetTexture2d(out normal, [..CMaterialParams2.Normals[layerIndex], CMaterialParams2.FallbackNormals]);
-            }
-
-            var specular = layerTextureData?.Specular.Load<UTexture>();
-            if (specular == null)
-            {
-                parameters.TryGetTexture2d(out specular, [..CMaterialParams2.SpecularMasks[layerIndex], CMaterialParams2.FallbackSpecularMasks]);
+                if (layerIndex > 0) continue;
+                if (!hasColor && normal == null) return null;
             }
 
             var roughness = Vector2.UnitY;
-            if (parameters.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
+            if (node.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
                 roughness.X = roughnessMin;
-            if (parameters.TryGetScalar(out var roughnessMax, "RoughnessMax", "SpecRoughnessMax"))
+            if (node.TryGetScalar(out var roughnessMax, "RoughnessMax", "SpecRoughnessMax"))
                 roughness.Y = roughnessMax;
 
             Texture2D? specularTex = null;
             if (specular != null)
             {
                 specularTex = new Texture2D(specular);
-                if ((parameters.TryGetSwitch(out var srg, "SwizzleRoughnessToGreen") && srg) || parameters.Textures.ContainsKey("SRM"))
+                if ((node.TryGetSwitch(out var srg, "SwizzleRoughnessToGreen") && srg) || node.HasTexture("SRM"))
                 {
                     specularTex.SwizzleMask = [
                         (int)PixelFormat.Red,
@@ -186,28 +174,28 @@ public static class MaterialCache
                 }
                 else
                 {
-                    specularTex.SwizzlePerGame(material.Owner.Provider.ProjectName.ToUpperInvariant());
+                    specularTex.SwizzlePerGame(node.ProjectName.ToUpperInvariant());
                 }
             }
 
-            layers.Add(new MaterialLayer(new Texture2D(diffuse), normal != null ? new Texture2D(normal) : null, specularTex, roughness, diffuseColor));
+            layers.Add(new MaterialLayer(diffuse != null ? new Texture2D(diffuse) : null, normal != null ? new Texture2D(normal) : null, specularTex, roughness, diffuseColor));
         }
 
-        var materialName = textureDataLayers != null ? $"BuildingTexture_{material.Name}" : material.Name;
-        return layers.Count == 0 ? null : new MaterialDataContainer(materialName, layers.ToArray(), parameters.BlendMode);
+        var materialName = textureDataLayers != null ? $"BuildingTexture_{node.Name}" : node.Name;
+        return layers.Count == 0 ? null : new MaterialDataContainer(materialName, layers.ToArray(), node.BlendMode, node.ShadingModel);
+    }
+
+    private static bool TryGetPath([NotNullWhen(true)] FPackageIndex? index, [MaybeNullWhen(false)] out string path)
+    {
+        path = index?.ResolvedObject?.GetPathName();
+        return !string.IsNullOrEmpty(path);
     }
 
     public static void ClearAndDispose()
     {
-        foreach (var lazy in _cache.Values)
-        {
-            if (lazy is { IsValueCreated: true, Value: IDisposable disposable })
-            {
-                disposable.Dispose();
-            }
-        }
-
-        Log.Information("Clearing material cache with {Count} entries", _cache.Count);
-        _cache.Clear();
+        Log.Information("Clearing material cache with {Count} containers and {Nodes} parsed materials", _containers.Count, _nodes.Count);
+        _containers.Clear();
+        _nodes.Clear();
+        JunoPaletteCache.ClearAndDispose();
     }
 }

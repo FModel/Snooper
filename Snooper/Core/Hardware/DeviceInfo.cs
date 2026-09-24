@@ -11,7 +11,9 @@ public class DeviceInfo
     public GpuMemoryInfo Memory { get; } = new();
 
     public static bool IsIntel { get; private set; }
+    public static bool HasFragmentBarycentric { get; private set; }
     public static string GlslDefines { get; private set; } = string.Empty;
+    public static string FragmentGlslDefines { get; private set; } = string.Empty;
 
     public void Load()
     {
@@ -22,6 +24,8 @@ public class DeviceInfo
         Memory.Load(ExtensionSupport);
 
         IsIntel = Vendor.Contains("Intel", StringComparison.OrdinalIgnoreCase);
+        HasFragmentBarycentric = ExtensionSupport.SupportFragmentBarycentric;
         GlslDefines = IsIntel ? "#define BINDLESS_RAW_HANDLES\n" : string.Empty;
+        FragmentGlslDefines = HasFragmentBarycentric ? "#extension GL_NV_fragment_shader_barycentric : require\n#define WIREFRAME\n" : string.Empty;
     }
 }

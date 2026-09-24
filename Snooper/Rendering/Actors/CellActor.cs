@@ -3,24 +3,32 @@ using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
-using Snooper.Core.Containers.Textures;
+using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Visualization;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Actors;
 
 public class CellActor : StreamableActor
 {
-    public bool IsNonSpatiallyLoaded { get; }
     public string[] DataLayers { get; }
+    public bool IsHLOD { get; }
 
-    public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool isNonSpatiallyLoaded = false) : base(cell)
+    private readonly FSoftObjectPath? _world;
+    private readonly Vector3? _loadingExtents;
+
+    public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool isPersistent = false) : base(cell, isPersistent)
     {
-        IsNonSpatiallyLoaded = isNonSpatiallyLoaded;
+        IsHLOD = cell.GetOrDefault("bIsHLOD", false);
         DataLayers = cell.DataLayers?.DataLayers.Select(x => x.Text).ToArray() ?? [];
+        IsVisible = DataLayers.Length == 0 || IsPersistent; // a cell in a data layer waits for that layer to be turned on
 
         if (cell.RuntimeCellData?.TryLoad<UWorldPartitionRuntimeCellData>(out var data) == true)
         {
+            Is2D = data is UWorldPartitionRuntimeCellDataHashSet { bIs2D: true };
+
             FVector center;
             FVector extents;
             if (data is UWorldPartitionRuntimeCellDataSpatialHash spatial && spatial.Position != FVector.ZeroVector)
@@ -33,6 +41,8 @@ public class CellActor : StreamableActor
                 var box = data.ContentBounds * Settings.GlobalScale;
                 box.GetCenterAndExtents(out center, out extents);
             }
+
+            _loadingExtents = new Vector3(extents.X, extents.Z, extents.Y);
 
             // TODO: not clean
             if (DataLayers.Length > 0)
@@ -56,53 +66,79 @@ public class CellActor : StreamableActor
                 color ??= new Vector3(cell.CellDebugColor.R, cell.CellDebugColor.G, cell.CellDebugColor.B);
             }
 
-            Components.Add(new BoxComponent(new Vector3(extents.X, extents.Z, extents.Y), color.Value, 5.0f, new Transform(new Vector3(center.X, center.Z, center.Y)), "CellBounds"));
-
-            var spanX = extents.X * 2;
-            var spanY = extents.Y * 2;
-            var useY = spanY > spanX;
-            var fontWidth = (useY ? spanY : spanX) * 0.9f;
-            var atlasFontSize = FontAtlasTexture.Instance.FontSize;
-            var estimatedPixelWidth = Name.Length * atlasFontSize * 0.6f;
-            var pixelToWorld = Settings.GlobalScale / atlasFontSize;
-            var fontSize = fontWidth / (estimatedPixelWidth * pixelToWorld);
-
-            Components.Add(new TextRenderComponent(Name, fontSize, color, transform: new Transform
-            {
-                Position = new Vector3(0, extents.Z, 0),
-                Rotation = useY
-                    ? Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2)
-                    : Quaternion.Identity
-            }, name: Name));
+            Components.Add(new CellRootComponent(new Vector3(center.X, center.Z, center.Y), _loadingExtents.Value, color.Value));
         }
 
         if (cell is UWorldPartitionRuntimeLevelStreamingCell streaming &&
             streaming.LevelStreaming?.TryLoad<ULevelStreaming>(out var level) == true &&
             level.WorldAsset is { } world)
         {
-            OnLoad += () => AddWorld(world);
-            if (IsNonSpatiallyLoaded)
-            {
-                Load();
-            }
+            _world = world;
         }
     }
 
-    public CellActor(FSoftObjectPath worldAsset, UWorld world) : base(world)
+    public CellActor(FSoftObjectPath worldAsset, UWorld world, bool isPersistent = false) : base(world, isPersistent)
     {
+        Components.Add(new SpatialComponent(null, "CellRoot"));
         DataLayers = [];
-
-        OnLoad += () => AddWorld(worldAsset);
+        _world = worldAsset;
     }
 
-    private void AddWorld(FSoftObjectPath world)
+    protected override CullingBounds? LoadingBounds
     {
-        var w = new WorldActor(world.Load<UWorld>());
-        if (w.RootComponent != null && RootComponent != null)
+        get
         {
-            w.RootComponent.SetLocalTransform(RootComponent.GetLocalTransform().Inverse());
+            if (_loadingExtents is not { } extents || RootComponent is not { } root) return null;
+
+            var matrix = root.GetLocalTransform().ToMatrix();
+            for (var relation = root.Relation; relation != null; relation = relation.Relation)
+            {
+                matrix *= relation.GetLocalTransform().ToMatrix();
+            }
+
+            return new CullingBounds(matrix.Translation, extents);
+        }
+    }
+
+    protected override bool CanBuild => _world is not null;
+
+    protected internal override Actor Build()
+    {
+        if (_world is not { } world)
+            throw new InvalidOperationException($"{Name} has no world to build.");
+
+        var actor = new WorldActor(world.Load<UWorld>() ?? throw new InvalidOperationException($"{Name} world asset could not be loaded."));
+        if (actor.RootComponent != null && RootComponent != null)
+        {
+            actor.RootComponent.SetLocalTransform(RootComponent.GetLocalTransform().Inverse());
         }
 
-        Children.Add(w);
+        return actor;
+    }
+
+    public override void DrawControls()
+    {
+        base.DrawControls();
+
+        EditorUI.PropertyValueTable("Cell", () =>
+        {
+            EditorUI.Text("State", State.ToString());
+            EditorUI.Text("HLOD", IsHLOD ? "Yes" : "No");
+            EditorUI.Text("Range Test", $"{(Is2D ? 2 : 3)}D");
+            EditorUI.Text("Data Layers", DataLayers.Length == 0 ? "None" : string.Join(", ", DataLayers));
+        });
+    }
+
+    public override string Icon => State switch
+    {
+        EStreamingState.Loaded => IsHLOD ? Settings.CityIcon : Settings.CubesIcon,
+        EStreamingState.Loading => Settings.SpinnerIcon,
+        EStreamingState.Failed => Settings.TriangleExclamationIcon,
+        _ => IsHLOD ? Settings.DiceD6Icon : Settings.CubeIcon
+    };
+
+    private sealed class CellRootComponent(Vector3 center, Vector3 extents, Vector3 color) : SpatialComponent(new Transform(center), "CellRoot")
+    {
+        protected override DebugComponent CreateDebugVisualization() => new BoxComponent(extents, color, 5.0f, name: "Cell (Bounds)");
     }
 }

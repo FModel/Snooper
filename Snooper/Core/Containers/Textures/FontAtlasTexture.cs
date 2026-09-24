@@ -131,13 +131,12 @@ public class FontAtlasTexture : Texture2D
         canvas.Flush();
 
         base.Generate();
-        Reset(_atlasWidth, _atlasHeight, bitmap.GetPixelSpan().ToArray());
+        Reset(_atlasWidth, _atlasHeight, [[.. bitmap.GetPixelSpan()]], true);
 
         GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.LinearMipmapLinear);
         GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
-        GL.GenerateTextureMipmap(Handle);
     }
 
     public static void Invalidate() => _instance?.Dispose();

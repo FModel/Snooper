@@ -17,13 +17,14 @@ public static class JunoPaletteCache
     public static FColor Resolve(IFileProvider provider, FColor id) => _cache.GetOrAdd(id.R + id.G + id.B, key =>
     {
         var name = $"MI_LegoStandard_{key}";
-        if (!provider.TryLoadPackageObject<UMaterialInterface>($"/JunoAtomAssets/Materials/{name}.{name}", out var material))
+        var path = $"/JunoAtomAssets/Materials/{name}.{name}";
+        if (MaterialCache.GetNode(path, () => provider.TryLoadPackageObject<UMaterialInterface>(path, out var material) ? material : null) is not { } node)
         {
             Log.Warning("Juno palette id {Id} has no {Name} material, falling back to gray", key, name);
             return _fallback;
         }
 
-        if (!TryGetColor(material, out var color))
+        if (!node.TryGetVector(out var color, "Color"))
         {
             Log.Warning("Juno palette material {Name} has no Color parameter, falling back to gray", name);
             return _fallback;
@@ -32,27 +33,5 @@ public static class JunoPaletteCache
         return color.ToFColor(true);
     });
 
-    private static bool TryGetColor(UUnrealMaterial? material, out FLinearColor color)
-    {
-        while (material is UMaterialInstanceConstant instance)
-        {
-            foreach (var parameter in instance.VectorParameterValues)
-            {
-                if (parameter is { Name: "Color", ParameterValue: { } value })
-                {
-                    color = value;
-                    return true;
-                }
-            }
-
-            var parent = instance.Parent;
-            if (parent == material) break; // this should technically never happen
-            material = parent;
-        }
-
-        color = default;
-        return false;
-    }
-
-    public static void Clear() => _cache.Clear();
+    public static void ClearAndDispose() => _cache.Clear();
 }

@@ -11,20 +11,25 @@ public class Texture2DArray(int width, int height, int depth,
 {
     public int Depth { get; } = depth;
 
-    protected sealed override void SetStorage(int levels)
+    public override void Prepare()
     {
-        GL.TextureStorage3D(Handle, levels, FormatInfo.InternalFormat, Width, Height, Depth);
+        throw new NotImplementedException();
     }
 
-    protected sealed override void SetPixels<T8>(T8[] pixels)
+    protected sealed override void SetStorage()
+    {
+        GL.TextureStorage3D(Handle, MipCount, FormatInfo.InternalFormat, Width, Height, Depth);
+    }
+
+    protected sealed override void SetPixels<T8>(int mip, int width, int height, T8[] pixels)
     {
         switch (FormatInfo)
         {
             case TextureFormatInfo info:
-                GL.TextureSubImage3D(Handle, 0, 0, 0, 0, Width, Height, Depth, info.Format, info.Type, pixels);
+                GL.TextureSubImage3D(Handle, mip, 0, 0, 0, width, height, Depth, info.Format, info.Type, pixels);
                 break;
             case CompressedTextureFormatInfo compressed:
-                GL.CompressedTextureSubImage3D(Handle, 0, 0, 0, 0, Width, Height, Depth, (PixelFormat)compressed.InternalFormat, pixels.Length, pixels);
+                GL.CompressedTextureSubImage3D(Handle, mip, 0, 0, 0, width, height, Depth, (PixelFormat)compressed.InternalFormat, pixels.Length, pixels);
                 break;
             default:
                 throw new NotSupportedException("Unknown texture format info.");

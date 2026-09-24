@@ -66,14 +66,11 @@ public class WorldActor : Actor
         parents.Clear();
 
         // Parallel.ForEach(world.StreamingLevels, new ParallelOptions { MaxDegreeOfParallelism = 10 }, Process);
-        for (var i = 0; i < world.StreamingLevels.Length; i++)
+        for (var i = 0; i < world.StreamingLevels?.Length; i++)
         {
             // TODO: these fucking streaming levels can reference each other
             Process(world.StreamingLevels[i]);
-            // if (i > 5) break; // TODO: GTA optimize, actually stream it (see world partition) or limit the amount of streaming levels to process
         }
-
-        GC.Collect();
     }
 
     private void ProcessDataLayers(ULevel level)
@@ -88,6 +85,8 @@ public class WorldActor : Actor
             {
                 case UDataLayerInstanceWithAsset withAsset when withAsset.DataLayerAsset.TryLoad<UDataLayerAsset>(out var dataLayer):
                     _dataLayers[withAsset.Name] = dataLayer.Name;
+                    if (withAsset.InitialRuntimeState is EDataLayerRuntimeState.Activated)
+                        _visibleDataLayers.Add(withAsset.Name);
                     break;
             }
         }
@@ -99,7 +98,7 @@ public class WorldActor : Actor
             worldSettings.WorldPartition == null || !worldSettings.WorldPartition.TryLoad<UWorldPartition>(out var worldPartition))
             return;
 
-        Children.Add(new PartitionActor(worldPartition));
+        Children.Add(new PartitionActor(worldPartition, _visibleDataLayers));
     }
 
     private void Process(FPackageIndex? ptr)
@@ -137,14 +136,7 @@ public class WorldActor : Actor
             }
             case ULevelStreaming { WorldAsset: { } worldAsset } streaming when worldAsset.TryLoad<UWorld>(out var world):
             {
-                if (streaming is ULevelStreamingAlwaysLoaded or ULevelStreamingPersistent)
-                {
-                    Children.Add(new WorldActor(world));
-                }
-                else
-                {
-                    Children.Add(new CellActor(worldAsset, world));
-                }
+                Children.Add(new CellActor(worldAsset, world, streaming is ULevelStreamingAlwaysLoaded or ULevelStreamingPersistent));
                 break;
             }
         }
@@ -196,7 +188,7 @@ public class WorldActor : Actor
                             _visibleDataLayers.Remove(instanceName);
                         }
 
-                        partition.SetVisibilityByDataLayer(instanceName, isVisible);
+                        partition.SetDataLayerEnabled(instanceName, isVisible);
                     }
                 }
             }

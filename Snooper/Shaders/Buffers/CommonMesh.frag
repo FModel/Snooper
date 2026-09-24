@@ -31,6 +31,7 @@ struct Surface
     float Opacity;
     bool Discard;  // masked out by the material's blend mode
     bool Additive; // contributes light without covering what is behind it
+    bool Unlit;    // the color is the result, no light touches it
 };
 
 vec3 UvGridColor(vec2 uv)
@@ -65,10 +66,11 @@ Surface ResolveSurface(PerMaterialData material)
 {
     Surface surface;
     surface.Color = fs_in.vFragColor;
-    surface.Specular = vec3(0.0, 0.0, 0.6);
+    surface.Specular = vec3(0.5, 0.0, 0.6);
     surface.Opacity = 1.0;
     surface.Discard = false;
     surface.Additive = false;
+    surface.Unlit = false;
 
     vec3 normal = vec3(0.0, 0.0, 1.0);
 
@@ -93,6 +95,7 @@ Surface ResolveSurface(PerMaterialData material)
 
         surface.Color = GetSurfaceColor(material, layer, fs_in.vFragColor);
         surface.Specular = layer.specular;
+        surface.Unlit = IsUnlit(material);
         normal = layer.normal;
     }
 

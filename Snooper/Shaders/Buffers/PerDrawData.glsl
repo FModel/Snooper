@@ -9,6 +9,7 @@ struct PerDrawStatic
     uint CastShadow; // 0 or 1
     float MinDrawDistance;
     float MaxDrawDistance; // 0 for no limit
+    uint Outlined; // 0 or 1
 };
 
 layout(std430, binding = BINDING_DRAW_STATIC) readonly buffer PerDrawStaticBuffer

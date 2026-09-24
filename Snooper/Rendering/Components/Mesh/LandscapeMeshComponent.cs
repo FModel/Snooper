@@ -40,6 +40,8 @@ public unsafe struct PerMaterialLandscapeData : IPerMaterialData
 [DefaultActorSystem(typeof(LandscapeSystem))]
 public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLandscapeData>
 {
+    public const int MaxWeightmaps = 4;
+
     public readonly uint SizeQuads;
     public readonly Dictionary<string, LayerMapping> Layers;
 
@@ -73,7 +75,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         SizeQuads = sizeQuads + 1;
 
         var textures = component.GetWeightmapTextures();
-        var weightmaps = new Texture[textures.Length];
+        var weightmaps = new Texture[Math.Min(textures.Length, MaxWeightmaps)];
         for (var i = 0; i < weightmaps.Length; i++)
         {
             weightmaps[i] = new Texture2D(textures[i]);
@@ -82,9 +84,14 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         Layers = new Dictionary<string, LayerMapping>();
         foreach (var allocation in component.WeightmapLayerAllocations)
         {
-            if (!allocation.LayerInfo.TryLoad(out ULandscapeLayerInfoObject info)) continue;
+            if (allocation.WeightmapTextureIndex >= weightmaps.Length ||
+                !allocation.LayerInfo.TryLoad<ULandscapeLayerInfoObject>(out var info)) continue;
 
-            Layers.TryAdd(info.LayerName.Text, new LayerMapping
+            var layerName = info.LayerName.Text;
+            if (layerName == "DataLayer__")
+                layerName = LandscapeSystem.VisibilityLayer;
+
+            Layers.TryAdd(layerName, new LayerMapping
             {
                 ChannelIndex = allocation.WeightmapTextureChannel,
                 TextureIndex = allocation.WeightmapTextureIndex,
@@ -98,7 +105,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             weightmaps,
             new Vector2(component.WeightmapScaleBias.Z, component.WeightmapScaleBias.W),
             component.WeightmapLayerAllocations,
-            Layers.TryGetValue("__LANDSCAPE_VISIBILITY__", out var visibility) ? visibility : null);
+            Layers.TryGetValue(LandscapeSystem.VisibilityLayer, out var visibility) ? visibility : null);
     }
 
     private const string HeaderLabel = "Landscape";
@@ -206,8 +213,8 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
 
         public void FinalizeGpuData()
         {
-            if (Raw is not null)
-                throw new InvalidOperationException("GPU data has already been finalized and sent.");
+            // if (Raw is not null)
+            //     throw new InvalidOperationException("GPU data has already been finalized and sent.");
 
             if (_heightmap is null || _weightmaps?.Length != weightmaps.Length)
                 throw new InvalidOperationException("Unset textures. Ensure that SetBindlessTexture is called for all textures.");

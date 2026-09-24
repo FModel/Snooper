@@ -6,6 +6,7 @@ using ImGuiNET;
 using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
 using Snooper.Core.Systems;
+using Snooper.Hosting;
 using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Cache;
@@ -20,13 +21,16 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
     public uint FragmentColor = FragmentColorMode.Disabled;
+    public readonly WireframeOptions Wireframe = new();
+
     public int ActorCount { get; private set; }
     public uint Revision { get; private set; }
     public float Time { get; private set; }
     public RendererInfo Renderer { get; } = new();
-    public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
+    public FrameBudget Budget { get; } = new();
     public IFileProvider FileProvider { get; } = fileProvider;
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
+    internal StreamingQueue Streaming { get; } = new();
 
     protected ILogger Log => field ??= Serilog.Log.ForContext(Constants.SourceContextPropertyName, GetType().Name);
 
@@ -39,16 +43,28 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     public virtual void Update(float delta)
     {
         Time += delta;
+        Budget.Begin();
+
+        using (Profiler.Cpu("Streaming"))
+        {
+            Streaming.Update(Budget);
+        }
+
+        using (Profiler.Cpu("Entering"))
+        {
+            EnterActors();
+        }
 
         Renderer.Update(delta);
-        DequeueSystems(1);
-        TextureCache.Update();
-        TrackBackgroundWork();
+        DequeueSystems(Budget);
 
         foreach (var system in Systems.Values)
         {
             system.Update(delta);
         }
+
+        TextureCache.Update(Budget);
+        ThreadManager.Update();
     }
 
     public abstract void Render();
@@ -65,7 +81,52 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         }
 
         actor.SetScene(this, EEndPlayReason.Destroyed);
-        Log.Information("{Actor} brought {ActorCount} actors into the scene", actor.Name, ActorCount);
+        Log.Information("{Actor} is the root of the scene", actor.Name);
+    }
+
+    private const float EnterShare = 0.5f;
+    private const int MinReportedActors = 256;
+
+    private readonly Queue<Actor> _entering = new();
+    private int _enteringTotal;
+    private int _enteringDone;
+
+    internal void Enter(IEnumerable<Actor> children)
+    {
+        foreach (var child in children)
+        {
+            _entering.Enqueue(child);
+            _enteringTotal++;
+        }
+    }
+
+    private void EnterActors()
+    {
+        if (_enteringTotal == 0) return;
+
+        var entered = 0;
+        while (_entering.Count > 0 && (entered == 0 || !Budget.Spent(EnterShare)))
+        {
+            var actor = _entering.Dequeue();
+            _enteringDone++;
+
+            if (actor.Parent?.ActorManager != this) continue; // it was detached, or its parent left, before its turn
+
+            actor.SetScene(this, EEndPlayReason.Destroyed);
+            entered++;
+        }
+
+        var finished = _entering.Count == 0;
+        if (_enteringTotal >= MinReportedActors)
+        {
+            var completed = finished ? $"{_enteringTotal:N0} actors entered the scene" : null;
+            Progress.Report("work.actors", Settings.CubeIcon, "Entering the scene", _enteringDone, _enteringTotal, completed);
+        }
+
+        if (!finished) return;
+
+        Log.Information("{Count} actors entered the scene, {ActorCount} in total", _enteringTotal, ActorCount);
+        _enteringTotal = _enteringDone = 0;
     }
 
     protected void RemoveRoot(Actor actor, EEndPlayReason reason = EEndPlayReason.Destroyed)
@@ -88,6 +149,9 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     {
         ActorCount++;
         IncrementRevision();
+
+        if (actor is StreamableActor streamable && (streamable.IsPersistent || streamable.Wanted))
+            streamable.Load();
 
         Log.Verbose("{Actor} entered the scene", actor.Name);
     }
@@ -177,10 +241,10 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     }
 
     private readonly Queue<ActorSystem> _systemsToLoad = [];
-    private void DequeueSystems(int limit = 0)
+    private void DequeueSystems(FrameBudget? budget = null)
     {
         var count = 0;
-        while (_systemsToLoad.Count > 0 && (limit == 0 || count < limit))
+        while (_systemsToLoad.Count > 0 && (count == 0 || budget?.Exhausted != true))
         {
             var system = _systemsToLoad.Dequeue();
             if (system.EnqueuedComponentsCount == 0)
@@ -196,43 +260,6 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
                 resizable.Resize(_width, _height); // resize right away for the screen-sized resources to get allocated (ClusteredLightSystem)
 
             count++;
-        }
-    }
-
-    private const int MinBackgroundWork = 8;
-
-    private int _peakQueuedJobs;
-    private int _peakPendingTextures;
-    private void TrackBackgroundWork()
-    {
-        var jobs = ThreadManager.CurrentQueuedJobs;
-        if (jobs > 0)
-        {
-            _peakQueuedJobs = Math.Max(_peakQueuedJobs, jobs);
-        }
-        else if (_peakQueuedJobs > 0)
-        {
-            if (_peakQueuedJobs >= MinBackgroundWork)
-            {
-                Notifications.Push("work.jobs", Settings.JobIcon, $"{_peakQueuedJobs:N0} jobs processed");
-            }
-
-            _peakQueuedJobs = 0;
-        }
-
-        var textures = TextureCache.PendingTextureCount;
-        if (textures > 0)
-        {
-            _peakPendingTextures = Math.Max(_peakPendingTextures, textures);
-        }
-        else if (_peakPendingTextures > 0)
-        {
-            if (_peakPendingTextures >= MinBackgroundWork)
-            {
-                Notifications.Push("work.textures", Settings.TextureIcon, $"{_peakPendingTextures:N0} textures uploaded");
-            }
-
-            _peakPendingTextures = 0;
         }
     }
 
@@ -262,10 +289,9 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
 
         var light = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
         ImGui.BeginDisabled(light == null);
-        EditorUI.TogglableTreeNode("Lighting", light?.IsEnabled ?? false, () => light?.DrawControls(), toggle =>
+        EditorUI.TogglableTreeNode("Lighting", light?.UseSceneLights ?? false, () => light?.DrawControls(), toggle =>
         {
-            light?.IsEnabled = toggle;
-            light?.DirectionalLight?.SetVisibility(!toggle);
+            light?.UseSceneLights = toggle;
             // TODO: auto disable shadows
         });
         ImGui.EndDisabled();
@@ -294,7 +320,6 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         IsDisposed = true; // it is what makes the teardown below a Shutdown one
 
         Teardown();
-        ThreadManager.Dispose();
     }
 
     protected EEndPlayReason TeardownReason => IsDisposed ? EEndPlayReason.Shutdown : EEndPlayReason.SceneTransition;
@@ -313,6 +338,14 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
 
         Systems.Clear();
         _systemsPerComponentType.Clear();
+        Streaming.Clear();
+        _entering.Clear();
+        _enteringTotal = _enteringDone = 0;
+
+        Progress.Clear();
+        WindowRequests.Clear();
+        TextureCache.Clear();
+        Bridge.Clear();
     }
 
     public virtual long Allocated

@@ -1,55 +1,54 @@
-﻿using CUE4Parse.UE4.Assets.Exports;
+﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports;
+using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Rendering.Actors;
 
-public abstract class StreamableActor : Actor
+public enum EStreamingState
 {
-    public bool IsLoaded { get; private set; }
-    public bool IsLoading { get; private set; }
-    public bool CanLoad => !IsLoaded && !IsLoading && OnLoad != null;
+    Unloaded,
+    Loading,
+    Loaded,
+    Failed
+}
 
-    protected event Action? OnLoad;
+public abstract class StreamableActor(UObject actor, bool isPersistent = false) : Actor(actor)
+{
+    public readonly bool IsPersistent = isPersistent;
+    public bool Is2D { get; init; }
 
-    protected StreamableActor(UObject actor) : base(actor)
-    {
-        IsVisible = false;
-    }
+    public EStreamingState State { get; internal set; }
+    public bool IsLoaded => State is EStreamingState.Loaded;
+    public bool IsLoading => State is EStreamingState.Loading;
+    public bool CanLoad => State is EStreamingState.Unloaded or EStreamingState.Failed && CanBuild;
+
+    internal bool Wanted { get; private set; }
 
     public void Load()
     {
-        if (!CanLoad) return;
+        if (!CanBuild) return;
 
-        IsVisible = true;
-        IsLoading = true;
-        ActorManager?.ThreadManager.Enqueue(() =>
-        {
-            try
-            {
-                OnLoad?.Invoke();
-                IsLoaded = true;
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        });
+        Wanted = true;
+        ActorManager?.Streaming.Load(this);
     }
 
-    public Action? GetLoadAction()
+    public void Unload()
     {
-        if (!CanLoad) return null;
-
-        return () =>
-        {
-            try
-            {
-                OnLoad?.Invoke();
-                IsLoaded = true;
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        };
+        Wanted = false;
+        ActorManager?.Streaming.Unload(this);
     }
+
+    public float DistanceTo(Vector3 position)
+    {
+        if (LoadingBounds is not { } bounds) return float.PositiveInfinity;
+
+        var closest = Vector3.Clamp(position, bounds.Center - bounds.Extents, bounds.Center + bounds.Extents);
+        if (Is2D) closest.Y = position.Y;
+
+        return Vector3.Distance(position, closest);
+    }
+
+    protected abstract CullingBounds? LoadingBounds { get; }
+    protected abstract bool CanBuild { get; }
+    protected internal abstract Actor Build();
 }

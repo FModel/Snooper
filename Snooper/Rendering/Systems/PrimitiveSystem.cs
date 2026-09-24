@@ -18,18 +18,17 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
     protected override bool AllowDerivation => false;
-    protected virtual bool IsCulled => true;
+    protected virtual bool IsCulled => true; // whether the bounds of this system's components can be trusted
     protected virtual Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {
         [CommandBufferType.Transparent] = new EmbeddedShader("default")
     };
 
+    private ShaderProgram? _maskShader;
+
     protected override void OnLoad()
     {
         base.OnLoad();
-
-        if (Shaders.ContainsKey(CommandBufferType.Mask))
-            throw new InvalidOperationException("Mask shader is auto generated and cannot be set manually.");
 
         if (!Shaders.TryGetValue(CommandBufferType.Transparent, out var mainShader) &&
             !Shaders.TryGetValue(CommandBufferType.Opaque, out mainShader))
@@ -37,11 +36,10 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
             throw new InvalidOperationException("At least one shader (opaque or transparent) must be provided.");
         }
 
-        var maskShader = (ShaderProgram) mainShader.Clone();
-        maskShader.Fragment = "empty.frag";
-        Shaders.Add(CommandBufferType.Mask, maskShader);
+        _maskShader = (ShaderProgram) mainShader.Clone();
+        _maskShader.Fragment = "empty.frag";
 
-        foreach (var shader in Shaders.Values)
+        foreach (var shader in Shaders.Values.Append(_maskShader))
         {
             shader.Generate();
             shader.Link();
@@ -54,19 +52,32 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         shader.SetUniform("uViewMatrix", camera.ViewMatrix);
         shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
         shader.SetUniform("uFragmentColorMode", ActorManager?.FragmentColor ?? FragmentColorMode.Disabled);
+        var wireframe = ActorManager?.Wireframe;
+        var wired = wireframe is not null && (wireframe.Enabled || ShowWireframe);
+        shader.SetUniform("uWireframe", wired);
+        if (wired)
+        {
+            shader.SetUniform("uWireframeColor", wireframe!.Color);
+            shader.SetUniform("uWireframeWidth", wireframe.Width);
+            shader.SetUniform("uWireframeOverlay", wireframe.Overlay);
+        }
         shader.SetUniform("uViewBase", 0u); // the main camera is always view 0
     }
 
     public override void Cull(ReadOnlySpan<CullView> views)
     {
-        if (!IsEnabled || !IsCulled) return;
+        if (!IsEnabled) return;
 
         using (Scope())
         using (Profiler.Cull())
         {
             foreach (var type in Shaders.Keys)
             {
-                Resources.Cull(type == CommandBufferType.Opaque ? views : views[..1], type);
+                // opaque draws are culled for every view (main camera + shadow cameras)
+                // transparent draws are culled for the camera only, they cast no shadow
+                // a system whose bounds cannot be trusted culls nothing, it only gets its mask slice
+                if (!IsCulled) Resources.BuildMask(type);
+                else Resources.Cull(type == CommandBufferType.Opaque ? views : views[..1], type);
             }
         }
     }
@@ -88,6 +99,25 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         }
     }
 
+    public override void RenderMask(CameraComponent camera)
+    {
+        if (!IsEnabled || _maskShader is null) return;
+
+        using (Scope())
+        using (Profiler.Draw())
+        {
+            PreRender(camera, _maskShader);
+            BindSystemBuffers();
+            foreach (var type in Shaders.Keys)
+            {
+                var view = Resources.GetMaskView(type);
+                _maskShader.SetUniform("uViewBase", Resources.GetViewBase(type, view));
+                Resources.Render(type, view);
+            }
+            PostRender(camera, _maskShader);
+        }
+    }
+
     protected virtual void PostRender(CameraComponent camera, ShaderProgram shader)
     {
         shader.Unuse();
@@ -97,7 +127,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     {
         get
         {
-            long total = base.Allocated;
+            long total = base.Allocated + (_maskShader?.Allocated ?? 0);
             foreach (var shader in Shaders.Values)
                 total += shader.Allocated;
             return total;
@@ -108,7 +138,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
     {
         get
         {
-            long total = base.Used;
+            long total = base.Used + (_maskShader?.Used ?? 0);
             foreach (var shader in Shaders.Values)
                 total += shader.Used;
             return total;
@@ -122,6 +152,9 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
 
         foreach (var (type, shader) in Shaders)
             yield return new MemoryDetail($"{type} Shader", shader);
+
+        if (_maskShader is not null)
+            yield return new MemoryDetail("Mask Shader", _maskShader);
     }
 
     public override void Dispose()
@@ -130,6 +163,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
 
         foreach (var shader in Shaders.Values)
             shader.Dispose();
+        _maskShader?.Dispose();
     }
 }
 

@@ -17,7 +17,7 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
     public virtual string Icon { get; private set; } = "\uf550";
 
     public bool IsNodeOpen { get; set; }
-    public bool IsNodeSelected { get; set; }
+    public virtual bool IsNodeSelected { get; set; }
     public int NodeDepth { get; set; }
     public int NodeIndex { get; set; }
 
@@ -62,7 +62,6 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
 
     private static int _nextId;
     public int Id { get; } = Interlocked.Increment(ref _nextId);
-    public abstract void SetOutlined(bool state);
     public abstract bool ShouldScrollHere { get; set; }
     public abstract void DrawControls();
 

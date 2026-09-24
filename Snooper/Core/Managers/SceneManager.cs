@@ -3,7 +3,6 @@ using System.Numerics;
 using CUE4Parse.FileProvider;
 using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
-using Snooper.Core.Systems;
 using Snooper.Hosting;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Cache;
@@ -11,7 +10,6 @@ using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Managers;
 using Snooper.Rendering.Systems;
-using Snooper.UI;
 
 namespace Snooper.Core.Managers;
 
@@ -80,12 +78,7 @@ public class SceneManager : ActorManager
     public override void Update(float delta)
     {
         Bridge.Drain();
-        DequeueViewports(1);
-
-        if (RootActor != null && MainViewport?.Camera is { } camera && camera.IsDirty(DirtyFlags.Transform))
-        {
-            UpdatePartitionActorsRecursive(RootActor, camera.GetLocalTransform().Position);
-        }
+        DequeueViewports(Budget);
 
         base.Update(delta);
     }
@@ -132,18 +125,6 @@ public class SceneManager : ActorManager
         }
     }
 
-    private void UpdatePartitionActorsRecursive(Actor actor, Vector3 cameraPosition)
-    {
-        if (actor is PartitionActor partition)
-        {
-            partition.SetVisibilityByDistance(cameraPosition);
-        }
-        else foreach (var child in actor.Children)
-        {
-            UpdatePartitionActorsRecursive(child, cameraPosition);
-        }
-    }
-
     protected sealed override void AddComponent(ActorComponent component, Actor actor)
     {
         base.AddComponent(component, actor);
@@ -183,10 +164,10 @@ public class SceneManager : ActorManager
     }
 
     private readonly Queue<Viewport> _viewportsToLoad = [];
-    private void DequeueViewports(int limit = 0)
+    private void DequeueViewports(FrameBudget? budget = null)
     {
         var count = 0;
-        while (_viewportsToLoad.Count > 0 && (limit == 0 || count < limit))
+        while (_viewportsToLoad.Count > 0 && (count == 0 || budget?.Exhausted != true))
         {
             var viewport = _viewportsToLoad.Dequeue();
             viewport.Resize(Window.ClientSize.X, Window.ClientSize.Y);
@@ -257,8 +238,7 @@ public class SceneManager : ActorManager
     {
         base.Dispose();
 
-        Bridge.Reset();
-        WindowRequests.ClearPayloads();
+        ThreadManager.ClearAndDispose();
         MeshCache.ClearAndDispose();
         MaterialCache.ClearAndDispose();
         TextureCache.ClearAndDispose();

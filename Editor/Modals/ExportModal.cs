@@ -593,7 +593,7 @@ public sealed class ExportModal
         public string Icon { get; } = log.Level switch
         {
             LogEventLevel.Error or LogEventLevel.Fatal => IconXMark,
-            LogEventLevel.Warning => "\uf071",
+            LogEventLevel.Warning => Settings.TriangleExclamationIcon,
             LogEventLevel.Information => "\uf05a",
             LogEventLevel.Debug => "\uf188",
             _ => "\uf5dc"

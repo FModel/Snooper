@@ -2,8 +2,8 @@
 
 uniform sampler2D gPosition; // view space position
 uniform sampler2D gNormal; // view space normal
-uniform sampler2D gColor; // albedo color (RGB: albedo, A: unused atm)
-uniform sampler2D gSpecular; // specular color (R: unused atm, G: metallic, B: roughness, A: unused atm)
+uniform sampler2D gColor; // albedo color (RGB: albedo, A: 0 = unlit, 1 = lit)
+uniform sampler2D gSpecular; // specular color (R: specular, G: metallic, B: roughness, A: unused atm)
 uniform sampler2D ssao;
 uniform sampler2DArrayShadow shadowMap;
 
@@ -325,7 +325,14 @@ void main()
 {
     vec3 viewPos = texture(gPosition, vTexCoords).rgb;
     vec3 normal = texture(gNormal, vTexCoords).rgb;
-    vec3 albedo = texture(gColor, vTexCoords).rgb;
+    vec4 surface = texture(gColor, vTexCoords);
+    vec3 albedo = surface.rgb;
+    if (surface.a < 0.5)
+    {
+        FragColor = vec4(pow(albedo, vec3(1.0 / 2.2)), 1.0);
+        return;
+    }
+
     vec3 specs = texture(gSpecular, vTexCoords).rgb;
     float ao = useSsao ? texture(ssao, vTexCoords).r : 1.0;
 
@@ -370,6 +377,7 @@ void main()
         return;
     }
 
+    float specular = specs.r;
     float metallic = specs.g;
     float roughness = specs.b;
 
@@ -378,7 +386,7 @@ void main()
     vec3 worldV = normalize((uInverseViewMatrix * vec4(V, 0.0)).xyz);
 
     // Fresnel reflectance at normal incidence
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 F0 = mix(vec3(0.08 * specular), albedo, metallic);
 
     // Calculate sun light contribution using PBR
     vec3 H = normalize(worldV + L);
