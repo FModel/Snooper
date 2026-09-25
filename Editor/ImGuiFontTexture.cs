@@ -22,10 +22,7 @@ public class ImGuiFontTexture() : Texture2D(0, 0, SizedInternalFormat.Rgba32f, P
         GL.TextureSubImage2D(Handle, 0, 0, 0, Width, Height, info.Format, info.Type, pixels);
         GL.GenerateTextureMipmap(Handle);
 
-        GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) TextureWrapMode.Repeat);
-        GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) TextureWrapMode.Repeat);
-        GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-        GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
+        SetSampling(TextureMinFilter.Linear, TextureMagFilter.Linear, TextureWrapMode.Repeat);
         GL.TextureParameter(Handle, TextureParameterName.TextureBaseLevel, 0);
         GL.TextureParameter(Handle, TextureParameterName.TextureMaxLevel, mipCount - 1);
 

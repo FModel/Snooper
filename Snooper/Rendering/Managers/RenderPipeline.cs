@@ -69,7 +69,9 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         if (_ambientOcclusion)
         {
             _postProcess.DoStagePass("AO Pass", new AmbientOcclusionStageContext(camera, _geometry, _aoRadius, _aoIntensity, _aoMaxDistance));
-            _postProcess.DoStagePass("AO Blur Pass", new BlurStageContext(_blurRadius, _geometry));
+            var blurContext = new BlurStageContext(_blurRadius, _geometry);
+            _postProcess.DoStagePass("AO Blur H Pass", blurContext);
+            _postProcess.DoStagePass("AO Blur V Pass", blurContext);
         }
 
         var geometryContext = new GeometryStageContext(_geometry);

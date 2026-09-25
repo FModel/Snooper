@@ -20,25 +20,19 @@ public class DeferredFramebuffer(int originalWidth, int originalHeight) : Frameb
     {
         _position.Generate();
         _position.Resize(Width, Height);
-        GL.TextureParameter(_position, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TextureParameter(_position, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        GL.TextureParameter(_position, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-        GL.TextureParameter(_position, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+        _position.SetSampling(TextureMinFilter.Nearest, TextureMagFilter.Nearest, TextureWrapMode.ClampToEdge);
 
         _normal.Generate();
         _normal.Resize(Width, Height);
-        GL.TextureParameter(_normal, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TextureParameter(_normal, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        _normal.SetSampling(TextureMinFilter.Nearest, TextureMagFilter.Nearest);
 
         _color.Generate();
         _color.Resize(Width, Height);
-        GL.TextureParameter(_color, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TextureParameter(_color, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        _color.SetSampling(TextureMinFilter.Nearest, TextureMagFilter.Nearest);
 
         _specular.Generate();
         _specular.Resize(Width, Height);
-        GL.TextureParameter(_specular, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TextureParameter(_specular, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
+        _specular.SetSampling(TextureMinFilter.Nearest, TextureMagFilter.Nearest);
 
         _picking.Generate();
         _picking.Resize(Width, Height);

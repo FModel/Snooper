@@ -7,7 +7,8 @@ public class ResizableTexture2D(int width, int height,
     SizedInternalFormat internalFormat = SizedInternalFormat.Rgba8,
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte,
-    string? name = null) : Texture2D(width, height, internalFormat, format, type, name: name), IResizable, IBind
+    string? name = null,
+    int downscale = 1) : Texture2D(Scale(width, downscale), Scale(height, downscale), internalFormat, format, type, name: name), IResizable, IBind
 {
     public GetPName PName => GetPName.TextureBinding2D;
     public int PreviousHandle { get; private set; }
@@ -25,21 +26,23 @@ public class ResizableTexture2D(int width, int height,
 
     public void Resize(int newWidth, int newHeight)
     {
-        Width = newWidth;
-        Height = newHeight;
+        Width = Scale(newWidth, downscale);
+        Height = Scale(newHeight, downscale);
 
         Bind();
         switch (Target)
         {
             case TextureTarget.Texture2D when FormatInfo is TextureFormatInfo info:
-                GL.TexImage2D(Target, 0, info.InternalFormat.ToPixelInternalFormat(), newWidth, newHeight, 0, info.Format, info.Type, 0);
+                GL.TexImage2D(Target, 0, info.InternalFormat.ToPixelInternalFormat(), Width, Height, 0, info.Format, info.Type, 0);
                 break;
             case TextureTarget.Texture2D when FormatInfo is CompressedTextureFormatInfo compressed:
                 GL.CompressedTexImage2D(Target, 0, compressed.InternalFormat.ToInternalFormat(), Width, Height, 0, 0, 0);
                 break;
             case TextureTarget.Texture2DMultisample when FormatInfo is TextureFormatInfo info:
-                GL.TexImage2DMultisample(TextureTargetMultisample.Texture2DMultisample, Settings.NumberOfSamples, info.InternalFormat.ToPixelInternalFormat(), newWidth, newHeight, true);
+                GL.TexImage2DMultisample(TextureTargetMultisample.Texture2DMultisample, Settings.NumberOfSamples, info.InternalFormat.ToPixelInternalFormat(), Width, Height, true);
                 break;
         }
     }
+
+    private static int Scale(int size, int downscale) => (size + downscale - 1) / downscale;
 }

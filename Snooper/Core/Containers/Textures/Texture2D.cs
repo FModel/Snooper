@@ -20,6 +20,7 @@ public class Texture2D(int width, int height,
     private readonly Func<UTexture?>? _reload;
     private readonly bool _unsupported;
     private bool _terrain;
+    private (TextureMinFilter Min, TextureMagFilter Mag, TextureWrapMode WrapS, TextureWrapMode WrapT) _sampling;
     private byte[][]? _levels;
 
     public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, guid: texture.LightingGuid, name: texture.Name)
@@ -55,19 +56,8 @@ public class Texture2D(int width, int height,
         Reset(Width, Height, _levels, !_terrain);
         _levels = null;
 
-        if (_terrain)
-        {
-            GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-            GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-            GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-            GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
-        }
-        else
-        {
-            Swizzle();
-            GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.LinearMipmapLinear);
-            GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-        }
+        if (!_terrain) Swizzle();
+        SetSampling(_sampling.Min, _sampling.Mag, _sampling.WrapS, _sampling.WrapT);
 
         IsReadyForBindless = true;
     }
@@ -85,6 +75,19 @@ public class Texture2D(int width, int height,
             throw new InvalidOperationException("No suitable mip found for the given max texture size.");
 
         _terrain = owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap;
+
+        (_sampling.Min, _sampling.Mag) = _terrain ? (TextureMinFilter.Linear, TextureMagFilter.Linear)
+            : owner.RenderNearestNeighbor ? (TextureMinFilter.NearestMipmapLinear, TextureMagFilter.Nearest)
+            : owner.Filter == TextureFilter.TF_Bilinear ? (TextureMinFilter.LinearMipmapNearest, TextureMagFilter.Linear)
+            : (TextureMinFilter.LinearMipmapLinear, TextureMagFilter.Linear);
+        (_sampling.WrapS, _sampling.WrapT) = _terrain ? (TextureWrapMode.ClampToEdge, TextureWrapMode.ClampToEdge) : (Wrap(owner.GetTextureAddressX()), Wrap(owner.GetTextureAddressY()));
+
+        TextureWrapMode Wrap(TextureAddress address) => address switch
+        {
+            TextureAddress.TA_Clamp => TextureWrapMode.ClampToEdge,
+            TextureAddress.TA_Mirror => TextureWrapMode.MirroredRepeat,
+            _ => TextureWrapMode.Repeat
+        };
 
         if (owner.PlatformData is { FirstMipToSerialize: >= 0, VTData: { } vt } && vt.IsInitialized())
         {

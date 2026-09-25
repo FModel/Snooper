@@ -19,6 +19,11 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
     public int MipCount { get; private set; } = 1;
     public bool IsReadyForBindless { get; protected set; }
 
+    public TextureMinFilter MinFilter { get; private set; } = TextureMinFilter.NearestMipmapLinear;
+    public TextureMagFilter MagFilter { get; private set; } = TextureMagFilter.Linear;
+    public TextureWrapMode WrapS { get; private set; } = TextureWrapMode.Repeat;
+    public TextureWrapMode WrapT { get; private set; } = TextureWrapMode.Repeat;
+
     protected ITextureFormatInfo FormatInfo
     {
         get;
@@ -108,6 +113,23 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
         GL.TextureParameter(Handle, TextureParameterName.TextureSwizzleRgba, SwizzleMask);
     }
 
+    public void SetSampling(TextureMinFilter minFilter, TextureMagFilter magFilter, TextureWrapMode? wrap = null) => SetSampling(minFilter, magFilter, wrap ?? WrapS, wrap ?? WrapT);
+    public void SetSampling(TextureMinFilter minFilter, TextureMagFilter magFilter, TextureWrapMode wrapS, TextureWrapMode wrapT)
+    {
+        MinFilter = minFilter;
+        MagFilter = magFilter;
+        WrapS = wrapS;
+        WrapT = wrapT;
+
+        GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) minFilter);
+        GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) magFilter);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) wrapS);
+        GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) wrapT);
+
+        var anisotropy = minFilter == TextureMinFilter.LinearMipmapLinear ? GL.GetFloat(GetPName.MaxTextureMaxAnisotropy) : 1f;
+        GL.TextureParameter(Handle, TextureParameterName.TextureMaxAnisotropy, anisotropy);
+    }
+
     public T GetPixel<T>(int x, int y) where T : unmanaged
     {
         var pixel = default(T);
@@ -146,6 +168,7 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Name);
         EditorUI.Caption($"{Guid.ToString(EGuidFormats.UniqueObjectGuid)}", $"{Width}x{Height} pixels ({GetFormattedSpace()})");
+        EditorUI.Caption($"{MinFilter} / {MagFilter}", $"{WrapS} / {WrapT}");
         ImGui.EndGroup();
     }
 

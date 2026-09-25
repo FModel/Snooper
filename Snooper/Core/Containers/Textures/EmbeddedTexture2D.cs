@@ -21,11 +21,7 @@ public class EmbeddedTexture2D(string file,
 
         ProcessPixels(info);
 
-        GL.TextureParameter(Handle, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(Handle, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
-        GL.TextureParameter(Handle, TextureParameterName.TextureWrapR, (int) TextureWrapMode.ClampToEdge);
-        GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-        GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+        SetSampling(TextureMinFilter.Linear, TextureMagFilter.Linear, TextureWrapMode.ClampToEdge);
 
         IsReadyForBindless = true;
     }

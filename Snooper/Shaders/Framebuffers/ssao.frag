@@ -42,7 +42,7 @@ void main()
     // horizon search entirely instead of spending samples on geometry that won't show it.
     if (dot(N, N) < 0.01 || depth <= 0.0 || depth >= uMaxDistance)
     {
-        FragColor = vec4(1.0);
+        FragColor = vec4(1.0, 0.0, 0.0, 0.0);
         return;
     }
 
@@ -123,5 +123,5 @@ void main()
     float ao = mix(MIN_VISIBILITY, 1.0, pow(visibility, uIntensity));
     ao = mix(1.0, ao, 1.0 - smoothstep(uMaxDistance * 0.7, uMaxDistance, depth));
 
-    FragColor = vec4(vec3(ao), 1.0);
+    FragColor = vec4(ao, depth, N.xy);
 }

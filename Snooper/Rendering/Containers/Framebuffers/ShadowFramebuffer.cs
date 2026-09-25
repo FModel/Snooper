@@ -82,10 +82,7 @@ public class ShadowFramebuffer(int resolution = Settings.ShadowResolution, int c
         _atlas.Generate();
         _atlas.Reset<int>(Width, Height, []);
 
-        GL.TextureParameter(_atlas, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Nearest);
-        GL.TextureParameter(_atlas, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Nearest);
-        GL.TextureParameter(_atlas, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToBorder);
-        GL.TextureParameter(_atlas, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToBorder);
+        _atlas.SetSampling(TextureMinFilter.Nearest, TextureMagFilter.Nearest, TextureWrapMode.ClampToBorder);
         GL.TextureParameter(_atlas, TextureParameterName.TextureBorderColor, [1.0f, 1.0f, 1.0f, 1.0f]);
 
         var clearDepth = 1.0f;

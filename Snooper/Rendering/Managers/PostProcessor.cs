@@ -10,8 +10,11 @@ namespace Snooper.Rendering.Managers;
 
 public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFramebuffer<EPostProcessTexture>(originalWidth, originalHeight)
 {
-    private readonly ResizableTexture2D _ssao = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, name: "PostProcess - SSAO");
-    private readonly ResizableTexture2D _ssaoBlur = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, name: "PostProcess - SSAO Blur");
+    private const int AoDownscale = 2;
+
+    private readonly ResizableTexture2D _ssao = new(originalWidth, originalHeight, SizedInternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float, "PostProcess - SSAO", AoDownscale);
+    private readonly ResizableTexture2D _ssaoBlurH = new(originalWidth, originalHeight, SizedInternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float, "PostProcess - SSAO Blur H", AoDownscale);
+    private readonly ResizableTexture2D _ssaoBlurV = new(originalWidth, originalHeight, SizedInternalFormat.R8, PixelFormat.Red, name: "PostProcess - SSAO Blur V");
     private readonly ResizableTexture2D _lit = new(originalWidth, originalHeight, name: "PostProcess - Lit"); // deferred pass with lighting, shadows, and SSAO applied
     private readonly ResizableTexture2D _combined = new(originalWidth, originalHeight, name: "PostProcess - Combined");
     private readonly ResizableTexture2D _fxaa = new(originalWidth, originalHeight, name: "PostProcess - FXAA");
@@ -24,19 +27,20 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
 
     public override void Generate()
     {
-        Generate(_ssao);
-        Generate(_ssaoBlur);
+        Generate(_ssao, TextureMinFilter.Nearest, TextureMagFilter.Nearest);
+        Generate(_ssaoBlurH, TextureMinFilter.Nearest, TextureMagFilter.Nearest);
+        Generate(_ssaoBlurV);
         Generate(_lit);
         Generate(_combined);
         Generate(_fxaa);
         Generate(_shadowViz);
         Generate(_clusterViz);
-        Generate(_picking, TextureMinFilter.Nearest);
+        Generate(_picking, TextureMinFilter.Nearest, TextureMagFilter.Nearest);
         Generate(_pickingViz);
 
         base.Generate();
         // ColorAttachment0 = final output (outputted to screen)
-        // other attachments are for intermediate steps and may be ping-ponged as needed
+        // every intermediate step attaches its own texture to StagePass.ScratchAttachment for the time of its draw
 
         _passes.Add(new StagePass<AmbientOcclusionStageContext>("AO Pass", Generate("Framebuffers/ssao.frag"), _ssao)
         {
@@ -54,17 +58,29 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             }
         });
 
-        _passes.Add(new StagePass<BlurStageContext>("AO Blur Pass", Generate("Framebuffers/blur.frag"), _ssaoBlur)
+        _passes.Add(new StagePass<BlurStageContext>("AO Blur H Pass", Generate("Framebuffers/blur.frag"), _ssaoBlurH)
+        {
+            SetupBindings = (ctx, shader) =>
+            {
+                shader.SetUniform("inputTexture", 0);
+                shader.SetUniform("uDirection", new Vector2(1.0f / _ssao.Width, 0.0f));
+                shader.SetUniform("blurRadius", ctx.Radius);
+
+                _ssao.Bind(0);
+            }
+        });
+
+        _passes.Add(new StagePass<BlurStageContext>("AO Blur V Pass", Generate("Framebuffers/blur.frag", ["UPSAMPLE"]), _ssaoBlurV)
         {
             SetupBindings = (ctx, shader) =>
             {
                 shader.SetUniform("inputTexture", 0);
                 shader.SetUniform("gPosition", 1);
                 shader.SetUniform("gNormal", 2);
-                shader.SetUniform("texelSize", Vector2.One / new Vector2(_ssao.Width, _ssao.Height));
+                shader.SetUniform("uDirection", new Vector2(0.0f, 1.0f / _ssaoBlurH.Height));
                 shader.SetUniform("blurRadius", ctx.Radius);
 
-                _ssao.Bind(0);  // Read from attachment 1, write to attachment 2
+                _ssaoBlurH.Bind(0);
                 ctx.Geometry.Bind(EDeferredTexture.Position, 1);
                 ctx.Geometry.Bind(EDeferredTexture.Normal, 2);
             }
@@ -91,7 +107,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("useSsao", ctx.AmbientOcclusion);
                 if (ctx.AmbientOcclusion)
                 {
-                    _ssaoBlur.Bind(4);
+                    _ssaoBlurV.Bind(4);
                     shader.SetUniform("ssao", 4);
                 }
 
@@ -149,7 +165,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("inputTexture", 0);
                 shader.SetUniform("inverseScreenSize", Vector2.One / new Vector2(Width, Height));
 
-                _combined.Bind(0);  // Read from attachment 2, write to attachment 1
+                _combined.Bind(0);
             }
         });
 
@@ -235,7 +251,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             SetupBindings = (_, shader) =>
             {
                 shader.SetUniform("inputTexture", 0);
-                _picking.Bind(0);  // Read from attachment 1, write to attachment 2
+                _picking.Bind(0);
             }
         });
     }
@@ -255,7 +271,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         var t = texture switch
         {
             EPostProcessTexture.Ao => _ssao,
-            EPostProcessTexture.AoBlur => _ssaoBlur,
+            EPostProcessTexture.AoBlur => _ssaoBlurV,
             EPostProcessTexture.Lit => _lit,
             EPostProcessTexture.Combined => _combined,
             EPostProcessTexture.PickingViz => _pickingViz,
@@ -283,14 +299,11 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         return pixel;
     }
 
-    private void Generate(ResizableTexture2D texture, TextureMinFilter filter = TextureMinFilter.Linear)
+    private void Generate(ResizableTexture2D texture, TextureMinFilter minFilter = TextureMinFilter.Linear, TextureMagFilter magFilter = TextureMagFilter.Linear)
     {
         texture.Generate();
         texture.Resize(Width, Height);
-        GL.TextureParameter(texture, TextureParameterName.TextureMinFilter, (int) filter);
-        GL.TextureParameter(texture, TextureParameterName.TextureMagFilter, (int) filter);
-        GL.TextureParameter(texture, TextureParameterName.TextureWrapS, (int) TextureWrapMode.ClampToEdge);
-        GL.TextureParameter(texture, TextureParameterName.TextureWrapT, (int) TextureWrapMode.ClampToEdge);
+        texture.SetSampling(minFilter, magFilter, TextureWrapMode.ClampToEdge);
     }
 
     private ShaderProgram Generate(string fragment, string[]? defines = null)
@@ -304,8 +317,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
     public Texture GetFinalTexture() => base.GetTextures()[^1];
     public override Texture[] GetTextures() =>
     [
-        _ssao,
-        _ssaoBlur,
+        _ssaoBlurV,
         _lit,
         _combined,
         _fxaa,
@@ -319,7 +331,8 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         base.Resize(newWidth, newHeight);
 
         _ssao.Resize(newWidth, newHeight);
-        _ssaoBlur.Resize(newWidth, newHeight);
+        _ssaoBlurH.Resize(newWidth, newHeight);
+        _ssaoBlurV.Resize(newWidth, newHeight);
         _lit.Resize(newWidth, newHeight);
         _combined.Resize(newWidth, newHeight);
         _fxaa.Resize(newWidth, newHeight);
@@ -337,7 +350,8 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
             pass.Dispose();
 
         _ssao.Dispose();
-        _ssaoBlur.Dispose();
+        _ssaoBlurH.Dispose();
+        _ssaoBlurV.Dispose();
         _lit.Dispose();
         _combined.Dispose();
         _fxaa.Dispose();

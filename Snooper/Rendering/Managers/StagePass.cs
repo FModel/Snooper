@@ -7,25 +7,13 @@ namespace Snooper.Rendering.Managers;
 
 public abstract class StagePass(string name) : IDisposable
 {
-    private static int _currentDrawBufferIndex;
-    private static readonly DrawBufferMode[] _pingPongDrawBuffers =
-    [
-        DrawBufferMode.ColorAttachment1,
-        DrawBufferMode.ColorAttachment2,
-    ];
+    protected const FramebufferAttachment ScratchAttachment = FramebufferAttachment.ColorAttachment1;
 
     public string Name { get; } = name;
 
     public abstract void Run(IStageContext context, uint framebufferHandle, Action<Action?> render);
 
     public abstract void Dispose();
-
-    protected static DrawBufferMode GetNextDrawBuffer()
-    {
-        var attachment = _pingPongDrawBuffers[_currentDrawBufferIndex];
-        _currentDrawBufferIndex = (_currentDrawBufferIndex + 1) % _pingPongDrawBuffers.Length;
-        return attachment;
-    }
 }
 
 public sealed class StagePass<TContext>(string name, ShaderProgram shader, Texture? output = null) : StagePass(name) where TContext : IStageContext
@@ -42,10 +30,9 @@ public sealed class StagePass<TContext>(string name, ShaderProgram shader, Textu
         var drawBuffer = DrawBufferMode.ColorAttachment0;
         if (output != null)
         {
-            drawBuffer = GetNextDrawBuffer();
-            var attachmentNumber = drawBuffer - DrawBufferMode.ColorAttachment0;
-            var fbAttachment = FramebufferAttachment.ColorAttachment0 + attachmentNumber;
-            GL.NamedFramebufferTexture(framebufferHandle, fbAttachment, output, 0);
+            GL.NamedFramebufferTexture(framebufferHandle, ScratchAttachment, output, 0);
+            GL.Viewport(0, 0, output.Width, output.Height);
+            drawBuffer = DrawBufferMode.ColorAttachment1;
         }
 
         GL.DrawBuffer(drawBuffer);

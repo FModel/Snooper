@@ -1,56 +1,71 @@
 in vec2 vTexCoords;
 
-uniform sampler2D inputTexture;
+uniform sampler2D inputTexture; // ao, view depth, camera facing normal xy: what ssao.frag writes and the first pass passes through
+uniform vec2 uDirection; // one input texel along the blur axis
+uniform int blurRadius;
+
+#ifdef UPSAMPLE
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
-
-uniform vec2 texelSize;
-uniform int blurRadius;
+#endif
 
 out vec4 FragColor;
 
+vec3 UnpackNormal(vec2 xy)
+{
+    // the AO pass flips normals towards the camera, so z is positive except for a sliver at the screen edges under a
+    // wide FOV, where a wrong sign only weakens a weight
+    return vec3(xy, sqrt(max(1.0 - dot(xy, xy), 0.0)));
+}
+
 void main()
 {
-    vec3 centerPos = texture(gPosition, vTexCoords).xyz;
+    vec4 center = texture(inputTexture, vTexCoords);
+#ifdef UPSAMPLE
     vec3 centerNormal = texture(gNormal, vTexCoords).xyz;
+    float centerDepth = -texture(gPosition, vTexCoords).z;
+#else
+    vec3 centerNormal = UnpackNormal(center.zw);
+    float centerDepth = center.y;
+#endif
 
-    // Skybox/background: nothing to bilaterally weight against, pass through untouched
+    // Skybox/background: nothing to bilaterally weight against
     if (dot(centerNormal, centerNormal) < 0.01)
     {
-        FragColor = texture(inputTexture, vTexCoords);
+#ifdef UPSAMPLE
+        FragColor = vec4(1.0);
+#else
+        FragColor = center;
+#endif
         return;
     }
 
     centerNormal = normalize(centerNormal);
-    float centerDepth = -centerPos.z;
 
     float result = 0.0;
     float totalWeight = 0.0;
 
-    for (int x = -blurRadius; x <= blurRadius; x++)
+    for (int i = -blurRadius; i <= blurRadius; i++)
     {
-        for (int y = -blurRadius; y <= blurRadius; y++)
-        {
-            vec2 sampleUV = vTexCoords + vec2(float(x), float(y)) * texelSize;
+        vec4 tap = texture(inputTexture, vTexCoords + float(i) * uDirection);
+        vec3 sampleNormal = UnpackNormal(tap.zw);
+        if (dot(sampleNormal, sampleNormal) < 0.01)
+            continue;
 
-            vec3 sampleNormal = texture(gNormal, sampleUV).xyz;
-            if (dot(sampleNormal, sampleNormal) < 0.01)
-                continue;
+        // Reject samples across depth/normal discontinuities so the blur never bleeds
+        // occlusion across silhouette edges (the source of AO "halos").
+        float depthWeight = exp(-abs(tap.y - centerDepth) / max(centerDepth * 0.05, 0.05));
+        float normalWeight = pow(max(dot(sampleNormal, centerNormal), 0.0), 16.0);
+        float weight = depthWeight * normalWeight;
 
-            vec3 samplePos = texture(gPosition, sampleUV).xyz;
-            float sampleDepth = -samplePos.z;
-
-            // Reject samples across depth/normal discontinuities so the blur never bleeds
-            // occlusion across silhouette edges (the source of AO "halos").
-            float depthWeight = exp(-abs(sampleDepth - centerDepth) / max(centerDepth * 0.05, 0.05));
-            float normalWeight = pow(max(dot(sampleNormal, centerNormal), 0.0), 16.0);
-            float weight = depthWeight * normalWeight;
-
-            result += texture(inputTexture, sampleUV).r * weight;
-            totalWeight += weight;
-        }
+        result += tap.x * weight;
+        totalWeight += weight;
     }
 
-    float ao = totalWeight > 1e-4 ? result / totalWeight : texture(inputTexture, vTexCoords).r;
+    float ao = totalWeight > 1e-4 ? result / totalWeight : center.x;
+#ifdef UPSAMPLE
     FragColor = vec4(vec3(ao), 1.0);
+#else
+    FragColor = vec4(ao, center.yzw);
+#endif
 }

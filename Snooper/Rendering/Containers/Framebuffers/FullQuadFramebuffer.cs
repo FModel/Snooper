@@ -24,8 +24,7 @@ public abstract class FullQuadFramebuffer<TTextureEnum>(
     {
         _color.Generate();
         _color.Resize(Width, Height);
-        GL.TextureParameter(_color, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_color, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+        _color.SetSampling(TextureMinFilter.Linear, TextureMagFilter.Linear);
 
         base.Generate();
         GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment0, _color, 0);

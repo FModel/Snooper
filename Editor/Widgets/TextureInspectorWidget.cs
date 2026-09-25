@@ -80,6 +80,7 @@ public class TextureInspectorWidget : PanelWidget
         }
 
         EditorUI.Caption($"{texture.Width}x{texture.Height}, {texture.FormatName}, {texture.GetFormattedSpace()}");
+        EditorUI.Caption($"{texture.MinFilter} / {texture.MagFilter}", $"{texture.WrapS} / {texture.WrapT}");
 
         ImGui.Separator();
     }

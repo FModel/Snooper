@@ -17,8 +17,7 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : Framebu
     {
         _color.Generate();
         _color.Resize(Width, Height);
-        GL.TextureParameter(_color, TextureParameterName.TextureMinFilter, (int) TextureMinFilter.Linear);
-        GL.TextureParameter(_color, TextureParameterName.TextureMagFilter, (int) TextureMagFilter.Linear);
+        _color.SetSampling(TextureMinFilter.Linear, TextureMagFilter.Linear);
 
         _picking.Generate();
         _picking.Resize(Width, Height);
