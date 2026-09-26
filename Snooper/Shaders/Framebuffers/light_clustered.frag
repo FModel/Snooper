@@ -382,7 +382,7 @@ void main()
 
     float specular = specs.r;
     float metallic = specs.g;
-    float roughness = specs.b;
+    float roughness = max(specs.b, 0.02);
 
     // View direction
     vec3 V = normalize(-viewPos);

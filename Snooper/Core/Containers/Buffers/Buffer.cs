@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
 
@@ -33,7 +33,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
 
     public event Action<uint, uint>? OnHandleChanged;
 
-    public int Stride { get; } = Marshal.SizeOf<T>();
+    public int Stride { get; } = Unsafe.SizeOf<T>();
     public int Slices { get; } = slices;
     public int Count { get; private set; }
     public int Capacity { get; private set; }
@@ -228,7 +228,7 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         if (!_allocations.TryGetValue(allocationId, out var metadata))
             throw new ArgumentException($"Invalid allocation ID {allocationId}. This allocation does not exist or has been removed.", nameof(allocationId));
 
-        GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride + offset, Marshal.SizeOf<TCustom>(), ref data);
+        GL.NamedBufferSubData(Handle, metadata.StartIndex * Stride + offset, Unsafe.SizeOf<TCustom>(), ref data);
 
         _allocations[allocationId] = metadata with { LastModified = DateTime.UtcNow };
     }
