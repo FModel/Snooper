@@ -19,6 +19,7 @@ public interface IMaterialDataContainer : IControllable
 {
     public string Name { get; }
     public IPerMaterialData? Raw { get; }
+    public uint Version { get; }
     public bool HasTextures { get; }
     public bool IsTranslucent { get; }
 

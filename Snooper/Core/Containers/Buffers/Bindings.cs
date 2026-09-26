@@ -8,7 +8,8 @@ public abstract class Bindings
     public const uint MeshData = 3;
     public const uint VertexColors = 4;
     public const uint DrawCulled = 5;
-    public const uint BaseMaxBinding = DrawCulled;
+    public const uint MaterialTable = 6;
+    public const uint BaseMaxBinding = MaterialTable;
 
     protected static string Define(string name, uint binding) => $"BINDING_{name} {binding}";
 
@@ -18,5 +19,6 @@ public abstract class Bindings
         $"#define BINDING_DRAW_STATIC {DrawStatic}",
         $"#define BINDING_MESH_DATA {MeshData}",
         $"#define BINDING_VERTEX_COLORS {VertexColors}",
-        $"#define BINDING_DRAW_CULLED {DrawCulled}") + "\n";
+        $"#define BINDING_DRAW_CULLED {DrawCulled}",
+        $"#define BINDING_MATERIAL_TABLE {MaterialTable}") + "\n";
 }

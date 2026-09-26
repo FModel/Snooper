@@ -15,7 +15,7 @@ void main()
 {
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    Surface surface = ResolveSurface(uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex]);
+    Surface surface = ResolveSurface(uMaterialDataBuffer[MaterialSlot(draw, culled)]);
 
     if (surface.Discard)
     {

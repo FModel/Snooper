@@ -30,6 +30,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     private readonly CommandBufferSet _commands = new(viewCount);
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new();
     private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new();
+    private readonly ShaderStorageBuffer<uint> _materialTable = new();
 
     public void Generate()
     {
@@ -37,6 +38,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _commands.Generate();
         _instanceData.Generate();
         _materialData.Generate();
+        _materialTable.Generate();
     }
 
     public void SetVertexLayout(Action<VertexArrayLayout> setter) => _geometry.SetVertexLayout(setter);
@@ -46,7 +48,9 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _geometry.Allocate(counts);
         if (counts.Draws > 0) _commands.Allocate(counts.Draws);
         if (counts.Instances > 0) _instanceData.Allocate(counts.Instances);
-        if (counts.Materials > 0) _materialData.Allocate(counts.Materials);
+        if (counts.Sections > 0) _materialData.Allocate(counts.Sections); // one material per unique section
+        if (counts.Materials > 0) _materialTable.Allocate(counts.Materials);
+        _materialData.Add(default); // not ready material every component starts at
 
         Log.Information(
             "Allocated {Components:N0} components ({UniqueComponents:N0} unique): {Instances:N0} instances, {Draws:N0} draws, {Materials:N0} materials | {Vertices:N0} vertices ({ColoredVertices:N0} colored), {Indices:N0} indices, {Sections:N0} sections",
@@ -70,7 +74,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         BufferAllocation? materialAllocation = null;
         if (component.Materials.Length > 0)
         {
-            materialAllocation = _materialData.AddRange(new TPerMaterialData[component.Materials.Length]);
+            materialAllocation = _materialTable.AddRange(new uint[component.Materials.Length]);
             foreach (var material in component.Materials)
             {
                 material.Allocation = materialAllocation;
@@ -167,7 +171,25 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         if (container.Raw is not TPerMaterialData raw)
             throw new InvalidOperationException($"Material data container raw type {container.Raw?.GetType()} does not match expected type {typeof(TPerMaterialData)}.");
 
-        _materialData.UpdateCustom(allocation, raw, (int) material.Index * _materialData.Stride);
+        if (!_slots.TryGetValue(container, out var slot))
+        {
+            _slots[container] = slot = new MaterialSlot(container, _materialData.Add(raw)) { UploadedVersion = container.Version };
+        }
+        else if (slot.UploadedVersion != container.Version)
+        {
+            _materialData.Update(slot.Allocation, raw);
+            slot.UploadedVersion = container.Version;
+        }
+
+        if (_sectionSlots.TryGetValue(material.SectionId, out var previous))
+        {
+            if (previous == slot) return;
+            Release(previous); // the section swapped containers
+        }
+
+        slot.RefCount++;
+        _sectionSlots[material.SectionId] = slot;
+        _materialTable.UpdateCustom(allocation, (uint) slot.Allocation.StartIndex, (int) material.Index * _materialTable.Stride);
     }
 
     public void Flush() => _instanceData.FlushUpdates();
@@ -187,9 +209,14 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             _commands.GetBuffer(draw.BufferType).Remove(draw.Allocation);
         _instanceData.Remove(metadata.InstanceAllocation);
         if (metadata.MaterialAllocation is { } materialAllocation)
-            _materialData.Remove(materialAllocation);
+            _materialTable.Remove(materialAllocation);
+
         foreach (var material in component.Materials)
+        {
+            if (_sectionSlots.Remove(material.SectionId, out var slot))
+                Release(slot);
             material.Allocation = null;
+        }
     }
 
     public void Cull(ReadOnlySpan<CullView> views, CommandBufferType type) => _geometry.Cull(views, _instanceData, _commands.GetBuffer(type));
@@ -219,20 +246,31 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         buffer.CulledData.Bind(Bindings.DrawCulled);
         _instanceData.Bind(Bindings.InstanceData);
         _materialData.Bind(Bindings.MaterialData);
+        _materialTable.Bind(Bindings.MaterialTable);
 
         _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, offset, buffer.Extent, buffer.Stride));
 
         buffer.Commands.Unbind();
     }
 
-    /// <summary>
-    /// Sort transparent commands from farthest to nearest based on camera position.
-    /// TODO: Implement actual sorting logic (compute shader or CPU-side)
-    /// </summary>
-    public void SortTransparentCommands(IViewProjectionProvider camera)
+    private void Release(MaterialSlot slot)
     {
+        if (--slot.RefCount > 0) return;
 
+        _materialData.Remove(slot.Allocation);
+        _slots.Remove(slot.Container);
     }
+
+    private sealed class MaterialSlot(IMaterialDataContainer container, BufferAllocation allocation)
+    {
+        public readonly IMaterialDataContainer Container = container;
+        public readonly BufferAllocation Allocation = allocation;
+        public int RefCount;
+        public uint UploadedVersion;
+    }
+
+    private readonly Dictionary<IMaterialDataContainer, MaterialSlot> _slots = [];
+    private readonly Dictionary<int, MaterialSlot> _sectionSlots = [];
 
     public void Dispose()
     {
@@ -240,6 +278,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _commands.Dispose();
         _instanceData.Dispose();
         _materialData.Dispose();
+        _materialTable.Dispose();
     }
 
     public long Allocated
@@ -251,6 +290,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             total += _commands.Allocated;
             total += _instanceData.Allocated;
             total += _materialData.Allocated;
+            total += _materialTable.Allocated;
             return total;
         }
     }
@@ -264,6 +304,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             total += _commands.Used;
             total += _instanceData.Used;
             total += _materialData.Used;
+            total += _materialTable.Used;
             return total;
         }
     }
@@ -274,5 +315,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         yield return new MemoryDetail("Draw Commands", _commands);
         yield return new MemoryDetail("Instance Data", _instanceData);
         yield return new MemoryDetail("Material Data", _materialData);
+        yield return new MemoryDetail("Material Table", _materialTable);
     }
 }

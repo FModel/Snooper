@@ -194,7 +194,7 @@ void main()
 {
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    PerMaterialData material = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
+    PerMaterialData material = uMaterialDataBuffer[MaterialSlot(draw, culled)];
 
     vec3 normal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
 

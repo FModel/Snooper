@@ -254,7 +254,8 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
             Raw = data;
         }
 
-        public IPerMaterialData? Raw { get; private set; }
+        public IPerMaterialData? Raw { get; private set { field = value; Version++; } }
+        public uint Version { get; private set; }
 
         public Texture? GetHeightmap() => _heightmap?.Texture;
         public Texture? GetWeightmap(uint index) => _weightmaps is not null && index < _weightmaps.Length ? _weightmaps[(int)index]?.Texture : null;

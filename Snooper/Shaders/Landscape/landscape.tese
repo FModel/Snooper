@@ -72,7 +72,7 @@ void main()
 
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
+    PerMaterialData materialData = uMaterialDataBuffer[MaterialSlot(draw, culled)];
     if (!materialData.IsReady)
     {
         te_out.vViewPos = vec3(0.0);

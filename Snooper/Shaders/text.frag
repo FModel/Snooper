@@ -24,7 +24,7 @@ void main()
 {
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
+    PerMaterialData materialData = uMaterialDataBuffer[MaterialSlot(draw, culled)];
     
     vec4 text = texture(uTextTexture, vTexCoord);
     if (text.a < 0.1)

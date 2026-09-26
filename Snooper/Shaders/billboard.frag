@@ -27,7 +27,7 @@ void main()
 {
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    PerMaterialData materialData = uMaterialDataBuffer[draw.BaseMaterial + culled.MaterialIndex];
+    PerMaterialData materialData = uMaterialDataBuffer[MaterialSlot(draw, culled)];
 
     vec4 color = vec4(1.0);
     if (materialData.IsReady)

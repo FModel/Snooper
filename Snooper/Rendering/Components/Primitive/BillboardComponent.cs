@@ -103,7 +103,8 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
             };
         }
 
-        public IPerMaterialData? Raw { get; private set; }
+        public IPerMaterialData? Raw { get; private set { field = value; Version++; } }
+        public uint Version { get; private set; }
 
         public void DrawControls()
         {
