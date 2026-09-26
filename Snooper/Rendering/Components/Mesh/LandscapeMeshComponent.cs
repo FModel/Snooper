@@ -1,7 +1,9 @@
 ﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using ImGuiNET;
 using Snooper.Core;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Descriptors;
@@ -20,14 +22,14 @@ public readonly struct LayerMapping
     public Vector4 DebugColor { get; init; }
 }
 
-public unsafe struct PerMaterialLandscapeData : IPerMaterialData
+public struct PerMaterialLandscapeData : IPerMaterialData
 {
     public bool IsReady { get; init; }
     public uint WeightmapCount;
 
     public ulong Heightmap;
-    public fixed ulong Weightmaps[4];
-    public fixed uint Weight_EnabledChannels[4]; // packed data representing which channels are used in each weightmap texture (4 channels as 4 bytes in a uint)
+    public WeightmapArray<ulong> Weightmaps;
+    public WeightmapArray<uint> Weight_EnabledChannels; // packed data representing which channels are used in each weightmap texture (4 channels as 4 bytes in a uint)
 
     public Vector2 HeightmapScaleBias;
     public Vector2 WeightmapScaleBias;
@@ -40,8 +42,6 @@ public unsafe struct PerMaterialLandscapeData : IPerMaterialData
 [DefaultActorSystem(typeof(LandscapeSystem))]
 public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLandscapeData>
 {
-    public const int MaxWeightmaps = 4;
-
     public readonly uint SizeQuads;
     public readonly Dictionary<string, LayerMapping> Layers;
 
@@ -75,7 +75,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         SizeQuads = sizeQuads + 1;
 
         var textures = component.GetWeightmapTextures();
-        var weightmaps = new Texture[Math.Min(textures.Length, MaxWeightmaps)];
+        var weightmaps = new Texture[Math.Min(textures.Length, Settings.MaxWeightmaps)];
         for (var i = 0; i < weightmaps.Length; i++)
         {
             weightmaps[i] = new Texture2D(textures[i]);
@@ -233,24 +233,21 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
                 VisibilityChannelIndex = visibilityMapping?.ChannelIndex ?? 0u,
             };
 
-            unsafe
+            for (var i = 0; i < Settings.MaxWeightmaps; i++)
             {
-                for (var i = 0; i < 4; i++)
+                if (i >= _weightmaps.Length) break;
+
+                var weightmap = _weightmaps[i];
+                if (weightmap is null)
+                    throw new InvalidOperationException($"Weightmap at index {i} is not set.");
+
+                data.Weightmaps[i] = weightmap;
+                data.Weight_EnabledChannels[i] = 0;
+
+                foreach (var allocation in allocations)
                 {
-                    if (i >= _weightmaps.Length) break;
-
-                    var weightmap = _weightmaps[i];
-                    if (weightmap is null)
-                        throw new InvalidOperationException($"Weightmap at index {i} is not set.");
-
-                    data.Weightmaps[i] = weightmap;
-                    data.Weight_EnabledChannels[i] = 0;
-
-                    foreach (var allocation in allocations)
-                    {
-                        if (allocation.WeightmapTextureIndex != i) continue;
-                        data.Weight_EnabledChannels[i] |= 1u << allocation.WeightmapTextureChannel;
-                    }
+                    if (allocation.WeightmapTextureIndex != i) continue;
+                    data.Weight_EnabledChannels[i] |= 1u << allocation.WeightmapTextureChannel;
                 }
             }
 

@@ -113,6 +113,7 @@ public static class Settings
     public const int MaxShadowViews = MaxShadowCascades + MaxLocalShadowCasters;
     public const int MaxCullingViews = 1 + MaxShadowViews;
 
+    public const int MaxWeightmaps = 4;
     public const int TessellationQuadCount = 4; // change this to increase the resolution of the base landscape mesh (power of 2)
     public const int TessellationQuadCountTotal = TessellationQuadCount * TessellationQuadCount;
     public const int TessellationIndicesPerQuad = TessellationQuadCountTotal * 4;

@@ -8,6 +8,7 @@ using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Core;
+using Snooper.Core.Containers;
 using Snooper.Core.Managers;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Systems;
@@ -50,7 +51,7 @@ public readonly struct Vertex(Vector3 position, Vector4 normal, Vector3 tangent,
     private static uint Snorm2(float f) => f < 0f ? 3u : 1u;
 }
 
-public unsafe struct PerMaterialMeshData : IPerMaterialData
+public struct PerMaterialMeshData : IPerMaterialData
 {
     public bool IsReady { get; init; }
     public uint LayerCount; // Number of UV layers (1-4)
@@ -61,13 +62,13 @@ public unsafe struct PerMaterialMeshData : IPerMaterialData
     public uint LayerTextureFlags;
 
     // Fixed arrays for each layer (up to 4 layers)
-    public fixed ulong Diffuse[4];
-    public fixed ulong Normal[4];
-    public fixed ulong Specular[4];
+    public FixedArray4<ulong> Diffuse;
+    public FixedArray4<ulong> Normal;
+    public FixedArray4<ulong> Specular;
 
-    // Per-layer material properties
-    public fixed float Roughness[8]; // 2 floats per layer (min, max) * 4 layers
-    public fixed float DiffuseColor[12]; // 3 floats per layer (RGB) * 4 layers
+    // Per-layer material properties. The GLSL side must stay float[]
+    public FixedArray4<Vector2> Roughness; // (min, max) per layer
+    public FixedArray4<Vector3> DiffuseColor; // RGB per layer
 }
 
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>

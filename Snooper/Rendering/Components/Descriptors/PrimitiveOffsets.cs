@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Snooper.Core.Containers;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
@@ -16,15 +17,15 @@ public struct PerMeshData(CullingBounds bounds, uint maxLod, uint colorMode)
     public static readonly int OverrideLodOffset = (int)Marshal.OffsetOf<PerMeshData>(nameof(OverrideLod));
 }
 
-public unsafe struct PrimitiveOffsets
+public struct PrimitiveOffsets
 {
     // vec4 alignment needed
-    public fixed uint LOD_FirstIndex[Settings.MaxNumberOfLods];
-    public fixed uint LOD_BaseVertex[Settings.MaxNumberOfLods];
-    public fixed float LOD_ScreenSize[Settings.MaxNumberOfLods];
-    public fixed uint LOD_SectionCount[Settings.MaxNumberOfLods];
-    public fixed uint LOD_SectionOffset[Settings.MaxNumberOfLods];
-    public fixed uint LOD_BaseColor[Settings.MaxNumberOfLods];
+    public LodArray<uint> LOD_FirstIndex;
+    public LodArray<uint> LOD_BaseVertex;
+    public LodArray<float> LOD_ScreenSize;
+    public LodArray<uint> LOD_SectionCount;
+    public LodArray<uint> LOD_SectionOffset;
+    public LodArray<uint> LOD_BaseColor;
 
     public PrimitiveOffsets()
     {

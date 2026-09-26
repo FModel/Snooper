@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-using System.Runtime.CompilerServices;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core;
@@ -42,7 +41,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     protected override Action<VertexArrayLayout> VertexLayout { get; } = layout => layout.Float(0, 2);
 
     private readonly ShaderStorageBuffer<Vector2> _scales = new();
-    private readonly ShaderStorageBuffer<TileLayers> _mapping = new();
+    private readonly ShaderStorageBuffer<WeightmapArray<FixedArray4<int>>> _mapping = new(); // one palette index per weightmap texture channel
     protected override IEnumerable<(uint, IIndexedBind)> SystemBuffers =>
     [
         (LandscapeBindings.Scales, _scales),
@@ -99,11 +98,11 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
 
         if (metadata.MaterialAllocation is not { } allocation) return;
 
-        var layers = new TileLayers();
+        var layers = new WeightmapArray<FixedArray4<int>>();
         foreach (var (name, layer) in component.Layers)
         {
             if (name == VisibilityLayer) continue;
-            layers[(int) (layer.TextureIndex * 4 + layer.ChannelIndex)] = GetPaletteIndex(name, layer.DebugColor) + 1;
+            layers[(int) layer.TextureIndex][(int) layer.ChannelIndex] = GetPaletteIndex(name, layer.DebugColor) + 1;
         }
 
         // MaterialAllocation.StartIndex is draw.BaseMaterial
@@ -301,10 +300,4 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     public const string VisibilityLayer = "__LANDSCAPE_VISIBILITY__"; // holes
     private const int AllLayers = -1;
     private const int MaxLayers = 64;
-
-    [InlineArray(LandscapeMeshComponent.MaxWeightmaps * 4)]
-    private struct TileLayers
-    {
-        private int _first;
-    }
 }

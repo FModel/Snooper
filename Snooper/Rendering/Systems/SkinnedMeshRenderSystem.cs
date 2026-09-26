@@ -13,12 +13,12 @@ namespace Snooper.Rendering.Systems;
 /// <summary>
 /// TODO: gpu driven animation update
 /// </summary>
-public unsafe struct PerMeshSkinningData
+public struct PerMeshSkinningData
 {
     public uint BaseBone; // offset of this mesh's bones in the inverse bind buffer
     public uint MorphCount; // number of morph targets on this mesh, 0 when it has none
-    public fixed uint LOD_BaseBoneInfluence[Settings.MaxNumberOfLods];
-    public fixed uint LOD_BaseMorphOffset[Settings.MaxNumberOfLods];
+    public LodArray<uint> LOD_BaseBoneInfluence;
+    public LodArray<uint> LOD_BaseMorphOffset;
     public readonly uint Pad0, Pad1;
 
     public PerMeshSkinningData()
@@ -206,10 +206,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
                     cursor += count;
                 }
 
-                unsafe
-                {
-                    data.LOD_BaseBoneInfluence[i] = (uint)_boneInfluenceOffsets.AddRange(packedOffsets).StartIndex;
-                }
+                data.LOD_BaseBoneInfluence[i] = (uint)_boneInfluenceOffsets.AddRange(packedOffsets).StartIndex;
             }
 
             if (descriptor.Morphs is { Count: > 0 } morphs)
@@ -228,10 +225,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
                         offsets[j] = morphLod.Offsets[j] + baseDelta;
                     }
 
-                    unsafe
-                    {
-                        data.LOD_BaseMorphOffset[i] = (uint)_morphDeltaOffsets.AddRange(offsets).StartIndex;
-                    }
+                    data.LOD_BaseMorphOffset[i] = (uint)_morphDeltaOffsets.AddRange(offsets).StartIndex;
                 }
             }
 

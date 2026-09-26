@@ -171,7 +171,7 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
 
         return handle;
 
-        unsafe (uint, uint, uint, uint, PrimitiveOffsets) CreateOffsets()
+        (uint, uint, uint, uint, PrimitiveOffsets) CreateOffsets()
         {
             var maxLod = 0u;
             var o = new PrimitiveOffsets();

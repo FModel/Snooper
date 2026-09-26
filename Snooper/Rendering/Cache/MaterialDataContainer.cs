@@ -175,21 +175,14 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
             LayerTextureFlags = layerTextureFlags
         };
 
-        unsafe
+        for (var i = 0; i < _layers.Length; i++)
         {
-            for (var i = 0; i < _layers.Length; i++)
-            {
-                data.Diffuse[i] = _diffuses[i] ?? 0UL;
-                data.Normal[i] = _normals[i] ?? 0UL;
-                data.Specular[i] = _speculars[i] ?? 0UL;
+            data.Diffuse[i] = _diffuses[i] ?? 0UL;
+            data.Normal[i] = _normals[i] ?? 0UL;
+            data.Specular[i] = _speculars[i] ?? 0UL;
 
-                data.Roughness[i * 2] = _layers[i].Roughness.X;
-                data.Roughness[i * 2 + 1] = _layers[i].Roughness.Y;
-
-                data.DiffuseColor[i * 3] = _layers[i].DiffuseColor.X;
-                data.DiffuseColor[i * 3 + 1] = _layers[i].DiffuseColor.Y;
-                data.DiffuseColor[i * 3 + 2] = _layers[i].DiffuseColor.Z;
-            }
+            data.Roughness[i] = _layers[i].Roughness;
+            data.DiffuseColor[i] = _layers[i].DiffuseColor;
         }
 
         Raw = data;
