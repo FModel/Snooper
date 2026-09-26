@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports.Component.Lights;
 using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Light;
 
@@ -17,6 +18,15 @@ public class SpotLightComponent : PointLightComponent
     }
 
     protected override DebugComponent CreateDebugVisualization() => new SpotLightComponentVisualization(this);
+
+    protected override bool DrawLightControls()
+    {
+        var edited = base.DrawLightControls();
+
+        EditorUI.Text("Cone", $"Inner: {InnerConeAngle:F1} deg, Outer: {OuterConeAngle:F1} deg");
+
+        return edited;
+    }
 
     protected override void SetLightData(ref LightData lightData)
     {

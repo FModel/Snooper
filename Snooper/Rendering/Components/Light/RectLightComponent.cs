@@ -2,6 +2,7 @@
 using Snooper.Rendering.Systems;
 using System.Numerics;
 using Snooper.Rendering.Components.Visualization;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Light;
 
@@ -24,6 +25,17 @@ public class RectLightComponent : LocalLightComponent
 
     protected override DebugComponent CreateDebugVisualization() => new RectLightComponentVisualization(this);
 
+    protected override bool DrawLightControls()
+    {
+        var edited = base.DrawLightControls();
+
+        EditorUI.Text("Source", $"Width: {Width:F2}, Height: {Height:F2}");
+        EditorUI.Text("Barn Doors", $"Angle: {BarnDoorAngle:F1} deg, Length: {BarnDoorLength:F2}");
+        if (LightFunctionConeAngle > 0.0f) EditorUI.Text("Light Function Cone", $"{LightFunctionConeAngle:F1} deg");
+
+        return edited;
+    }
+
     protected override void SetLightData(ref LightData lightData)
     {
         base.SetLightData(ref lightData);
@@ -34,6 +46,6 @@ public class RectLightComponent : LocalLightComponent
         lightData.Direction = Vector3.Normalize(Vector3.Transform(Vector3.UnitX, rotation));
         lightData.SizeX = Width;
         lightData.SizeY = Height;
-        lightData.UpVector = Vector3.Normalize(Vector3.Transform(Vector3.UnitY, rotation));
+        lightData.Tangent = Vector3.Normalize(Vector3.Transform(Vector3.UnitY, rotation));
     }
 }

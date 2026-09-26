@@ -1,21 +1,24 @@
-﻿struct PerLightData
+﻿#define LIGHT_TYPE_MASK 3u
+#define LIGHT_INVERSE_SQUARED_FALLOFF 4u
+
+struct PerLightData
 {
     vec3 position;
     float range;
     vec3 color;
-    uint type; // 0 = point, 1 = spot, 2 = rect
+    uint flags;
     vec3 direction;
     float spotAngle;
     float spotOuterAngle;
     float intensity;
     float sizeX;           // Rect light width
     float sizeY;           // Rect light height
-    vec3 upVector;
-    uint UseInverseSquaredFalloff;
+    vec3 tangent;
     float maxDrawDistance;
     float maxDistanceFadeRange;
     float falloffExponent;
     float sourceRadius;
+    float sourceLength;
 };
 
 float LightDistanceFade(PerLightData light, float cameraDistance)

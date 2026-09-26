@@ -71,6 +71,7 @@ public abstract class LightComponent : BillboardComponent
 
         EditorUI.CollapsingTable("Light", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
+            EditorUI.Text("Cast Shadows", CastShadows ? "Yes" : "No");
             if (MaxDrawDistance > 0.0f)
             {
                 EditorUI.Text("Draw Distance", $"Min: 0, Max: {MaxDrawDistance}, Fade: {MaxDistanceFadeRange}");

@@ -129,57 +129,78 @@ float CalculateAttenuation(float distance, float range, float falloffExponent)
     return pow(window, falloffExponent);
 }
 
-float CalculateInverseSquareAttenuation(float distance, float range)
+vec3 NearestOnSegment(vec3 L0, vec3 L1)
+{
+    vec3 Ld = L1 - L0;
+    float dd = dot(Ld, Ld);
+    float t = dd > 0.0 ? clamp(-dot(L0, Ld) / dd, 0.0, 1.0) : 0.0;
+    return L0 + Ld * t;
+}
+
+float CalculateInverseSquareAttenuation(float distance, float centerDistance, float range)
 {
     // avoid singularity at distance = 0
     float invSq = 1.0 / max(1e-4, distance * distance);
 
     // smooth fade to zero near range to avoid popping (0..1)
-    float fade = clamp(1.0 - pow(distance / range, 2.0), 0.0, 1.0);
+    float fade = clamp(1.0 - pow(centerDistance / range, 2.0), 0.0, 1.0);
 
     return invSq * fade;
 }
 
 const float LIGHT_CULL_THRESHOLD = 1e-4;
 
-vec3 SphereLightSpecular(vec3 toCenter, float sourceRadius, vec3 N, vec3 V, float NdotV, float roughness, vec3 F0)
+vec3 AreaLightSpecular(vec3 L0, vec3 L1, float sourceRadius, float sourceLength, vec3 N, vec3 V, float NdotV, float roughness, vec3 F0)
 {
     vec3 R = reflect(-V, N);
-    vec3 centerToRay = dot(toCenter, R) * R - toCenter;
-    vec3 closest = toCenter + centerToRay * clamp(sourceRadius / max(length(centerToRay), 1e-4), 0.0, 1.0);
+
+    vec3 Ld = L1 - L0;
+    float RoLd = dot(R, Ld);
+    float denom = dot(Ld, Ld) - RoLd * RoLd;
+    float t = denom > 1e-6 ? clamp((dot(R, L0) * RoLd - dot(L0, Ld)) / denom, 0.0, 1.0) : 0.0;
+    vec3 toLine = L0 + Ld * t;
+
+    vec3 centerToRay = dot(toLine, R) * R - toLine;
+    vec3 closest = toLine + centerToRay * clamp(sourceRadius / max(length(centerToRay), 1e-4), 0.0, 1.0);
     float distance = length(closest);
     vec3 L = closest / distance;
     float NdotL = max(dot(N, L), 0.0);
     vec3 H = normalize(V + L);
 
+    // the engine's energy normalization: one dimension for the line, two for the sphere
     float alpha = roughness * roughness;
-    float alphaPrime = clamp(alpha + sourceRadius / (2.0 * distance), 0.0, 1.0);
-    float energy = alpha / max(alphaPrime, 1e-4);
+    float line = alpha / clamp(alpha + 0.5 * clamp(sourceLength / distance, 0.0, 1.0), 0.0, 1.0);
+    float sphere = alpha / clamp(alpha + 0.5 * clamp(sourceRadius / distance, 0.0, 1.0), 0.0, 1.0);
+    float energy = line * sphere * sphere;
 
     vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
     float D = DistributionGGX(N, H, roughness);
     float G = GeometrySmith(N, V, L, roughness);
 
-    return (D * G * F) / (4.0 * NdotV * NdotL + 0.001) * NdotL * energy * energy;
+    return (D * G * F) / (4.0 * NdotV * NdotL + 0.001) * NdotL * energy;
 }
 
 vec3 CalculatePointLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
-    vec3 toLight = light.position - worldPos;
-    float distance = length(toLight);
-
-    if (distance > light.range)
+    vec3 toCenter = light.position - worldPos;
+    float centerDistance = length(toCenter);
+    if (centerDistance > light.range)
         return vec3(0.0);
 
+    vec3 halfTube = light.tangent * (0.5 * light.sourceLength);
+    vec3 L0 = toCenter - halfTube;
+    vec3 L1 = toCenter + halfTube;
+    vec3 toLight = NearestOnSegment(L0, L1);
+    float distance = length(toLight);
     vec3 L = toLight / distance;
 
     float NdotL = max(dot(worldNormal, L), 0.0);
     if (NdotL <= 0.0)
         return vec3(0.0);
 
-    float attenuation = light.UseInverseSquaredFalloff == 1
-        ? CalculateInverseSquareAttenuation(distance, light.range)
-        : CalculateAttenuation(distance, light.range, light.falloffExponent);
+    float attenuation = (light.flags & LIGHT_INVERSE_SQUARED_FALLOFF) != 0u
+        ? CalculateInverseSquareAttenuation(distance, centerDistance, light.range)
+        : CalculateAttenuation(centerDistance, light.range, light.falloffExponent);
 
     if (attenuation * NdotL * light.intensity < LIGHT_CULL_THRESHOLD)
         return vec3(0.0);
@@ -189,19 +210,23 @@ vec3 CalculatePointLight(PerLightData light, vec3 worldPos, vec3 worldNormal, ve
 
     vec3 kD = (vec3(1.0) - FresnelSchlick(max(dot(H, worldV), 0.0), F0)) * (1.0 - metallic);
     vec3 diffuse = kD * albedo / PI * NdotL;
-    vec3 specular = SphereLightSpecular(toLight, light.sourceRadius, worldNormal, worldV, NdotV, roughness, F0);
+    vec3 specular = AreaLightSpecular(L0, L1, light.sourceRadius, light.sourceLength, worldNormal, worldV, NdotV, roughness, F0);
 
     return (diffuse + specular) * light.color * light.intensity * attenuation;
 }
 
 vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
-    vec3 toLight = light.position - worldPos;
-    float distance = length(toLight);
-
-    if (distance > light.range)
+    vec3 toCenter = light.position - worldPos;
+    float centerDistance = length(toCenter);
+    if (centerDistance > light.range)
         return vec3(0.0);
 
+    vec3 halfTube = light.tangent * (0.5 * light.sourceLength);
+    vec3 L0 = toCenter - halfTube;
+    vec3 L1 = toCenter + halfTube;
+    vec3 toLight = NearestOnSegment(L0, L1);
+    float distance = length(toLight);
     vec3 L = toLight / distance;
 
     // Spot light cone calculation
@@ -219,9 +244,9 @@ vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
     float coneFalloff = clamp((theta - light.spotOuterAngle) / epsilon, 0.0, 1.0);
     coneFalloff *= coneFalloff;
 
-    float attenuation = light.UseInverseSquaredFalloff == 1
-        ? CalculateInverseSquareAttenuation(distance, light.range)
-        : CalculateAttenuation(distance, light.range, light.falloffExponent);
+    float attenuation = (light.flags & LIGHT_INVERSE_SQUARED_FALLOFF) != 0u
+        ? CalculateInverseSquareAttenuation(distance, centerDistance, light.range)
+        : CalculateAttenuation(centerDistance, light.range, light.falloffExponent);
 
     if (attenuation * coneFalloff * NdotL * light.intensity < LIGHT_CULL_THRESHOLD)
         return vec3(0.0);
@@ -231,7 +256,7 @@ vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
 
     vec3 kD = (vec3(1.0) - FresnelSchlick(max(dot(H, worldV), 0.0), F0)) * (1.0 - metallic);
     vec3 diffuse = kD * albedo / PI * NdotL;
-    vec3 specular = SphereLightSpecular(toLight, light.sourceRadius, worldNormal, worldV, NdotV, roughness, F0);
+    vec3 specular = AreaLightSpecular(L0, L1, light.sourceRadius, light.sourceLength, worldNormal, worldV, NdotV, roughness, F0);
 
     return (diffuse + specular) * light.color * light.intensity * attenuation * coneFalloff;
 }
@@ -255,7 +280,7 @@ vec3 CalculateRectLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
         return vec3(0.0);
 
     // Use the exact up vector from the light's rotation (Y axis in local space)
-    vec3 heightDir = normalize(light.upVector);
+    vec3 heightDir = normalize(light.tangent);
 
     // Calculate width direction as cross product (Z axis in local space)
     vec3 widthDir = normalize(cross(forward, heightDir));
@@ -426,15 +451,16 @@ void main()
             float fade = LightDistanceFade(light, distance(uInverseViewMatrix[3].xyz, light.position));
             if (fade <= 0.0) continue;
 
-            if (light.type == 0) // Point light
+            uint type = light.flags & LIGHT_TYPE_MASK;
+            if (type == 0u) // Point light
             {
                 localLighting += CalculatePointLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0) * fade;
             }
-            else if (light.type == 1) // Spot light
+            else if (type == 1u) // Spot light
             {
                 localLighting += CalculateSpotLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0) * fade;
             }
-            else if (light.type == 2) // Rect light
+            else if (type == 2u) // Rect light
             {
                 localLighting += CalculateRectLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0) * fade;
             }

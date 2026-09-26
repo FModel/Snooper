@@ -17,22 +17,28 @@ namespace Snooper.Rendering.Systems;
 [StructLayout(LayoutKind.Sequential)]
 public struct LightData
 {
+    public const uint TypeMask = 0x3;              // bits 0-1 of Flags: 0 point, 1 spot, 2 rect
+    public const uint InverseSquaredFalloff = 0x4; // bit 2 of Flags
+
     public Vector3 Position;      // World space position
     public float Range;           // Light range/radius
     public Vector3 Color;         // Light color
-    public uint Type;             // 0 = point/sphere, 1 = spot, 2 = rect
+    public uint Flags;
     public Vector3 Direction;     // Spot light direction (world space)
     public float SpotAngle;       // Spot light inner cone angle (cosine)
     public float SpotOuterAngle;  // Spot light outer cone angle (cosine)
     public float Intensity;       // Light intensity
     public float SizeX;           // Rect light width
     public float SizeY;           // Rect light height
-    public Vector3 UpVector;
-    public uint UseInverseSquaredFalloff;
+    public Vector3 Tangent;       // the tube axis of a point or spot light, the height axis of a rect light
     public float MaxDrawDistance;      // camera distance past which the light is off, 0 for never
     public float MaxDistanceFadeRange; // the light fades over this distance before MaxDrawDistance
     public float FalloffExponent;
     public float SourceRadius;
+    public float SourceLength;
+
+    public uint Type { set => Flags = (Flags & ~TypeMask) | (value & TypeMask); }
+    public bool UseInverseSquaredFalloff { set => Flags = value ? Flags | InverseSquaredFalloff : Flags & ~InverseSquaredFalloff; }
 }
 
 [StructLayout(LayoutKind.Sequential)]
