@@ -12,7 +12,17 @@
     float sizeY;           // Rect light height
     vec3 upVector;
     uint UseInverseSquaredFalloff;
+    float maxDrawDistance;
+    float maxDistanceFadeRange;
+    float falloffExponent;
+    float sourceRadius;
 };
+
+float LightDistanceFade(PerLightData light, float cameraDistance)
+{
+    if (light.maxDrawDistance <= 0.0) return 1.0;
+    return 1.0 - smoothstep(light.maxDrawDistance - light.maxDistanceFadeRange, light.maxDrawDistance, cameraDistance);
+}
 
 layout(std430, binding = BINDING_LIGHT_DATA) readonly buffer LightBuffer
 {

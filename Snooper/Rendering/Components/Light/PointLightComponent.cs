@@ -29,5 +29,7 @@ public class PointLightComponent : LocalLightComponent
 
         lightData.Type = 0;
         lightData.UseInverseSquaredFalloff = UseInverseSquaredFalloff ? 1u : 0u;
+        lightData.FalloffExponent = LightFalloffExponent;
+        lightData.SourceRadius = SourceRadius;
     }
 }

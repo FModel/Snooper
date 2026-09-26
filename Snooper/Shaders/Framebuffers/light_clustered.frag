@@ -123,11 +123,10 @@ uint GetClusterIndex(vec3 viewPos)
     return clusterZ * uint(uGridDimX) * uint(uGridDimY) + clusterY * uint(uGridDimX) + clusterX;
 }
 
-float CalculateAttenuation(float distance, float range)
+float CalculateAttenuation(float distance, float range, float falloffExponent)
 {
-    // Smooth attenuation that reaches zero at range
-    float attenuation = max(0.0, 1.0 - (distance * distance) / (range * range));
-    return attenuation * attenuation;
+    float window = max(0.0, 1.0 - (distance * distance) / (range * range));
+    return pow(window, falloffExponent);
 }
 
 float CalculateInverseSquareAttenuation(float distance, float range)
@@ -143,15 +142,36 @@ float CalculateInverseSquareAttenuation(float distance, float range)
 
 const float LIGHT_CULL_THRESHOLD = 1e-4;
 
+vec3 SphereLightSpecular(vec3 toCenter, float sourceRadius, vec3 N, vec3 V, float NdotV, float roughness, vec3 F0)
+{
+    vec3 R = reflect(-V, N);
+    vec3 centerToRay = dot(toCenter, R) * R - toCenter;
+    vec3 closest = toCenter + centerToRay * clamp(sourceRadius / max(length(centerToRay), 1e-4), 0.0, 1.0);
+    float distance = length(closest);
+    vec3 L = closest / distance;
+    float NdotL = max(dot(N, L), 0.0);
+    vec3 H = normalize(V + L);
+
+    float alpha = roughness * roughness;
+    float alphaPrime = clamp(alpha + sourceRadius / (2.0 * distance), 0.0, 1.0);
+    float energy = alpha / max(alphaPrime, 1e-4);
+
+    vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+    float D = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+
+    return (D * G * F) / (4.0 * NdotV * NdotL + 0.001) * NdotL * energy * energy;
+}
+
 vec3 CalculatePointLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
-    vec3 L = light.position - worldPos;
-    float distance = length(L);
+    vec3 toLight = light.position - worldPos;
+    float distance = length(toLight);
 
     if (distance > light.range)
         return vec3(0.0);
 
-    L = L / distance;
+    vec3 L = toLight / distance;
 
     float NdotL = max(dot(worldNormal, L), 0.0);
     if (NdotL <= 0.0)
@@ -159,7 +179,7 @@ vec3 CalculatePointLight(PerLightData light, vec3 worldPos, vec3 worldNormal, ve
 
     float attenuation = light.UseInverseSquaredFalloff == 1
         ? CalculateInverseSquareAttenuation(distance, light.range)
-        : CalculateAttenuation(distance, light.range);
+        : CalculateAttenuation(distance, light.range, light.falloffExponent);
 
     if (attenuation * NdotL * light.intensity < LIGHT_CULL_THRESHOLD)
         return vec3(0.0);
@@ -167,31 +187,22 @@ vec3 CalculatePointLight(PerLightData light, vec3 worldPos, vec3 worldNormal, ve
     vec3 H = normalize(worldV + L);
     float NdotV = max(dot(worldNormal, worldV), 0.001);
 
-    // PBR calculations
-    vec3 F = FresnelSchlick(max(dot(H, worldV), 0.0), F0);
-    float D = DistributionGGX(worldNormal, H, roughness);
-    float G = GeometrySmith(worldNormal, worldV, L, roughness);
+    vec3 kD = (vec3(1.0) - FresnelSchlick(max(dot(H, worldV), 0.0), F0)) * (1.0 - metallic);
+    vec3 diffuse = kD * albedo / PI * NdotL;
+    vec3 specular = SphereLightSpecular(toLight, light.sourceRadius, worldNormal, worldV, NdotV, roughness, F0);
 
-    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
-
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;
-
-    vec3 diffuse = kD * albedo / PI;
-
-    return (diffuse + specular) * light.color * light.intensity * NdotL * attenuation;
+    return (diffuse + specular) * light.color * light.intensity * attenuation;
 }
 
 vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
-    vec3 L = light.position - worldPos;
-    float distance = length(L);
+    vec3 toLight = light.position - worldPos;
+    float distance = length(toLight);
 
     if (distance > light.range)
         return vec3(0.0);
 
-    L = L / distance;
+    vec3 L = toLight / distance;
 
     // Spot light cone calculation
     float theta = dot(L, normalize(-light.direction));
@@ -203,13 +214,14 @@ vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
     if (NdotL <= 0.0)
         return vec3(0.0);
 
-    // Smooth spot light falloff
+    // the engine squares the blend between the two cones
     float epsilon = light.spotAngle - light.spotOuterAngle;
     float coneFalloff = clamp((theta - light.spotOuterAngle) / epsilon, 0.0, 1.0);
+    coneFalloff *= coneFalloff;
 
     float attenuation = light.UseInverseSquaredFalloff == 1
         ? CalculateInverseSquareAttenuation(distance, light.range)
-        : CalculateAttenuation(distance, light.range);
+        : CalculateAttenuation(distance, light.range, light.falloffExponent);
 
     if (attenuation * coneFalloff * NdotL * light.intensity < LIGHT_CULL_THRESHOLD)
         return vec3(0.0);
@@ -217,20 +229,11 @@ vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
     vec3 H = normalize(worldV + L);
     float NdotV = max(dot(worldNormal, worldV), 0.001);
 
-    // PBR calculations
-    vec3 F = FresnelSchlick(max(dot(H, worldV), 0.0), F0);
-    float D = DistributionGGX(worldNormal, H, roughness);
-    float G = GeometrySmith(worldNormal, worldV, L, roughness);
+    vec3 kD = (vec3(1.0) - FresnelSchlick(max(dot(H, worldV), 0.0), F0)) * (1.0 - metallic);
+    vec3 diffuse = kD * albedo / PI * NdotL;
+    vec3 specular = SphereLightSpecular(toLight, light.sourceRadius, worldNormal, worldV, NdotV, roughness, F0);
 
-    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
-
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;
-
-    vec3 diffuse = kD * albedo / PI;
-
-    return (diffuse + specular) * light.color * light.intensity * NdotL * attenuation * coneFalloff;
+    return (diffuse + specular) * light.color * light.intensity * attenuation * coneFalloff;
 }
 
 // Calculate rectangular area light contribution
@@ -292,11 +295,11 @@ vec3 CalculateRectLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
     if (lightNdotL <= 0.0)
         return vec3(0.0);
 
-    // Area light attenuation (solid angle * distance falloff). Cheap, so compute it before the BRDF
-    // and bail on negligible contributions rather than paying full GGX/Smith/Fresnel.
+    // the intensity is in candela like every local light, so the emitter's luminance times its area is already folded in
+    // only the emission cosine and the area-softened inverse square remain.
     float area = light.sizeX * light.sizeY;
-    float solidAngle = (area * lightNdotL) / (distance * distance + area);
-    float attenuation = CalculateAttenuation(distance, light.range);
+    float solidAngle = lightNdotL / (distance * distance + area);
+    float attenuation = CalculateAttenuation(distance, light.range, 2.0);
     float areaAttenuation = solidAngle * attenuation;
 
     if (areaAttenuation * NdotL * light.intensity < LIGHT_CULL_THRESHOLD)
@@ -420,18 +423,20 @@ void main()
         {
             uint lightIndex = lightIndices[cluster.offset + i];
             PerLightData light = lights[lightIndex];
+            float fade = LightDistanceFade(light, distance(uInverseViewMatrix[3].xyz, light.position));
+            if (fade <= 0.0) continue;
 
             if (light.type == 0) // Point light
             {
-                localLighting += CalculatePointLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+                localLighting += CalculatePointLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0) * fade;
             }
             else if (light.type == 1) // Spot light
             {
-                localLighting += CalculateSpotLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+                localLighting += CalculateSpotLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0) * fade;
             }
             else if (light.type == 2) // Rect light
             {
-                localLighting += CalculateRectLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0);
+                localLighting += CalculateRectLight(light, worldPos, worldNormal, worldV, albedo, metallic, roughness, F0) * fade;
             }
         }
     }

@@ -128,7 +128,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                     shader.SetUniform("useSunLight", true);
                     shader.SetUniform("uSunDirection", Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation)));
                     shader.SetUniform("uSunColor", light.Color);
-                    shader.SetUniform("uSunIntensity", light.GetFinalIntensity());
+                    shader.SetUniform("uSunIntensity", light.Intensity);
 
                     if (ctx.Shadows is { } shadows)
                     {

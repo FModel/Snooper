@@ -65,7 +65,8 @@ void main()
         {
             PerLightData light = lights[li];
             vec3 viewPos = (uViewMatrix * vec4(light.position, 1.0)).xyz;
-            gBatchSpheres[localId] = vec4(viewPos, light.range);
+            bool drawn = LightDistanceFade(light, length(viewPos)) > 0.0;
+            gBatchSpheres[localId] = vec4(viewPos, drawn ? light.range : -1.0);
         }
         else
         {

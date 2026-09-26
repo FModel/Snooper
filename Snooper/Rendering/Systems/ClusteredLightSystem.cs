@@ -29,6 +29,10 @@ public struct LightData
     public float SizeY;           // Rect light height
     public Vector3 UpVector;
     public uint UseInverseSquaredFalloff;
+    public float MaxDrawDistance;      // camera distance past which the light is off, 0 for never
+    public float MaxDistanceFadeRange; // the light fades over this distance before MaxDrawDistance
+    public float FalloffExponent;
+    public float SourceRadius;
 }
 
 [StructLayout(LayoutKind.Sequential)]

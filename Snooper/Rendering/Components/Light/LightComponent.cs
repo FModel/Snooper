@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Engine;
 using ImGuiNET;
 using Snooper.Core;
@@ -15,10 +16,11 @@ namespace Snooper.Rendering.Components.Light;
 public abstract class LightComponent : BillboardComponent
 {
     public float Intensity;
-    public readonly ELightUnits IntensityUnits;
-    public float IntensityNits;
+    public ELightUnits IntensityUnits;
     public Vector3 Color;
     public readonly bool CastShadows;
+    public readonly float MaxDrawDistance;
+    public readonly float MaxDistanceFadeRange;
 
     internal BufferAllocation? _allocation;
 
@@ -26,15 +28,16 @@ public abstract class LightComponent : BillboardComponent
     {
         Intensity = component.Intensity;
         IntensityUnits = component.GetLightUnits();
-        IntensityNits = component.GetNitIntensity();
-
-        if (IntensityUnits == ELightUnits.Unitless)
-        {
-            Intensity *= Settings.GlobalScale;
-        }
 
         Color = component.GetLightColor();
+        if (component.bUseTemperature)
+        {
+            Color *= FLinearColor.MakeFromColorTemperature(component.Temperature);
+        }
+
         CastShadows = component.CastShadows;
+        MaxDrawDistance = component.MaxDrawDistance * Settings.GlobalScale;
+        MaxDistanceFadeRange = component.MaxDistanceFadeRange * Settings.GlobalScale;
     }
 
     public LightComponent(float intensity, Vector3 color, string sprite, Transform? transform = null, string? name = null) : base(sprite, transform, name)
@@ -55,10 +58,10 @@ public abstract class LightComponent : BillboardComponent
     {
         lightData.Position = WorldMatrix.Translation;
         lightData.Color = Color;
-        lightData.Intensity = GetFinalIntensity();
+        lightData.Intensity = Intensity;
+        lightData.MaxDrawDistance = MaxDrawDistance;
+        lightData.MaxDistanceFadeRange = MaxDistanceFadeRange;
     }
-
-    public float GetFinalIntensity() => IntensityNits > 0 ? IntensityNits : Intensity;
 
     public override string Icon => "\uf0eb";
 
@@ -68,15 +71,15 @@ public abstract class LightComponent : BillboardComponent
 
         EditorUI.CollapsingTable("Light", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
+            if (MaxDrawDistance > 0.0f)
+            {
+                EditorUI.Text("Draw Distance", $"Min: 0, Max: {MaxDrawDistance}, Fade: {MaxDistanceFadeRange}");
+            }
+
             const float speed = 0.5f;
 
             EditorUI.Property("Intensity");
-            ImGui.BeginDisabled(IntensityNits > 0);
             var edited = ImGui.DragFloat("##Intensity", ref Intensity, speed, 0.0f, float.MaxValue, $"%.1f {IntensityUnits}");
-            ImGui.EndDisabled();
-
-            EditorUI.Property("Intensity (nits)");
-            edited |= ImGui.DragFloat("##IntensityNits", ref IntensityNits, speed, 0.0f, float.MaxValue, "%.1f nits");
 
             edited |= DrawLightControls();
 
