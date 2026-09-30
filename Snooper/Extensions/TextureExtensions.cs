@@ -13,7 +13,7 @@ public static class TextureExtensions
             // R: Whatever (AO / S / E / ...)
             // G: Roughness
             // B: Metallic
-            "GAMEFACE" or "HK_PROJECT" or "COSMICSHAKE" or "PHOENIX" or "ATOMICHEART" or "MULTIVERSUS" or "BODYCAM" =>
+            "GAMEFACE" or "HK_PROJECT" or "COSMICSHAKE" or "PHOENIX" or "ATOMICHEART" or "MULTIVERSUS" or "BODYCAM" or "SANDFALL" =>
             [
                 (int)PixelFormat.Red, (int)PixelFormat.Blue, (int)PixelFormat.Green, (int)PixelFormat.Alpha
             ],

@@ -23,7 +23,6 @@ public abstract class ActorSystem : IGameSystem
     public readonly Type ComponentType;
 
     public bool IsEnabled = true;
-    public bool ShowWireframe = false;
     public ActorManager? ActorManager { get; internal set; }
 
     public abstract ActorSystemType SystemType { get; }

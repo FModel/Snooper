@@ -18,7 +18,11 @@ public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvide
         Deselect();
 
         SelectedActor = actor;
-        if (actor == null) return;
+        if (actor == null)
+        {
+            OnSelectionChanged(null, null);
+            return;
+        }
 
         actor.IsNodeSelected = true;
         if (scrollTo) actor.ShouldScrollHere = true;
@@ -41,7 +45,11 @@ public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvide
         Deselect();
 
         SelectedComponent = component;
-        if (component == null) return;
+        if (component == null)
+        {
+            OnSelectionChanged(null, null);
+            return;
+        }
 
         component.IsNodeSelected = true;
         if (scrollTo)
@@ -91,7 +99,7 @@ public abstract class InterfaceManager(GameWindow wnd, IFileProvider fileProvide
 
     protected override void Teardown()
     {
-        Deselect();
+        SelectComponent(null);
 
         base.Teardown();
     }

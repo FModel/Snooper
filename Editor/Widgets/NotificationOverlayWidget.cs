@@ -16,7 +16,7 @@ public class NotificationOverlayWidget
     private const float ProgressWidth = 280f;
     private const float ProgressBar = 3f;     // the bar runs along the bottom edge of its plate
 
-    public void Draw(ImDrawListPtr drawList, Vector2 contentPos, Vector2 contentSize, float bottomClearance)
+    public void Draw(ImDrawListPtr drawList, Vector2 contentPos, Vector2 contentSize)
     {
         Notifications.Advance(ImGui.GetIO().DeltaTime);
         Progress.Advance(ImGui.GetIO().DeltaTime);
@@ -30,7 +30,7 @@ public class NotificationOverlayWidget
         var height = MathF.Round(fontSize * 1.2f) + PadY * 2f;
 
         // progress bars hold the bottom for as long as their work lasts, toasts come and go above them
-        var bottom = contentPos.Y + contentSize.Y - bottomClearance - StatsClearance;
+        var bottom = contentPos.Y + contentSize.Y - StatsClearance;
         foreach (var operation in operations)
         {
             var alpha = operation.IsFinished ? MathF.Min(1f, (Progress.Linger - operation.Age) / FadeOut) : 1f;

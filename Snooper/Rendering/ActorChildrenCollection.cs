@@ -7,6 +7,11 @@ public class ActorChildrenCollection(Actor actor) : Collection<Actor>
 {
     protected override void InsertItem(int index, Actor item)
     {
+        if (item.Parent != null)
+        {
+            throw new InvalidOperationException("This actor already has a parent.");
+        }
+
         base.InsertItem(index, item);
         actor.OnChildAdded(item);
     }

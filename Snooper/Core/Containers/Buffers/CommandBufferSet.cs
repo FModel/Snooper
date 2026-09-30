@@ -20,8 +20,8 @@ public class CommandBufferSet(int viewCount = 1) : IMemoryDetailsProvider, IDisp
 
     public void Allocate(uint totalDraws)
     {
-        _opaque.Allocate((uint)Math.Ceiling(totalDraws * 0.7));
-        _transparent.Allocate((uint)Math.Ceiling(totalDraws * 0.25));
+        _opaque.Allocate((uint)Math.Ceiling(totalDraws * 0.8));
+        _transparent.Allocate((uint)Math.Ceiling(totalDraws * 0.2));
     }
 
     public IndirectDrawBuffer GetBuffer(CommandBufferType type) => type switch

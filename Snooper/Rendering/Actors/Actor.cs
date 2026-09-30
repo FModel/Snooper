@@ -54,17 +54,7 @@ public class Actor : TreeNode
     public ActorChildrenCollection Children { get; }
 
     private Actor? _parent;
-    public Actor? Parent
-    {
-        get => _parent;
-        private set
-        {
-            if (this == value || _parent == value) return;
-
-            _parent?.Children.Remove(this);
-            value?.Children.Add(this);
-        }
-    }
+    public Actor? Parent => _parent;
 
     public ActorManager? ActorManager { get; private set; }
 
@@ -234,11 +224,6 @@ public class Actor : TreeNode
 
     internal void OnChildAdded(Actor actor)
     {
-        if (actor.Parent != null)
-        {
-            throw new InvalidOperationException("This actor already has a parent.");
-        }
-
         actor._parent = this;
         actor.RootComponent?.Relation = RootComponent;
         actor.OnHierarchyChanged();
@@ -262,11 +247,6 @@ public class Actor : TreeNode
 
     internal void OnComponentAdded(ActorComponent component)
     {
-        if (component.Actor != null)
-        {
-            throw new InvalidOperationException("An actor component cannot be set on more than one actor.");
-        }
-
         if (RootComponent == null && component is SpatialComponent spatial)
         {
             RootComponent = spatial;

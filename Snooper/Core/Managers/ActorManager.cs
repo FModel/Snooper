@@ -16,12 +16,13 @@ using Snooper.UI;
 
 namespace Snooper.Core.Managers;
 
-public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IMemoryDetailsProvider, IControllable, IResizable
+public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IMemoryDetailsProvider, IResizable
 {
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
     public uint FragmentColor = FragmentColorMode.Disabled;
     public readonly WireframeOptions Wireframe = new();
+    public bool EditTransforms;
 
     public int ActorCount { get; private set; }
     public uint Revision { get; private set; }
@@ -142,6 +143,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
 
         var before = ActorCount;
         actor.SetScene(null, reason);
+        actor.Children.Clear(); // the root's direct children are free to join another scene
         Log.Information("{Actor} took {ActorCount} actors out of the scene ({Reason})", actor.Name, before - ActorCount, reason);
     }
 
@@ -277,40 +279,6 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     public T? GetSystem<T>() where T : ActorSystem => GetSystems<T>().FirstOrDefault();
     public IEnumerable<T> GetSystems<T>() where T : ActorSystem => GetSystemsInternal<T>();
     internal IEnumerable<T> GetSystemsInternal<T>() => Systems.Values.OfType<T>();
-
-    public virtual void DrawControls()
-    {
-        EditorUI.Caption($"API: {Renderer.Name} | GPU: {Renderer.DeviceInfo.Name}");
-
-        ImGui.SeparatorText("General");
-
-        ImGui.TextUnformatted("Fragment Color");
-        EditorUI.FragmentColorCombo("##FragmentColor", ref FragmentColor);
-
-        var light = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
-        ImGui.BeginDisabled(light == null);
-        EditorUI.TogglableTreeNode("Lighting", light?.UseSceneLights ?? false, () => light?.DrawControls(), toggle =>
-        {
-            light?.UseSceneLights = toggle;
-            // TODO: auto disable shadows
-        });
-        ImGui.EndDisabled();
-
-        var audio = Systems.Values.OfType<AudioSystem>().FirstOrDefault();
-        ImGui.BeginDisabled(audio == null);
-        EditorUI.TogglableTreeNode("Audio", audio?.IsEnabled ?? false, () => audio?.DrawControls(), toggle => audio?.IsEnabled = toggle);
-        ImGui.EndDisabled();
-
-        var landscape = Systems.Values.OfType<LandscapeSystem>().FirstOrDefault();
-        ImGui.BeginDisabled(landscape == null);
-        EditorUI.TogglableTreeNode("Landscape", landscape?.IsEnabled ?? false, () => landscape?.DrawControls(), toggle => landscape?.IsEnabled = toggle);
-        ImGui.EndDisabled();
-
-        var debug = Systems.Values.OfType<DebugSystem>().FirstOrDefault();
-        ImGui.BeginDisabled(debug == null);
-        EditorUI.TogglableTreeNode("Wireframes", debug?.IsEnabled ?? false, () => debug?.DrawControls(), toggle => debug?.IsEnabled = toggle);
-        ImGui.EndDisabled();
-    }
 
     public bool IsDisposed { get; private set; }
 

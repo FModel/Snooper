@@ -1,30 +1,28 @@
 using System.Numerics;
+using Editor.Managers;
 using ImGuiNET;
 using Snooper;
 using Snooper.Core;
 
 namespace Editor.Widgets;
 
-public class ProfilerOverlayWidget
+public class ProfilerOverlayWidget : IViewportCard
 {
-    private const float Margin = 8f;          // gap from the viewport edges
-    private const float Inner = 8f;           // padding inside the panel
-    private const float ToolbarClearance = 38f;
-    private const float BottomClearance = 53f; // clears the FPS and primitive readouts, both of which show while profiling
-    private const float PanelWidth = 320f;
-    private const float GraphHeight = 46f;
-    private const float MinGraphHeight = 22f; // floor the graphs collapse to before legend rows start being dropped
-    private const float LabelHeight = 16f;
-    private const float GraphGap = 6f;
-    private const float RowHeight = 18f;
-    private const float BreadcrumbHeight = 18f;
-    private const float HeaderPad = 6f; // gap between the breadcrumb's divider and the graphs below
+    public string Title => "Profiler";
+    public bool IsOpen { get => Profiler.Enabled; set => Profiler.Enabled = value; }
+
+    private static float Unit => ImGui.GetFrameHeight();
+    private static float Line => ImGui.GetTextLineHeightWithSpacing();
+    private static float Gap => 0.3f * Unit;
+    private static float GraphHeight => 2.2f * Unit;
+    private static float Square => 0.5f * Unit;
+    private static Vector2 TextOffset => new(0f, (Line - ImGui.GetFontSize()) * 0.5f);
 
     // Path from the profiler root down to the currently visualized node, by zone name
     // (e.g. ["Frame"], ["Frame", "Deferred Pass"], ["Frame", "Deferred Pass", "StaticMeshRenderSystem"]).
     private readonly List<string> _path = ["Frame"];
 
-    private static readonly uint[] _palette =
+    internal static readonly uint[] _palette =
     [
         Color(0.90f, 0.32f, 0.28f), Color(0.36f, 0.72f, 0.36f), Color(0.30f, 0.55f, 0.95f),
         Color(0.95f, 0.75f, 0.25f), Color(0.70f, 0.45f, 0.90f), Color(0.30f, 0.80f, 0.80f),
@@ -36,58 +34,51 @@ public class ProfilerOverlayWidget
         Color(0.25f, 0.55f, 0.45f), Color(0.70f, 0.70f, 0.80f), Color(0.95f, 0.80f, 0.90f),
     ];
 
-    public void Draw(ImDrawListPtr drawList, Vector2 contentPos, Vector2 contentSize, float bottomClearance)
+    public void Draw(EditorManager editor)
     {
-        if (!Profiler.Enabled) return;
-
-        var maxHeight = contentSize.Y - ToolbarClearance - BottomClearance - bottomClearance;
-        if (maxHeight < GraphHeight * 2f || contentSize.X < PanelWidth + Margin * 2f) return;
-
-        var origin = contentPos + new Vector2(Margin, ToolbarClearance);
-
         var root = Profiler.Root;
         if (root.Children.Count == 0)
         {
-            var emptySize = new Vector2(PanelWidth, Inner * 2f + RowHeight);
-            drawList.AddRectFilled(origin, origin + emptySize, Color(0.06f, 0.06f, 0.08f, 0.72f));
-            drawList.AddRect(origin, origin + emptySize, Color(1f, 1f, 1f, 0.10f));
-            drawList.AddText(origin + new Vector2(Inner, Inner), Color(0.7f, 0.7f, 0.75f), "No profiler data yet.");
+            ImGui.TextDisabled("No profiler data yet.");
+            return;
         }
-        else
-        {
-            var node = ResolveNode(root);
-            var series = node.Children.Count > 0 ? node.Children : (IReadOnlyList<ProfilerNode>)[node];
 
-            // Size the panel to its content and stop there, but never past the available space.
-            const float headerHeight = Inner * 2f + BreadcrumbHeight;
-            const float fixedBlock = headerHeight + HeaderPad + LabelHeight + GraphGap + LabelHeight;
-            const float headerBlock = 8f + 1f + 6f + RowHeight + 2f; // separator + total line
-            var legendBlock = (series.Count + (_path.Count > 1 ? 1 : 0)) * RowHeight;
+        var node = ResolveNode(root);
+        var series = node.Children.Count > 0 ? node.Children : (IReadOnlyList<ProfilerNode>)[node];
 
-            // The legend is the payload, so when space is tight the graphs give way rather than the bottom rows being
-            // dropped — the last zone of the frame would otherwise be the one that silently disappears.
-            var graphHeight = GraphHeight;
-            var overflow = fixedBlock + GraphHeight * 2f + headerBlock + legendBlock + Inner - maxHeight;
-            if (overflow > 0f)
-                graphHeight = MathF.Max(MinGraphHeight, GraphHeight - overflow / 2f);
+        var drawList = ImGui.GetWindowDrawList();
+        var origin = ImGui.GetCursorScreenPos();
+        var width = ImGui.GetContentRegionAvail().X;
+        var right = origin.X + width;
+        var y = origin.Y;
 
-            var panelHeight = MathF.Min(fixedBlock + graphHeight * 2f + headerBlock + legendBlock + Inner, maxHeight);
-            var panelSize = new Vector2(PanelWidth, panelHeight);
+        DrawBreadcrumb(drawList, origin, root);
+        y += Line + Gap;
 
-            drawList.AddRectFilled(origin, origin + panelSize, Color(0.06f, 0.06f, 0.08f, 0.72f));
-            drawList.AddRect(origin, origin + panelSize, Color(1f, 1f, 1f, 0.10f));
+        const int selected = 0;
+        var graphSize = new Vector2(width, GraphHeight);
 
-            // Header band: visually separates the breadcrumb (a toolbar) from the graphs below.
-            drawList.AddRectFilled(origin, origin + panelSize with { Y = headerHeight }, Color(1f, 1f, 1f, 0.03f));
-            drawList.AddLine(origin with { Y = origin.Y + headerHeight }, new Vector2(origin.X + panelSize.X, origin.Y + headerHeight), Color(1f, 1f, 1f, 0.10f));
+        y += Line;
+        DrawGraph(drawList, new Vector2(origin.X, y), graphSize, series, false, selected, "CPU", node.Cpu);
+        y += GraphHeight + Gap;
 
-            ImGui.PushID("ProfilerOverlay");
-            drawList.PushClipRect(origin, origin + panelSize, true);
-            DrawBreadcrumb(drawList, origin + new Vector2(Inner, Inner), root);
-            DrawPanel(drawList, origin, panelSize, graphHeight, node, series);
-            drawList.PopClipRect();
-            ImGui.PopID();
-        }
+        y += Line;
+        DrawGraph(drawList, new Vector2(origin.X, y), graphSize, series, true, selected, "GPU", node.Gpu);
+        y += GraphHeight + Gap;
+
+        drawList.AddLine(new Vector2(origin.X, y), new Vector2(right, y), Color(1f, 1f, 1f, 0.12f));
+        y += Gap;
+
+        // Spelling the pair out here keeps the total line doubling as the key for the unlabelled "a / b" legend rows.
+        drawList.AddText(new Vector2(origin.X, y) + TextOffset, Color(0.85f, 0.85f, 0.88f), node.Name);
+        var total = $"CPU {node.Cpu.TimeElapsedMs[selected]:F2} / GPU {node.Gpu.TimeElapsedMs[selected]:F2} ms";
+        drawList.AddText(new Vector2(right - ImGui.CalcTextSize(total).X, y) + TextOffset, Color(0.7f, 0.7f, 0.75f), total);
+        y += Line;
+
+        y = DrawLegend(drawList, new Vector2(origin.X, y), width, series, selected);
+
+        ImGui.SetCursorScreenPos(origin);
+        ImGui.Dummy(new Vector2(width, y - origin.Y));
     }
 
     private ProfilerNode ResolveNode(ProfilerNode root)
@@ -126,12 +117,13 @@ public class ProfilerOverlayWidget
     private void DrawBreadcrumb(ImDrawListPtr drawList, Vector2 pos, ProfilerNode root)
     {
         var x = pos.X;
+        var padding = 0.25f * Unit;
 
         foreach (var group in root.Children)
         {
             var active = _path.Count > 0 && _path[0] == group.Name;
             var textSize = ImGui.CalcTextSize(group.Name);
-            var size = new Vector2(textSize.X + 10f, BreadcrumbHeight);
+            var size = new Vector2(textSize.X + padding * 2f, Line);
 
             ImGui.SetCursorScreenPos(pos with { X = x });
             var clicked = ImGui.InvisibleButton(group.Name, size);
@@ -139,11 +131,11 @@ public class ProfilerOverlayWidget
 
             if (active || hovered)
             {
-                drawList.AddRectFilled(pos with { X = x }, new Vector2(x + size.X, pos.Y + BreadcrumbHeight), Color(1f, 1f, 1f, active ? 0.12f : 0.06f));
+                drawList.AddRectFilled(pos with { X = x }, new Vector2(x + size.X, pos.Y + Line), Color(1f, 1f, 1f, active ? 0.12f : 0.06f));
             }
 
             var textColor = active ? Color(1f, 1f, 1f) : hovered ? Color(0.85f, 0.85f, 0.9f) : Color(0.6f, 0.6f, 0.65f);
-            drawList.AddText(new Vector2(x + 5f, pos.Y + 2f), textColor, group.Name);
+            drawList.AddText(new Vector2(x + padding, pos.Y) + TextOffset, textColor, group.Name);
 
             if (clicked)
             {
@@ -151,35 +143,8 @@ public class ProfilerOverlayWidget
                 _path.Add(group.Name);
             }
 
-            x += size.X + 4f;
+            x += size.X + padding;
         }
-    }
-
-    private void DrawPanel(ImDrawListPtr drawList, Vector2 origin, Vector2 panelSize, float graphHeight, ProfilerNode node, IReadOnlyList<ProfilerNode> series)
-    {
-        var graphSize = new Vector2(PanelWidth - Inner * 2f, graphHeight);
-        var x0 = origin.X + Inner;
-
-        var cpuGraphPos = new Vector2(x0, origin.Y + Inner * 2f + BreadcrumbHeight + HeaderPad + LabelHeight);
-        var gpuGraphPos = cpuGraphPos + new Vector2(0f, graphHeight + LabelHeight + GraphGap);
-
-        const int selected = 0;
-        DrawGraph(drawList, cpuGraphPos, graphSize, series, false, selected, "CPU", node.Cpu);
-        DrawGraph(drawList, gpuGraphPos, graphSize, series, true, selected, "GPU", node.Gpu);
-
-        var right = origin.X + PanelWidth - Inner;
-
-        var y = gpuGraphPos.Y + graphHeight + 8f;
-        drawList.AddLine(new Vector2(x0, y), new Vector2(right, y), Color(1f, 1f, 1f, 0.12f));
-        y += 6f;
-
-        // Spelling the pair out here keeps the total line doubling as the key for the unlabelled "a / b" legend rows.
-        drawList.AddText(new Vector2(x0, y + 1f), Color(0.85f, 0.85f, 0.88f), node.Name);
-        var total = $"CPU {node.Cpu.TimeElapsedMs[selected]:F2} / GPU {node.Gpu.TimeElapsedMs[selected]:F2} ms";
-        drawList.AddText(new Vector2(right - ImGui.CalcTextSize(total).X, y + 1f), Color(0.7f, 0.7f, 0.75f), total);
-        y += RowHeight + 2f;
-
-        DrawLegend(drawList, x0, y, origin.Y + panelSize.Y - Inner, series, selected);
     }
 
     private void DrawGraph(ImDrawListPtr drawList, Vector2 pos, Vector2 size, IReadOnlyList<ProfilerNode> series, bool gpu, int selected, string label, ProfilerMetricData total)
@@ -197,7 +162,7 @@ public class ProfilerOverlayWidget
             if (sum > maxTime) maxTime = sum;
         }
 
-        drawList.AddText(pos - new Vector2(0f, LabelHeight), Color(0.8f, 0.8f, 0.85f), $"{label}  {total.TimeElapsedMs[selected]:F2} ms   avg {total.AverageTimeElapsedMs:F2}");
+        drawList.AddText(pos - new Vector2(0f, Line), Color(0.8f, 0.8f, 0.85f), $"{label}  {total.TimeElapsedMs[selected]:F2} ms   avg {total.AverageTimeElapsedMs:F2}");
 
         drawList.AddRectFilled(pos, pos + size, Color(0f, 0f, 0f, 0.35f));
 
@@ -221,36 +186,34 @@ public class ProfilerOverlayWidget
         drawList.AddRect(pos, pos + size, Color(1f, 1f, 1f, 0.15f));
     }
 
-    private void DrawLegend(ImDrawListPtr drawList, float x, float y, float maxY, IReadOnlyList<ProfilerNode> series, int selected)
+    private float DrawLegend(ImDrawListPtr drawList, Vector2 pos, float width, IReadOnlyList<ProfilerNode> series, int selected)
     {
-        const float square = 10f;
-        var right = x + PanelWidth - Inner * 2f;
+        var x = pos.X;
+        var y = pos.Y;
+        var right = x + width;
+        var edge = 0.1f * Unit;
+        var indent = Square + Gap;
 
         // fake ".." entry to drill back up the hierarchy, if we're not at the root.
-        if (_path.Count > 1 && y + RowHeight <= maxY)
+        if (_path.Count > 1)
         {
             var accentColor = Color(0.30f, 0.55f, 0.95f);
 
             ImGui.SetCursorScreenPos(new Vector2(x, y));
-            if (ImGui.InvisibleButton("legendUp", new Vector2(right - x, RowHeight)))
+            if (ImGui.InvisibleButton("legendUp", new Vector2(width, Line)))
                 _path.RemoveAt(_path.Count - 1);
             var hoveredUp = ImGui.IsItemHovered();
 
-            drawList.AddRectFilled(new Vector2(x - 2f, y), new Vector2(right + 2f, y + RowHeight), Color(0.30f, 0.55f, 0.95f, hoveredUp ? 0.22f : 0.12f));
-            drawList.AddRectFilled(new Vector2(x - 2f, y), new Vector2(x, y + RowHeight), accentColor);
+            drawList.AddRectFilled(new Vector2(x - edge, y), new Vector2(right + edge, y + Line), Color(0.30f, 0.55f, 0.95f, hoveredUp ? 0.22f : 0.12f));
+            drawList.AddRectFilled(new Vector2(x - edge, y), new Vector2(x, y + Line), accentColor);
 
             var upColor = hoveredUp ? Color(1f, 1f, 1f) : Color(0.85f, 0.88f, 0.95f);
-            drawList.AddText(new Vector2(x + square + 6f, y + 1f), upColor, "..");
+            drawList.AddText(new Vector2(x + indent, y) + TextOffset, upColor, "..");
 
-            y += RowHeight;
+            y += Line;
         }
 
-        // When the rows cannot all fit, give the last slot to the "+N more" marker instead of a zone, so the marker
-        // never lands on top of a row.
-        var fits = (int)MathF.Floor((maxY - y) / RowHeight);
-        var visible = fits < series.Count ? Math.Max(0, fits - 1) : series.Count;
-
-        for (var t = 0; t < visible; t++)
+        for (var t = 0; t < series.Count; t++)
         {
             var task = series[t];
             var drillable = task.Children.Count > 0;
@@ -259,47 +222,42 @@ public class ProfilerOverlayWidget
             if (drillable)
             {
                 ImGui.SetCursorScreenPos(new Vector2(x, y));
-                if (ImGui.InvisibleButton($"legend{t}", new Vector2(right - x, RowHeight)))
+                if (ImGui.InvisibleButton($"legend{t}", new Vector2(width, Line)))
                     _path.Add(task.Name);
                 if (ImGui.IsItemHovered())
-                    drawList.AddRectFilled(new Vector2(x - 2f, y), new Vector2(right + 2f, y + RowHeight), Color(1f, 1f, 1f, 0.06f));
+                    drawList.AddRectFilled(new Vector2(x - edge, y), new Vector2(right + edge, y + Line), Color(1f, 1f, 1f, 0.06f));
             }
 
             var cpuMs = task.Cpu.TimeElapsedMs[selected];
             var gpuMs = task.HasGpu ? task.Gpu.TimeElapsedMs[selected] : 0f;
 
-            var sqTop = new Vector2(x, y + (RowHeight - square) / 2f);
-            drawList.AddRectFilled(sqTop, sqTop + new Vector2(square, square), _palette[t % _palette.Length]);
+            var sqTop = new Vector2(x, y + (Line - Square) / 2f);
+            drawList.AddRectFilled(sqTop, sqTop + new Vector2(Square, Square), _palette[t % _palette.Length]);
 
-            drawList.AddText(new Vector2(x + square + 6f, y + 1f), Color(0.85f, 0.85f, 0.88f), task.Name);
+            drawList.AddText(new Vector2(x + indent, y) + TextOffset, Color(0.85f, 0.85f, 0.88f), task.Name);
             if (drillable)
-                drawList.AddText(new Vector2(x + square + 6f + ImGui.CalcTextSize(task.Name).X + 3f, y + 1f), Color(0.5f, 0.5f, 0.55f), Settings.AngleRightIcon);
+                drawList.AddText(new Vector2(x + indent + ImGui.CalcTextSize(task.Name).X + edge * 2f, y) + TextOffset, Color(0.5f, 0.5f, 0.55f), Settings.AngleRightIcon);
 
             var timing = task.HasGpu ? $"{cpuMs:F2} / {gpuMs:F2} ms" : $"{cpuMs:F2} ms";
             var timingWidth = ImGui.CalcTextSize(timing).X;
-            drawList.AddText(new Vector2(right - timingWidth, y + 1f), Color(0.62f, 0.62f, 0.68f), timing);
+            drawList.AddText(new Vector2(right - timingWidth, y) + TextOffset, Color(0.62f, 0.62f, 0.68f), timing);
 
             if (task.HasPrimitives)
             {
                 var primitives = FormatCount(task.TotalPrimitives);
                 var primitivesWidth = ImGui.CalcTextSize(primitives).X;
-                drawList.AddText(new Vector2(right - timingWidth - 8f - primitivesWidth, y + 1f), Color(0.45f, 0.45f, 0.52f), primitives);
+                drawList.AddText(new Vector2(right - timingWidth - Gap - primitivesWidth, y) + TextOffset, Color(0.45f, 0.45f, 0.52f), primitives);
             }
 
-            y += RowHeight;
+            y += Line;
         }
 
-        // Never truncate silently: a dropped row reads as a zone that costs nothing rather than one that did not fit.
-        if (visible < series.Count)
-        {
-            var hidden = $"+{series.Count - visible} more";
-            drawList.AddText(new Vector2(right - ImGui.CalcTextSize(hidden).X, y + 1f), Color(0.95f, 0.55f, 0.30f), hidden);
-        }
+        return y;
     }
 
     private static ProfilerMetricData Series(ProfilerNode node, bool gpu) => gpu ? node.Gpu : node.Cpu;
 
-    /// <summary>Primitive counts run to millions and the panel is 320px, so they get short-scaled.</summary>
+    /// <summary>Primitive counts run to millions and the card is narrow, so they get short-scaled.</summary>
     private static string FormatCount(long count) => count switch
     {
         >= 1_000_000_000 => $"{count / 1_000_000_000.0:0.##}B",

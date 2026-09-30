@@ -66,7 +66,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
         });
     }
 
-    public override string Icon => "\uf51b";
+    public override string Icon => Settings.ChalkboardIcon;
 
     private class MaterialDataContainer(Texture sprite, float opacityMask = 0.5f) : IMaterialDataContainer
     {

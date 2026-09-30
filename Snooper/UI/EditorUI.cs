@@ -315,6 +315,31 @@ public static class EditorUI
         }
     }
 
+    public static bool CollapsingToggle(string label, ref bool enabled)
+    {
+        var open = ImGui.CollapsingHeader(label, ImGuiTreeNodeFlags.AllowOverlap);
+        var min = ImGui.GetItemRectMin();
+        var size = ImGui.GetItemRectSize();
+
+        var active = enabled;
+        var icon = active ? Settings.ToggleOnIcon : Settings.ToggleOffIcon;
+        var padding = ImGui.GetStyle().FramePadding.X;
+        var width = MathF.Max(size.Y, ImGui.CalcTextSize(icon).X + padding * 2.0f);
+
+        PushIconButtonStyle();
+        ImGui.PushID(label);
+        if (!active) ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
+
+        ImGui.SetCursorScreenPos(min with { X = min.X + size.X - padding - width });
+        if (ImGui.Button(icon, new Vector2(width, size.Y))) enabled = !active;
+
+        if (!active) ImGui.PopStyleColor();
+        ImGui.PopID();
+        PopIconButtonStyle();
+
+        return open;
+    }
+
     public static void PropertyValueTable(string label, Action draws, bool indent = true)
     {
         if (indent) ImGui.Indent();

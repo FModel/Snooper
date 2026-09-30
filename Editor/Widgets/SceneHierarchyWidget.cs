@@ -277,6 +277,8 @@ public class SceneHierarchyWidget : PanelWidget
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))
             {
+                if (actor.ActorManager is InterfaceManager manager)
+                    manager.SelectActor(null);
                 actor.Parent?.Children.Remove(actor);
                 _dirty = true;
             }

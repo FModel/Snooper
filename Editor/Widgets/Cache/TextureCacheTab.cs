@@ -1,4 +1,5 @@
 using System.Numerics;
+using Editor.Managers;
 using ImGuiNET;
 using Snooper;
 using Snooper.Extensions;
@@ -17,46 +18,89 @@ public class TextureCacheTab : ICacheTab
         Containers,
     }
 
-    private const float DetailsHeight = 170f;
+    private const float RefreshInterval = 0.25f; // the figures above the list are formatted strings
+
+    private static readonly string _filterHint = $"{Settings.MagnifyingGlassIcon}  Filter by name";
+
+    private static readonly string[] _textureStates = ["Resident", "Evictable", "Loading", "Failed"];
+    private static readonly uint[] _textureColors = [ToColor(Settings.GreenColor), ToColor(Settings.YellowColor), ToColor(Settings.OrangeColor), ToColor(Settings.RedColor)];
+    private static readonly string[] _containerStates = ["Ready", "Waiting", "Stalled"];
+    private static readonly uint[] _containerColors = [ToColor(Settings.GreenColor), ToColor(Settings.OrangeColor), ToColor(Settings.RedColor)];
+
+    private static readonly Comparison<TextureCache.TextureEntry> _byMemory = (a, b) =>
+    {
+        var order = b.Texture.Allocated.CompareTo(a.Texture.Allocated);
+        return order != 0 ? order : string.Compare(a.Texture.Name, b.Texture.Name, StringComparison.OrdinalIgnoreCase);
+    };
+
+    private static readonly Comparison<TextureCache.ContainerEntry> _bySections = (a, b) =>
+    {
+        var order = b.Sections.Count.CompareTo(a.Sections.Count);
+        return order != 0 ? order : string.Compare(a.Container.Name, b.Container.Name, StringComparison.OrdinalIgnoreCase);
+    };
 
     private readonly List<TextureCache.TextureEntry> _textures = [];
     private readonly List<TextureCache.ContainerEntry> _containers = [];
-    private readonly Comparison<TextureCache.TextureEntry> _compareTextures;
-    private readonly Comparison<TextureCache.ContainerEntry> _compareContainers;
 
     private EView _view;
     private string _search = string.Empty;
-    private int _sortColumn;
-    private bool _sortDescending;
+    private int _state = -1; // the state the list is narrowed to, none below zero
 
     private TextureCache.TextureEntry? _selectedTexture;
     private TextureCache.ContainerEntry? _selectedContainer;
 
-    public TextureCacheTab()
-    {
-        _compareTextures = CompareTextures;
-        _compareContainers = CompareContainers;
-    }
+    private readonly int[] _textureCounts = new int[4];
+    private readonly long[] _textureBytes = new long[4];
+    private readonly string[] _textureValues = [string.Empty, string.Empty, string.Empty, string.Empty];
+    private readonly int[] _containerCounts = new int[3];
+    private readonly string[] _containerValues = [string.Empty, string.Empty, string.Empty];
+    private readonly MemoryChart.Segment[] _segments = new MemoryChart.Segment[2];
+    private readonly MemoryChart.Tile[] _totals = new MemoryChart.Tile[4];
+    private float _sinceRefresh = float.MaxValue;
 
-    public void Draw()
+    public void Draw(EditorManager editor)
     {
         Collect();
-        DrawSummary();
-        DrawToolbar();
+
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, ImGui.GetStyle().ItemSpacing with { Y = 0f });
+
+        var gap = new Vector2(0f, MemoryChart.Gap);
+
+        MemoryChart.Tiles(_totals);
+        ImGui.Dummy(gap);
+        MemoryChart.Bar(_segments);
+        ImGui.Dummy(gap);
+
+        var states = _view == EView.Textures ? _textureStates : _containerStates;
+        var colors = _view == EView.Textures ? _textureColors : _containerColors;
+        var values = _view == EView.Textures ? _textureValues : _containerValues;
+        for (var i = 0; i < states.Length; i++)
+        {
+            ImGui.PushID(i);
+            if (MemoryChart.Row(colors[i], states[i], values[i], selected: _state == i)) _state = _state == i ? -1 : i;
+            ImGui.PopID();
+        }
+
+        ImGui.Dummy(gap);
+        if (MemoryChart.Chip("Textures", _view == EView.Textures)) Show(EView.Textures);
+        ImGui.SameLine(0f, 0.2f * MemoryChart.Unit);
+        if (MemoryChart.Chip("Containers", _view == EView.Containers)) Show(EView.Containers);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(-1f);
+        ImGui.InputTextWithHint("##TextureCacheFilter", _filterHint, ref _search, 128, ImGuiInputTextFlags.AutoSelectAll);
+
+        ImGui.Dummy(gap);
+        ImGui.PopStyleVar();
 
         var hasDetails = _view == EView.Textures ? _selectedTexture is not null : _selectedContainer is not null;
-        var listSize = new Vector2(0f, hasDetails ? MathF.Max(ImGui.GetContentRegionAvail().Y - DetailsHeight - ImGui.GetStyle().ItemSpacing.Y, DetailsHeight) : 0f);
+        var detailsHeight = MemoryChart.Unit * 9f;
+        var listSize = new Vector2(0f, hasDetails ? MathF.Max(ImGui.GetContentRegionAvail().Y - detailsHeight - ImGui.GetStyle().ItemSpacing.Y, detailsHeight) : 0f);
 
-        if (_view == EView.Textures)
-        {
-            DrawTextures(listSize);
-            if (_selectedTexture is { } texture) DrawTextureDetails(texture);
-        }
-        else
-        {
-            DrawContainers(listSize);
-            if (_selectedContainer is { } container) DrawContainerDetails(container);
-        }
+        if (_view == EView.Textures) DrawTextures(listSize);
+        else DrawContainers(listSize);
+
+        if (_view == EView.Textures && _selectedTexture is { } texture) DrawTextureDetails(texture);
+        else if (_view == EView.Containers && _selectedContainer is { } container) DrawContainerDetails(container);
     }
 
     /// <summary>
@@ -64,59 +108,73 @@ public class TextureCacheTab : ICacheTab
     /// </summary>
     private void Collect()
     {
+        _sinceRefresh += ImGui.GetIO().DeltaTime;
+        var refresh = _sinceRefresh >= RefreshInterval;
+        if (refresh)
+        {
+            _sinceRefresh = 0f;
+            Array.Clear(_textureCounts);
+            Array.Clear(_textureBytes);
+            Array.Clear(_containerCounts);
+        }
+
         var textureAlive = false;
         _textures.Clear();
         foreach (var entry in TextureCache.Textures)
         {
+            var state = StateOf(entry);
+            if (refresh)
+            {
+                _textureCounts[state]++;
+                if (entry.Bindless is not null) _textureBytes[state] += entry.Texture.Allocated;
+            }
+
             textureAlive |= entry == _selectedTexture;
-            if (Matches(entry.Texture.Name, StateOf(entry).Label)) _textures.Add(entry);
+            if (_view == EView.Textures && Matches(entry.Texture.Name, state)) _textures.Add(entry);
         }
 
         var containerAlive = false;
         _containers.Clear();
         foreach (var entry in TextureCache.Containers)
         {
+            var state = StateOf(entry);
+            if (refresh) _containerCounts[state]++;
+
             containerAlive |= entry == _selectedContainer;
-            if (Matches(entry.Container.Name, StateOf(entry).Label)) _containers.Add(entry);
+            if (_view == EView.Containers && Matches(entry.Container.Name, state)) _containers.Add(entry);
         }
 
         if (!textureAlive) _selectedTexture = null;
         if (!containerAlive) _selectedContainer = null;
-    }
 
-    private bool Matches(string name, string state)
-    {
-        return _search.Length == 0 || name.Contains(_search, StringComparison.OrdinalIgnoreCase) || state.Contains(_search, StringComparison.OrdinalIgnoreCase);
-    }
+        _textures.Sort(_byMemory);
+        _containers.Sort(_bySections);
 
-    private static void DrawSummary()
-    {
-        var resident = TextureCache.ResidentBytes;
-        const long budget = TextureCache.TextureBudgetBytes;
-        ImGui.ProgressBar(budget > 0 ? MathF.Min(1f, (float) resident / budget) : 0f, new Vector2(-1f, 0f), $"{resident.GetReadableSize()} / {budget.GetReadableSize()}");
+        if (!refresh) return;
 
-        var sections = 0;
-        var waiting = 0;
-        foreach (var container in TextureCache.Containers)
+        for (var i = 0; i < _textureValues.Length; i++)
         {
-            sections += container.Sections.Count;
-            if (!container.Completed) waiting++;
+            _textureValues[i] = _textureBytes[i] > 0 ? $"{_textureCounts[i]:N0}   {_textureBytes[i].GetReadableSize()}" : $"{_textureCounts[i]:N0}";
         }
 
-        EditorUI.Caption(
-            $"{TextureCache.LoadedTextureCount:N0} resident, {TextureCache.EvictableTextureCount:N0} of them evictable, {TextureCache.PendingTextureCount:N0} loading",
-            $"{TextureCache.Containers.Count:N0} containers, {waiting:N0} waiting, used by {sections:N0} sections, {TextureCache.NotifyQueueCount:N0} to notify");
+        for (var i = 0; i < _containerValues.Length; i++)
+        {
+            _containerValues[i] = $"{_containerCounts[i]:N0}";
+        }
+
+        const long budget = TextureCache.TextureBudgetBytes;
+        _segments[0] = new MemoryChart.Segment(_textureStates[0], _textureColors[0], (float) _textureBytes[0] / budget);
+        _segments[1] = new MemoryChart.Segment(_textureStates[1], _textureColors[1], (float) _textureBytes[1] / budget);
+
+        _totals[0] = new MemoryChart.Tile("In Use", _textureBytes[0].GetReadableSize());
+        _totals[1] = new MemoryChart.Tile("Evictable", _textureBytes[1].GetReadableSize());
+        _totals[2] = new MemoryChart.Tile("Budget", budget.GetReadableSize());
+        _totals[3] = new MemoryChart.Tile("Textures", $"{TextureCache.Textures.Count:N0} in {TextureCache.Containers.Count:N0} containers");
     }
 
-    private void DrawToolbar()
+    private bool Matches(string name, int state)
     {
-        if (ImGui.RadioButton($"Textures ({TextureCache.Textures.Count:N0})", _view == EView.Textures)) Show(EView.Textures);
-        ImGui.SameLine();
-        if (ImGui.RadioButton($"Containers ({TextureCache.Containers.Count:N0})", _view == EView.Containers)) Show(EView.Containers);
-
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(-1f);
-        ImGui.InputTextWithHint("##TextureCacheFilter", $"{Settings.MagnifyingGlassIcon}  Filter by name or state", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll);
+        return (_state < 0 || _state == state) && (_search.Length == 0 || name.Contains(_search, StringComparison.OrdinalIgnoreCase));
     }
 
     private void Show(EView view)
@@ -125,122 +183,73 @@ public class TextureCacheTab : ICacheTab
 
         _view = view;
         _search = string.Empty; // a filter written for one list hides everything in the other
+        _state = -1;
     }
-
-    private const ImGuiTableFlags TableFlags = ImGuiTableFlags.Sortable | ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.Resizable | ImGuiTableFlags.SizingFixedFit;
 
     private void DrawTextures(Vector2 size)
     {
-        if (!ImGui.BeginTable("##CachedTextures", 7, TableFlags, size)) return;
-
-        ImGui.TableSetupScrollFreeze(0, 1);
-        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Size");
-        ImGui.TableSetupColumn("Format");
-        ImGui.TableSetupColumn("Mips");
-        ImGui.TableSetupColumn("Memory", ImGuiTableColumnFlags.DefaultSort | ImGuiTableColumnFlags.PreferSortDescending);
-        ImGui.TableSetupColumn("Refs");
-        ImGui.TableSetupColumn("State");
-        ImGui.TableHeadersRow();
-
-        ReadSort();
-        _textures.Sort(_compareTextures);
-
-        unsafe
+        if (ImGui.BeginChild("##CachedTextures", size))
         {
-            var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
-            clipper.Begin(_textures.Count);
-            while (clipper.Step())
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, ImGui.GetStyle().ItemSpacing with { Y = 0f });
+            unsafe
             {
-                for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
+                clipper.Begin(_textures.Count, MemoryChart.RowHeight);
+                while (clipper.Step())
                 {
-                    var entry = _textures[i];
-                    var texture = entry.Texture;
-                    var (label, color) = StateOf(entry);
-
-                    ImGui.TableNextRow();
-                    ImGui.TableNextColumn();
-                    if (ImGui.Selectable($"{texture.Name}##{i}", entry == _selectedTexture, ImGuiSelectableFlags.SpanAllColumns))
+                    for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                     {
-                        _selectedTexture = entry == _selectedTexture ? null : entry;
+                        var entry = _textures[i];
+                        var texture = entry.Texture;
+                        var value = entry.Bindless is null
+                            ? $"{texture.Width}x{texture.Height}   {texture.FormatName}"
+                            : $"{texture.Width}x{texture.Height}   {texture.FormatName}   {texture.GetFormattedSpace()}";
+
+                        ImGui.PushID(i);
+                        if (MemoryChart.Row(_textureColors[StateOf(entry)], texture.Name, value, selected: entry == _selectedTexture))
+                        {
+                            _selectedTexture = entry == _selectedTexture ? null : entry;
+                        }
+                        ImGui.PopID();
                     }
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextUnformatted($"{texture.Width}x{texture.Height}");
-                    ImGui.TableNextColumn();
-                    ImGui.TextUnformatted(texture.FormatName);
-                    ImGui.TableNextColumn();
-                    ImGui.TextUnformatted($"{texture.MipCount}");
-                    ImGui.TableNextColumn();
-                    ImGui.TextUnformatted(entry.Bindless is null ? "-" : texture.GetFormattedSpace());
-                    ImGui.TableNextColumn();
-                    ImGui.TextUnformatted($"{entry.RefCount:N0}");
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(color, label);
                 }
+                clipper.End();
+                clipper.Destroy();
             }
-            clipper.End();
+            ImGui.PopStyleVar();
         }
-
-        ImGui.EndTable();
+        ImGui.EndChild();
     }
 
     private void DrawContainers(Vector2 size)
     {
-        if (!ImGui.BeginTable("##CachedContainers", 5, TableFlags, size)) return;
-
-        ImGui.TableSetupScrollFreeze(0, 1);
-        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Textures");
-        ImGui.TableSetupColumn("Waiting For");
-        ImGui.TableSetupColumn("Sections", ImGuiTableColumnFlags.DefaultSort | ImGuiTableColumnFlags.PreferSortDescending);
-        ImGui.TableSetupColumn("State");
-        ImGui.TableHeadersRow();
-
-        ReadSort();
-        _containers.Sort(_compareContainers);
-
-        unsafe
+        if (ImGui.BeginChild("##CachedContainers", size))
         {
-            var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
-            clipper.Begin(_containers.Count);
-            while (clipper.Step())
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, ImGui.GetStyle().ItemSpacing with { Y = 0f });
+            unsafe
             {
-                for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
+                clipper.Begin(_containers.Count, MemoryChart.RowHeight);
+                while (clipper.Step())
                 {
-                    var entry = _containers[i];
-                    var (label, color) = StateOf(entry);
-
-                    ImGui.TableNextRow();
-                    ImGui.TableNextColumn();
-                    if (ImGui.Selectable($"{entry.Container.Name}##{i}", entry == _selectedContainer, ImGuiSelectableFlags.SpanAllColumns))
+                    for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                     {
-                        _selectedContainer = entry == _selectedContainer ? null : entry;
+                        var entry = _containers[i];
+
+                        ImGui.PushID(i);
+                        if (MemoryChart.Row(_containerColors[StateOf(entry)], entry.Container.Name, Describe(entry), selected: entry == _selectedContainer))
+                        {
+                            _selectedContainer = entry == _selectedContainer ? null : entry;
+                        }
+                        ImGui.PopID();
                     }
-
-                    ImGui.TableNextColumn();
-                    ImGui.TextUnformatted($"{entry.Textures.Count:N0}");
-                    ImGui.TableNextColumn();
-                    ImGui.TextUnformatted($"{entry.Remaining:N0}");
-                    ImGui.TableNextColumn();
-                    ImGui.TextUnformatted($"{entry.Sections.Count:N0}");
-                    ImGui.TableNextColumn();
-                    ImGui.TextColored(color, label);
                 }
+                clipper.End();
+                clipper.Destroy();
             }
-            clipper.End();
+            ImGui.PopStyleVar();
         }
-
-        ImGui.EndTable();
-    }
-
-    private void ReadSort()
-    {
-        var specs = ImGui.TableGetSortSpecs();
-        if (specs.SpecsCount == 0) return;
-
-        _sortColumn = specs.Specs.ColumnIndex;
-        _sortDescending = specs.Specs.SortDirection == ImGuiSortDirection.Descending;
+        ImGui.EndChild();
     }
 
     private void DrawTextureDetails(TextureCache.TextureEntry entry)
@@ -251,22 +260,22 @@ public class TextureCacheTab : ICacheTab
             else ImGui.TextUnformatted(entry.Texture.Name);
 
             // a container that waits for this texture counts too, it holds the entry even before the handle exists
-            EditorUI.ListHeader("Used By");
+            ImGui.SeparatorText("Used By");
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, ImGui.GetStyle().ItemSpacing with { Y = 0f });
             var users = 0;
             foreach (var container in TextureCache.Containers)
             {
                 if (!container.Textures.Contains(entry)) continue;
 
-                users++;
-                if (ImGui.Selectable($"{container.Container.Name}##{container.Key}"))
+                ImGui.PushID(users++);
+                if (MemoryChart.Row(_containerColors[StateOf(container)], container.Container.Name, Describe(container)))
                 {
                     Show(EView.Containers);
                     _selectedContainer = container;
                 }
-
-                ImGui.SameLine();
-                ImGui.TextDisabled($"{container.Sections.Count:N0} section{(container.Sections.Count != 1 ? "s" : "")}");
+                ImGui.PopID();
             }
+            ImGui.PopStyleVar();
 
             if (users == 0) ImGui.TextDisabled("No container, it stays resident until the budget needs the room.");
         }
@@ -278,76 +287,52 @@ public class TextureCacheTab : ICacheTab
         if (ImGui.BeginChild("##CachedContainerDetails", Vector2.Zero, ImGuiChildFlags.FrameStyle))
         {
             ImGui.TextUnformatted(entry.Container.Name);
-            EditorUI.Caption(entry.Key, $"{entry.Sections.Count:N0} section{(entry.Sections.Count != 1 ? "s" : "")}, waiting for {entry.Remaining:N0} of {entry.Textures.Count:N0} textures");
+            EditorUI.Caption(entry.Key, $"waiting for {entry.Remaining:N0} of {entry.Textures.Count:N0} textures");
 
-            EditorUI.ListHeader("Textures");
-            foreach (var texture in entry.Textures)
+            ImGui.SeparatorText("Textures");
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, ImGui.GetStyle().ItemSpacing with { Y = 0f });
+            for (var i = 0; i < entry.Textures.Count; i++)
             {
-                var (label, color) = StateOf(texture);
-                if (ImGui.Selectable($"{texture.Texture.Name}##{texture.Texture.Guid}"))
+                var texture = entry.Textures[i];
+
+                ImGui.PushID(i);
+                if (MemoryChart.Row(_textureColors[StateOf(texture)], texture.Texture.Name, _textureStates[StateOf(texture)]))
                 {
                     Show(EView.Textures);
                     _selectedTexture = texture;
                 }
-
-                ImGui.SameLine();
-                ImGui.TextColored(color, label);
+                ImGui.PopID();
             }
+            ImGui.PopStyleVar();
 
             if (entry.Textures.Count == 0) ImGui.TextDisabled("This material samples no texture.");
         }
         ImGui.EndChild();
     }
 
-    private static (string Label, Vector4 Color) StateOf(TextureCache.TextureEntry entry)
+    private static string Describe(TextureCache.ContainerEntry entry)
     {
-        if (entry.Failed) return ("Failed", Settings.RedColor);
-        if (entry.Bindless is null) return ("Loading", Settings.OrangeColor);
-        if (entry.Evictable is not null) return ("Evictable", Settings.YellowColor);
-        return ("Resident", Settings.GreenColor);
+        return $"{entry.Textures.Count:N0} texture{(entry.Textures.Count != 1 ? "s" : "")}   {entry.Sections.Count:N0} section{(entry.Sections.Count != 1 ? "s" : "")}";
     }
 
-    private static (string Label, Vector4 Color) StateOf(TextureCache.ContainerEntry entry)
+    private static int StateOf(TextureCache.TextureEntry entry)
     {
-        if (entry.Completed) return ("Ready", Settings.GreenColor);
+        if (entry.Failed) return 3;
+        if (entry.Bindless is null) return 2;
+        return entry.Evictable is not null ? 1 : 0;
+    }
+
+    private static int StateOf(TextureCache.ContainerEntry entry)
+    {
+        if (entry.Completed) return 0;
 
         foreach (var texture in entry.Textures)
         {
-            if (texture.Failed) return ("Stalled", Settings.RedColor); // a failed texture never lands, neither does the container
+            if (texture.Failed) return 2; // a failed texture never lands, neither does the container
         }
 
-        return ("Waiting", Settings.OrangeColor);
+        return 1;
     }
 
-    private int CompareTextures(TextureCache.TextureEntry a, TextureCache.TextureEntry b)
-    {
-        var order = _sortColumn switch
-        {
-            1 => ((long) a.Texture.Width * a.Texture.Height).CompareTo((long) b.Texture.Width * b.Texture.Height),
-            2 => string.CompareOrdinal(a.Texture.FormatName, b.Texture.FormatName),
-            3 => a.Texture.MipCount.CompareTo(b.Texture.MipCount),
-            4 => a.Texture.Allocated.CompareTo(b.Texture.Allocated),
-            5 => a.RefCount.CompareTo(b.RefCount),
-            6 => string.CompareOrdinal(StateOf(a).Label, StateOf(b).Label),
-            _ => string.Compare(a.Texture.Name, b.Texture.Name, StringComparison.OrdinalIgnoreCase),
-        };
-
-        if (order == 0) return string.Compare(a.Texture.Name, b.Texture.Name, StringComparison.OrdinalIgnoreCase);
-        return _sortDescending ? -order : order;
-    }
-
-    private int CompareContainers(TextureCache.ContainerEntry a, TextureCache.ContainerEntry b)
-    {
-        var order = _sortColumn switch
-        {
-            1 => a.Textures.Count.CompareTo(b.Textures.Count),
-            2 => a.Remaining.CompareTo(b.Remaining),
-            3 => a.Sections.Count.CompareTo(b.Sections.Count),
-            4 => string.CompareOrdinal(StateOf(a).Label, StateOf(b).Label),
-            _ => string.Compare(a.Container.Name, b.Container.Name, StringComparison.OrdinalIgnoreCase),
-        };
-
-        if (order == 0) return string.Compare(a.Container.Name, b.Container.Name, StringComparison.OrdinalIgnoreCase);
-        return _sortDescending ? -order : order;
-    }
+    private static uint ToColor(Vector4 color) => MemoryChart.Color(color.X, color.Y, color.Z);
 }

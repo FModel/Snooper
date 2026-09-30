@@ -84,9 +84,9 @@ public sealed partial class MaterialNode
                 _shadingModel = root.GetOrDefault("ShadingModel", EMaterialShadingModel.MSM_DefaultLit);
                 _twoSided = root.GetOrDefault("TwoSided", false);
 
-                foreach (var texture in root.ReferencedTextures)
+                for (var i = root.ReferencedTextures.Count - 1; i >= 0; i--)
                 {
-                    if (texture is null or { IsNull: true }) continue;
+                    if (root.ReferencedTextures[i] is not { IsNull: false } texture) continue;
                     _referencedTextures.Add(new TextureParameter(texture));
                 }
 

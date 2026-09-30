@@ -48,7 +48,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         _geometry.Allocate(counts);
         if (counts.Draws > 0) _commands.Allocate(counts.Draws);
         if (counts.Instances > 0) _instanceData.Allocate(counts.Instances);
-        if (counts.Sections > 0) _materialData.Allocate(counts.Sections); // one material per unique section
+        _materialData.Allocate(counts.Sections + 1); // one material per unique section, after the not ready one
         if (counts.Materials > 0) _materialTable.Allocate(counts.Materials);
         _materialData.Add(default); // not ready material every component starts at
 

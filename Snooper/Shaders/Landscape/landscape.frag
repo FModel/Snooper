@@ -7,7 +7,6 @@ layout (location = 3) out vec4 gSpecular;
 layout (location = 4) out uint gPicking;
 
 #include "Buffers/bindless.glsl"
-#include "Buffers/Wireframe.glsl"
 
 struct PerMaterialData
 {
@@ -225,14 +224,10 @@ void main()
         color = mix(color, color * 0.15, line);
     }
 
-    bool unlit = false;
-    float opacity = 1.0;
-    ApplyWire(color, unlit, opacity);
-
     gPosition = fs_in.vViewPos;
     gNormal = normal;
     gColor.rgb = color;
-    gColor.a = unlit ? 0.0 : 1.0;
+    gColor.a = 1.0;
     gSpecular.rgb = vec3(0.5, 0.0, 1.0);
     gSpecular.a = 1.0; // free space
     gPicking = draw.PickingId;

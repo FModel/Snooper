@@ -6,12 +6,14 @@ using OpenTK.Windowing.Common;
 using Snooper;
 using Snooper.Core;
 using Snooper.Core.Hardware;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.Rendering.Managers;
+using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Editor.Widgets;
 
@@ -22,22 +24,11 @@ public class ViewportWidget : PanelWidget
     public override bool CanClose => false;
     public override bool IsOpen { get => true; set { } }
 
-    private const float Padding = 7.5f;
+    private static float Padding => ImGui.GetFrameHeight() * 0.35f;
 
-    private const string SelectIcon    = "\uf245"; // mouse-pointer
-    private const string TranslateIcon = "\uf047"; // arrows-alt
-    private const string RotateIcon    = "\uf2f1"; // sync-alt
-    private const string ScaleIcon     = "\uf424"; // compress-arrows-alt
-    private const string WorldIcon     = "\uf0ac"; // globe
-    private const string LocalIcon     = "\uf5a0"; // object-group
-    private const string FreeIcon      = "\uf48b"; // street-view
-    private const string OrbitalIcon   = "\uf140"; // bullseye
-    private const string ProfilerIcon  = "\uf201"; // chart-line
-    private const string HardwareIcon  = "\uf2db"; // microchip
-
+    private readonly ViewportGrid _grid = new();
     private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
-    private bool _localSpace = true;
-    private bool _selectMode;
+    private bool _edit;
 
     protected override void PushWindowStyle() => ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
     protected override void PopWindowStyle() => ImGui.PopStyleVar();
@@ -70,23 +61,32 @@ public class ViewportWidget : PanelWidget
         ImGuizmo.SetDrawlist(drawList);
         ImGuizmo.SetRect(itemMin.X, itemMin.Y, contentSize.X, contentSize.Y);
 
+        _grid.Reset(contentPos + contentSize with { Y = 0f });
+        var context = new ViewportContext(viewport.Camera, drawList, contentPos, contentSize, _gizmoOperation, MODE.LOCAL, _grid);
+
+        bool captured;
+        using (Profiler.Cpu("Axis")) captured = editor._viewportAxis.Draw(context);
+
         var component = manager.SelectedComponent ?? manager.SelectedActor?.RootComponent;
-        using (Profiler.Cpu("Gizmos")) DrawComponentControlsOverlay(viewport.Camera, component, contentPos, contentSize);
+        using (Profiler.Cpu("Gizmos"))
+        {
+            captured |= component switch
+            {
+                SplineMeshComponent spline when _edit => editor._splineOverlay.Draw(context, spline),
+                MeshComponent mesh when _edit => editor._skeletonOverlay.Draw(context, mesh),
+                DirectionalLightComponent light => editor._sunOverlay.Draw(context, light),
+                SpatialComponent spatial when editor.EditTransforms => DrawGizmo(context, spatial),
+                _ => false
+            };
+        }
 
-        var editorManager = manager as EditorManager;
-        float bandHeight;
-        using (Profiler.Cpu("Hardware")) bandHeight = editorManager?._hardwareOverlay.Draw(drawList, contentPos, contentSize, manager) ?? 0f;
+        using (Profiler.Cpu("Toolbar")) DrawToolbar(editor, contentPos);
+        using (Profiler.Cpu("Cards")) DrawCards(editor, contentPos, contentSize);
 
-        using (Profiler.Cpu("Toolbar")) DrawToolbar(viewport.Camera, contentPos);
+        using (Profiler.Cpu("Footer")) DrawFooterOverlay(contentPos, contentSize);
+        using (Profiler.Cpu("Notifications")) editor._notificationOverlay.Draw(drawList, contentPos, contentSize);
 
-        bool clicked;
-        using (Profiler.Cpu("Axis")) clicked = DrawAxisOverlay(viewport.Camera, contentPos, contentSize);
-
-        using (Profiler.Cpu("Footer")) DrawFooterOverlay(contentPos, contentSize, bandHeight);
-        using (Profiler.Cpu("Profiler")) editorManager?._profilerOverlay.Draw(drawList, contentPos, contentSize, bandHeight);
-        using (Profiler.Cpu("Notifications")) editorManager?._notificationOverlay.Draw(drawList, contentPos, contentSize, bandHeight);
-
-        if (imageHovered && !ImGui.IsAnyItemActive() && !ImGuizmo.IsUsing() && !clicked)
+        if (imageHovered && !ImGui.IsAnyItemActive() && !ImGuizmo.IsUsing() && !captured)
         {
             if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
             {
@@ -110,155 +110,131 @@ public class ViewportWidget : PanelWidget
         }
     }
 
-    private void DrawToolbar(InteractiveCameraComponent camera, Vector2 contentPos)
+    private void DrawToolbar(EditorManager editor, Vector2 contentPos)
     {
         var style = ImGui.GetStyle();
         ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, Padding));
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 2f });
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(style.ItemSpacing.X * 0.25f));
 
-        ToggleButton(SelectIcon, ref _selectMode, "Select Mode");
+        if (Button(Settings.PenToSquareIcon,_edit, "Edit")) _edit = !_edit;
 
+        Separator();
+        var lights = editor.GetSystem<ClusteredLightSystem>();
+        if (Button(Settings.LightbulbIcon,lights?.UseSceneLights == true, "Lighting", lights != null)) lights!.UseSceneLights = !lights.UseSceneLights;
         ImGui.SameLine();
-        VerticalSeparator(style.FramePadding.Y);
+        if (Button(Settings.CircleHalfStrokeIcon,editor.Pipeline.Shadows, "Shadows")) editor.Pipeline.Shadows = !editor.Pipeline.Shadows;
         ImGui.SameLine();
+        if (Button(Settings.DrawPolygonIcon, editor.Wireframe.Enabled, "Wireframe", DeviceInfo.HasFragmentBarycentric)) editor.Wireframe.Enabled = !editor.Wireframe.Enabled;
 
-        ImGui.BeginDisabled(_selectMode);
-        GizmoButton(TranslateIcon, OPERATION.TRANSLATE, "Translate"); ImGui.SameLine();
-        GizmoButton(RotateIcon, OPERATION.ROTATE, "Rotate"); ImGui.SameLine();
-        GizmoButton(ScaleIcon, OPERATION.SCALE, "Scale"); ImGui.SameLine();
-        // VerticalSeparator(style.FramePadding.Y); ImGui.SameLine();
-        // ToggleButton(_localSpace ? LocalIcon : WorldIcon, ref _localSpace, _localSpace ? "Local Space" : "World Space");
-        ImGui.EndDisabled();
+        Separator();
+        SystemButton<BillboardSystem>(Settings.ChalkboardIcon,"Billboards");
+        ImGui.SameLine();
+        SystemButton<TextRenderSystem>(Settings.FontIcon,"Text");
+        ImGui.SameLine();
+        SystemButton<DebugSystem>(Settings.BugIcon,"Debug Shapes");
 
-        // ImGui.SameLine();
-        // VerticalSeparator(style.FramePadding.Y);
-        // ImGui.SameLine();
-        //
-        // var isOrbital = camera.ViewType == CameraType.Orbital;
-        // if (ToggleButton(isOrbital ? OrbitalIcon : FreeIcon, ref isOrbital, isOrbital ? "Orbital Camera" : "Free Camera"))
-        // {
-        //     camera.ViewType = isOrbital ? CameraType.Orbital : CameraType.Free;
-        // }
+        Separator();
+        CardButton(Settings.ChartLineIcon, editor._profilerOverlay);
+        ImGui.SameLine();
+        CardButton(Settings.MicrochipIcon, editor._hardwareOverlay);
 
-        // ImGui.SameLine();
-        // VerticalSeparator(style.FramePadding.Y);
-        // ImGui.SameLine();
-        // ToggleButton(ProfilerIcon, ref Profiler.Enabled, "Profiler");
-        //
-        // ImGui.SameLine();
-        // ToggleButton(HardwareIcon, ref RendererInfo.TrackMemory, "Hardware");
+        if (_edit || editor.EditTransforms)
+        {
+            ImGui.SetCursorScreenPos(new Vector2(contentPos.X + Padding, ImGui.GetCursorScreenPos().Y));
+            if (Button(Settings.ArrowsUpDownLeftRightIcon,_gizmoOperation == OPERATION.TRANSLATE, "Translate")) _gizmoOperation = OPERATION.TRANSLATE;
+            ImGui.SameLine();
+            if (Button(Settings.RotateIcon,_gizmoOperation == OPERATION.ROTATE, "Rotate")) _gizmoOperation = OPERATION.ROTATE;
+            ImGui.SameLine();
+            if (Button(Settings.MinimizeIcon,_gizmoOperation == OPERATION.SCALE, "Scale")) _gizmoOperation = OPERATION.SCALE;
+        }
 
         ImGui.PopStyleVar();
+
+        void Separator()
+        {
+            ImGui.SameLine();
+            EditorUI.VerticalSeparator();
+            ImGui.SameLine();
+        }
+
+        void SystemButton<T>(string icon, string tooltip) where T : ActorSystem
+        {
+            var system = editor.GetSystem<T>();
+            if (Button(icon, system?.IsEnabled == true, tooltip, system != null)) system!.IsEnabled = !system.IsEnabled;
+        }
+
+        void CardButton(string icon, IViewportCard card)
+        {
+            if (Button(icon, card.IsOpen, card.Title)) card.IsOpen = !card.IsOpen;
+        }
     }
 
-    private bool DrawAxisOverlay(InteractiveCameraComponent camera, Vector2 contentPos, Vector2 contentSize)
+    private void DrawCards(EditorManager editor, Vector2 contentPos, Vector2 contentSize)
     {
-        if (camera.Actor?.ActorManager is not EditorManager manager)
+        var any = false;
+        foreach (var card in editor.Cards) any |= card.IsOpen;
+        if (!any) return;
+
+        var width = MathF.Round(ImGui.GetFrameHeight() * 15f);
+        var position = new Vector2(MathF.Round(contentPos.X + Padding), MathF.Round(ImGui.GetCursorScreenPos().Y + Padding));
+        var bottom = contentPos.Y + contentSize.Y - ImGui.GetTextLineHeight() - Padding * 2f;
+        if (bottom - position.Y < ImGui.GetFrameHeight() * 4f) return;
+
+        ImGui.SetCursorScreenPos(position);
+        ImGui.SetNextWindowSizeConstraints(new Vector2(width, 0f), new Vector2(width, MathF.Floor(bottom - position.Y)));
+        var visible = ImGui.BeginChild("##Cards", new Vector2(width, 0f), ImGuiChildFlags.FrameStyle | ImGuiChildFlags.AutoResizeY);
+
+        if (visible)
+        {
+            foreach (var card in editor.Cards)
+            {
+                if (card.IsOpen && BeginCard(card.Title))
+                {
+                    card.Draw(editor);
+                    ImGui.EndChild();
+                }
+            }
+        }
+        ImGui.EndChild();
+
+        bool BeginCard(string title)
+        {
+            if (!ImGui.TreeNodeEx(title, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.NoTreePushOnOpen)) return false;
+
+            if (ImGui.BeginChild($"##{title}", Vector2.Zero, ImGuiChildFlags.FrameStyle | ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.AutoResizeY)) return true;
+
+            ImGui.EndChild();
             return false;
-
-        var clicked = manager._viewportAxis.Draw(camera, contentPos + contentSize with { Y = 0f });
-        if (clicked) camera.SnapRotationTo(manager._viewportAxis.SnapRotations[manager._viewportAxis.HoveredAxis]);
-
-        return clicked;
+        }
     }
 
-    private void DrawFooterOverlay(Vector2 contentPos, Vector2 contentSize, float bottomClearance)
+    private bool DrawGizmo(in ViewportContext viewport, SpatialComponent spatial)
+    {
+        var matrix = spatial.GizmoMatrix;
+        if (viewport.Manipulate(ref matrix))
+        {
+            spatial.ApplyGizmoMatrix(matrix);
+        }
+
+        return false;
+    }
+
+    private void DrawFooterOverlay(Vector2 contentPos, Vector2 contentSize)
     {
         ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold]);
-
-        var bottom = contentSize.Y - bottomClearance;
 
         var io = ImGui.GetIO();
         var text = $"FPS: {io.Framerate:F1} ({io.DeltaTime * 1000f:F2} ms)";
         var size = ImGui.CalcTextSize(text);
-        ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, bottom - Padding - size.Y));
+        ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, contentSize.Y - Padding - size.Y));
         ImGui.TextUnformatted(text);
 
         text = "\uf06a Previewed content may differ from final version saved or used in-game.";
         size = ImGui.CalcTextSize(text);
-        ImGui.SetCursorScreenPos(contentPos + new Vector2(contentSize.X - Padding - size.X, bottom - Padding - size.Y));
+        ImGui.SetCursorScreenPos(contentPos + new Vector2(contentSize.X - Padding - size.X, contentSize.Y - Padding - size.Y));
         ImGui.TextUnformatted(text);
 
         ImGui.PopFont();
-    }
-
-    private bool IsGizmoVisible(CameraComponent camera, in Matrix4x4 matrix)
-    {
-        if (ImGuizmo.IsUsing()) return true;
-        if (camera.ProjectionMode == CameraMode.Orthographic) return true;
-
-        var viewPosition = Vector3.Transform(matrix.Translation, camera.ViewMatrix);
-        return viewPosition.Z < -camera.NearClipPlane;
-    }
-
-    private void DrawComponentControlsOverlay(CameraComponent camera, ActorComponent? component, Vector2 contentPos, Vector2 contentSize)
-    {
-        var view = camera.ViewMatrix;
-        var proj = camera.ProjectionMatrix;
-
-        switch (component)
-        {
-            case SplineMeshComponent { Actor: { ActorManager: EditorManager manager } splineActor } when _selectMode:
-            {
-                manager._splineOverlay.BeginFrame();
-                foreach (var sm in splineActor.Components.OfType<SplineMeshComponent>())
-                    manager._splineOverlay.Feed(sm);
-
-                var drawList = ImGui.GetWindowDrawList();
-                manager._splineOverlay.DrawOverlay(drawList, camera, contentPos, contentSize);
-                var overlayAction = manager._splineOverlay.EndFrame(drawList, contentPos, contentSize);
-                if (overlayAction is SplineOverlayAction.Changed)
-                    manager._splineOverlay.SelectedSpline?.MarkDirty(DirtyFlags.Spline);
-
-                if (manager._splineOverlay.SelectedHandle != -1 && manager._splineOverlay.SelectedSpline is not null)
-                {
-                    var handleMatrix = manager._splineOverlay.SelectedHandleMatrix;
-                    if (IsGizmoVisible(camera, handleMatrix) && ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.TRANSLATE, MODE.WORLD, ref handleMatrix.M11))
-                    {
-                        manager._splineOverlay.ApplyGizmoMatrix(handleMatrix);
-                        manager._splineOverlay.SelectedSpline.MarkDirty(DirtyFlags.Spline);
-                    }
-                }
-                break;
-            }
-            case MeshComponent { Actor.ActorManager: EditorManager manager } mesh when _selectMode:
-            {
-                var drawList = ImGui.GetWindowDrawList();
-                manager._skeletonOverlay.Draw(drawList, mesh, mesh.WorldMatrix, camera, contentPos, contentSize);
-
-                var boneIndex = manager._skeletonOverlay.SelectedBoneIndex;
-                if (boneIndex >= 0 && mesh.Descriptor.Skeleton is { } skeleton)
-                {
-                    var matrix = skeleton.BoneMatrices[boneIndex] * mesh.GizmoMatrix;
-
-                    if (IsGizmoVisible(camera, matrix) && ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, MODE.LOCAL, ref matrix.M11))
-                    {
-                        Matrix4x4.Invert(mesh.GizmoMatrix, out var invGizmo);
-                        skeleton.MoveBone(boneIndex, matrix * invGizmo);
-                        mesh.MarkDirty(DirtyFlags.Animation);
-                    }
-                }
-                break;
-            }
-            case DirectionalLightComponent light:
-            {
-                var matrix = light.GizmoMatrix;
-                if (IsGizmoVisible(camera, matrix) && ImGuizmo.Manipulate(ref view.M11, ref proj.M11, OPERATION.ROTATE_X | OPERATION.ROTATE_Y | OPERATION.ROTATE_SCREEN | OPERATION.TRANSLATE_Z, MODE.LOCAL, ref matrix.M11))
-                {
-                    light.ApplyGizmoMatrix(matrix);
-                }
-                break;
-            }
-            case SpatialComponent spatial when !_selectMode:
-            {
-                var matrix = spatial.GizmoMatrix;
-                if (IsGizmoVisible(camera, matrix) && ImGuizmo.Manipulate(ref view.M11, ref proj.M11, _gizmoOperation, _localSpace ? MODE.LOCAL : MODE.WORLD, ref matrix.M11))
-                {
-                    spatial.ApplyGizmoMatrix(matrix);
-                }
-                break;
-            }
-        }
     }
 
     private void DrawOrbitCircle(InteractiveCameraComponent camera, ActorComponent? component, Vector2 contentPos, Vector2 contentSize)
@@ -294,41 +270,23 @@ public class ViewportWidget : PanelWidget
         }
     }
 
-    private bool GizmoButton(string icon, OPERATION op, string tooltip)
+    private bool Button(string icon, bool active, string tooltip, bool enabled = true)
     {
-        var active = !_selectMode && _gizmoOperation == op;
-        if (active) PushActiveColor();
+        var color = ImGui.GetColorU32(ImGuiCol.ButtonActive);
+
+        ImGui.BeginDisabled(!enabled);
+        if (active)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, color);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, color);
+        }
+
         var clicked = ImGui.Button(icon);
-        if (clicked) _gizmoOperation = op;
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(tooltip);
+
         if (active) ImGui.PopStyleColor(2);
+        ImGui.EndDisabled();
+
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) EditorUI.Tooltip(tooltip);
         return clicked;
-    }
-
-    private bool ToggleButton(string icon, ref bool value, string tooltip)
-    {
-        var wasOn = value;
-        if (wasOn) PushActiveColor();
-        var clicked = ImGui.Button(icon);
-        if (clicked) value = !value;
-        if (!string.IsNullOrEmpty(tooltip) && ImGui.IsItemHovered()) ImGui.SetTooltip(tooltip);
-        if (wasOn) ImGui.PopStyleColor(2);
-        return clicked;
-    }
-
-    private void PushActiveColor()
-    {
-        var col = ImGui.GetColorU32(ImGuiCol.ButtonActive);
-        ImGui.PushStyleColor(ImGuiCol.Button, col);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, col);
-    }
-
-    private void VerticalSeparator(float paddingY)
-    {
-        var size = new Vector2(1, ImGui.GetFrameHeight());
-        var pos = ImGui.GetCursorScreenPos();
-        var col = ImGui.GetColorU32(ImGuiCol.Separator);
-        ImGui.GetWindowDrawList().AddLine(pos with { Y = pos.Y + paddingY }, pos with { Y = pos.Y + size.Y - paddingY }, col, size.X);
-        ImGui.Dummy(size);
     }
 }

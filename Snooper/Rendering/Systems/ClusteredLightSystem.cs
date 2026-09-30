@@ -259,6 +259,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         {
             _lightDataBuffer.Remove(allocation);
         }
+        component._allocation = null;
 
         if (component == DirectionalLight)
         {

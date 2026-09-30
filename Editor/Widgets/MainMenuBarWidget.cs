@@ -2,7 +2,6 @@ using Editor.Managers;
 using ImGuiNET;
 using Snooper;
 using Snooper.Core;
-using Snooper.Core.Hardware;
 using Snooper.Hosting;
 using Snooper.Rendering;
 using Snooper.Rendering.Systems;
@@ -14,12 +13,6 @@ public class MainMenuBarWidget
     public void Draw(EditorManager editor)
     {
         if (!ImGui.BeginMainMenuBar()) return;
-
-        if (ImGui.BeginMenu("File"))
-        {
-            DrawFileMenu(editor);
-            ImGui.EndMenu();
-        }
 
         if (ImGui.BeginMenu("View"))
         {
@@ -57,54 +50,35 @@ public class MainMenuBarWidget
         if (ImGui.MenuItem(cancel)) Bridge.CancelRequest();
     }
 
-    private static void DrawFileMenu(EditorManager editor)
-    {
-        if (ImGui.BeginMenu($"{Settings.FolderOpenIcon}  Open Recent", false))
-        {
-            ImGui.EndMenu();
-        }
-
-        ImGui.Separator();
-        ImGui.MenuItem($"{Settings.FileImportIcon}  Import", "Ctrl+I", false, false);
-        ImGui.MenuItem($"{Settings.FileExportIcon}  Export", "Ctrl+E", false, false);
-
-        ImGui.Separator();
-        if (ImGui.MenuItem($"{Settings.PowerOffIcon}  Exit", "Alt+F4")) editor.Window.Close();
-    }
-
     private static void DrawViewMenu(EditorManager editor)
     {
-        if (ImGui.BeginMenu($"{Settings.PaletteIcon}  Modes"))
-        {
-            for (var i = 0; i < FragmentColorMode.Labels.Length; i++)
-            {
-                if (MenuToggle(FragmentColorMode.Labels[i], editor.FragmentColor == i)) editor.FragmentColor = (uint) i;
-            }
-            ImGui.EndMenu();
-        }
+        // if (ImGui.BeginMenu($"{Settings.PaletteIcon}  Modes"))
+        // {
+        //     for (var i = 0; i < FragmentColorMode.Labels.Length; i++)
+        //     {
+        //         if (MenuToggle(FragmentColorMode.Labels[i], editor.FragmentColor == i)) editor.FragmentColor = (uint) i;
+        //     }
+        //     ImGui.EndMenu();
+        // }
 
-        if (ImGui.BeginMenu($"{Settings.EyeIcon}  Show"))
-        {
-            if (editor.GetSystem<GridSystem>() is { } grid) MenuToggle("Grid", ref grid.IsEnabled);
-            ImGui.MenuItem("Bounds", "", false, false);
-            ImGui.MenuItem("Skeletons", "", false, false);
-            ImGui.MenuItem("Colliders", "", false, false);
-            ImGui.MenuItem("Light Volumes", "", false, false);
-            ImGui.EndMenu();
-        }
+        // if (ImGui.BeginMenu($"{Settings.EyeIcon}  Show"))
+        // {
+        //     if (editor.GetSystem<GridSystem>() is { } grid) MenuToggle("Grid", ref grid.IsEnabled);
+        //     ImGui.MenuItem("Bounds", "", false, false);
+        //     ImGui.MenuItem("Skeletons", "", false, false);
+        //     ImGui.MenuItem("Colliders", "", false, false);
+        //     ImGui.MenuItem("Light Volumes", "", false, false);
+        //     ImGui.EndMenu();
+        // }
 
-        if (ImGui.BeginMenu($"{Settings.CameraIcon}  Camera"))
-        {
-            ImGui.MenuItem("Perspective", "", true, false);
-            ImGui.MenuItem("Orthographic", "", false, false);
-            ImGui.Separator();
-            ImGui.MenuItem("Reset Camera", "", false, false);
-            ImGui.EndMenu();
-        }
-
-        ImGui.Separator();
-        MenuToggle("Profiler", ref Profiler.Enabled);
-        MenuToggle("Track Hardware Memory", ref RendererInfo.TrackMemory);
+        // if (ImGui.BeginMenu($"{Settings.CameraIcon}  Camera"))
+        // {
+        //     ImGui.MenuItem("Perspective", "", true, false);
+        //     ImGui.MenuItem("Orthographic", "", false, false);
+        //     ImGui.Separator();
+        //     ImGui.MenuItem("Reset Camera", "", false, false);
+        //     ImGui.EndMenu();
+        // }
 
         ImGui.Separator();
         var fullscreen = editor.IsFullscreen;

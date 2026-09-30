@@ -2,19 +2,21 @@
 using ImGuiNET;
 using Snooper;
 using Snooper.Rendering.Components.Camera;
+using Snooper.UI;
 
 namespace Editor.Widgets;
 
 public class ViewportAxisWidget
 {
-    private const float BigCircleRadius  = 54f;
-    private const float AxisLineLength   = BigCircleRadius - CircleRadius;
-    private const float CircleRadius     = 10f;
-    private const float CircleHoverBoost = 1.6f;
-    private const float LineWidth        = 2.5f;
-    private const float LineHoverBoost   = 1.35f;
-    private const float OutlineWidth     = 2f;
-    private const float Margin           = 12f;
+    // sizes are in frame heights, which follow the font and the monitor scale
+    private static float Unit             => ImGui.GetFrameHeight();
+    private static float BigCircleRadius  => 2.45f * Unit;
+    private static float AxisLineLength   => BigCircleRadius - CircleRadius;
+    private static float CircleRadius     => 0.45f * Unit;
+    private static float CircleHoverBoost => 0.07f * Unit;
+    private static float LineWidth        => 0.11f * Unit;
+    private static float LineHoverBoost   => 0.06f * Unit;
+    private static float OutlineWidth     => 0.09f * Unit;
 
     private const float FadeFactor          = 0.34f;
     private const float HoverFadeRate       = 14f;
@@ -65,11 +67,12 @@ public class ViewportAxisWidget
         }
     }
 
-    public bool Draw(IViewProjectionProvider camera, Vector2 position)
+    public bool Draw(in ViewportContext viewport)
     {
-        var drawList = ImGui.GetWindowDrawList();
+        var center = viewport.Cell();
+        var drawList = viewport.DrawList;
+        var camera = viewport.Camera;
 
-        var center = new Vector2(position.X - BigCircleRadius - Margin, position.Y + BigCircleRadius + Margin);
         var right = new Vector3(camera.InverseViewMatrix.M11, camera.InverseViewMatrix.M12, camera.InverseViewMatrix.M13);
         var up = new Vector3(camera.InverseViewMatrix.M21, camera.InverseViewMatrix.M22, camera.InverseViewMatrix.M23);
         var forward = new Vector3(camera.InverseViewMatrix.M31, camera.InverseViewMatrix.M32, camera.InverseViewMatrix.M33);
@@ -78,7 +81,7 @@ public class ViewportAxisWidget
         HoveredAxis = -1;
 
         var mouse = ImGui.GetMousePos();
-        var mouseInWidget = (mouse - center).LengthSquared() <= BigCircleRadius * BigCircleRadius;
+        var mouseInWidget = ImGui.IsWindowHovered() && (mouse - center).LengthSquared() <= BigCircleRadius * BigCircleRadius; // not through a window lying over the viewport
         if (mouseInWidget)
         {
             var bestDepth = float.MinValue;
@@ -157,12 +160,13 @@ public class ViewportAxisWidget
 
         if (HoveredAxis >= 0)
         {
-            ImGui.BeginTooltip();
-            ImGui.TextUnformatted($"Snap to {_axes[HoveredAxis].Label}");
-            ImGui.EndTooltip();
+            EditorUI.Tooltip($"Snap to {_axes[HoveredAxis].Label}");
         }
 
-        return mouseInWidget && HoveredAxis >= 0 && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+        var clicked = mouseInWidget && HoveredAxis >= 0 && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+        if (clicked) camera.SnapRotationTo(SnapRotations[HoveredAxis]);
+
+        return clicked;
     }
 
     private float StepToward(float value, float target, float rate, float dt)

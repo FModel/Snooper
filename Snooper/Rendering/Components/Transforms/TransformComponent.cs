@@ -377,13 +377,20 @@ public class SpatialComponent : ActorComponent
     }
 
     private const string HeaderLabel = "Transform";
+    private bool IsEditable => Actor?.ActorManager?.EditTransforms == true;
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
         .Add(
             () => Settings.ArrowRotateLeftIcon,
             () => IsLocalTransformDirty(_instanceIndex) ? "Reset to original transform" : "No changes to reset",
             () => ResetLocalTransform(_instanceIndex),
-            () => IsLocalTransformDirty(_instanceIndex),
+            () => IsEditable && IsLocalTransformDirty(_instanceIndex),
             () => IsLocalTransformDirty(_instanceIndex) ? Settings.OrangeColor : null
+        )
+        .Add(
+            () => IsEditable ? Settings.LockOpenIcon : Settings.LockIcon,
+            () => IsEditable ? "Edit Mode" : "Read Only",
+            () => Actor?.ActorManager?.EditTransforms = !IsEditable,
+            () => Actor?.ActorManager != null
         );
 
     private PropertyToggleButton[] InstanceNavButtons => field ??= [
@@ -400,26 +407,26 @@ public class SpatialComponent : ActorComponent
     ];
     private PropertyToggleButton[] PositionButtons => field ??= [
         new PropertyToggleButton(
-            () => _absPosition ? "\uf023" : "\uf3c1",
+            () => _absPosition ? Settings.MapPinIcon : Settings.TurnUpIcon,
             () => { _absPosition = !_absPosition; _isTransformDirty = true; MarkDirty(DirtyFlags.Transform); },
             () => _absPosition ? "Absolute Position\nClick to make relative" : "Relative Position\nClick to make absolute"
         )
     ];
     private PropertyToggleButton[] RotationButtons => field ??= [
         new PropertyToggleButton(
-            () => _absRotation ? "\uf023" : "\uf3c1",
+            () => _absRotation ? Settings.MapPinIcon : Settings.TurnUpIcon,
             () => { _absRotation = !_absRotation; _isTransformDirty = true; MarkDirty(DirtyFlags.Transform); },
             () => _absRotation ? "Absolute Rotation\nClick to make relative" : "Relative Rotation\nClick to make absolute"
         )
     ];
     private PropertyToggleButton[] ScaleButtons => field ??= [
         new PropertyToggleButton(
-            () => _uniformScale ? "\uf0c1" : "\uf127",
+            () => _uniformScale ? Settings.LinkIcon : Settings.LinkSlashIcon,
             () => _uniformScale = !_uniformScale,
             () => _uniformScale ? "Uniform Scale\nClick to allow non-uniform" : "Non-Uniform Scale\nClick to link axes"
         ),
         new PropertyToggleButton(
-            () => _absScale ? "\uf023" : "\uf3c1",
+            () => _absScale ? Settings.MapPinIcon : Settings.TurnUpIcon,
             () => { _absScale = !_absScale; _isTransformDirty = true; MarkDirty(DirtyFlags.Transform); },
             () => _absScale ? "Absolute Scale\nClick to make relative" : "Relative Scale\nClick to make absolute"
         )
@@ -460,6 +467,8 @@ public class SpatialComponent : ActorComponent
                 }
             }
 
+            ImGui.BeginDisabled(!IsEditable);
+
             var edited  = false;
             var t = GetLocalTransform(_instanceIndex);
 
@@ -473,6 +482,8 @@ public class SpatialComponent : ActorComponent
             edited |= EditorUI.DragAxes("Scale", ref t.Scale, _uniformScale, out _, 0.01f, 0.0001f);
 
             if (isPivot) DrawAttachmentControls();
+
+            ImGui.EndDisabled();
 
             if (edited) SetLocalTransform(t, _instanceIndex);
         });

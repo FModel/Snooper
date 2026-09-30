@@ -6,7 +6,11 @@ public class DeviceInfo
 {
     public string Name { get; private set; } = string.Empty;
     public string Vendor { get; private set; } = string.Empty;
+    public string ShadingLanguage { get; private set; } = string.Empty;
     public int MaxShaderStorageBufferBindings { get; private set; }
+    public int MaxTextureSize { get; private set; }
+    public int MaxArrayTextureLayers { get; private set; }
+    public static float MaxAnisotropy { get; private set; }
     public ExtensionSupport ExtensionSupport { get; } = new();
     public GpuMemoryInfo Memory { get; } = new();
 
@@ -19,7 +23,11 @@ public class DeviceInfo
     {
         Name = GL.GetString(StringName.Renderer);
         Vendor = GL.GetString(StringName.Vendor);
+        ShadingLanguage = GL.GetString(StringName.ShadingLanguageVersion);
         MaxShaderStorageBufferBindings = GL.GetInteger(GetPName.MaxShaderStorageBufferBindings);
+        MaxTextureSize = GL.GetInteger(GetPName.MaxTextureSize);
+        MaxArrayTextureLayers = GL.GetInteger(GetPName.MaxArrayTextureLayers);
+        MaxAnisotropy = GL.GetFloat(GetPName.MaxTextureMaxAnisotropy);
         ExtensionSupport.Load();
         Memory.Load(ExtensionSupport);
 

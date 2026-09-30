@@ -189,15 +189,6 @@ public class SceneManager : ActorManager
         Pipeline.Resize(newWidth, newHeight);
     }
 
-    public override void DrawControls()
-    {
-        base.DrawControls();
-
-        Pipeline.DrawControls();
-
-        MainViewport?.DrawControls();
-    }
-
     public override long Allocated
     {
         get

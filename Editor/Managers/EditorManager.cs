@@ -24,10 +24,8 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         new InspectorWidget(),
         new TimelineWidget(),
         new LogWidget(),
-        new WorldSettingsWidget(),
-        new SystemsWidget(),
+        new SettingsWidget(),
         new CacheWidget(),
-        new WireframeWidget(),
         new ContentWidget(),
         new MorphTargetWidget(),
         _materialEditor,
@@ -41,6 +39,9 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     internal readonly JsonViewerWidget _jsonViewer = new();
     internal readonly SkeletonOverlayWidget _skeletonOverlay = new();
     internal readonly SplineOverlayWidget _splineOverlay = new();
+    internal readonly SunOverlayWidget _sunOverlay = new();
+
+    internal IReadOnlyList<IViewportCard> Cards => field ??= [_profilerOverlay, _hardwareOverlay];
 
     public override void Update(float delta)
     {
@@ -92,6 +93,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     {
         _skeletonOverlay.Reset();
         _splineOverlay.Reset();
+        _sunOverlay.Reset();
         _materialEditor.Reset();
     }
 }

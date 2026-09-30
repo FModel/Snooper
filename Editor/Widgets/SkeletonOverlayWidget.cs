@@ -1,5 +1,6 @@
 using System.Numerics;
 using ImGuiNET;
+using ImGuizmoNET;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
@@ -14,7 +15,7 @@ namespace Editor.Widgets;
 /// Left-click  ? select bone for gizmo manipulation.
 /// Right-click ? context menu to reset bone(s) to bind pose.
 /// </summary>
-public class SkeletonOverlayWidget
+public class SkeletonOverlayWidget : IViewportTool<MeshComponent>
 {
     // -- colours --------------------------------------------------------------
     private const uint ColBone     = 0xFF_C8_C8_C8; // light grey  lines
@@ -35,6 +36,24 @@ public class SkeletonOverlayWidget
     private int     _contextBoneIndex  = -1; // bone targeted by the open context menu
     private Vector2[] _screenPositions = [];
     private bool[]    _visible         = [];
+
+    public bool Draw(in ViewportContext viewport, MeshComponent mesh)
+    {
+        var hovered = Draw(viewport.DrawList, mesh, mesh.WorldMatrix, viewport.Camera, viewport.Position, viewport.Size);
+
+        if (SelectedBoneIndex >= 0 && mesh.Descriptor.Skeleton is { } skeleton)
+        {
+            var matrix = skeleton.BoneMatrices[SelectedBoneIndex] * mesh.GizmoMatrix;
+            if (viewport.Manipulate(ref matrix, viewport.Operation, MODE.LOCAL))
+            {
+                Matrix4x4.Invert(mesh.GizmoMatrix, out var inverse);
+                skeleton.MoveBone(SelectedBoneIndex, matrix * inverse);
+                mesh.MarkDirty(DirtyFlags.Animation);
+            }
+        }
+
+        return hovered;
+    }
 
     /// <summary>
     /// Call once per frame inside the Scene window after the Image call.

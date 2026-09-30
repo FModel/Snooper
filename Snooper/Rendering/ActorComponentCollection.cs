@@ -8,6 +8,11 @@ public class ActorComponentCollection(Actor actor) : Collection<ActorComponent>
 {
     protected override void InsertItem(int index, ActorComponent item)
     {
+        if (item.Actor != null)
+        {
+            throw new InvalidOperationException("A component cannot be set on more than one actor.");
+        }
+
         base.InsertItem(index, item);
         actor.OnComponentAdded(item);
     }

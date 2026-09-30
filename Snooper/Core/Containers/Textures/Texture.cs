@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
+using Snooper.Core.Hardware;
 using Snooper.Extensions;
 using Snooper.UI;
 
@@ -126,7 +127,7 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapS, (int) wrapS);
         GL.TextureParameter(Handle, TextureParameterName.TextureWrapT, (int) wrapT);
 
-        var anisotropy = minFilter == TextureMinFilter.LinearMipmapLinear ? GL.GetFloat(GetPName.MaxTextureMaxAnisotropy) : 1f;
+        var anisotropy = minFilter == TextureMinFilter.LinearMipmapLinear ? DeviceInfo.MaxAnisotropy : 1f;
         GL.TextureParameter(Handle, TextureParameterName.TextureMaxAnisotropy, anisotropy);
     }
 

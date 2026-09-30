@@ -1,5 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using ImGuizmoNET;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Mesh;
 
@@ -7,7 +9,7 @@ namespace Editor.Widgets;
 
 public enum SplineOverlayAction { None, Changed }
 
-public class SplineOverlayWidget
+public class SplineOverlayWidget : IViewportTool<SplineMeshComponent>
 {
     // ── handle kinds ──────────────────────────────────────────────────────────
     // Knot  = a position on the chain (shared between 2 adjacent components)
@@ -71,6 +73,31 @@ public class SplineOverlayWidget
 
     // Public alias used by EditorManager
     public int SelectedHandle => _hasSelection ? (int)_selKind : -1;
+
+    public bool Draw(in ViewportContext viewport, SplineMeshComponent spline)
+    {
+        if (spline.Actor is not { } actor) return false;
+
+        BeginFrame();
+        foreach (var sibling in actor.Components.OfType<SplineMeshComponent>())
+            Feed(sibling);
+
+        DrawOverlay(viewport.DrawList, viewport.Camera, viewport.Position, viewport.Size);
+        if (EndFrame(viewport.DrawList, viewport.Position, viewport.Size) is SplineOverlayAction.Changed)
+            SelectedSpline?.MarkDirty(DirtyFlags.Spline);
+
+        if (_hasSelection && SelectedSpline is { } selected)
+        {
+            var matrix = SelectedHandleMatrix;
+            if (viewport.Manipulate(ref matrix, OPERATION.TRANSLATE, MODE.WORLD))
+            {
+                ApplyGizmoMatrix(matrix);
+                selected.MarkDirty(DirtyFlags.Spline);
+            }
+        }
+
+        return _hasHover;
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Frame API

@@ -17,7 +17,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     private readonly PostProcessor _postProcess = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
 
     private bool _antiAliasing = true;
-    private bool _shadows = true;
+    public bool Shadows { get; set; } = true;
 
     // ao
     private bool _ambientOcclusion = true;
@@ -48,7 +48,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         var computeSystems = systems.OfType<IComputeRenderSystem>().ToArray();
         _geometry.DoRenderPass("Compute Pass", new ComputeRenderContext(camera, computeSystems));
 
-        var castsShadows = _shadows && directionalLight is { IsVisible: true, Actor.IsVisibleRecursive: true };
+        var castsShadows = Shadows && directionalLight is { IsVisible: true, Actor.IsVisibleRecursive: true };
         var cullViews = _geometry.UpdateViews(camera, castsShadows ? directionalLight : null);
         _geometry.DoRenderPass("Cull Pass", new CullRenderContext(geometrySystems, cullViews));
 
@@ -75,7 +75,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         }
 
         var geometryContext = new GeometryStageContext(_geometry);
-        var litContext = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, _shadows ? _geometry._shadows : null);
+        var litContext = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, Shadows ? _geometry._shadows : null);
         _postProcess.DoStagePass("Lighting Pass", litContext);
         _postProcess.DoStagePass("Combine Pass", geometryContext);
         _postProcess.DoStagePass("Picking Pass", geometryContext);
@@ -127,70 +127,69 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 
     public void DrawControls()
     {
-        ImGui.SeparatorText("Post-Processing");
+        var shadows = Shadows;
+        if (EditorUI.CollapsingToggle("Shadows", ref shadows)) _geometry.DrawControls();
+        Shadows = shadows;
 
-        EditorUI.TogglableTreeNode("Anti-Aliasing", ref _antiAliasing);
-        EditorUI.TogglableTreeNode("Ambient Occlusion", ref _ambientOcclusion, () =>
+        EditorUI.CollapsingTable("Post-Processing", ImGuiTreeNodeFlags.None, () =>
         {
-            EditorUI.PropertyValueTable("Ambient Occlusion", () =>
-            {
-                EditorUI.Property("Radius");
-                ImGui.DragFloat("##AO Radius", ref _aoRadius, 0.01f, 0.05f, 10f, "%.2f");
+            EditorUI.Checkbox("Anti-Aliasing", ref _antiAliasing);
+            EditorUI.Checkbox("Ambient Occlusion", ref _ambientOcclusion);
 
-                EditorUI.Property("Intensity");
-                ImGui.DragFloat("##AO Intensity", ref _aoIntensity, 0.01f, 0.1f, 4f, "%.2f");
+            ImGui.BeginDisabled(!_ambientOcclusion);
 
-                EditorUI.Property("Max Distance");
-                ImGui.DragFloat("##AO Max Distance", ref _aoMaxDistance, 1f, 1f, 20000f, "%.0f");
+            EditorUI.Property("Radius");
+            ImGui.DragFloat("##AO Radius", ref _aoRadius, 0.01f, 0.05f, 10f, "%.2f");
 
-                EditorUI.Property("Blur Radius");
-                ImGui.DragInt("##Blur Radius", ref _blurRadius, 0.05f, 0, 10);
-            });
+            EditorUI.Property("Intensity");
+            ImGui.DragFloat("##AO Intensity", ref _aoIntensity, 0.01f, 0.1f, 4f, "%.2f");
+
+            EditorUI.Property("Max Distance");
+            ImGui.DragFloat("##AO Max Distance", ref _aoMaxDistance, 1f, 1f, 20000f, "%.0f");
+
+            EditorUI.Property("Blur Radius");
+            ImGui.DragInt("##Blur Radius", ref _blurRadius, 0.05f, 0, 10);
+
+            ImGui.EndDisabled();
         });
-        EditorUI.TogglableTreeNode("Shadows", ref _shadows, () =>
-        {
-            // TODO
-            _geometry.DrawControls();
-        });
 
-        EditorUI.TogglableTreeNode("Debug Options", ref _debug, () =>
+        if (!EditorUI.CollapsingToggle("Debug View", ref _debug)) return;
+
+        EditorUI.PropertyValueTable("Debug View", () =>
         {
-            EditorUI.PropertyValueTable("Debug Options", () =>
+            var textures = GetTextures();
+            EditorUI.Property("Texture");
+            if (ImGui.BeginCombo("##Texture Selector", textures[_selectedTextureIndex].Name))
             {
-                var textures = GetTextures();
-                EditorUI.Property("Texture");
-                if (ImGui.BeginCombo("##Texture Selector", textures[_selectedTextureIndex].Name))
+                for (var i = 0; i < textures.Length; i++)
                 {
-                    for (var i = 0; i < textures.Length; i++)
+                    var isSelected = _selectedTextureIndex == i;
+                    if (ImGui.Selectable(textures[i].Name, isSelected))
                     {
-                        var isSelected = _selectedTextureIndex == i;
-                        if (ImGui.Selectable(textures[i].Name, isSelected))
-                        {
-                            _selectedTextureIndex = i;
-                        }
-                        if (isSelected) ImGui.SetItemDefaultFocus();
+                        _selectedTextureIndex = i;
                     }
-                    ImGui.EndCombo();
+                    if (isSelected) ImGui.SetItemDefaultFocus();
                 }
+                ImGui.EndCombo();
+            }
 
-                EditorUI.Property("Vertical Split");
-                ImGui.SliderFloat("##Vertical Split", ref _split, 0.0f, 1.0f);
+            EditorUI.Property("Vertical Split");
+            ImGui.SliderFloat("##Vertical Split", ref _split, 0.0f, 1.0f);
 
-                EditorUI.Property("Channel");
-                ImGui.Combo("##Channel", ref _channel, "RGB\0R\0G\0B\0A\0");
+            EditorUI.Property("Channel");
+            ImGui.Combo("##Channel", ref _channel, "RGB\0R\0G\0B\0A\0");
 
-                if (textures[_selectedTextureIndex].Name == "PostProcess - Light Cluster Viz")
-                {
-                    EditorUI.Property("Cluster Mode");
-                    ImGui.Combo("##Cluster Mode", ref _clusterVizMode, "Lights In Cluster\0Cluster Z Slice\0Column Peak\0");
+            if (textures[_selectedTextureIndex].Name == "PostProcess - Light Cluster Viz")
+            {
+                EditorUI.Property("Cluster Mode");
+                ImGui.Combo("##Cluster Mode", ref _clusterVizMode, "Lights In Cluster\0Cluster Z Slice\0Column Peak\0");
 
-                    EditorUI.Property("Cluster Overlay");
-                    ImGui.SliderFloat("##Cluster Overlay", ref _clusterVizOverlay, 0.0f, 1.0f);
+                EditorUI.Property("Cluster Overlay");
+                ImGui.SliderFloat("##Cluster Overlay", ref _clusterVizOverlay, 0.0f, 1.0f);
 
-                    EditorUI.Property("Cluster Grid");
-                    ImGui.Checkbox("##Cluster Grid", ref _clusterVizGrid);
-                }
-            });
+                EditorUI.Property("Cluster Grid");
+                ImGui.Checkbox("##Cluster Grid", ref _clusterVizGrid);
+            }
         });
     }
 

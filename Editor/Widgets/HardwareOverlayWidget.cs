@@ -1,380 +1,257 @@
 using System.Numerics;
+using Editor.Managers;
 using ImGuiNET;
-using Snooper.Core;
+using Snooper;
 using Snooper.Core.Hardware;
 using Snooper.Core.Managers;
 using Snooper.Extensions;
 using Snooper.Rendering.Cache;
+using Snooper.UI;
 
 namespace Editor.Widgets;
 
-/// <summary>
-/// Dense hardware readout drawn as a black band flush against the bottom of the viewport:
-/// tightly packed cells of label/value rows that flow left to right and wrap to fill the width.
-/// </summary>
-public class HardwareOverlayWidget
+public class HardwareOverlayWidget : IViewportCard
 {
-    private const float FontScale = 0.85f; // relative to the UI font, so the band follows the DPI scale
-    private const float PadX = 8f;         // padding inside the band
-    private const float PadY = 6f;
-    private const float CellGap = 18f;     // horizontal gap between two cells
-    private const float BandGap = 8f;      // vertical gap between two wrapped bands
-    private const float LabelGap = 8f;     // minimum gap between a label and its value
-    private const float BarWidth = 54f;
-    private const float BarHeight = 6f;
+    public string Title => "Hardware";
+    public bool IsOpen { get => RendererInfo.TrackMemory; set => RendererInfo.TrackMemory = value; }
 
-    private static readonly uint _bandColor = Color(0f, 0f, 0f, 0.75f);
-    private static readonly uint _borderColor = Color(1f, 1f, 1f, 0.12f);
-    private static readonly uint _separatorColor = Color(1f, 1f, 1f, 0.06f);
-    private static readonly uint _labelColor = Color(0.42f, 0.46f, 0.52f);
-    private static readonly uint _valueColor = Color(0.86f, 0.88f, 0.90f);
-    private static readonly uint _accentColor = Color(0.38f, 0.62f, 0.98f);
+    private static float Unit => ImGui.GetFrameHeight();
+    private static float Line => ImGui.GetTextLineHeightWithSpacing();
+    private static float Gap => 0.3f * Unit;
+    private static float BarHeight => 0.35f * Unit;
+    private static Vector2 TextOffset => new(0f, (Line - ImGui.GetFontSize()) * 0.5f);
+
+    private static readonly uint _labelColor = Color(0.6f, 0.6f, 0.65f);
+    private static readonly uint _valueColor = Color(0.85f, 0.85f, 0.88f);
     private static readonly uint _warnColor = Color(0.95f, 0.75f, 0.25f);
-    private static readonly uint _alertColor = Color(0.92f, 0.82f, 0.18f);
-    private static readonly uint _alertTextColor = Color(0.05f, 0.05f, 0.05f);
+    private static readonly uint _alertColor = Color(0.88f, 0.35f, 0.32f);
 
-    private enum Severity
-    {
-        None,
-
-        /// <summary>Value is tinted, the way a nearly exhausted budget reads.</summary>
-        Warn,
-
-        /// <summary>Value gets a filled background, the way a blown budget reads.</summary>
-        Alert
-    }
-
-    private readonly struct Row(string label, string value, uint color, Severity severity, float fraction, float labelWidth, float valueWidth)
+    // a fraction below zero draws no bar, the details are the tooltip
+    private readonly struct Meter(string label, string value, float fraction, string details)
     {
         public readonly string Label = label;
         public readonly string Value = value;
-        public readonly uint Color = color;
-        public readonly Severity Severity = severity;
-
-        /// <summary>Negative for a plain row, otherwise the fill ratio of an inline usage bar.</summary>
         public readonly float Fraction = fraction;
-
-        /// <summary>Measured once when the row is built; laying out and drawing both need them every frame.</summary>
-        public readonly float LabelWidth = labelWidth;
-        public readonly float ValueWidth = valueWidth;
-
-        public bool IsBar => Fraction >= 0f;
+        public readonly string Details = details;
     }
 
-    private sealed class Cell
+    private readonly struct Row(string label, string value, string right, bool warn = false)
     {
-        public readonly List<Row> Rows = [];
-        public float Width;
-        public Vector2 Position;
-        public float BandHeight;
-        public bool IsBandStart;
+        public readonly string Label = label;
+        public readonly string Value = value;
+        public readonly string Right = right;
+        public readonly bool Warn = warn;
     }
 
     /// <summary>
-    /// How often the readouts are regenerated. Every row is a freshly formatted string that has to be measured, and
-    /// none of these values say anything new between two frames — a memory figure refreshed at frame rate is just
-    /// unreadable flicker. Layout and drawing still run every frame, so resizing stays immediate.
+    /// How often the readouts are regenerated. Every row is a freshly formatted string, and none of these values say
+    /// anything new between two frames — a memory figure refreshed at frame rate is just unreadable flicker.
     /// </summary>
     private const float RebuildInterval = 0.1f;
 
-    private readonly List<Cell> _cells = [];
-    private int _cellCount;
+    private readonly List<Meter> _meters = [];
+    private readonly Row[] _rows = new Row[2];
+    private Row[]? _device;
+    private Row[]? _limits;
+    private Row[]? _features;
     private float _sinceRebuild = float.MaxValue;
-    private ImFontPtr _font;
-    private float _fontSize;
-    private float _rowHeight;
+    private string _search = string.Empty;
 
-    /// <summary>
-    /// Draws the band and returns the height it occupies, so the other overlays can clear it.
-    /// </summary>
-    public float Draw(ImDrawListPtr drawList, Vector2 contentPos, Vector2 contentSize, ActorManager manager)
+    public void Draw(EditorManager editor)
     {
-        if (!RendererInfo.TrackMemory) return 0f;
-
-        var fontSize = ImGui.GetFontSize() * FontScale;
         _sinceRebuild += ImGui.GetIO().DeltaTime;
-
-        // A font size change invalidates every measured width, so it forces a rebuild regardless of the interval.
-        if (_sinceRebuild >= RebuildInterval || fontSize != _fontSize || _cellCount == 0)
+        if (_sinceRebuild >= RebuildInterval)
         {
-            _font = ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold];
-            _fontSize = fontSize;
-            _rowHeight = MathF.Round(fontSize * 1.15f);
             _sinceRebuild = 0f;
-
-            _cellCount = 0;
-            Build(manager);
-            Measure();
+            _meters.Clear();
+            Build(editor);
         }
 
-        // A viewport this small has nothing to spare, and the band would swallow the whole view.
-        var maxHeight = contentSize.Y * 0.4f;
-        if (maxHeight < _rowHeight * 3f) return 0f;
+        var renderer = editor.Renderer;
+        var device = renderer.DeviceInfo;
+        var support = device.ExtensionSupport;
 
-        var contentHeight = Layout(contentSize.X - PadX * 2f, maxHeight - PadY * 2f);
-        if (_cellCount == 0) return 0f;
+        var drawList = ImGui.GetWindowDrawList();
+        var origin = ImGui.GetCursorScreenPos();
+        var width = ImGui.GetContentRegionAvail().X;
+        var y = origin.Y;
 
-        var height = contentHeight + PadY * 2f;
-        var top = contentPos.Y + contentSize.Y - height;
+        foreach (var meter in _meters)
+        {
+            var height = DrawMeter(drawList, meter, new Vector2(origin.X, y), width);
+            if (ImGui.IsWindowHovered() && ImGui.IsMouseHoveringRect(new Vector2(origin.X, y), new Vector2(origin.X + width, y + height)))
+            {
+                EditorUI.Tooltip(meter.Details);
+            }
 
-        drawList.AddRectFilled(contentPos with { Y = top }, contentPos + contentSize, _bandColor);
-        drawList.AddLine(contentPos with { Y = top }, new Vector2(contentPos.X + contentSize.X, top), _borderColor);
+            y += height + Gap;
+        }
 
-        DrawCells(drawList, new Vector2(contentPos.X + PadX, top + PadY), contentSize.X - PadX * 2f);
+        y = DrawRows(drawList, _rows, new Vector2(origin.X, y), width);
 
-        return height;
+        ImGui.SetCursorScreenPos(origin);
+        ImGui.Dummy(new Vector2(width, y - origin.Y));
+
+        Node("Device", _device ??=
+        [
+            new Row("GPU", string.Empty, device.Name),
+            new Row("Vendor", string.Empty, device.Vendor),
+            new Row("OpenGL", string.Empty, renderer.Name),
+            new Row("GLSL", string.Empty, device.ShadingLanguage),
+        ]);
+
+        Node("Limits", _limits ??=
+        [
+            new Row("Buffer Bindings", string.Empty, $"{device.MaxShaderStorageBufferBindings:N0}"),
+            new Row("Texture Size", string.Empty, $"{device.MaxTextureSize:N0}"),
+            new Row("Texture Layers", string.Empty, $"{device.MaxArrayTextureLayers:N0}"),
+            new Row("Anisotropy", string.Empty, $"{DeviceInfo.MaxAnisotropy:0.#}x")
+        ]);
+
+        Node("Features", _features ??=
+        [
+            Feature("Bindless Textures", support.SupportBindlessTextures),
+            Feature("Wireframe", DeviceInfo.HasFragmentBarycentric),
+            new Row("Memory Counters", string.Empty, device.Memory.Source switch
+            {
+                GpuMemoryQuerySource.Nvidia => "NVX_gpu_memory_info",
+                GpuMemoryQuerySource.Amd => "ATI_meminfo",
+                _ => "none"
+            })
+        ]);
+
+        DrawExtensions(support);
+
+        void Node(string title, Row[] rows)
+        {
+            if (!ImGui.TreeNodeEx(title, ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.NoTreePushOnOpen)) return;
+
+            var start = ImGui.GetCursorScreenPos();
+            var end = DrawRows(drawList, rows, start, width);
+            ImGui.Dummy(new Vector2(width, end - start.Y));
+        }
+
+        Row Feature(string label, bool supported)
+        {
+            return new Row(label, string.Empty, supported ? "yes" : "no", !supported);
+        }
     }
 
-    private void Build(ActorManager manager)
+    private void Build(EditorManager editor)
     {
-        var renderer = manager.Renderer;
-        var gpu = renderer.DeviceInfo.Memory;
-        var ram = renderer.SystemMemory;
-
-        var device = BeginCell();
-        AddRow(device, "GPU", renderer.DeviceInfo.Name, _accentColor);
-        AddRow(device, "API", renderer.Name, _accentColor);
-        AddRow(device, "VND", renderer.DeviceInfo.Vendor, _accentColor);
+        var gpu = editor.Renderer.DeviceInfo.Memory;
+        var ram = editor.Renderer.SystemMemory;
 
         if (gpu.IsAvailable)
         {
-            var used = gpu.UsedBytes;
-            var total = gpu.TotalBytes;
-            var ratio = (float) used / total;
+            var details = $"Video Memory\nFree {gpu.AvailableBytes.GetReadableSize()}";
+            if (gpu.DedicatedBytes > 0) details += $"\nBoard {gpu.DedicatedBytes.GetReadableSize()}";
+            if (gpu.EvictionCount > 0) details += $"\nEvicted {gpu.EvictedBytes.GetReadableSize()} ({gpu.EvictionCount:N0}x)";
 
-            var vram = BeginCell();
-            AddBar(vram, "VRAM", ratio, $"{ratio * 100f:F1}%");
-            AddRow(vram, "USED", used.GetReadableSize(), Pressure(ratio));
-            AddRow(vram, "TOTAL", $"{(gpu.IsTotalEstimated ? "~" : string.Empty)}{total.GetReadableSize()}");
-
-            var detail = BeginCell();
-            AddRow(detail, "FREE", gpu.AvailableBytes.GetReadableSize());
-            if (gpu.DedicatedBytes > 0)
-                AddRow(detail, "BOARD", gpu.DedicatedBytes.GetReadableSize());
-            if (gpu.EvictionCount > 0)
-                AddRow(detail, "EVICT", $"{gpu.EvictedBytes.GetReadableSize()} ({gpu.EvictionCount:N0}x)", Severity.Alert);
+            var value = gpu.UsedBytes.GetReadableSizeOutOf(gpu.TotalBytes);
+            _meters.Add(new Meter("VRAM", gpu.IsTotalEstimated ? $"~{value}" : value, (float) gpu.UsedBytes / gpu.TotalBytes, details));
         }
         else
         {
-            var vram = BeginCell();
-            AddRow(vram, "VRAM", "unsupported", Severity.Warn);
-            AddRow(vram, "NEEDS", "NVX_gpu_memory_info");
-            AddRow(vram, "OR", "ATI_meminfo");
+            _meters.Add(new Meter("VRAM", "unsupported", -1f, "Video Memory\nNeeds NVX_gpu_memory_info or ATI_meminfo"));
         }
 
-        var systemRatio = ram.TotalBytes > 0 ? (float) ram.UsedBytes / ram.TotalBytes : 0f;
-        var system = BeginCell();
-        AddBar(system, "RAM", systemRatio, $"{systemRatio * 100f:F1}%");
-        AddRow(system, "USED", ram.UsedBytes.GetReadableSize(), Pressure(systemRatio));
-        AddRow(system, "TOTAL", ram.TotalBytes.GetReadableSize());
+        _meters.Add(new Meter(
+            "RAM",
+            ram.UsedBytes.GetReadableSizeOutOf(ram.TotalBytes),
+            ram.TotalBytes > 0 ? (float) ram.UsedBytes / ram.TotalBytes : 0f,
+            $"System Memory\nProcess {ram.ProcessBytes.GetReadableSize()}\nManaged heap {ram.ManagedBytes.GetReadableSize()}"));
 
-        var process = BeginCell();
-        AddRow(process, "PROC", ram.ProcessBytes.GetReadableSize());
-        AddRow(process, "HEAP", ram.ManagedBytes.GetReadableSize());
-        AddRow(process, "GC", $"{GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)}");
+        var allocated = editor.Allocated;
+        var used = editor.Used;
+        _meters.Add(new Meter(
+            "Buffers",
+            used.GetReadableSizeOutOf(allocated),
+            allocated > 0 ? (float) used / allocated : 0f,
+            $"GPU Buffers\nWasted {(allocated - used).GetReadableSize()}"));
 
-        var allocated = manager.Allocated;
-        var wasted = allocated - manager.Used;
-        var bufferRatio = allocated > 0 ? (float) manager.Used / allocated : 0f;
-        var buffers = BeginCell();
-        AddBar(buffers, "BUF", bufferRatio, $"{bufferRatio * 100f:F1}%");
-        AddRow(buffers, "ALLOC", allocated.GetReadableSize());
-        AddRow(buffers, "WASTE", wasted.GetReadableSize(), allocated > 0 && (float) wasted / allocated > 0.3f ? Severity.Warn : Severity.None);
+        _meters.Add(new Meter(
+            "Textures",
+            TextureCache.ResidentBytes.GetReadableSizeOutOf(TextureCache.TextureBudgetBytes),
+            (float) TextureCache.ResidentBytes / TextureCache.TextureBudgetBytes,
+            $"Texture Cache\n{TextureCache.LoadedTextureCount:N0} loaded\n{TextureCache.PendingTextureCount:N0} pending\n{TextureCache.EvictableTextureCount:N0} evictable"));
 
-        var io = ImGui.GetIO();
-        var frame = BeginCell();
-        AddRow(frame, "FPS", $"{io.Framerate:F1}", io.Framerate < 30f ? Severity.Warn : Severity.None);
-        AddRow(frame, "FRAME", $"{io.DeltaTime * 1000f:F2} ms");
+        _rows[0] = new Row(
+            "GC",
+            $"{GC.CollectionCount(0)} / {GC.CollectionCount(1)} / {GC.CollectionCount(2)}",
+            $"paused {GC.GetTotalPauseDuration().TotalSeconds:F2} s");
 
-        if (Profiler.Enabled)
-        {
-            var frameNode = Profiler.Frame;
-            AddRow(frame, "CPU/GPU", $"{frameNode.Cpu.AverageTimeElapsedMs:F2} / {frameNode.Gpu.AverageTimeElapsedMs:F2}");
-        }
-
-        var scene = BeginCell();
-        AddRow(scene, "ACTORS", $"{manager.ActorCount:N0}");
-        AddRow(scene, "PRIMS", Profiler.Enabled ? $"{Profiler.TotalPrimitives:N0}" : "--");
-        AddRow(scene, "TEX", $"{TextureCache.LoadedTextureCount:N0} +{TextureCache.PendingTextureCount:N0} -{TextureCache.EvictableTextureCount:N0}");
-
-        var jobs = BeginCell();
-        AddRow(jobs, "WORKERS", $"{ThreadManager.WorkerCount}");
-        AddRow(jobs, "QUEUED", $"{ThreadManager.CurrentQueuedJobs:N0}", ThreadManager.CurrentQueuedJobs > 0 ? Severity.Warn : Severity.None);
-        AddRow(jobs, "DONE", $"{ThreadManager.TotalJobsProcessed:N0}");
+        var queued = ThreadManager.CurrentQueuedJobs;
+        _rows[1] = new Row(
+            "Jobs",
+            $"{ThreadManager.BusyWorkers} / {ThreadManager.WorkerCount} busy",
+            $"{queued:N0} queued",
+            queued > 0);
     }
 
-    private void Measure()
+    private float DrawMeter(ImDrawListPtr drawList, Meter meter, Vector2 pos, float width)
     {
-        for (var i = 0; i < _cellCount; i++)
+        var right = pos.X + width;
+        var hasBar = meter.Fraction >= 0f;
+
+        drawList.AddText(pos + TextOffset, _labelColor, meter.Label);
+        drawList.AddText(new Vector2(right - ImGui.CalcTextSize(meter.Value).X, pos.Y) + TextOffset, hasBar ? _valueColor : _warnColor, meter.Value);
+        if (!hasBar) return Line;
+
+        var fraction = Math.Clamp(meter.Fraction, 0f, 1f);
+        var top = pos.Y + Line;
+        var color = fraction switch
         {
-            var cell = _cells[i];
-            var width = 0f;
-
-            foreach (var row in cell.Rows)
-            {
-                var rowWidth = row.LabelWidth + LabelGap + row.ValueWidth;
-                if (row.IsBar) rowWidth += BarWidth + LabelGap;
-
-                width = MathF.Max(width, rowWidth);
-            }
-
-            cell.Width = width;
-        }
-    }
-
-    /// <summary>
-    /// Flows the cells into bands, dropping whatever no longer fits, and returns the total height.
-    /// </summary>
-    private float Layout(float width, float maxHeight)
-    {
-        var x = 0f;
-        var y = 0f;
-        var bandStart = 0;
-
-        for (var i = 0; i < _cellCount; i++)
-        {
-            var cell = _cells[i];
-            if (i > bandStart && x + cell.Width > width)
-            {
-                var previous = CloseBand(bandStart, i, y);
-                if (y + previous + BandGap + _rowHeight > maxHeight)
-                {
-                    // the next band would overflow, so this is where the readout stops
-                    _cellCount = i;
-                    return y + previous;
-                }
-
-                y += previous + BandGap;
-                x = 0f;
-                bandStart = i;
-            }
-
-            cell.Position.X = x;
-            cell.IsBandStart = i == bandStart;
-            x += cell.Width + CellGap;
-        }
-
-        return y + CloseBand(bandStart, _cellCount, y);
-    }
-
-    private float CloseBand(int start, int end, float y)
-    {
-        var rows = 0;
-        for (var i = start; i < end; i++)
-        {
-            rows = Math.Max(rows, _cells[i].Rows.Count);
-        }
-
-        var height = rows * _rowHeight;
-        for (var i = start; i < end; i++)
-        {
-            _cells[i].Position.Y = y;
-            _cells[i].BandHeight = height;
-        }
-
-        return height;
-    }
-
-    private void DrawCells(ImDrawListPtr drawList, Vector2 origin, float width)
-    {
-        for (var i = 0; i < _cellCount; i++)
-        {
-            var cell = _cells[i];
-            var position = origin + cell.Position;
-
-            if (cell.IsBandStart)
-            {
-                if (i > 0)
-                {
-                    var y = position.Y - BandGap * 0.5f;
-                    drawList.AddLine(new Vector2(origin.X, y), new Vector2(origin.X + width, y), _separatorColor);
-                }
-            }
-            else
-            {
-                var x = position.X - CellGap * 0.5f;
-                drawList.AddLine(new Vector2(x, position.Y), new Vector2(x, position.Y + cell.BandHeight), _separatorColor);
-            }
-
-            for (var r = 0; r < cell.Rows.Count; r++)
-            {
-                DrawRow(drawList, cell.Rows[r], position.X, position.Y + r * _rowHeight, cell.Width);
-            }
-        }
-    }
-
-    private void DrawRow(ImDrawListPtr drawList, Row row, float x, float y, float width)
-    {
-        var right = x + width;
-        var valueX = right - row.ValueWidth;
-        var valueColor = row.Severity switch
-        {
-            Severity.Warn => _warnColor,
-            Severity.Alert => _alertTextColor,
-            _ => row.Color
+            > 0.9f => _alertColor,
+            > 0.75f => _warnColor,
+            _ => Color(0.36f, 0.76f, 0.52f)
         };
 
-        if (row.Severity == Severity.Alert)
+        drawList.AddRectFilled(new Vector2(pos.X, top), new Vector2(right, top + BarHeight), Color(1f, 1f, 1f, 0.08f));
+        if (fraction > 0f)
         {
-            drawList.AddRectFilled(new Vector2(valueX - 3f, y), new Vector2(right + 3f, y + _rowHeight - 2f), _alertColor);
+            drawList.AddRectFilled(new Vector2(pos.X, top), new Vector2(pos.X + width * fraction, top + BarHeight), color);
         }
 
-        drawList.AddText(_font, _fontSize, new Vector2(x, y), _labelColor, row.Label);
+        return Line + BarHeight;
+    }
 
-        if (row.IsBar)
+    private float DrawRows(ImDrawListPtr drawList, Row[] rows, Vector2 pos, float width)
+    {
+        var y = pos.Y;
+        foreach (var row in rows)
         {
-            var barX = x + row.LabelWidth + LabelGap;
-            var barRight = MathF.Max(barX, valueX - LabelGap);
-            var barY = y + (_rowHeight - BarHeight) * 0.5f;
-
-            drawList.AddRectFilled(new Vector2(barX, barY), new Vector2(barRight, barY + BarHeight), Color(1f, 1f, 1f, 0.08f));
-
-            var fill = barX + (barRight - barX) * row.Fraction;
-            if (fill > barX)
+            drawList.AddText(new Vector2(pos.X, y) + TextOffset, _labelColor, row.Label);
+            if (row.Value.Length > 0)
             {
-                drawList.AddRectFilled(new Vector2(barX, barY), new Vector2(fill, barY + BarHeight), BarColor(row.Fraction));
+                drawList.AddText(new Vector2(pos.X + ImGui.CalcTextSize(row.Label).X + Gap * 2f, y) + TextOffset, _valueColor, row.Value);
+            }
+
+            drawList.AddText(new Vector2(pos.X + width - ImGui.CalcTextSize(row.Right).X, y) + TextOffset, row.Warn ? _warnColor : _valueColor, row.Right);
+
+            y += Line;
+        }
+
+        return y;
+    }
+
+    private void DrawExtensions(ExtensionSupport support)
+    {
+        if (!ImGui.TreeNodeEx($"Extensions ({support.Extensions.Length})###Extensions", ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.NoTreePushOnOpen)) return;
+
+        ImGui.SetNextItemWidth(-1f);
+        ImGui.InputTextWithHint("##ExtensionFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll);
+
+        if (ImGui.BeginChild("##ExtensionList", new Vector2(0f, Line * 12f)))
+        {
+            foreach (var extension in support.Extensions)
+            {
+                if (_search.Length > 0 && !extension.Contains(_search, StringComparison.OrdinalIgnoreCase)) continue;
+                if (ImGui.Selectable(extension)) ImGui.SetClipboardText(extension);
             }
         }
-
-        drawList.AddText(_font, _fontSize, new Vector2(valueX, y), valueColor, row.Value);
+        ImGui.EndChild();
     }
-
-    private float TextWidth(string text) => _font.CalcTextSizeA(_fontSize, float.MaxValue, 0f, text).X;
-
-    private Cell BeginCell()
-    {
-        if (_cellCount == _cells.Count)
-        {
-            _cells.Add(new Cell());
-        }
-
-        var cell = _cells[_cellCount++];
-        cell.Rows.Clear();
-        return cell;
-    }
-
-    private void AddRow(Cell cell, string label, string value, Severity severity = Severity.None)
-        => cell.Rows.Add(new Row(label, value, _valueColor, severity, -1f, TextWidth(label), TextWidth(value)));
-
-    private void AddRow(Cell cell, string label, string value, uint color)
-        => cell.Rows.Add(new Row(label, value, color, Severity.None, -1f, TextWidth(label), TextWidth(value)));
-
-    private void AddBar(Cell cell, string label, float fraction, string value)
-        => cell.Rows.Add(new Row(label, value, _valueColor, Severity.None, Math.Clamp(fraction, 0f, 1f), TextWidth(label), TextWidth(value)));
-
-    private static Severity Pressure(float ratio) => ratio switch
-    {
-        > 0.9f => Severity.Alert,
-        > 0.75f => Severity.Warn,
-        _ => Severity.None
-    };
-
-    private static uint BarColor(float ratio) => ratio switch
-    {
-        > 0.9f => Color(0.88f, 0.35f, 0.32f),
-        > 0.75f => Color(0.95f, 0.72f, 0.28f),
-        _ => Color(0.36f, 0.76f, 0.52f)
-    };
 
     private static uint Color(float r, float g, float b, float a = 1f) => (uint) (a * 255f) << 24 | (uint) (b * 255f) << 16 | (uint) (g * 255f) << 8 | (uint) (r * 255f);
 }

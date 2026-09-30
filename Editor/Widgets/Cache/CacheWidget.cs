@@ -8,18 +8,19 @@ public interface ICacheTab
 {
     public string Title { get; }
 
-    public void Draw();
+    public void Draw(EditorManager editor);
 }
 
 public class CacheWidget : PanelWidget
 {
-    public override string PanelTitle => Settings.CacheWindow;
+    public override string PanelTitle => Settings.MemoryWindow;
     public override PanelGroup Group => PanelGroup.Engine;
 
     public override bool IsOpen { get; set; }
 
     private readonly ICacheTab[] _tabs =
     [
+        new BufferTab(),
         new TextureCacheTab(),
     ];
 
@@ -31,7 +32,7 @@ public class CacheWidget : PanelWidget
         {
             if (!ImGui.BeginTabItem(tab.Title)) continue;
 
-            tab.Draw();
+            tab.Draw(editor);
             ImGui.EndTabItem();
         }
 
