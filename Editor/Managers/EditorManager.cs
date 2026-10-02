@@ -26,7 +26,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         new LogWidget(),
         new SettingsWidget(),
         new CacheWidget(),
-        new ContentWidget(),
+        // new ContentWidget(),
         new MorphTargetWidget(),
         _materialEditor,
         new TextureInspectorWidget(),

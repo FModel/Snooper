@@ -6,6 +6,7 @@ public interface IBridgeHost
 {
     public string Name { get; }
     public string ExportDirectory { get; }
+    public string ImGuiIniPath { get; }
 
     public bool OwnsLoadOptions => false;
     public bool CanBrowseAssets => false;
@@ -17,6 +18,7 @@ internal sealed class StandaloneHost : IBridgeHost
 {
     public string Name => "Snooper";
     public string ExportDirectory => "./Exports";
+    public string ImGuiIniPath => "./snooper.ini";
 
     public ExportOptions CreateExportOptions() => new(
         naniteMeshFormat: Bridge.Options.NaniteMeshFormat,

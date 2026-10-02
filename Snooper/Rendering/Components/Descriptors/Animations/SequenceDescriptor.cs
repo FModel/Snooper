@@ -30,9 +30,7 @@ public sealed class SequenceDescriptor : SequenceBaseDescriptor
     public SequenceDescriptor(UAnimSequence owner, AnimationDescriptor? outer = null) : base(owner, outer)
     {
         var skeleton = owner.Skeleton?.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
-        var converted = skeleton.ConvertAnims(owner).Sequences.FirstOrDefault() ?? throw new InvalidOperationException($"Failed to convert animation asset {owner.Name} for skeleton {skeleton.Name}");
-        converted.RetargetTracks(skeleton);
-        _sequence = converted;
+        _sequence = skeleton.ConvertAnims(owner).Sequences.FirstOrDefault() ?? throw new InvalidOperationException($"Failed to convert animation asset {owner.Name} for skeleton {skeleton.Name}");;
 
         FrameCount = _sequence.NumFrames;
         SourceLength = _sequence.OriginalSequence.SequenceLength;
@@ -71,6 +69,7 @@ public sealed class SequenceDescriptor : SequenceBaseDescriptor
 
         // we are indexing into tracks but tracks are added for each skeleton bone
         _sequence.Tracks[(int) skeletonIndex].GetBoneTransform(localTime * FrameRate, FrameCount, ref boneOrientation, ref bonePosition, ref boneScale);
+        _sequence.RetargetBoneTransform((int) skeletonIndex, bindBonePose, ref boneOrientation, ref bonePosition, ref boneScale);
         return new Transform(bonePosition, boneOrientation, boneScale).ToMatrix();
     }
 }

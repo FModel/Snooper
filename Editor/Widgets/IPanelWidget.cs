@@ -26,7 +26,7 @@ public abstract class PanelWidget : IPanelWidget
 {
     public abstract string PanelTitle { get; }
     public abstract PanelGroup Group { get; }
-    protected virtual ImGuiWindowFlags Flags => ImGuiWindowFlags.None;
+    protected virtual ImGuiWindowFlags Flags => ImGuiWindowFlags.NoFocusOnAppearing;
 
     public virtual bool CanClose => true;
     public virtual bool IsOpen { get; set; } = true;

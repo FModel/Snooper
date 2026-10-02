@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using CUE4Parse.FileProvider;
 using ImGuiNET;
 using ImGuizmoNET;
@@ -11,6 +12,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper;
 using Snooper.Core;
 using Snooper.Core.Managers;
+using Snooper.Hosting;
 
 namespace Editor.Managers;
 
@@ -53,6 +55,11 @@ public abstract class ImGuiManager : SceneManager
         var scale = Math.Min(xScale, yScale);
 
         var io = ImGui.GetIO();
+        unsafe
+        {
+            var iniFileNamePtr = Marshal.StringToCoTaskMemUTF8(Bridge.Host.ImGuiIniPath);
+            io.NativePtr->IniFilename = (byte*)iniFileNamePtr;
+        }
         io.DisplaySize = new Vector2(Settings.DefaultWidthHeight);
 
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
