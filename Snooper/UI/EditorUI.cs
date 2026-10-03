@@ -127,19 +127,9 @@ public static class EditorUI
     {
         if (lines.Length == 0) return;
 
-        PushCaptionStyle();
-        foreach (var line in lines) ImGui.TextUnformatted(line);
-        PopCaptionStyle();
-    }
-
-    public static void PushCaptionStyle()
-    {
         ImGui.SetWindowFontScale(0.85f);
         ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
-    }
-
-    public static void PopCaptionStyle()
-    {
+        foreach (var line in lines) ImGui.TextUnformatted(line);
         ImGui.PopStyleColor();
         ImGui.SetWindowFontScale(1.0f);
     }

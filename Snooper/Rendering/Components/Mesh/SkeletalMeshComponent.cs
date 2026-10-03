@@ -91,8 +91,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     private const string HeaderLabel = "Animation";
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
         .Add(() => Playback is { IsPlaying: true } ? "\uf04c" : "\uf04b", "Play/Pause", () => Playback?.IsPlaying = Playback is { IsPlaying: false })
-        .Add("\uf0c5", "Copy Path", () => ImGui.SetClipboardText(Animation?.Path))
-        .Add("\uf05a", "Animation Info", () => ImGui.OpenPopup("##AnimationInfo"));
+        .Add(Settings.CopyIcon, "Copy Path", () => ImGui.SetClipboardText(Animation?.Path));
 
     public override void DrawControls()
     {
@@ -117,13 +116,12 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
         }
         HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
-        DrawInfoPopup();
-
         if (!open) return;
 
         EditorUI.PropertyValueTable(HeaderLabel, () =>
         {
             EditorUI.Text("Name", animation.Name);
+            EditorUI.Text("Skeleton", animation.Skeleton.Name ?? Settings.NoName);
             EditorUI.Text("Duration", $"{animation.Duration:0.00} seconds");
             ImGui.SameLine();
             ImGui.TextDisabled($"(in {animation.Segments.Count} segment{(animation.Segments.Count != 1 ? "s" : "")})");

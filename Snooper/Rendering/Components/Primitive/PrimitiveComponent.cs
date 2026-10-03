@@ -5,6 +5,7 @@ using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
+using Snooper.Extensions;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
@@ -233,19 +234,27 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     private const string HeaderLabel = "Mesh";
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
-        .Add("\uf0c5", "Copy Path", () => ImGui.SetClipboardText(Descriptor.Path))
-        .Add("\uf05a", "Primitive Info", () => ImGui.OpenPopup("##PrimitiveInfo"));
+        .Add(Settings.CopyIcon, "Copy Path", () => ImGui.SetClipboardText(Descriptor.Path));
 
-    private PropertyToggleButton[] SectionButtons => field ??=
-    [
-        new PropertyToggleButton(
-            () => VisibilityIcon,
-            () => ImGui.OpenPopup(SectionVisibilityPopup),
-            () => "Section Visibility",
-            textColor: () => VisibilityColor)
-    ];
+    private const string MaterialsLabel = "Materials";
+    private HeaderButtons MaterialsButtons => field ??= new HeaderButtons(MaterialsLabel)
+        .Add(Settings.PaletteIcon, "Material Editor", () => WindowRequests.Request(Settings.MaterialEditorWindow))
+        .Add(() => VisibilityIcon, () => HasVisibleMaterial ? "Hide All" : "Show All", () => SetMaterialsVisible(!HasVisibleMaterial), null, () => VisibilityColor);
 
     private PropertyToggleButton[] MaterialButtons => field ??=
+    [
+        new PropertyToggleButton(
+            () => SelectedMaterial is { IsVisible: false } ? Settings.EyeSlashIcon : Settings.EyeIcon,
+            () => SetMaterialVisibility((uint) _materialIndex, SelectedMaterial is { IsVisible: false }),
+            () => SelectedMaterial is { IsVisible: false } ? "Show" : "Hide",
+            textColor: () => SelectedMaterial is { IsVisible: false } ? Settings.RedColor : null),
+        new PropertyToggleButton(
+            () => Settings.CopyIcon,
+            () => ImGui.SetClipboardText(SelectedMaterial is { Path: { } path } ? Actor?.ActorManager?.FileProvider.FixPath(path) ?? path : SelectedMaterial?.Name),
+            () => "Copy Path")
+    ];
+
+    private PropertyToggleButton[] LayerButtons => field ??=
     [
         new PropertyToggleButton(
             () => Settings.AngleLeftIcon,
@@ -256,28 +265,18 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             () => Settings.AngleRightIcon,
             () => { _materialLayerIndex = _materialLayerIndex >= MaterialLayerCount - 1 ? 0 : _materialLayerIndex + 1; },
             () => "Next Layer",
-            visible: () => MaterialLayerCount > 1),
-        new PropertyToggleButton(
-            () => Settings.PaletteIcon,
-            () => WindowRequests.Request(Settings.MaterialEditorWindow),
-            () => "Material Editor",
-            () => Materials is { Length: > 0 })
+            visible: () => MaterialLayerCount > 1)
     ];
 
-    private PropertyToggleButton[] MorphButtons => field ??=
-    [
-        new PropertyToggleButton(
-            () => Settings.BarsProgressIcon,
-            () => WindowRequests.Request(Settings.MorphEditorWindow),
-            () => "Morph Editor",
-            () => Descriptor.Morphs is { Count: > 0 })
-    ];
+    protected int DisplayedLod => Math.Clamp(Metadata?.GeometryHandle.OverrideLod ?? 0, 0, Descriptor.Lods.Length - 1);
 
-    private int _sectionIndex;
     private int _materialIndex;
     private int _materialLayerIndex;
     private int MaterialLayerCount => SelectedMaterial?.MaterialDataContainer is MaterialDataContainer material ? material.LayerCount : 0;
     public MaterialSection? SelectedMaterial => _materialIndex >= 0 && _materialIndex < Materials.Length ? Materials[_materialIndex] : null;
+
+    private bool HasHiddenMaterial => Array.Exists(Materials, x => x is { IsVisible: false });
+    private bool HasVisibleMaterial => Array.Exists(Materials, x => x is not { IsVisible: false });
 
     public override void DrawControls()
     {
@@ -288,13 +287,18 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
         HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
-        DrawInfoPopup();
+        if (open) EditorUI.PropertyValueTable(HeaderLabel, DrawMesh);
+        DrawMaterials();
 
-        if (!open) return;
-
-        EditorUI.PropertyValueTable(HeaderLabel, () =>
+        void DrawMesh()
         {
             EditorUI.Text("Name", Descriptor.Name);
+            EditorUI.Text("Bounds", Descriptor.Bounds.BoundsFormatted);
+            EditorUI.Text("Shadow", CastShadow ? "Cast" : "None");
+            if (DrawDistance != Vector2.Zero)
+            {
+                EditorUI.Text("Draw Distance", $"Min: {DrawDistance.X}, Max: {DrawDistance.Y}");
+            }
 
             EditorUI.Property($"LODs ({Descriptor.Lods.Length})");
             ImGui.BeginGroup();
@@ -307,7 +311,6 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             ImGui.EndDisabled();
             if (slided1)
             {
-                _sectionIndex = 0;
                 if (Metadata != null && IsVisible && maxLod > 0)
                 {
                     Metadata.GeometryHandle.OverrideLod = value;
@@ -322,122 +325,111 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                     EditorUI.Caption("Auto (Screen Size Based)");
                     break;
                 case >= 0 when value < Descriptor.Lods.Length:
-                    EditorUI.Caption($"{lod.VertexCount} Vertices, {lod.IndexCount} Indices");
+                    EditorUI.Caption($"{lod.VertexCount} Vertices, {lod.IndexCount} Indices, {lod.ScreenSize * 100f:0.#}% Screen Size");
                     break;
             }
 
             ImGui.Spacing();
             ImGui.EndGroup();
+        }
 
-            if (DrawDistance != Vector2.Zero)
+        void DrawMaterials()
+        {
+            var materials = Materials;
+            if (materials.Length == 0) return;
+
+            var expanded = ImGui.CollapsingHeader(MaterialsLabel,ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+            MaterialsButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
+            if (!expanded) return;
+
+            var style = ImGui.GetStyle();
+            var frame = ImGui.GetFrameHeight();
+            var sections = Descriptor.Lods[DisplayedLod].Sections;
+
+            ImGui.Indent();
+            if (ImGui.BeginTabBar("##MaterialSlots", ImGuiTabBarFlags.FittingPolicyScroll | ImGuiTabBarFlags.DrawSelectedOverline))
             {
-                EditorUI.Text("Draw Distance", $"Min: {DrawDistance.X}, Max: {DrawDistance.Y}");
-            }
-
-            EditorUI.PropertyWithToggle($"Sections ({lod.Sections.Length})", SectionButtons);
-            DrawSectionVisibilityPopup(lod);
-            var selected = lod.Sections[_sectionIndex];
-            _materialIndex = (int) selected.MaterialIndex;
-
-            ImGui.BeginGroup();
-            ImGui.SetNextItemWidth(-1);
-            if (ImGui.BeginCombo("##SectionCombo", $"{_sectionIndex}: {selected.Name}"))
-            {
-                for (var i = 0; i < lod.Sections.Length; i++)
+                for (var i = 0; i < materials.Length; i++)
                 {
-                    var isSelected = i == _sectionIndex;
+                    if (materials[i] is not { } material) continue;
 
-                    if (ImGui.Selectable($"{i}: {lod.Sections[i].Name}##Section{i}", isSelected))
+                    // a slot the displayed lod does not draw with is dimmed
+                    var used = false;
+                    for (var s = 0; s < sections.Length && !used; s++)
                     {
-                        _sectionIndex = i;
-                        _materialLayerIndex = 0;
-                        _materialIndex = (int) lod.Sections[i].MaterialIndex;
+                        used = sections[s].MaterialIndex == i;
                     }
-                    if (isSelected) ImGui.SetItemDefaultFocus();
+
+                    var marked = !material.IsVisible || !used;
+                    var color = !material.IsVisible ? ImGui.GetColorU32(Settings.RedColor) : ImGui.GetColorU32(used ? ImGuiCol.Text : ImGuiCol.TextDisabled);
+                    ImGui.PushStyleColor(ImGuiCol.Text, color);
+                    if (marked) ImGui.PushStyleColor(ImGuiCol.TabSelectedOverline, color);
+                    var picked = ImGui.BeginTabItem($"{i}###Slot{i}");
+                    ImGui.PopStyleColor(marked ? 2 : 1);
+
+                    if (ImGui.IsItemHovered()) EditorUI.Tooltip($"{material.Name}{(used ? "" : "\nNot used in this LOD")}");
+                    if (!picked) continue;
+
+                    if (_materialIndex != i)
+                    {
+                        _materialIndex = i;
+                        _materialLayerIndex = 0;
+                    }
+                    ImGui.EndTabItem();
                 }
-                ImGui.EndCombo();
+                ImGui.EndTabBar();
             }
+            ImGui.Unindent();
 
-            EditorUI.Caption($"Material {selected.MaterialIndex}, {(selected.CastShadow && CastShadow ? "casts shadow" : "no shadow")}{(SelectedMaterial is { IsVisible: false } ? ", hidden" : "")}");
-            ImGui.Spacing();
-            ImGui.EndGroup();
-
-            EditorUI.PropertyWithToggle("Material", MaterialButtons);
-            if (SelectedMaterial is not { } section)
+            EditorUI.PropertyValueTable(MaterialsLabel, () =>
             {
-                ImGui.TextDisabled("Loading...");
-            }
-            else if (section.MaterialDataContainer is not MaterialDataContainer container)
-            {
-                ImGui.TextColored(Settings.OrangeColor, "No material data container available.");
-            }
-            else
-            {
-                container.DrawSummary(_materialLayerIndex);
-            }
+                var selected = SelectedMaterial;
+                var container = selected?.MaterialDataContainer as MaterialDataContainer;
 
-            if (Descriptor.Morphs is { Count: > 0 } morphs)
-            {
-                EditorUI.PropertyWithToggle($"Morph Targets ({morphs.Count})", MorphButtons);
-                ImGui.Text(string.Empty);
-            }
-        });
-    }
-
-    private const string SectionVisibilityPopup = "##SectionVisibility";
-    private bool HasHiddenMaterial => Array.Exists(Materials, x => x is { IsVisible: false });
-    private bool HasVisibleMaterial => Array.Exists(Materials, x => x is not { IsVisible: false });
-
-    private void DrawSectionVisibilityPopup(LodDescriptor<TVertex> lod)
-    {
-        if (!ImGui.BeginPopup(SectionVisibilityPopup)) return;
-
-        var sections = lod.Sections;
-        var frameHeight = ImGui.GetFrameHeight();
-
-        var nameWidth = 0f;
-        for (var i = 0; i < sections.Length; i++)
-        {
-            nameWidth = MathF.Max(nameWidth, ImGui.CalcTextSize($"{i}: {sections[i].Name}").X);
-        }
-
-        var style = ImGui.GetStyle();
-        var width = Math.Clamp(frameHeight + style.ItemSpacing.X + nameWidth + style.ScrollbarSize, frameHeight * 8f, frameHeight * 16f);
-
-        var anyVisible = HasVisibleMaterial;
-        if (EditorUI.IconButton(VisibilityIcon, anyVisible ? "Hide All" : "Show All", textColor: VisibilityColor))
-        {
-            SetMaterialsVisible(!anyVisible);
-        }
-        ImGui.SameLine();
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextDisabled($"{sections.Length} Section{(sections.Length != 1 ? "s" : "")}");
-        ImGui.Separator();
-
-        var height = Math.Min(sections.Length, 5) * ImGui.GetFrameHeightWithSpacing();
-        if (ImGui.BeginChild("##SectionList", new Vector2(width, height)))
-        {
-            for (var i = 0; i < sections.Length; i++)
-            {
-                var section = sections[i];
-                var material = section.MaterialIndex < Materials.Length ? Materials[section.MaterialIndex] : null;
-                var isVisible = material is not { IsVisible: false };
-
-                ImGui.PushID(i);
-                if (EditorUI.IconButton(isVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, null, material != null, isVisible ? null : Settings.RedColor) && material != null)
-                {
-                    SetMaterialVisibility(section.MaterialIndex, !isVisible);
-                }
-                ImGui.SameLine();
+                EditorUI.PropertyWithToggle("Material", MaterialButtons);
                 ImGui.AlignTextToFramePadding();
-                if (isVisible) ImGui.TextUnformatted($"{i}: {section.Name}");
-                else ImGui.TextDisabled($"{i}: {section.Name}");
-                ImGui.PopID();
-            }
-        }
-        ImGui.EndChild();
+                ImGui.TextUnformatted(selected?.Name ?? string.Empty);
+                if (selected == null) ImGui.TextDisabled("Loading...");
+                else if (container == null) ImGui.TextColored(Settings.OrangeColor, "No material data container available.");
+                else if (!container.IsGpuDataReady) ImGui.TextColored(Settings.OrangeColor, "Uploading...");
+                else if (selected.IsEdited) EditorUI.Caption("Edited");
 
-        ImGui.EndPopup();
+                var indices = 0u;
+                foreach (var section in sections)
+                {
+                    if (section.MaterialIndex == _materialIndex) indices += section.IndexCount;
+                }
+                EditorUI.Text("Indices", $"{indices} ({indices.GetReadableRatio(Descriptor.Lods[DisplayedLod].IndexCount)} of LOD {DisplayedLod})");
+
+                if (container == null) return;
+
+                EditorUI.Text("Blend", container.BlendMode.GetDescription());
+                EditorUI.Text("Shading", container.ShadingModel.GetDescription());
+
+                var layer = Math.Clamp(_materialLayerIndex, 0, container.LayerCount - 1);
+                if (container.LayerCount > 1)
+                {
+                    EditorUI.PropertyWithToggle("Layer", LayerButtons);
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.TextUnformatted($"{layer + 1} / {container.LayerCount}");
+                }
+
+                EditorUI.Property("Textures");
+                var spacing = style.ItemSpacing.X;
+                var size = MathF.Min(3f, (ImGui.GetContentRegionAvail().X - spacing * 2f) / 3f / frame);
+                EditorUI.DrawThumbnail(container.GetSlotTexture(layer, MaterialTextureSlot.Diffuse), "D", size);
+                ImGui.SameLine(0, spacing);
+                EditorUI.DrawThumbnail(container.GetSlotTexture(layer, MaterialTextureSlot.Normal), "N", size);
+                ImGui.SameLine(0, spacing);
+                EditorUI.DrawThumbnail(container.GetSlotTexture(layer, MaterialTextureSlot.Specular), "S", size);
+
+                var color = container.Layers[layer].DiffuseColor;
+                EditorUI.Property("Color");
+                ImGui.ColorButton("##DiffuseColor", new Vector4(color, 1f), ImGuiColorEditFlags.NoPicker);
+                ImGui.SameLine();
+                ImGui.TextDisabled($"{color.X:0.00}, {color.Y:0.00}, {color.Z:0.00}");
+            });
+        }
     }
 
     private void DrawInfoPopup()

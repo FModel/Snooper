@@ -11,6 +11,22 @@ public class MaterialSection(uint index, bool isVisible = true)
 
     public readonly uint Index = index;
 
+    private string? _path;
+    public string? Path
+    {
+        get
+        {
+            if (_path != null || string.IsNullOrEmpty(CacheKey)) return _path;
+
+            var path = MaterialCache.GetPath(CacheKey);
+            var dot = path.LastIndexOf('.');
+            return _path = dot > 0 ? path[..dot] : path;
+        }
+    }
+
+    private string? _name;
+    public string Name => MaterialDataContainer?.Name ?? (_name ??= Path is { } path ? path[(path.LastIndexOf('/') + 1)..] : $"Material {Index}");
+
     public BufferAllocation? Allocation { get; internal set; } // set when added to the material data buffer
     public bool IsVisible { get; internal set; } = isVisible;
 
@@ -22,6 +38,8 @@ public class MaterialSection(uint index, bool isVisible = true)
             if (field == value) return;
 
             field = value;
+            _path = null;
+            _name = null;
             Override = null;
             if (field != null) _onMaterialDataContainerSet?.Invoke(this);
         }

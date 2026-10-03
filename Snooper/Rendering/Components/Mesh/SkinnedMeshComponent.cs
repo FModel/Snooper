@@ -3,11 +3,14 @@ using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Mesh;
 
@@ -19,6 +22,34 @@ public abstract class SkinnedMeshComponent : MeshComponent
     private float[]? _morphWeights;
     public float[] MorphWeights => _morphWeights ??= new float[Descriptor.Morphs?.Count ?? 0];
     internal BufferAllocation? _morphWeightAllocation;
+
+    // a bone or a socket, never both
+    public int SelectedBone { get; set { field = value; if (value >= 0) SelectedSocket = -1; } } = -1;
+    public int SelectedSocket { get; set { field = value; if (value >= 0) SelectedBone = -1; } } = -1;
+
+    public void MoveBone(int index, Matrix4x4 matrix)
+    {
+        if (Descriptor.Skeleton is not { } skeleton) return;
+
+        skeleton.MoveBone(index, matrix);
+        MarkDirty(DirtyFlags.Animation);
+    }
+
+    public void ResetBone(int index)
+    {
+        if (Descriptor.Skeleton is not { } skeleton) return;
+
+        skeleton.ResetBone(index);
+        MarkDirty(DirtyFlags.Animation);
+    }
+
+    public void ResetBones()
+    {
+        if (Descriptor.Skeleton is not { } skeleton) return;
+
+        skeleton.ResetAllBones();
+        MarkDirty(DirtyFlags.Animation);
+    }
 
     protected SkinnedMeshComponent(SkinnedMeshComponent other) : base(other)
     {
@@ -314,6 +345,57 @@ public abstract class SkinnedMeshComponent : MeshComponent
         private readonly record struct SkeletonEdge(uint Head, uint Tail, Vector3 Origin, Vector3 Direction, float Length)
         {
             public Vector3 At(float t) => Origin + Direction * (Length * t);
+        }
+    }
+
+    private const string MorphsLabel = "Morph Targets";
+    private HeaderButtons MorphsButtons => field ??= new HeaderButtons(MorphsLabel)
+        .Add(Settings.BarsProgressIcon, "Morph Editor", () => WindowRequests.Request(Settings.MorphEditorWindow));
+
+    private const string SkeletonLabel = "Skeleton";
+    private HeaderButtons SkeletonButtons => field ??= new HeaderButtons(SkeletonLabel)
+        .Add(Settings.BoneIcon, "Skeleton Tree", () => WindowRequests.Request(Settings.SkeletonWindow))
+        .Add(Settings.CopyIcon, "Copy Path", () => ImGui.SetClipboardText(Descriptor.Skeleton?.Path));
+
+    public override void DrawControls()
+    {
+        base.DrawControls();
+        DrawSkeleton();
+        DrawMorphs();
+
+        void DrawSkeleton()
+        {
+            if (Descriptor.Skeleton is not { } skeleton) return;
+
+            var open = ImGui.CollapsingHeader(SkeletonLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+            SkeletonButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
+            if (!open) return;
+
+            EditorUI.PropertyValueTable(SkeletonLabel, () =>
+            {
+                EditorUI.Text("Name", skeleton.Name ?? Settings.NoName);
+                EditorUI.Text("Bones", $"{skeleton.BoneCount}");
+                EditorUI.Text("Sockets", $"{Descriptor.Sockets.Length}");
+            });
+        }
+
+        void DrawMorphs()
+        {
+            if (Descriptor.Morphs is not { Count: > 0 } morphs) return;
+
+            var open = ImGui.CollapsingHeader(MorphsLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+            MorphsButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
+            if (!open) return;
+
+            var lod = DisplayedLod;
+            var deltas = morphs.Lods[lod];
+            var vertexCount = Descriptor.Lods[lod].VertexCount;
+
+            EditorUI.PropertyValueTable(MorphsLabel, () =>
+            {
+                EditorUI.Text("Targets", $"{deltas.TargetCount} of {morphs.Count} affect LOD {lod}");
+                EditorUI.Text("Vertices", $"{deltas.VertexCount} of {vertexCount} can move ({deltas.VertexCount.GetReadableRatio((int) vertexCount)})");
+            });
         }
     }
 

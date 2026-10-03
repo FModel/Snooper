@@ -235,6 +235,9 @@ public abstract class ImGuiManager : SceneManager
             if (Window.IsKeyPressed(Keys.F10))
                 _show = !_show;
 
+            if (Window.IsKeyPressed(Keys.Escape) && !ImGui.GetIO().WantTextInput && !ImGui.IsPopupOpen(string.Empty, ImGuiPopupFlags.AnyPopup))
+                Window.Close();
+
             if (_show)
             {
                 _controller.Update(Window, delta);

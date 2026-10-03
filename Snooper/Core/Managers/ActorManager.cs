@@ -22,7 +22,6 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
 
     public uint FragmentColor = FragmentColorMode.Disabled;
     public readonly WireframeOptions Wireframe = new();
-    public bool EditTransforms;
 
     public int ActorCount { get; private set; }
     public uint Revision { get; private set; }

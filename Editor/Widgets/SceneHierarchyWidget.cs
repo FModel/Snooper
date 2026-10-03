@@ -8,6 +8,7 @@ using Snooper;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Editor.Widgets;
 
@@ -17,7 +18,6 @@ public class SceneHierarchyWidget : PanelWidget
     public override PanelGroup Group => PanelGroup.Editor;
 
     private const string SearchIcon      = "\uf002";
-    private const string CollapseAllIcon = "\uf422";
 
     private uint _lastRevision;
 
@@ -59,25 +59,20 @@ public class SceneHierarchyWidget : PanelWidget
     private void DrawSearchBar()
     {
         var style = ImGui.GetStyle();
-        var addBtnWidth = ImGui.CalcTextSize(Settings.AddIcon).X + style.FramePadding.X * 2;
-        var collapseBtnWidth = ImGui.CalcTextSize(CollapseAllIcon).X + style.FramePadding.X * 2;
-        var inputWidth = ImGui.GetContentRegionAvail().X - addBtnWidth - collapseBtnWidth - style.ItemSpacing.X * 2;
 
-        ImGui.SetNextItemWidth(inputWidth);
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - (ImGui.GetFrameHeight() + style.ItemInnerSpacing.X) * 2f);
         if (ImGui.InputTextWithHint("##ActorFilter", $"{Settings.MagnifyingGlassIcon}  Filter Actors", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
         {
             _dirty = true;
         }
-        ImGui.SameLine();
 
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, style.ItemSpacing with { X = 0 });
-        if (ImGui.Button(Settings.AddIcon))
+        if (Button(Settings.PlusIcon, "Add Actor"))
         {
             _newActorParent = null;
             _pendingAddModal = true;
         }
-        ImGui.SameLine();
-        if (ImGui.Button(CollapseAllIcon))
+
+        if (Button(Settings.DownLeftAndUpRightToCenterIcon, "Collapse All"))
         {
             foreach (var a in _flatNodes)
             {
@@ -85,7 +80,15 @@ public class SceneHierarchyWidget : PanelWidget
             }
             _dirty = true;
         }
-        ImGui.PopStyleVar();
+
+        bool Button(string icon, string tooltip)
+        {
+            ImGui.SameLine(0, style.ItemInnerSpacing.X);
+            var clicked = ImGui.Button(icon, new Vector2(ImGui.GetFrameHeight()));
+            if (ImGui.IsItemHovered()) EditorUI.Tooltip(tooltip);
+
+            return clicked;
+        }
     }
 
     private void DrawClippedTree(Actor? actor)

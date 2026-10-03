@@ -377,7 +377,7 @@ public class SpatialComponent : ActorComponent
     }
 
     private const string HeaderLabel = "Transform";
-    private bool IsEditable => Actor?.ActorManager?.EditTransforms == true;
+    public bool IsEditable { get; private set; }
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
         .Add(
             () => Settings.ArrowRotateLeftIcon,
@@ -385,12 +385,6 @@ public class SpatialComponent : ActorComponent
             () => ResetLocalTransform(_instanceIndex),
             () => IsEditable && IsLocalTransformDirty(_instanceIndex),
             () => IsLocalTransformDirty(_instanceIndex) ? Settings.OrangeColor : null
-        )
-        .Add(
-            () => IsEditable ? Settings.LockOpenIcon : Settings.LockIcon,
-            () => IsEditable ? "Edit Mode" : "Read Only",
-            () => Actor?.ActorManager?.EditTransforms = !IsEditable,
-            () => Actor?.ActorManager != null
         );
 
     private PropertyToggleButton[] InstanceNavButtons => field ??= [
@@ -437,10 +431,10 @@ public class SpatialComponent : ActorComponent
     {
         base.DrawControls();
 
-        var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);
+        IsEditable = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.AllowOverlap);
         HeaderButtons.Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
-        if (!open) return;
+        if (!IsEditable) return;
 
         EditorUI.PropertyValueTable(HeaderLabel, () =>
         {
@@ -467,8 +461,6 @@ public class SpatialComponent : ActorComponent
                 }
             }
 
-            ImGui.BeginDisabled(!IsEditable);
-
             var edited  = false;
             var t = GetLocalTransform(_instanceIndex);
 
@@ -482,8 +474,6 @@ public class SpatialComponent : ActorComponent
             edited |= EditorUI.DragAxes("Scale", ref t.Scale, _uniformScale, out _, 0.01f, 0.0001f);
 
             if (isPivot) DrawAttachmentControls();
-
-            ImGui.EndDisabled();
 
             if (edited) SetLocalTransform(t, _instanceIndex);
         });

@@ -20,6 +20,9 @@ struct PerMaterialData
     // DiffuseColor: 3 floats per layer (RGB) * 4 layers = 12 floats
     float Roughness[8];
     float DiffuseColor[12];
+
+    float Opacity;
+    uint Scalars;
 };
 
 layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
@@ -89,11 +92,23 @@ vec3 SampleLayerSpecular(PerMaterialData materialData, uint layer, vec2 uv)
         vec3 spec = texture(TO_SAMPLER(materialData.Specular[layer]), uv).rgb;
         vec2 roughness = GetLayerRoughness(materialData, layer);
         spec.b = mix(roughness.x, roughness.y, spec.b);
+
+        // LayerTextureFlags bits 12 and up, 3 per layer: the channels this texture does not have (specular, metallic,
+        // roughness), the material's own values stand in for those
+        uint missing = (materialData.LayerTextureFlags >> (12u + layer * 3u)) & 7u;
+        if (missing != 0u)
+        {
+            vec2 scalars = unpackUnorm4x8(materialData.Scalars).xy;
+            if ((missing & 1u) != 0u) spec.r = scalars.x;
+            if ((missing & 2u) != 0u) spec.g = scalars.y;
+            if ((missing & 4u) != 0u) spec.b = roughness.y;
+        }
+
         return spec;
     }
 
     vec2 roughness = GetLayerRoughness(materialData, layer);
-    return vec3(0.5, 0.0, roughness.y);
+    return vec3(unpackUnorm4x8(materialData.Scalars).xy, roughness.y);
 }
 
 // Sample all material properties for a layer

@@ -49,20 +49,27 @@ public sealed class MorphDescriptor
     private static MorphLodDeltas Build(List<UMorphTarget> morphTargets, uint lod, uint vertexCount)
     {
         var offsets = new uint[vertexCount + 1];
+        var targets = 0;
         foreach (var morphTarget in morphTargets)
         {
             var models = morphTarget.MorphLODModels;
             if (lod >= models.Length) continue;
 
+            var moves = false;
             foreach (var vertex in models[lod].Vertices)
             {
                 if (vertex.SourceIdx >= vertexCount) continue;
                 offsets[vertex.SourceIdx + 1]++;
+                moves = true;
             }
+
+            if (moves) targets++;
         }
 
+        var vertices = 0;
         for (var i = 1; i < offsets.Length; i++)
         {
+            if (offsets[i] != 0) vertices++;
             offsets[i] += offsets[i - 1];
         }
 
@@ -84,14 +91,16 @@ public sealed class MorphDescriptor
             }
         }
 
-        return new MorphLodDeltas(deltas, offsets);
+        return new MorphLodDeltas(deltas, offsets, targets, vertices);
     }
 }
 
-public readonly struct MorphLodDeltas(MorphDelta[] deltas, uint[] offsets)
+public readonly struct MorphLodDeltas(MorphDelta[] deltas, uint[] offsets, int targetCount = 0, int vertexCount = 0)
 {
     public readonly MorphDelta[] Deltas = deltas;
     public readonly uint[] Offsets = offsets;
+    public readonly int TargetCount = targetCount; // morphs that move at least one vertex of this lod
+    public readonly int VertexCount = vertexCount; // vertices at least one morph moves
 
     public bool IsEmpty => Deltas.Length == 0;
 }

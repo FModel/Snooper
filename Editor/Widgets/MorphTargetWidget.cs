@@ -135,6 +135,7 @@ public class MorphTargetWidget : PanelWidget
                     }
                 }
                 clipper.End();
+                clipper.Destroy();
             }
         }
         ImGui.EndChild();

@@ -86,16 +86,13 @@ public static class Settings
     public const string AngleRightIcon = "\uf105";
     public const string RightLeftIcon = "\uf362";
     public const string DrawPolygonIcon = "\uf5ee";
-    public const string LockIcon = "\uf023";
-    public const string LockOpenIcon = "\uf3c1";
     public const string MapPinIcon = "\uf276";
     public const string TurnUpIcon = "\uf3bf";
     public const string LinkIcon = "\uf0c1";
     public const string LinkSlashIcon = "\uf127";
-    public const string PenToSquareIcon = "\uf044";
     public const string ArrowsUpDownLeftRightIcon = "\uf047";
     public const string RotateIcon = "\uf2f1";
-    public const string MinimizeIcon = "\uf424";
+    public const string RulerCombinedIcon = "\uf546";
     public const string LightbulbIcon = "\uf0eb";
     public const string CircleHalfStrokeIcon = "\uf042";
     public const string ChalkboardIcon = "\uf51b";
@@ -105,6 +102,11 @@ public static class Settings
     public const string MicrochipIcon = "\uf2db";
     public const string ToggleOnIcon = "\uf205";
     public const string ToggleOffIcon = "\uf204";
+    public const string PlugIcon = "\uf1e6";
+    public const string BoneIcon = "\uf5d7";
+    public const string UpRightAndDownLeftFromCenterIcon = "\uf424";
+    public const string DownLeftAndUpRightToCenterIcon = "\uf422";
+    public const string PlusIcon = "\uf067";
 
     public const string ViewportWindow = $"{CubeIcon}  Viewport";
     public const string SceneHierarchyWindow = $"{RoadIcon}  Hierarchy";
@@ -114,6 +116,7 @@ public static class Settings
     public const string SettingsWindow = $"{GearIcon}  Settings";
     public const string ContentWindow = $"{BoxArchiveIcon}  Content";
     public const string MorphEditorWindow = $"{BarsProgressIcon}  Morph Editor";
+    public const string SkeletonWindow = $"{BoneIcon}  Skeleton Tree";
     public const string MaterialEditorWindow = $"{PaletteIcon}  Material Editor";
     public const string TextureInspectorWindow = $"{ImageIcon}  Texture Inspector";
     public const string MemoryWindow = $"{DatabaseIcon}  Memory";

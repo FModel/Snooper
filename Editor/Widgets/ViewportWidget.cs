@@ -28,7 +28,6 @@ public class ViewportWidget : PanelWidget
 
     private readonly ViewportGrid _grid = new();
     private OPERATION _gizmoOperation = OPERATION.TRANSLATE;
-    private bool _edit;
 
     protected override void PushWindowStyle() => ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
     protected override void PopWindowStyle() => ImGui.PopStyleVar();
@@ -72,15 +71,14 @@ public class ViewportWidget : PanelWidget
         {
             captured |= component switch
             {
-                SplineMeshComponent spline when _edit => editor._splineOverlay.Draw(context, spline),
-                MeshComponent mesh when _edit => editor._skeletonOverlay.Draw(context, mesh),
+                MeshComponent mesh when editor.IsSkeletonTreeOpen => editor._skeletonEditor.Draw(context, mesh),
                 DirectionalLightComponent light => editor._sunOverlay.Draw(context, light),
-                SpatialComponent spatial when editor.EditTransforms => DrawGizmo(context, spatial),
+                SpatialComponent { IsEditable: true } spatial => DrawGizmo(context, spatial),
                 _ => false
             };
         }
 
-        using (Profiler.Cpu("Toolbar")) DrawToolbar(editor, contentPos);
+        using (Profiler.Cpu("Toolbar")) DrawToolbar(editor, contentPos, component is SpatialComponent { IsEditable: true } || editor.IsSkeletonTreeOpen);
         using (Profiler.Cpu("Cards")) DrawCards(editor, contentPos, contentSize);
 
         using (Profiler.Cpu("Footer")) DrawFooterOverlay(contentPos, contentSize);
@@ -110,15 +108,12 @@ public class ViewportWidget : PanelWidget
         }
     }
 
-    private void DrawToolbar(EditorManager editor, Vector2 contentPos)
+    private void DrawToolbar(EditorManager editor, Vector2 contentPos, bool gizmo)
     {
         var style = ImGui.GetStyle();
         ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, Padding));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(style.ItemSpacing.X * 0.25f));
 
-        if (Button(Settings.PenToSquareIcon,_edit, "Edit")) _edit = !_edit;
-
-        Separator();
         var lights = editor.GetSystem<ClusteredLightSystem>();
         if (Button(Settings.LightbulbIcon,lights?.UseSceneLights == true, "Lighting", lights != null)) lights!.UseSceneLights = !lights.UseSceneLights;
         ImGui.SameLine();
@@ -138,14 +133,14 @@ public class ViewportWidget : PanelWidget
         ImGui.SameLine();
         CardButton(Settings.MicrochipIcon, editor._hardwareOverlay);
 
-        if (_edit || editor.EditTransforms)
+        if (gizmo)
         {
             ImGui.SetCursorScreenPos(new Vector2(contentPos.X + Padding, ImGui.GetCursorScreenPos().Y));
             if (Button(Settings.ArrowsUpDownLeftRightIcon,_gizmoOperation == OPERATION.TRANSLATE, "Translate")) _gizmoOperation = OPERATION.TRANSLATE;
             ImGui.SameLine();
             if (Button(Settings.RotateIcon,_gizmoOperation == OPERATION.ROTATE, "Rotate")) _gizmoOperation = OPERATION.ROTATE;
             ImGui.SameLine();
-            if (Button(Settings.MinimizeIcon,_gizmoOperation == OPERATION.SCALE, "Scale")) _gizmoOperation = OPERATION.SCALE;
+            if (Button(Settings.RulerCombinedIcon,_gizmoOperation == OPERATION.SCALE, "Scale")) _gizmoOperation = OPERATION.SCALE;
         }
 
         ImGui.PopStyleVar();

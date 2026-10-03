@@ -32,14 +32,21 @@ public sealed partial class MaterialNode
     private readonly Lazy<MaterialNode?>? _parent;
     public MaterialNode? Parent => Bridge.Options.MaterialDepth is not EMaterialDepth.TopLayerOnly && _parent?.Value is { } parent && parent != this ? parent : null;
 
+    private const EBlendMode DefaultBlendMode = EBlendMode.BLEND_Opaque;
     private readonly EBlendMode? _blendMode;
-    public EBlendMode BlendMode => _blendMode ?? Parent?.BlendMode ?? EBlendMode.BLEND_Opaque;
+    public EBlendMode BlendMode => _blendMode ?? Parent?.BlendMode ?? DefaultBlendMode;
 
+    private const EMaterialShadingModel DefaultShadingModel = EMaterialShadingModel.MSM_DefaultLit;
     private readonly EMaterialShadingModel? _shadingModel;
-    public EMaterialShadingModel ShadingModel => _shadingModel ?? Parent?.ShadingModel ?? EMaterialShadingModel.MSM_DefaultLit;
+    public EMaterialShadingModel ShadingModel => _shadingModel ?? Parent?.ShadingModel ?? DefaultShadingModel;
 
+    private const bool DefaultTwoSided = false;
     private readonly bool? _twoSided;
-    public bool IsTwoSided => _twoSided ?? Parent?.IsTwoSided ?? false;
+    public bool TwoSided => _twoSided ?? Parent?.TwoSided ?? DefaultTwoSided;
+
+    private const float DefaultOpacityMaskClipValue = 0.3333f;
+    private readonly float? _opacityMaskClipValue;
+    public float OpacityMaskClipValue => _opacityMaskClipValue ?? Parent?.OpacityMaskClipValue ?? DefaultOpacityMaskClipValue;
 
     private readonly Dictionary<string, TextureParameter> _textures = [];
     private readonly List<TextureParameter> _referencedTextures = [];
@@ -61,12 +68,14 @@ public sealed partial class MaterialNode
 
                 if (instance.GetOrDefault<FStructFallback?>("BasePropertyOverrides") is { } overrides)
                 {
-                    if (overrides.GetOrDefault("bOverride_BlendMode", false))
-                        _blendMode = overrides.GetOrDefault("BlendMode", EBlendMode.BLEND_Opaque);
-                    if (overrides.GetOrDefault("bOverride_ShadingModel", false))
-                        _shadingModel = overrides.GetOrDefault("ShadingModel", EMaterialShadingModel.MSM_DefaultLit);
-                    if (overrides.GetOrDefault("bOverride_TwoSided", false))
-                        _twoSided = overrides.GetOrDefault("TwoSided", false);
+                    if (overrides.GetOrDefault($"bOverride_{nameof(BlendMode)}", false))
+                        _blendMode = overrides.GetOrDefault(nameof(BlendMode), DefaultBlendMode);
+                    if (overrides.GetOrDefault($"bOverride_{nameof(ShadingModel)}", false))
+                        _shadingModel = overrides.GetOrDefault(nameof(ShadingModel), DefaultShadingModel);
+                    if (overrides.GetOrDefault($"bOverride_{nameof(TwoSided)}", false))
+                        _twoSided = overrides.GetOrDefault(nameof(TwoSided), DefaultTwoSided);
+                    if (overrides.GetOrDefault($"bOverride_{nameof(OpacityMaskClipValue)}", false))
+                        _opacityMaskClipValue = overrides.GetOrDefault(nameof(OpacityMaskClipValue), DefaultOpacityMaskClipValue);
                 }
 
                 foreach (var parameter in instance.StaticParameters?.StaticSwitchParameters ?? [])
@@ -80,9 +89,10 @@ public sealed partial class MaterialNode
             }
             case UMaterial root:
             {
-                _blendMode = root.GetOrDefault("BlendMode", EBlendMode.BLEND_Opaque);
-                _shadingModel = root.GetOrDefault("ShadingModel", EMaterialShadingModel.MSM_DefaultLit);
-                _twoSided = root.GetOrDefault("TwoSided", false);
+                _blendMode = root.GetOrDefault(nameof(BlendMode), DefaultBlendMode);
+                _shadingModel = root.GetOrDefault(nameof(ShadingModel), DefaultShadingModel);
+                _twoSided = root.GetOrDefault(nameof(TwoSided), DefaultTwoSided);
+                _opacityMaskClipValue = root.GetOrDefault(nameof(OpacityMaskClipValue), DefaultOpacityMaskClipValue);
 
                 for (var i = root.ReferencedTextures.Count - 1; i >= 0; i--)
                 {
@@ -407,8 +417,9 @@ public sealed partial class MaterialNode
                 ImGui.TableNextColumn();
                 if (ImGui.Selectable($"{name}##{title}", false, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
                 {
-                    ImGui.SetClipboardText(entry.Path ?? entry.Value);
-                    Notifications.Push("material.copy", Settings.CopyIcon, "value copied");
+                    var onName = ImGui.TableGetHoveredColumn() == 0;
+                    ImGui.SetClipboardText(onName ? name : entry.Path ?? entry.Value);
+                    Notifications.Push("material.copy", Settings.CopyIcon, onName ? "name copied" : "value copied");
                 }
 
                 var replaced = writers.Skip(1).Where(x => x.Entry.Display != entry.Display).DistinctBy(x => x.Entry.Display).ToList();

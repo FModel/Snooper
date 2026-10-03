@@ -79,13 +79,13 @@ Surface ResolveSurface(PerMaterialData material)
         LayerData layer = SampleLayer(material, vTexLayer, fs_in.vTexCoords);
 
         uint blendMode = GetBlendMode(material);
-        if (blendMode == 1u && layer.diffuse.a < 0.3333) // masked
+        if (blendMode == 1u && layer.diffuse.a < material.Opacity) // masked
         {
             surface.Discard = true;
         }
         else if (blendMode == 2u) // translucent
         {
-            surface.Opacity = layer.diffuse.a;
+            surface.Opacity = material.Opacity > 0.0 ? material.Opacity : layer.diffuse.a;
         }
         else if (blendMode == 3u) // additive
         {

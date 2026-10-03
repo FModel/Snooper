@@ -16,6 +16,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
 {
     private readonly MainMenuBarWidget _mainMenuBar = new();
     private static readonly MaterialEditorWidget _materialEditor = new();
+    private static readonly SkeletonTreeWidget _skeletonTree = new();
 
     internal IReadOnlyList<IPanelWidget> Panels { get; } =
     [
@@ -28,6 +29,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         new CacheWidget(),
         // new ContentWidget(),
         new MorphTargetWidget(),
+        _skeletonTree,
         _materialEditor,
         new TextureInspectorWidget(),
     ];
@@ -37,11 +39,11 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     internal readonly HardwareOverlayWidget _hardwareOverlay = new();
     internal readonly NotificationOverlayWidget _notificationOverlay = new();
     internal readonly JsonViewerWidget _jsonViewer = new();
-    internal readonly SkeletonOverlayWidget _skeletonOverlay = new();
-    internal readonly SplineOverlayWidget _splineOverlay = new();
+    internal readonly SkeletonEditorWidget _skeletonEditor = new();
     internal readonly SunOverlayWidget _sunOverlay = new();
 
     internal IReadOnlyList<IViewportCard> Cards => field ??= [_profilerOverlay, _hardwareOverlay];
+    internal bool IsSkeletonTreeOpen => _skeletonTree.IsOpen;
 
     public override void Update(float delta)
     {
@@ -91,8 +93,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
 
     protected override void OnSelectionChanged(Actor? actor, ActorComponent? component)
     {
-        _skeletonOverlay.Reset();
-        _splineOverlay.Reset();
+        _skeletonEditor.Reset();
         _sunOverlay.Reset();
         _materialEditor.Reset();
     }

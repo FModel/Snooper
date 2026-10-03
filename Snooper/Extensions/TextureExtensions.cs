@@ -1,11 +1,15 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Texture;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Textures;
+using Snooper.Rendering.Cache;
 
 namespace Snooper.Extensions;
 
 public static class TextureExtensions
 {
+    /// <summary>
+    /// output must be R: Specular, G: Metallic, B: Roughness
+    /// </summary>
     public static void SwizzlePerGame(this Texture texture, string game)
     {
         texture.SwizzleMask = game switch
@@ -13,7 +17,7 @@ public static class TextureExtensions
             // R: Whatever (AO / S / E / ...)
             // G: Roughness
             // B: Metallic
-            "GAMEFACE" or "HK_PROJECT" or "COSMICSHAKE" or "PHOENIX" or "ATOMICHEART" or "MULTIVERSUS" or "BODYCAM" or "SANDFALL" =>
+            "GAMEFACE" or "HK_PROJECT" or "COSMICSHAKE" or "PHOENIX" or "ATOMICHEART" or "MULTIVERSUS" or "BODYCAM" or "SANDFALL" or "MARVEL" =>
             [
                 (int)PixelFormat.Red, (int)PixelFormat.Blue, (int)PixelFormat.Green, (int)PixelFormat.Alpha
             ],
@@ -33,6 +37,43 @@ public static class TextureExtensions
             ],
             _ => texture.SwizzleMask
         };
+    }
+
+    /// <summary>
+    /// output must be R: Specular, G: Metallic, B: Roughness
+    /// </summary>
+    public static bool SwizzlePerSuffix(this Texture texture, string name, out EMaskChannels missing)
+    {
+        const string channels = "AOMRSEH"; // occlusion (A or O), metallic, roughness, specular, emissive, height
+        missing = EMaskChannels.None;
+
+        var suffix = name.AsSpan().TrimEnd("0123456789").TrimEnd('_'); // exclude _ORM2, ORM_01
+        suffix = suffix[(suffix.LastIndexOf('_') + 1)..];
+        if (suffix.Length is not (3 or 4)) return false;
+
+        Span<int> sources = [(int) PixelFormat.Red, (int) PixelFormat.Green, (int) PixelFormat.Blue, (int) PixelFormat.Alpha];
+        int specular = -1, metallic = -1, roughness = -1;
+        for (var i = 0; i < suffix.Length; i++)
+        {
+            var letter = char.ToUpperInvariant(suffix[i]);
+            if (!channels.Contains(letter)) return false;
+
+            switch (letter)
+            {
+                case 'S' when specular < 0: specular = i; break;
+                case 'M' when metallic < 0: metallic = i; break;
+                case 'R' when roughness < 0: roughness = i; break;
+                case 'S' or 'M' or 'R': return false; // the same letter twice is a word, not a layout
+            }
+        }
+
+        if (specular < 0 && metallic < 0 && roughness < 0) return false;
+        if (specular < 0) missing |= EMaskChannels.Specular;
+        if (metallic < 0) missing |= EMaskChannels.Metallic;
+        if (roughness < 0) missing |= EMaskChannels.Roughness;
+
+        texture.SwizzleMask = [sources[Math.Max(specular, 0)], sources[Math.Max(metallic, 0)], sources[Math.Max(roughness, 0)], (int) PixelFormat.Alpha];
+        return true;
     }
 
     public static ITextureFormatInfo GetTextureFormat(this EPixelFormat format, bool srgb)

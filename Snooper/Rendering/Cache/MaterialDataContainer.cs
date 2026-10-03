@@ -16,11 +16,21 @@ public enum MaterialTextureSlot
     Specular
 }
 
-public sealed class MaterialLayer(Texture? diffuse, Texture? normal, Texture? specular, Vector2 roughness, Vector3 diffuseColor)
+[Flags]
+public enum EMaskChannels : uint
+{
+    None = 0,
+    Specular = 1 << 0,
+    Metallic = 1 << 1,
+    Roughness = 1 << 2
+}
+
+public sealed class MaterialLayer(Texture? diffuse, Texture? normal, Texture? specular, Vector2 roughness, Vector3 diffuseColor, EMaskChannels missingChannels)
 {
     public Texture? Diffuse { get; private set; } = diffuse;
     public Texture? Normal { get; private set; } = normal;
     public Texture? Specular { get; private set; } = specular;
+    public EMaskChannels MissingChannels { get; private set; } = missingChannels; // what the specular texture is known not to carry, scalars stand in for those
 
     public Vector2 Roughness { get; internal set; } = roughness;
     public Vector3 DiffuseColor { get; internal set; } = diffuseColor;
@@ -40,13 +50,16 @@ public sealed class MaterialLayer(Texture? diffuse, Texture? normal, Texture? sp
             {
                 case MaterialTextureSlot.Diffuse: Diffuse = value; break;
                 case MaterialTextureSlot.Normal: Normal = value; break;
-                case MaterialTextureSlot.Specular: Specular = value; break;
+                case MaterialTextureSlot.Specular:
+                    Specular = value;
+                    MissingChannels = EMaskChannels.None;
+                    break;
                 default: throw new ArgumentOutOfRangeException(nameof(slot));
             }
         }
     }
 
-    public MaterialLayer Clone() => new(Diffuse, Normal, Specular, Roughness, DiffuseColor);
+    public MaterialLayer Clone() => new(Diffuse, Normal, Specular, Roughness, DiffuseColor, MissingChannels);
 }
 
 public sealed class MaterialDataContainer : IMaterialDataContainer
@@ -57,8 +70,11 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
     private readonly BindlessTexture?[] _speculars;
 
     public string Name { get; }
-    public EBlendMode BlendMode { get; internal set; }
-    public EMaterialShadingModel ShadingModel { get; internal set; }
+    public EBlendMode BlendMode { get; }
+    public EMaterialShadingModel ShadingModel { get; }
+    public float Opacity { get; internal set; }
+    public float Specular { get; internal set; }
+    public float Metallic { get; internal set; }
 
     public IReadOnlyList<MaterialLayer> Layers => _layers;
     public int LayerCount => _layers.Length;
@@ -70,11 +86,14 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
     public uint Version { get; private set; }
     public bool IsGpuDataReady => Raw is { IsReady: true };
 
-    internal MaterialDataContainer(string name, MaterialLayer[] layers, EBlendMode blendMode, EMaterialShadingModel shadingModel)
+    internal MaterialDataContainer(string name, MaterialLayer[] layers, EBlendMode blendMode, EMaterialShadingModel shadingModel, float opacity, float specular, float metallic)
     {
         Name = name;
         BlendMode = blendMode;
         ShadingModel = shadingModel;
+        Opacity = opacity;
+        Specular = specular;
+        Metallic = metallic;
 
         _layers = layers;
         _diffuses = new BindlessTexture?[layers.Length];
@@ -87,6 +106,9 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
         Name = other.Name;
         BlendMode = other.BlendMode;
         ShadingModel = other.ShadingModel;
+        Opacity = other.Opacity;
+        Specular = other.Specular;
+        Metallic = other.Metallic;
 
         _layers = new MaterialLayer[other._layers.Length];
         for (var i = 0; i < _layers.Length; i++)
@@ -163,6 +185,9 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
             if (_speculars[i] != null) layerFlags |= 4u; // HasSpecular
 
             layerTextureFlags |= layerFlags << (i * 3);
+
+            // bits 12 and up, 3 per layer again: the channels its specular texture does not have
+            if (_speculars[i] != null) layerTextureFlags |= (uint) _layers[i].MissingChannels << (12 + i * 3);
         }
 
         uint globalFlags = (uint) BlendMode & 0xF;
@@ -173,7 +198,9 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
             IsReady = true,
             LayerCount = (uint) _layers.Length,
             GlobalFlags = globalFlags,
-            LayerTextureFlags = layerTextureFlags
+            LayerTextureFlags = layerTextureFlags,
+            Opacity = Opacity,
+            Scalars = Pack(Specular) | Pack(Metallic) << 8
         };
 
         for (var i = 0; i < _layers.Length; i++)
@@ -187,6 +214,8 @@ public sealed class MaterialDataContainer : IMaterialDataContainer
         }
 
         Raw = data;
+
+        static uint Pack(float value) => (uint) MathF.Round(Math.Clamp(value, 0f, 1f) * 255f);
     }
 
     public void DrawControls()

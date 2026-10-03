@@ -98,7 +98,7 @@ public class HardwareOverlayWidget : IViewportCard
             new Row("Vendor", string.Empty, device.Vendor),
             new Row("OpenGL", string.Empty, renderer.Name),
             new Row("GLSL", string.Empty, device.ShadingLanguage),
-        ]);
+        ], ImGuiTreeNodeFlags.DefaultOpen);
 
         Node("Limits", _limits ??=
         [
@@ -122,9 +122,9 @@ public class HardwareOverlayWidget : IViewportCard
 
         DrawExtensions(support);
 
-        void Node(string title, Row[] rows)
+        void Node(string title, Row[] rows, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
         {
-            if (!ImGui.TreeNodeEx(title, ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.NoTreePushOnOpen)) return;
+            if (!ImGui.TreeNodeEx(title, ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.NoTreePushOnOpen | flags)) return;
 
             var start = ImGui.GetCursorScreenPos();
             var end = DrawRows(drawList, rows, start, width);

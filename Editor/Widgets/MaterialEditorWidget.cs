@@ -6,7 +6,6 @@ using Snooper;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
-using Snooper.Extensions;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
@@ -26,11 +25,6 @@ public class MaterialEditorWidget : PanelWidget
     public override PanelGroup Group => PanelGroup.Tools;
 
     public override bool IsOpen { get; set; }
-
-    private static readonly EBlendMode[] _blendModes = Enum.GetValues<EBlendMode>().Distinct().ToArray();
-    private static readonly EMaterialShadingModel[] _shadingModels = Enum.GetValues<EMaterialShadingModel>().Distinct().ToArray();
-    private static readonly string[] _blendModeLabels = _blendModes.Select(static mode => mode.GetDescription()).ToArray();
-    private static readonly string[] _shadingModelLabels = _shadingModels.Select(static mode => mode.GetDescription()).ToArray();
 
     private readonly Dictionary<int, HeaderButtons> _headerButtons = [];
 
@@ -246,23 +240,38 @@ public class MaterialEditorWidget : PanelWidget
     {
         EditorUI.PropertyValueTable("MaterialGlobals", () =>
         {
-            ImGui.BeginDisabled();
-            EditorUI.Property("Blend Mode");
-            var blendIndex = (uint) Math.Max(0, Array.IndexOf(_blendModes, material.BlendMode));
-            if (EditorUI.LabelCombo("##BlendMode", ref blendIndex, _blendModeLabels))
-            {
-                Edit(section, edited => edited.BlendMode = _blendModes[blendIndex]);
-            }
-            EditorUI.Property("Shading Model");
-            var shadingIndex = (uint) Math.Max(0, Array.IndexOf(_shadingModels, material.ShadingModel));
-            if (EditorUI.LabelCombo("##ShadingModel", ref shadingIndex, _shadingModelLabels))
-            {
-                Edit(section, edited => edited.ShadingModel = _shadingModels[shadingIndex]);
-            }
-            ImGui.EndDisabled();
-
             EditorUI.Text("Translucent", material.IsTranslucent ? "\uf00c" : "\uf00d");
             EditorUI.Text("Layers", material.LayerCount.ToString());
+
+            // one value, read as the clip threshold by a masked material and as the opacity by a translucent one
+            var opacityLabel = material.BlendMode switch
+            {
+                EBlendMode.BLEND_Masked => "Opacity Clip",
+                EBlendMode.BLEND_Translucent => "Opacity",
+                _ => null
+            };
+            if (opacityLabel != null)
+            {
+                var opacity = MathF.Max(material.Opacity, 0f);
+                if (EditorUI.SliderFloat(opacityLabel, ref opacity, 0.0f, 1.0f, "%.3f"))
+                {
+                    Edit(section, edited => edited.Opacity = opacity);
+                }
+                if (material.BlendMode is EBlendMode.BLEND_Translucent && material.Opacity <= 0f) EditorUI.Caption("From the alpha of the diffuse");
+            }
+
+            // what a layer is drawn with where it has no specular texture, or one without that channel
+            var specular = material.Specular;
+            if (EditorUI.SliderFloat("Specular", ref specular, 0.0f, 1.0f, "%.3f"))
+            {
+                Edit(section, edited => edited.Specular = specular);
+            }
+
+            var metallic = material.Metallic;
+            if (EditorUI.SliderFloat("Metallic", ref metallic, 0.0f, 1.0f, "%.3f"))
+            {
+                Edit(section, edited => edited.Metallic = metallic);
+            }
 
             EditorUI.Property("GPU Status");
             if (material.IsGpuDataReady) ImGui.TextColored(Settings.GreenColor, "Ready");

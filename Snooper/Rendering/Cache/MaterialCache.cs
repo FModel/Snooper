@@ -20,6 +20,17 @@ public static class MaterialCache
     private static readonly ConcurrentDictionary<string, Lazy<MaterialNode?>> _nodes = new();
     private static readonly ConcurrentDictionary<string, Lazy<(MaterialNode? Node, MaterialDataContainer? Container)>> _containers = new();
 
+    private const string TextureDataPrefix = "__texdata__";
+    private const string TextureDataSeparator = "|";
+
+    public static string GetPath(string key)
+    {
+        if (!key.StartsWith(TextureDataPrefix, StringComparison.Ordinal)) return key;
+
+        var end = key.IndexOf(TextureDataSeparator, TextureDataPrefix.Length, StringComparison.Ordinal);
+        return end < 0 ? key[TextureDataPrefix.Length..] : key[TextureDataPrefix.Length..end];
+    }
+
     public static string GetOrCreateKey(FPackageIndex? materialObject, uint layerCount)
     {
         if (!TryGetPath(materialObject, out var path)) return string.Empty;
@@ -44,7 +55,7 @@ public static class MaterialCache
         if (!TryGetPath(materialObject, out var path)) return string.Empty;
 
         var dataHash = string.Join("|", textureDataLayers.Select(t => t?.GetPathName() ?? "null"));
-        var key = $"__texdata__{path}__{dataHash}";
+        var key = $"{TextureDataPrefix}{path}{TextureDataSeparator}{dataHash}";
 
         var newLazy = new Lazy<(MaterialNode?, MaterialDataContainer?)>(() =>
         {
@@ -160,6 +171,7 @@ public static class MaterialCache
                 roughness.Y = roughnessMax;
 
             Texture2D? specularTex = null;
+            var missing = EMaskChannels.None;
             if (specular != null)
             {
                 specularTex = new Texture2D(specular);
@@ -172,17 +184,32 @@ public static class MaterialCache
                         (int)PixelFormat.Alpha
                     ];
                 }
-                else
+                else if (!specularTex.SwizzlePerSuffix(specular.Name, out missing))
                 {
                     specularTex.SwizzlePerGame(node.ProjectName.ToUpperInvariant());
                 }
             }
 
-            layers.Add(new MaterialLayer(diffuse != null ? new Texture2D(diffuse) : null, normal != null ? new Texture2D(normal) : null, specularTex, roughness, diffuseColor));
+            if ((specular == null || missing.HasFlag(EMaskChannels.Roughness)) && node.TryGetScalar(out var flatRoughness, "Roughness", "SpecRoughness", "SpecularRoughness", "Rough"))
+            {
+                roughness.Y = flatRoughness;
+            }
+
+            layers.Add(new MaterialLayer(diffuse != null ? new Texture2D(diffuse) : null, normal != null ? new Texture2D(normal) : null, specularTex, roughness, diffuseColor, missing));
         }
 
         var materialName = textureDataLayers != null ? $"BuildingTexture_{node.Name}" : node.Name;
-        return layers.Count == 0 ? null : new MaterialDataContainer(materialName, layers.ToArray(), node.BlendMode, node.ShadingModel);
+        return layers.Count == 0
+            ? null
+            : new MaterialDataContainer(materialName, layers.ToArray(), node.BlendMode, node.ShadingModel,
+                node.BlendMode switch
+                {
+                    EBlendMode.BLEND_Masked => node.OpacityMaskClipValue,
+                    EBlendMode.BLEND_Translucent when node.TryGetScalar(out var opacityValue, "Opacity") => opacityValue,
+                    _ => -1
+                },
+                node.TryGetScalar(out var specularValue, "Specular", "Spec") ? specularValue : 0.5f,
+                node.TryGetScalar(out var metallic, "Metallic", "Metal") ? metallic : 0f);
     }
 
     private static bool TryGetPath([NotNullWhen(true)] FPackageIndex? index, [MaybeNullWhen(false)] out string path)

@@ -69,6 +69,9 @@ public struct PerMaterialMeshData : IPerMaterialData
     // Per-layer material properties. The GLSL side must stay float[]
     public FixedArray4<Vector2> Roughness; // (min, max) per layer
     public FixedArray4<Vector3> DiffuseColor; // RGB per layer
+
+    public float Opacity; // masked: the alpha it clips below. Translucent: its opacity, negative when it has none of its own
+    public uint Scalars; // a byte each, for a layer without a specular texture: specular, metallic, two free
 }
 
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>

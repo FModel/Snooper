@@ -101,6 +101,29 @@ public class SkeletonDescriptor : IControllable
     public string GetBoneName(int index) => BoneDescriptors[index].Name;
     public int GetBoneParentIndex(int index) => BoneDescriptors[index].ParentIndex;
 
+    private List<int>[]? _boneChildren;
+    public IReadOnlyList<int> GetBoneChildren(int index)
+    {
+        return (_boneChildren ??= Collect())[index];
+
+        List<int>[] Collect()
+        {
+            var children = new List<int>[BoneCount];
+            for (var i = 0; i < children.Length; i++)
+            {
+                children[i] = [];
+            }
+
+            for (var i = 0; i < children.Length; i++)
+            {
+                var parent = BoneDescriptors[i].ParentIndex;
+                if (parent >= 0) children[parent].Add(i);
+            }
+
+            return children;
+        }
+    }
+
     public void MoveBone(int boneIndex, Matrix4x4 matrix)
     {
         var pi = BoneDescriptors[boneIndex].ParentIndex;
@@ -115,6 +138,8 @@ public class SkeletonDescriptor : IControllable
 
         RecalculateBoneMatrices(boneIndex);
     }
+
+    public bool IsBoneEdited(int boneIndex) => BoneLocalMatrices[boneIndex] != BoneDescriptors[boneIndex].BindPoseLocalMatrix;
 
     public void ResetBone(int boneIndex)
     {
@@ -187,14 +212,12 @@ public class SkeletonDescriptor : IControllable
         var isHovered = ImGui.IsItemHovered();
         var mousePos = ImGui.GetMousePos();
 
-        var pts  = new Vector2[BoneCount];
         var minX = float.MaxValue; var maxX = float.MinValue;
         var minY = float.MaxValue; var maxY = float.MinValue;
-        for (var i = 0; i < pts.Length; i++)
+        for (var i = 0; i < BoneCount; i++)
         {
             var m = BoneMatrices[i];
             var p = new Vector2(m.M41, -m.M42);
-            pts[i] = p;
 
             if (p.X < minX) minX = p.X;
             if (p.X > maxX) maxX = p.X;
@@ -210,7 +233,7 @@ public class SkeletonDescriptor : IControllable
         var cx = (minX + maxX) * 0.5f;
         var cy = (minY + maxY) * 0.5f;
 
-        Vector2 ToScreen(Vector2 p) => new(canvasPos.X + canvasSize.X * 0.5f + (p.X - cx) * fitScale, canvasPos.Y + canvasSize.Y * 0.5f + (p.Y - cy) * fitScale);
+        Vector2 ToScreen(int bone) => new(canvasPos.X + canvasSize.X * 0.5f + (BoneMatrices[bone].M41 - cx) * fitScale, canvasPos.Y + canvasSize.Y * 0.5f + (-BoneMatrices[bone].M42 - cy) * fitScale);
 
         var dl = ImGui.GetWindowDrawList();
         dl.AddRectFilled(canvasPos, canvasPos + canvasSize, 0xFF_14_14_14);
@@ -221,7 +244,7 @@ public class SkeletonDescriptor : IControllable
         {
             var pi = BoneDescriptors[i].ParentIndex;
             if (pi < 0) continue;
-            dl.AddLine(ToScreen(pts[pi]), ToScreen(pts[i]), 0xFF_50_50_50, 1f);
+            dl.AddLine(ToScreen(pi), ToScreen(i), 0xFF_50_50_50, 1f);
         }
 
         // joints + hover detection
@@ -229,7 +252,7 @@ public class SkeletonDescriptor : IControllable
         var bestDist    = 9f;
         for (var i = 0; i < BoneCount; i++)
         {
-            var sp = ToScreen(pts[i]);
+            var sp = ToScreen(i);
             var isRoot = BoneDescriptors[i].IsRoot;
             dl.AddCircleFilled(sp, isRoot ? 4.5f : 2.5f, isRoot ? 0xFF_00_AA_FF : 0xFF_80_C0_FF);
 
@@ -246,7 +269,7 @@ public class SkeletonDescriptor : IControllable
 
         if (hoveredBone >= 0)
         {
-            var sp = ToScreen(pts[hoveredBone]);
+            var sp = ToScreen(hoveredBone);
             var bone = BoneDescriptors[hoveredBone];
             dl.AddCircle(sp, 6f, 0xFF_00_FF_CC, 0, 1.5f);
 
