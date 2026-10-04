@@ -279,9 +279,9 @@ public static class EditorUI
             var labelSize = ImGui.CalcTextSize(slotLabel);
             drawList.AddText(origin + (dimensions - labelSize) * 0.5f, ImGui.GetColorU32(ImGuiCol.TextDisabled), slotLabel);
         }
-        else using (ImGuiDrawCallbacks.Instance.IsolateChannel(drawList, channel))
+        else
         {
-            drawList.AddImage(texture.GetPointer(), origin, origin + dimensions);
+            drawList.AddImage(texture.GetPointer(channel), origin, origin + dimensions);
         }
 
         drawList.AddRect(origin, origin + dimensions, ImGui.GetColorU32(ImGuiCol.Border));

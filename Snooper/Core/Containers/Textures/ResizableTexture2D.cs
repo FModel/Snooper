@@ -13,6 +13,8 @@ public class ResizableTexture2D(int width, int height,
     public GetPName PName => GetPName.TextureBinding2D;
     public int PreviousHandle { get; private set; }
 
+    protected override bool CanBeViewed => false; // its storage is not immutable
+
     public void Bind()
     {
         PreviousHandle = GL.GetInteger(PName);

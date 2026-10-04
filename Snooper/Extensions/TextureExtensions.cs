@@ -7,82 +7,101 @@ namespace Snooper.Extensions;
 
 public static class TextureExtensions
 {
-    /// <summary>
-    /// output must be R: Specular, G: Metallic, B: Roughness
-    /// </summary>
-    public static void SwizzlePerGame(this Texture texture, string game)
+    // the default swizzle layout per game, then the layouts of specific texture suffixes in that game, which win over it
+    private static readonly Dictionary<string, (string Default, (string Suffix, string Layout)[] Suffixes)> _maskLayouts = new()
     {
-        texture.SwizzleMask = game switch
-        {
-            // R: Whatever (AO / S / E / ...)
-            // G: Roughness
-            // B: Metallic
-            "GAMEFACE" or "HK_PROJECT" or "COSMICSHAKE" or "PHOENIX" or "ATOMICHEART" or "MULTIVERSUS" or "BODYCAM" or "SANDFALL" or "MARVEL" =>
-            [
-                (int)PixelFormat.Red, (int)PixelFormat.Blue, (int)PixelFormat.Green, (int)PixelFormat.Alpha
-            ],
-            // R: Metallic
-            // G: Roughness
-            // B: Whatever (AO / S / E / ...)
-            "DIVINEKNOCKOUT" or "MOONMAN" =>
-            [
-                (int)PixelFormat.Blue, (int)PixelFormat.Red, (int)PixelFormat.Green, (int)PixelFormat.Alpha
-            ],
-            // R: Roughness
-            // G: Metallic
-            // B: Whatever (AO / S / E / ...)
-            "CCFF7R" or "PJ033" =>
-            [
-                (int)PixelFormat.Blue, (int)PixelFormat.Green, (int)PixelFormat.Red, (int)PixelFormat.Alpha
-            ],
-            _ => texture.SwizzleMask
-        };
-    }
+        ["GAMEFACE"] = ("?RM",[]),
+        ["HK_PROJECT"] = ("?RM",[("LP", "MR?")]),
+        ["COSMICSHAKE"] = ("?RM",[]),
+        ["PHOENIX"] = ("?RM",[]),
+        ["ATOMICHEART"] = ("?RM",[]),
+        ["MULTIVERSUS"] = ("?RM",[]),
+        ["BODYCAM"] = ("?RM",[]),
+        ["SANDFALL"] = ("?RM",[]),
+        ["MARVEL"] = ("?RM",[]),
+        ["DIVINEKNOCKOUT"] = ("MR?",[]),
+        ["MOONMAN"] = ("MR?",[]),
+        ["CCFF7R"] = ("RM?",[]),
+        ["PJ033"] = ("RM?",[]),
+    };
 
     /// <summary>
     /// output must be R: Specular, G: Metallic, B: Roughness
     /// </summary>
-    public static bool SwizzlePerSuffix(this Texture texture, string name, out EMaskChannels missing)
+    public static void SwizzlePerName(this Texture texture, string name, string game, out EMaskChannels missing)
     {
-        const string channels = "AOMRSEH"; // occlusion (A or O), metallic, roughness, specular, emissive, height
-        missing = EMaskChannels.None;
+        const string channels = "AOMRSEH?";
 
         var suffix = name.AsSpan().TrimEnd("0123456789").TrimEnd('_'); // exclude _ORM2, ORM_01
         suffix = suffix[(suffix.LastIndexOf('_') + 1)..];
-        if (suffix.Length is not (3 or 4)) return false;
 
-        Span<int> sources = [(int) PixelFormat.Red, (int) PixelFormat.Green, (int) PixelFormat.Blue, (int) PixelFormat.Alpha];
-        int specular = -1, metallic = -1, roughness = -1;
-        for (var i = 0; i < suffix.Length; i++)
+        if (_maskLayouts.TryGetValue(game, out var layouts))
         {
-            var letter = char.ToUpperInvariant(suffix[i]);
-            if (!channels.Contains(letter)) return false;
-
-            switch (letter)
+            foreach (var (ending, layout) in layouts.Suffixes)
             {
-                case 'S' when specular < 0: specular = i; break;
-                case 'M' when metallic < 0: metallic = i; break;
-                case 'R' when roughness < 0: roughness = i; break;
-                case 'S' or 'M' or 'R': return false; // the same letter twice is a word, not a layout
+                if (suffix.Equals(ending, StringComparison.OrdinalIgnoreCase) && Swizzle(layout, out missing))
+                {
+                    return;
+                }
             }
         }
 
-        if (specular < 0 && metallic < 0 && roughness < 0) return false;
-        if (specular < 0) missing |= EMaskChannels.Specular;
-        if (metallic < 0) missing |= EMaskChannels.Metallic;
-        if (roughness < 0) missing |= EMaskChannels.Roughness;
+        if (suffix.Length is 3 or 4 && Swizzle(suffix, out missing))
+        {
+            return;
+        }
 
-        texture.SwizzleMask = [sources[Math.Max(specular, 0)], sources[Math.Max(metallic, 0)], sources[Math.Max(roughness, 0)], (int) PixelFormat.Alpha];
-        return true;
+        if (layouts.Default is { } fallback)
+        {
+            Swizzle(fallback, out missing);
+        }
+        else
+        {
+            missing = EMaskChannels.None; // trust the raw channels
+        }
+
+        bool Swizzle(ReadOnlySpan<char> letters, out EMaskChannels absent)
+        {
+            absent = EMaskChannels.None;
+
+            Span<int> sources = [(int) PixelFormat.Red, (int) PixelFormat.Green, (int) PixelFormat.Blue, (int) PixelFormat.Alpha];
+            int specular = -1, metallic = -1, roughness = -1;
+            for (var i = 0; i < letters.Length; i++)
+            {
+                var letter = char.ToUpperInvariant(letters[i]);
+                if (!channels.Contains(letter)) return false;
+
+                switch (letter)
+                {
+                    case 'S' when specular < 0: specular = i; break;
+                    case 'M' when metallic < 0: metallic = i; break;
+                    case 'R' when roughness < 0: roughness = i; break;
+                    case 'S' or 'M' or 'R': return false; // the same letter twice is a word, not a layout
+                }
+            }
+
+            if (specular < 0 && metallic < 0 && roughness < 0) return false;
+            if (specular < 0) absent |= EMaskChannels.Specular;
+            if (metallic < 0) absent |= EMaskChannels.Metallic;
+            if (roughness < 0) absent |= EMaskChannels.Roughness;
+
+            texture.SwizzleMask = [Source(sources, specular), Source(sources, metallic), Source(sources, roughness), (int) PixelFormat.Alpha];
+            return true;
+
+            static int Source(Span<int> sources, int channel) => channel < 0 ? (int) All.Zero : sources[channel];
+        }
     }
 
     public static ITextureFormatInfo GetTextureFormat(this EPixelFormat format, bool srgb)
     {
-        var compressed = format.IsCompressed();
-        if (compressed) return new CompressedTextureFormatInfo(format.GetCompressedFormat(srgb));
+        if (format.IsCompressed())
+        {
+            var compressed = format.GetCompressedFormat();
+            return new CompressedTextureFormatInfo(srgb ? compressed.ToSrgb() : compressed);
+        }
 
-        var (internalFormat, pixelFormat, pixelType) = format.GetUncompressedFormats(srgb);
-        return new TextureFormatInfo(internalFormat, pixelFormat, pixelType);
+        var (internalFormat, pixelFormat, pixelType) = format.GetUncompressedFormats();
+        return new TextureFormatInfo(srgb ? internalFormat.ToSrgb() : internalFormat, pixelFormat, pixelType);
     }
 
     public static PixelInternalFormat ToPixelInternalFormat(this SizedInternalFormat format)
@@ -162,33 +181,18 @@ public static class TextureExtensions
             _ => true
         };
 
-    private static (SizedInternalFormat, PixelFormat, PixelType) GetUncompressedFormats(this EPixelFormat format, bool srgb)
+    private static (SizedInternalFormat, PixelFormat, PixelType) GetUncompressedFormats(this EPixelFormat format)
     {
         return format switch
         {
-            EPixelFormat.PF_B8G8R8A8 when srgb => (
-                SizedInternalFormat.Srgb8Alpha8,
-                PixelFormat.Bgra,
-                PixelType.UnsignedByte
-            ),
             EPixelFormat.PF_B8G8R8A8 => (
                 SizedInternalFormat.Rgba8,
                 PixelFormat.Bgra,
                 PixelType.UnsignedByte
             ),
-            EPixelFormat.PF_R8G8B8A8 when srgb => (
-                SizedInternalFormat.Srgb8Alpha8,
-                PixelFormat.Rgba,
-                PixelType.UnsignedByte
-            ),
             EPixelFormat.PF_R8G8B8A8 => (
                 SizedInternalFormat.Rgba8,
                 PixelFormat.Rgba,
-                PixelType.UnsignedByte
-            ),
-            EPixelFormat.PF_A8R8G8B8 when srgb => (
-                SizedInternalFormat.Srgb8Alpha8,
-                PixelFormat.Bgra,
                 PixelType.UnsignedByte
             ),
             EPixelFormat.PF_A8R8G8B8 => (
@@ -265,13 +269,10 @@ public static class TextureExtensions
         };
     }
 
-    private static SizedInternalFormat GetCompressedFormat(this EPixelFormat format, bool srgb)
+    private static SizedInternalFormat GetCompressedFormat(this EPixelFormat format)
     {
         return format switch
         {
-            EPixelFormat.PF_DXT1 when srgb => SizedInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext,
-            EPixelFormat.PF_DXT3 when srgb => SizedInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext,
-            EPixelFormat.PF_DXT5 when srgb => SizedInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext,
             EPixelFormat.PF_DXT1 => SizedInternalFormat.CompressedRgbaS3tcDxt1Ext,
             EPixelFormat.PF_DXT3 => SizedInternalFormat.CompressedRgbaS3tcDxt3Ext,
             EPixelFormat.PF_DXT5 => SizedInternalFormat.CompressedRgbaS3tcDxt5Ext,
@@ -280,25 +281,63 @@ public static class TextureExtensions
             EPixelFormat.PF_BC6H => SizedInternalFormat.CompressedRgbBptcUnsignedFloat,
             EPixelFormat.PF_BC7 => SizedInternalFormat.CompressedRgbaBptcUnorm,
 
-            EPixelFormat.PF_ASTC_4x4 when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Astc4X4,
-            EPixelFormat.PF_ASTC_6x6 when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Astc6X6,
-            EPixelFormat.PF_ASTC_8x8 when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Astc8X8,
-            EPixelFormat.PF_ASTC_10x10 when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Astc10X10,
-            EPixelFormat.PF_ASTC_12x12 when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Astc12X12,
             EPixelFormat.PF_ASTC_4x4 => SizedInternalFormat.CompressedRgbaAstc4X4,
             EPixelFormat.PF_ASTC_6x6 => SizedInternalFormat.CompressedRgbaAstc6X6,
             EPixelFormat.PF_ASTC_8x8 => SizedInternalFormat.CompressedRgbaAstc8X8,
             EPixelFormat.PF_ASTC_10x10 => SizedInternalFormat.CompressedRgbaAstc10X10,
             EPixelFormat.PF_ASTC_12x12 => SizedInternalFormat.CompressedRgbaAstc12X12,
 
-            // EPixelFormat.PF_ETC1 when srgb => SizedInternalFormat.CompressedSrgb8Etc2,
-            EPixelFormat.PF_ETC2_RGB when srgb => SizedInternalFormat.CompressedSrgb8Etc2,
-            EPixelFormat.PF_ETC2_RGBA when srgb => SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac,
             // EPixelFormat.PF_ETC1 => SizedInternalFormat.CompressedRgb8Etc2,
             EPixelFormat.PF_ETC2_RGB => SizedInternalFormat.CompressedRgb8Etc2,
             EPixelFormat.PF_ETC2_RGBA => SizedInternalFormat.CompressedRgba8Etc2Eac,
 
             _ => throw new NotImplementedException($"Unsupported pixel format: {format}")
         };
+    }
+
+    private static readonly (SizedInternalFormat Linear, SizedInternalFormat Srgb)[] _srgbFormats =
+    [
+        (SizedInternalFormat.Rgb8, SizedInternalFormat.Srgb8),
+        (SizedInternalFormat.Rgba8, SizedInternalFormat.Srgb8Alpha8),
+        (SizedInternalFormat.CompressedRgbaS3tcDxt1Ext, SizedInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext),
+        (SizedInternalFormat.CompressedRgbaS3tcDxt3Ext, SizedInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext),
+        (SizedInternalFormat.CompressedRgbaS3tcDxt5Ext, SizedInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext),
+        (SizedInternalFormat.CompressedRgbaAstc4X4, SizedInternalFormat.CompressedSrgb8Alpha8Astc4X4),
+        (SizedInternalFormat.CompressedRgbaAstc6X6, SizedInternalFormat.CompressedSrgb8Alpha8Astc6X6),
+        (SizedInternalFormat.CompressedRgbaAstc8X8, SizedInternalFormat.CompressedSrgb8Alpha8Astc8X8),
+        (SizedInternalFormat.CompressedRgbaAstc10X10, SizedInternalFormat.CompressedSrgb8Alpha8Astc10X10),
+        (SizedInternalFormat.CompressedRgbaAstc12X12, SizedInternalFormat.CompressedSrgb8Alpha8Astc12X12),
+        (SizedInternalFormat.CompressedRgb8Etc2, SizedInternalFormat.CompressedSrgb8Etc2),
+        (SizedInternalFormat.CompressedRgba8Etc2Eac, SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac),
+    ];
+
+    public static bool IsSrgb(this SizedInternalFormat format)
+    {
+        foreach (var (_, srgb) in _srgbFormats)
+        {
+            if (srgb == format) return true;
+        }
+
+        return false;
+    }
+
+    public static SizedInternalFormat ToSrgb(this SizedInternalFormat format)
+    {
+        foreach (var (linear, srgb) in _srgbFormats)
+        {
+            if (linear == format) return srgb;
+        }
+
+        return format;
+    }
+
+    public static SizedInternalFormat ToLinear(this SizedInternalFormat format)
+    {
+        foreach (var (linear, srgb) in _srgbFormats)
+        {
+            if (srgb == format) return linear;
+        }
+
+        return format;
     }
 }

@@ -152,7 +152,24 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
         return pixel;
     }
 
-    public IntPtr GetPointer() => (IntPtr)Handle;
+    protected virtual bool CanBeViewed => true;
+
+    private TextureView?[]? _previews;
+    public TextureView? GetPreview(int channel = -1)
+    {
+        if (Handle == 0 || !CanBeViewed) return null;
+
+        var slot = channel is >= 0 and <= 3 ? channel + 1 : 0;
+        _previews ??= new TextureView?[5];
+        if (_previews[slot] is not { } view)
+        {
+            _previews[slot] = view = new TextureView(this, true, slot - 1);
+            view.Generate();
+        }
+        return view;
+    }
+
+    public IntPtr GetPointer(int channel = -1) => GetPreview(channel)?.GetPointer() ?? (IntPtr) Handle;
 
     public void DrawControls()
     {
@@ -179,6 +196,10 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
     public override void Dispose()
     {
         if (Handle == 0) return;
+
+        foreach (var view in _previews ?? [])
+            view?.Dispose();
+        _previews = null;
 
         GL.DeleteTexture(Handle);
         Handle = 0;

@@ -6,6 +6,8 @@ namespace Editor;
 
 public class ImGuiFontTexture() : Texture2D(0, 0, SizedInternalFormat.Rgba32f, PixelFormat.Rgba, PixelType.UnsignedByte)
 {
+    protected override bool CanBeViewed => false; // a preview is opaque, the glyphs need their alpha
+
     public override void Generate()
     {
         var io = ImGui.GetIO();

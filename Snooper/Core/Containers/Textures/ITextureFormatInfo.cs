@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Textures;
 
@@ -8,20 +9,7 @@ public interface ITextureFormatInfo
 
     public long GetMemorySize(int width, int height, int depth = 1);
 
-    public bool IsSrgb => InternalFormat is
-        SizedInternalFormat.Srgb8 or
-        SizedInternalFormat.Srgb8Alpha8 or
-        SizedInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext or
-        SizedInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext or
-        SizedInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext or
-        SizedInternalFormat.CompressedSrgbAlphaBptcUnorm or
-        SizedInternalFormat.CompressedSrgb8Alpha8Astc4X4 or
-        SizedInternalFormat.CompressedSrgb8Alpha8Astc6X6 or
-        SizedInternalFormat.CompressedSrgb8Alpha8Astc8X8 or
-        SizedInternalFormat.CompressedSrgb8Alpha8Astc10X10 or
-        SizedInternalFormat.CompressedSrgb8Alpha8Astc12X12 or
-        SizedInternalFormat.CompressedSrgb8Etc2 or
-        SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac;
+    public bool IsSrgb => InternalFormat.IsSrgb();
 }
 
 public readonly struct TextureFormatInfo : ITextureFormatInfo

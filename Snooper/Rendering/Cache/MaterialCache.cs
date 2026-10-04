@@ -184,9 +184,9 @@ public static class MaterialCache
                         (int)PixelFormat.Alpha
                     ];
                 }
-                else if (!specularTex.SwizzlePerSuffix(specular.Name, out missing))
+                else
                 {
-                    specularTex.SwizzlePerGame(node.ProjectName.ToUpperInvariant());
+                    specularTex.SwizzlePerName(specular.Name, node.ProjectName.ToUpperInvariant(), out missing);
                 }
             }
 

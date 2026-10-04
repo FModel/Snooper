@@ -36,11 +36,6 @@ public class TextureInspectorWidget : PanelWidget
     private Vector2 _pan;
     private bool _fitPending = true;
 
-    private bool _red = true;
-    private bool _green = true;
-    private bool _blue = true;
-    private bool _alpha;
-
     private Vector2? _hoveredTexel;
 
     protected override void DrawContents(EditorManager editor)
@@ -73,10 +68,6 @@ public class TextureInspectorWidget : PanelWidget
         {
             ImGui.SameLine();
             ImGui.TextColored(Settings.OrangeColor, "sRGB");
-            if (ImGui.IsItemHovered())
-            {
-                ImGui.SetTooltip("This texture is gamma-corrected for display.");
-            }
         }
 
         EditorUI.Caption($"{texture.Width}x{texture.Height}, {texture.FormatName}, {texture.GetFormattedSpace()}");
@@ -102,27 +93,31 @@ public class TextureInspectorWidget : PanelWidget
             ImGui.SetClipboardText(texture.Name);
         }
 
-        ImGui.SameLine();
-        EditorUI.VerticalSeparator();
-        ImGui.SameLine();
+        if (_texture?.GetPreview() is { } view)
+        {
+            ImGui.SameLine();
+            EditorUI.VerticalSeparator();
+            ImGui.SameLine();
 
-        ChannelToggle("R", ref _red, _redChannel);
-        ImGui.SameLine();
-        ChannelToggle("G", ref _green, _greenChannel);
-        ImGui.SameLine();
-        ChannelToggle("B", ref _blue, _blueChannel);
-        ImGui.SameLine();
-        ChannelToggle("A", ref _alpha, _alphaChannel, "blend", "ignore");
+            ChannelToggle(view, "R", ref view.Red, _redChannel);
+            ImGui.SameLine();
+            ChannelToggle(view, "G", ref view.Green, _greenChannel);
+            ImGui.SameLine();
+            ChannelToggle(view, "B", ref view.Blue, _blueChannel);
+            ImGui.SameLine();
+            ChannelToggle(view, "A", ref view.Alpha, _alphaChannel, "blend", "ignore");
+        }
 
         ImGui.Separator();
     }
 
-    private static void ChannelToggle(string channel, ref bool enabled, Vector4 color, string enable = "show", string disable = "hide")
+    private static void ChannelToggle(TextureView view, string channel, ref bool enabled, Vector4 color, string enable = "show", string disable = "hide")
     {
         var tint = enabled ? color : ImGui.GetStyle().Colors[(int) ImGuiCol.TextDisabled];
         if (EditorUI.IconButton(channel, $"{channel} Channel\nClick to {(enabled ? disable : enable)} it", textColor: tint))
         {
             enabled = !enabled;
+            view.UpdateChannels();
         }
     }
 
@@ -185,12 +180,9 @@ public class TextureInspectorWidget : PanelWidget
         drawList.AddRectFilled(canvasMin, canvasMax, ImGui.GetColorU32(ImGuiCol.FrameBg));
         DrawGrid(drawList, imageMin, canvasMin, canvasMax);
 
-        var tint = ImGui.ColorConvertFloat4ToU32(new Vector4(_red ? 1.0f : 0.0f, _green ? 1.0f : 0.0f, _blue ? 1.0f : 0.0f, 1.0f));
-
-        using (ImGuiDrawCallbacks.Instance.EncodeSrgb(drawList, texture.IsSrgb))
-        using (ImGuiDrawCallbacks.Instance.IgnoreAlpha(drawList, !_alpha))
+        if (texture.GetPreview() is { } view)
         {
-            drawList.AddImage(texture.GetPointer(), imageMin, imageMin + scaled, Vector2.Zero, Vector2.One, tint);
+            drawList.AddImage(view.GetPointer(), imageMin, imageMin + scaled);
         }
 
         drawList.AddRect(imageMin, imageMin + scaled, ImGui.GetColorU32(ImGuiCol.Border));
