@@ -7,7 +7,7 @@ public class DeviceInfo
     public string Name { get; private set; } = string.Empty;
     public string Vendor { get; private set; } = string.Empty;
     public string ShadingLanguage { get; private set; } = string.Empty;
-    public int MaxShaderStorageBufferBindings { get; private set; }
+    public static int MaxShaderStorageBufferBindings { get; private set; }
     public int MaxTextureSize { get; private set; }
     public int MaxArrayTextureLayers { get; private set; }
     public static float MaxAnisotropy { get; private set; }

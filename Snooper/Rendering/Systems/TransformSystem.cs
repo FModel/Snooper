@@ -6,7 +6,7 @@ namespace Snooper.Rendering.Systems;
 
 public sealed class TransformSystem : ActorSystem<SpatialComponent>
 {
-    public override ActorSystemType SystemType => ActorSystemType.Custom;
+    public override ActorSystemType SystemType => ActorSystemType.Scene;
     public override uint Order => 5;
 
     protected override void OnComponentUpdate(SpatialComponent component, float delta)

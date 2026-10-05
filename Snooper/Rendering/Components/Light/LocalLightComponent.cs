@@ -1,14 +1,19 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component.Lights;
 using CUE4Parse.UE4.Objects.Engine;
 using ImGuiNET;
+using Snooper.Core;
+using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Light;
 
+[DefaultActorSystem(typeof(ClusteredLightSystem))]
 public abstract class LocalLightComponent : LightComponent
 {
     public float AttenuationRadius;
+
+    internal BufferAllocation? _allocation;
 
     public LocalLightComponent(ULocalLightComponent component, string sprite) : base(component, sprite)
     {
@@ -32,19 +37,32 @@ public abstract class LocalLightComponent : LightComponent
         }
     }
 
-    protected override void SetLightData(ref LightData lightData)
+    public LightData GetLightData()
     {
-        base.SetLightData(ref lightData);
+        var data = new LightData();
+        if (IsVisible && IsActorVisibleRecursive) SetLightData(ref data);
+        return data;
+    }
 
+    protected virtual void SetLightData(ref LightData lightData)
+    {
+        lightData.Position = WorldMatrix.Translation;
+        lightData.Color = Color;
+        lightData.Intensity = Intensity;
+        lightData.MaxDrawDistance = MaxDrawDistance;
+        lightData.MaxDistanceFadeRange = MaxDistanceFadeRange;
         lightData.Type = uint.MaxValue; // to override in child classes
         lightData.Range = AttenuationRadius;
     }
 
     protected override bool DrawLightControls()
     {
-        base.DrawLightControls();
+        var edited = base.DrawLightControls();
 
         EditorUI.Property("Attenuation Radius");
-        return ImGui.DragFloat("##AttenuationRadius", ref AttenuationRadius, 0.1f, 0f, float.MaxValue, "%.1f");
+        edited |= ImGui.DragFloat("##AttenuationRadius", ref AttenuationRadius, 0.1f, 0f, float.MaxValue, "%.1f");
+
+        if (edited) MarkDirty(DirtyFlags.Transform); // transform is fine
+        return edited;
     }
 }

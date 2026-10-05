@@ -1,6 +1,7 @@
 ﻿using Serilog;
 using Serilog.Context;
 using Serilog.Core;
+using Snooper.Core.Hardware;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -9,12 +10,12 @@ namespace Snooper.Core.Systems;
 
 public enum ActorSystemType
 {
-    Rendering,
-    Physics,
+    Scene,
+    Geometry,
+    Environment,
+    Overlay,
     Animation,
-    Input,
-    Audio,
-    Custom
+    Audio
 }
 
 public abstract class ActorSystem : IGameSystem
@@ -22,7 +23,7 @@ public abstract class ActorSystem : IGameSystem
     public readonly string DisplayName;
     public readonly Type ComponentType;
 
-    public bool IsEnabled = true;
+    public bool IsEnabled { get => field && IsSupported; set; } = true;
     public ActorManager? ActorManager { get; internal set; }
 
     public abstract ActorSystemType SystemType { get; }
@@ -31,7 +32,6 @@ public abstract class ActorSystem : IGameSystem
     public abstract int ComponentsCount { get; }
     public abstract int EnqueuedComponentsCount { get; }
     public abstract int DirtyComponentsCount { get; }
-    public abstract uint? MaxBindingUsed { get; }
 
     protected ActorSystem(Type componentType)
     {
@@ -41,8 +41,17 @@ public abstract class ActorSystem : IGameSystem
 
     protected IDisposable Scope() => LogContext.PushProperty(Constants.SourceContextPropertyName, DisplayName);
 
+    protected virtual uint? MaxBindingUsed => null;
+    public virtual bool IsSupported => MaxBindingUsed is not { } max || max < DeviceInfo.MaxShaderStorageBufferBindings;
+
     public void Load()
     {
+        if (!IsSupported)
+        {
+            using (Scope()) Log.Warning("Not supported: disabled");
+            return;
+        }
+
         if (!IsEnabled) return;
 
         using (Scope())
@@ -102,23 +111,12 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
     public override int ComponentsCount => Components.Count;
     public override int EnqueuedComponentsCount => _componentsToLoad.Count;
     public override int DirtyComponentsCount => DirtyComponents.Count;
-    public override uint? MaxBindingUsed => null;
 
     protected HashSet<TComponent> Components { get; } = [];
     protected HashSet<TComponent> DirtyComponents { get; } = [];
     protected IEnumerable<TComponent> PendingComponents => _componentsToLoad.Where(component => component.Scene == ActorManager);
 
-    protected override void OnLoad()
-    {
-        if (MaxBindingUsed is not { } max) return;
-
-        var limit = ActorManager?.Renderer.DeviceInfo.MaxShaderStorageBufferBindings;
-        if (max >= limit)
-        {
-            // TODO: should we actually limit or let it crash?
-            Log.Warning("{Max} shader storage buffer bindings was required, but the device only supports {Limit}. This may cause rendering issues.", max, limit);
-        }
-    }
+    protected override void OnLoad() { }
 
     protected override void OnUpdate(float delta)
     {

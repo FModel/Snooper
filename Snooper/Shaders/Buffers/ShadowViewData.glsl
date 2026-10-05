@@ -7,7 +7,7 @@ struct ShadowViewData
     uint slot;            // layer of the shadow depth array
 };
 
-layout(std430, binding = BINDING_SHADOW_VIEWS) readonly buffer ShadowViewBuffer
+layout(std140, binding = BINDING_SHADOW_VIEWS) uniform ShadowViewBuffer
 {
-    ShadowViewData shadowViews[];
+    ShadowViewData shadowViews[MAX_SHADOW_VIEWS];
 };

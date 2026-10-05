@@ -102,7 +102,7 @@ public class HardwareOverlayWidget : IViewportCard
 
         Node("Limits", _limits ??=
         [
-            new Row("Buffer Bindings", string.Empty, $"{device.MaxShaderStorageBufferBindings:N0}"),
+            new Row("Buffer Bindings", string.Empty, $"{DeviceInfo.MaxShaderStorageBufferBindings:N0}"),
             new Row("Texture Size", string.Empty, $"{device.MaxTextureSize:N0}"),
             new Row("Texture Layers", string.Empty, $"{device.MaxArrayTextureLayers:N0}"),
             new Row("Anisotropy", string.Empty, $"{DeviceInfo.MaxAnisotropy:0.#}x")

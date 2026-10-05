@@ -2,9 +2,8 @@
 
 layout (location = 1) out uint gPicking;
 
-uniform mat4 uViewMatrix;
-
-#include "pbr.glsl"
+#include "Lighting/scene_lighting.glsl"
+#include "Lighting/fog.glsl"
 #include "Buffers/CommonMesh.frag"
 #include "Buffers/Wireframe.glsl"
 
@@ -23,52 +22,18 @@ void main()
 
     ApplyWire(surface.Color, surface.Unlit, surface.Opacity);
 
-    vec3 albedo = surface.Color;
-    vec3 normal = surface.Normal;
-    float specular = surface.Specular.r;
-    float metallic = surface.Specular.g;
-    float roughness = surface.Specular.b;
-    vec3 F0 = mix(vec3(0.08 * specular), albedo, metallic);
-    vec3 V = normalize(transpose(mat3(uViewMatrix)) * -fs_in.vViewPos);
+    // lit and fogged like an opaque surface, there is only no ambient occlusion for it
+    vec3 worldPos = (uInverseViewMatrix * vec4(fs_in.vViewPos, 1.0)).xyz;
 
-    vec3 skyColor = vec3(1.0);
-    vec3 groundColor = vec3(0.5);
-    float ndotUp = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
-    vec3 ambient = mix(groundColor, skyColor, ndotUp) * albedo;
-
-    const int lightCount = 3;
-    vec3 lightDirs[3] = vec3[3](
-        normalize(vec3(0.5, 1.0, 0.3)),   // Key
-        normalize(vec3(-0.3, 0.5, 0.8)),  // Fill
-        normalize(vec3(0.0, -0.5, -1.0))  // Back
-    );
-    vec3 lightColors[3] = vec3[3](
-        vec3(1.0, 0.8, 0.6),
-        vec3(0.6, 0.8, 1.0),
-        vec3(0.8, 0.8, 1.0)
-    );
-    float lightIntensity[3] = float[3](0.8, 0.6, 0.4);
-
-    vec3 finalColor = albedo;
+    vec3 finalColor = surface.Color;
     if (!surface.Unlit)
     {
-        finalColor = EvaluatePBR(
-            albedo,
-            normal,
-            V,
-            metallic,
-            roughness,
-            F0,
-            lightCount,
-            lightDirs,
-            lightColors,
-            lightIntensity,
-            ambient
-        );
+        finalColor = SceneLighting(worldPos, fs_in.vViewPos, surface.Normal, surface.Color, surface.Specular, 1.0);
     }
 
     finalColor = pow(finalColor, vec3(1.0 / 2.2));
-    FragColor = vec4(finalColor * surface.Opacity, surface.Additive ? 0.0 : surface.Opacity);
+    float alpha = surface.Additive ? 0.0 : surface.Opacity;
+    FragColor = vec4(ApplyFog(finalColor * surface.Opacity, alpha, worldPos), alpha);
 
     gPicking = draw.PickingId;
 }

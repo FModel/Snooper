@@ -1,75 +1,91 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core;
+using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
-using Snooper.Rendering.Components;
+using Snooper.Core.Containers.Resources;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Skybox;
+using Snooper.Rendering.Containers.Framebuffers;
 
 namespace Snooper.Rendering.Systems;
 
-public class SkyboxSystem : PrimitiveSystem<CubeComponent>
+public sealed class SkyboxSystem : ActiveComponentSystem<SkyAtmosphereComponent>, IGeometryRenderSystem
 {
+    public override ActorSystemType SystemType => ActorSystemType.Environment;
     public override uint Order => 1;
-    protected override bool AllowDerivation => true;
-    protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
+
+    private readonly ShaderProgram _shader = new EmbeddedShader("Skybox/skybox");
+    private readonly VertexArray _vao = new(); // the vertex shader builds the triangle, but a draw call still needs a vao bound
+    private readonly SkyFramebuffer _sky = new();
+
+    protected override void OnLoad()
     {
-        [CommandBufferType.Transparent] = new EmbeddedShader("Skybox/skybox")
-    };
+        base.OnLoad();
 
-    protected override void PreRender(CameraComponent camera, ShaderProgram shader)
+        _shader.Generate();
+        _shader.Link();
+        _vao.Generate();
+
+        _sky.Generate();
+    }
+
+    public void Cull(ReadOnlySpan<CullView> views) { }
+    public void RenderMask(CameraComponent camera) { }
+
+    public void Render(CameraComponent camera, CommandBufferType type)
     {
-        var view = camera.ViewMatrix;
-        view.M41 = 0;
-        view.M42 = 0;
-        view.M43 = 0;
+        if (type != CommandBufferType.Transparent || Active is not { } atmosphere) return;
 
-        shader.Use();
-        shader.SetUniform("uViewMatrix", view);
-        shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
-
-        switch (_component)
+        using (Scope())
+        using (Profiler.Sample(DisplayName))
+        using (Profiler.Draw())
         {
-            case AtmosphericComponent atmospheric:
+            _shader.Use();
+            _shader.SetUniform("uInverseProjectionMatrix", camera.InverseProjectionMatrix);
+
+            if (ActorManager?.GetSystem<DirectionalLightSystem>() is { Active: { } sun })
             {
-                shader.SetUniform("uSunPos", atmospheric.Sun.Position);
-                shader.SetUniform("uSunIntensity", atmospheric.Sun.Intensity);
-                shader.SetUniform("uSunRadius", atmospheric.Sun.Radius);
-                shader.SetUniform("uSunAtmosphereRadius", atmospheric.Sun.AtmosphereRadius);
-                break;
+                _sky.Bake(atmosphere, sun.GetDirection(), sun.Color * sun.Daylight, camera.InverseViewMatrix.Translation.Y);
+
+                _shader.SetUniform("useSun", true);
+                _shader.SetUniform("uSunPos", _sky.Baked.SunDirection);
+                _shader.SetUniform("uSunDisc", MathF.Cos(float.DegreesToRadians(sun.SourceAngle * 0.5f)));
+                _shader.SetUniform("uSky", 0);
+                _sky.Bind(ESkyTexture.Color, 0);
             }
-        }
+            else _shader.SetUniform("useSun", false);
 
-        GL.DepthFunc(DepthFunction.Gequal);
-        GL.DepthMask(false);
-    }
+            GL.DepthFunc(DepthFunction.Gequal);
+            GL.DepthMask(false);
 
-    protected override void PostRender(CameraComponent camera, ShaderProgram shader)
-    {
-        GL.DepthMask(true);
-        GL.DepthFunc(DepthFunction.Greater);
-        shader.Unuse();
-    }
+            _vao.Bind();
+            GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
+            _vao.Unbind();
 
-    protected override void OnActorComponentAdded(CubeComponent component)
-    {
-        base.OnActorComponentAdded(component);
-
-        if (_component is not null)
-            throw new InvalidOperationException("Only one SkyboxComponent can be added to the system at a time.");
-
-        _component = component;
-    }
-
-    protected override void OnActorComponentRemoved(CubeComponent component, EEndPlayReason reason)
-    {
-        base.OnActorComponentRemoved(component, reason);
-
-        if (_component == component)
-        {
-            _component = null;
+            GL.DepthMask(true);
+            GL.DepthFunc(DepthFunction.Greater);
+            _shader.Unuse();
         }
     }
 
-    private CubeComponent? _component;
+    public override long Allocated => _shader.Allocated + _vao.Allocated + _sky.Allocated;
+    public override long Used => _shader.Used + _vao.Used + _sky.Used;
+
+    public override IEnumerable<MemoryDetail> GetMemoryDetails()
+    {
+        yield return new MemoryDetail("Shader", _shader);
+        yield return new MemoryDetail("Vertex Array", _vao);
+        yield return new MemoryDetail("Sky Framebuffer", _sky);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        _shader.Dispose();
+        _vao.Dispose();
+        _sky.Dispose();
+    }
 }

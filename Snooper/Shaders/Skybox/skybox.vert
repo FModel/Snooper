@@ -1,13 +1,16 @@
-﻿layout (location = 0) in vec3 aPos;
+﻿#include "Lighting/scene_data.glsl"
 
-uniform mat4 uViewMatrix;
-uniform mat4 uProjectionMatrix;
+uniform mat4 uInverseProjectionMatrix;
 
 out vec3 vTexCoords;
 
 void main()
 {
-    vTexCoords = aPos;
-    vec4 clip = uProjectionMatrix * uViewMatrix * vec4(aPos, 1.0);
-    gl_Position = vec4(clip.xy, 0.0, clip.w); // reversed-Z: the far plane sits at depth 0
+    // one triangle that covers the screen, from the vertex index alone
+    vec2 position = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2) * 2.0 - 1.0;
+
+    vec4 view = uInverseProjectionMatrix * vec4(position, 1.0, 1.0);
+    vTexCoords = mat3(uInverseViewMatrix) * (view.xyz / view.w);
+
+    gl_Position = vec4(position, 0.0, 1.0);
 }

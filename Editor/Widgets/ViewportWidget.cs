@@ -114,8 +114,10 @@ public class ViewportWidget : PanelWidget
         ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, Padding));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(style.ItemSpacing.X * 0.25f));
 
-        var lights = editor.GetSystem<ClusteredLightSystem>();
-        if (Button(Settings.LightbulbIcon,lights?.UseSceneLights == true, "Lighting", lights != null)) lights!.UseSceneLights = !lights.UseSceneLights;
+        SystemButton<DirectionalLightSystem>(Settings.SunIcon, "Sun Light");
+        ImGui.SameLine();
+        var lightSystem = editor.GetSystem<ClusteredLightSystem>();
+        if (Button(Settings.LightbulbIcon,lightSystem?.UseSceneLights == true, "Scene Lights", lightSystem is { IsSupported: true })) lightSystem!.UseSceneLights = !lightSystem.UseSceneLights;
         ImGui.SameLine();
         if (Button(Settings.CircleHalfStrokeIcon,editor.Pipeline.Shadows, "Shadows")) editor.Pipeline.Shadows = !editor.Pipeline.Shadows;
         ImGui.SameLine();
@@ -155,7 +157,7 @@ public class ViewportWidget : PanelWidget
         void SystemButton<T>(string icon, string tooltip) where T : ActorSystem
         {
             var system = editor.GetSystem<T>();
-            if (Button(icon, system?.IsEnabled == true, tooltip, system != null)) system!.IsEnabled = !system.IsEnabled;
+            if (Button(icon, system?.IsEnabled == true, tooltip, system is { IsSupported: true })) system!.IsEnabled = !system.IsEnabled;
         }
 
         void CardButton(string icon, IViewportCard card)

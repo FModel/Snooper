@@ -1,7 +1,5 @@
-﻿using System.Numerics;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
-using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Textures;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
@@ -12,78 +10,51 @@ public abstract class FullQuadFramebuffer<TTextureEnum>(
     PixelFormat format = PixelFormat.Rgba,
     PixelType type = PixelType.UnsignedByte) : Framebuffer<TTextureEnum> where TTextureEnum : struct, Enum
 {
-    public sealed override int Width => _color.Width;
-    public sealed override int Height => _color.Height;
+    public sealed override int Width => Color.Width;
+    public sealed override int Height => Color.Height;
 
-    private readonly ResizableTexture2D _color = new(originalWidth, originalHeight, internalFormat, format, type, "FullQuad - Final Color");
-    private readonly VertexArray _vao = new();
-    private readonly ArrayBuffer<Vector4> _vbo = new();
-    private readonly ElementArrayBuffer<uint> _ebo = new();
+    protected readonly ResizableTexture2D Color = new(originalWidth, originalHeight, internalFormat, format, type, "FullQuad - Final Color");
+
+    private readonly VertexArray _vao = new(); // the vertex shader builds the triangle, but a draw call still needs a vao bound
 
     public override void Generate()
     {
-        _color.Generate();
-        _color.Resize(Width, Height);
-        _color.SetSampling(TextureMinFilter.Linear, TextureMagFilter.Linear);
+        Color.Generate();
+        Color.Resize(Width, Height);
+        Color.SetSampling(TextureMinFilter.Linear, TextureMagFilter.Linear);
 
         base.Generate();
-        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment0, _color, 0);
+        GL.NamedFramebufferTexture(Handle, FramebufferAttachment.ColorAttachment0, Color, 0);
 
         CheckStatus();
 
         _vao.Generate();
-        _vbo.Generate();
-        _ebo.Generate();
-
-        _vbo.AddRange(
-        [
-            new Vector4(1.0f, -1.0f, 1.0f, 0.0f),
-            new Vector4(-1.0f, -1.0f, 0.0f, 0.0f),
-            new Vector4(-1.0f, 1.0f, 0.0f, 1.0f),
-            new Vector4(1.0f, 1.0f, 1.0f, 1.0f)
-        ]);
-        _ebo.AddRange([0, 1, 2, 3, 0, 2]);
-
-        GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
-        GL.VertexArrayElementBuffer(_vao, _ebo);
-        GL.VertexArrayAttribFormat(_vao, 0, 2, VertexAttribType.Float, false, 0);
-        GL.VertexArrayAttribFormat(_vao, 1, 2, VertexAttribType.Float, false, 8);
-        GL.EnableVertexArrayAttrib(_vao, 0);
-        GL.EnableVertexArrayAttrib(_vao, 1);
-        GL.VertexArrayAttribBinding(_vao, 0, 0);
-        GL.VertexArrayAttribBinding(_vao, 1, 0);
     }
 
     protected void Render(Action? beginDraw = null)
     {
         _vao.Bind();
-        _ebo.Bind();
-        _vbo.Bind();
 
         beginDraw?.Invoke();
-        GL.DrawElements(PrimitiveType.Triangles, _ebo.Count, DrawElementsType.UnsignedInt, 0);
+        GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
 
-        _vbo.Unbind();
-        _ebo.Unbind();
         _vao.Unbind();
     }
 
     public override void Resize(int newWidth, int newHeight)
     {
-        _color.Resize(newWidth, newHeight);
+        Color.Resize(newWidth, newHeight);
     }
 
-    public override Texture[] GetTextures() => [_color];
+    protected override Texture[] CreateTextures() => [Color];
 
     public override long Allocated
     {
         get
         {
             long total = 0;
-            total += _color.Allocated;
+            total += Color.Allocated;
             total += _vao.Allocated;
-            total += _vbo.Allocated;
-            total += _ebo.Allocated;
             return total;
         }
     }
@@ -93,10 +64,8 @@ public abstract class FullQuadFramebuffer<TTextureEnum>(
         get
         {
             long total = 0;
-            total += _color.Used;
+            total += Color.Used;
             total += _vao.Used;
-            total += _vbo.Used;
-            total += _ebo.Used;
             return total;
         }
     }
@@ -104,9 +73,7 @@ public abstract class FullQuadFramebuffer<TTextureEnum>(
     public override IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("Vertex Array", _vao);
-        yield return new MemoryDetail("Vertex Buffer", _vbo);
-        yield return new MemoryDetail("Index Buffer", _ebo);
-        yield return new MemoryDetail("Color Texture", _color);
+        yield return new MemoryDetail("Color Texture", Color);
     }
 
     public override void Dispose()
@@ -114,8 +81,6 @@ public abstract class FullQuadFramebuffer<TTextureEnum>(
         base.Dispose();
 
         _vao.Dispose();
-        _vbo.Dispose();
-        _ebo.Dispose();
-        _color.Dispose();
+        Color.Dispose();
     }
 }

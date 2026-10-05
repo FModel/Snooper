@@ -53,7 +53,7 @@ public class ForwardFramebuffer(int originalWidth, int originalHeight) : Framebu
         _depth.Resize(newWidth, newHeight);
     }
 
-    public override Texture[] GetTextures() => [_color];
+    protected override Texture[] CreateTextures() => [_color];
 
     public override long Allocated => _color.Allocated + _picking.Allocated + _depth.Allocated;
     public override long Used => _color.Used + _picking.Used + _depth.Used;

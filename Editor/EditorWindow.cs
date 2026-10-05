@@ -141,7 +141,7 @@ public partial class EditorWindow : GameWindow
         {
             Manager.Render();
             WaitForGpu();
-            SwapBuffers();
+            using (Profiler.Sample("Present")) SwapBuffers();
         }
         finally
         {

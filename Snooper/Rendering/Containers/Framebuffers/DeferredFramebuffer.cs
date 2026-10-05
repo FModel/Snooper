@@ -83,7 +83,7 @@ public class DeferredFramebuffer(int originalWidth, int originalHeight) : Frameb
         _depth.Resize(newWidth, newHeight);
     }
 
-    public override Texture[] GetTextures() =>
+    protected override Texture[] CreateTextures() =>
     [
         _position,
         _normal,

@@ -38,7 +38,7 @@ public class MaskFramebuffer(int originalWidth, int originalHeight) : Framebuffe
         _depth.Resize(newWidth, newHeight);
     }
 
-    public override Texture[] GetTextures() => [];
+    protected override Texture[] CreateTextures() => [];
 
     public override long Allocated => _depth.Allocated;
     public override long Used => _depth.Used;

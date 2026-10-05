@@ -67,7 +67,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
     }
 
     public override uint Order => 23;
-    public override uint? MaxBindingUsed => SkinnedBindings.MaxBinding;
+    protected override uint? MaxBindingUsed => SkinnedBindings.MaxBinding;
     // protected override bool IsCulled => DirtyComponentsCount == 0; // TODO: cull on the cpu (do not update non visible components + compute the bounds from bones)
 
     private readonly ShaderStorageBuffer<Matrix4x4> _poseData = new(BufferUsageHint.DynamicDraw);

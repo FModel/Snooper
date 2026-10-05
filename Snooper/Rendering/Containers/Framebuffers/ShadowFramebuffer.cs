@@ -3,11 +3,9 @@ using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
-using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
-using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Containers.Framebuffers;
@@ -24,7 +22,7 @@ public class ShadowFramebuffer(int resolution = Settings.ShadowResolution, int c
         public readonly uint Slot = (uint) view.Slot;
     }
 
-    private const int MaxSlots = Settings.MaxShadowViews < 32 ? Settings.MaxShadowViews : 32;
+    private const int MaxSlots = Settings.MaxShadowViews;
 
     private static readonly int[] _resolutions = [512, 1024, 2048, 4096];
 
@@ -42,7 +40,7 @@ public class ShadowFramebuffer(int resolution = Settings.ShadowResolution, int c
 
     private Texture2DArray _atlas = CreateAtlas(resolution, Math.Clamp(cascadeCount, 1, MaxSlots));
     private readonly SunCascades _sun = new(cascadeCount);
-    private readonly ShaderStorageBuffer<ShadowViewData> _viewBuffer = new(BufferUsageHint.DynamicDraw);
+    private readonly UniformBuffer<ShadowViewData> _viewBuffer = new();
     private readonly ShadowViewData[] _viewData = new ShadowViewData[MaxSlots];
     private BufferAllocation _viewAllocation;
     private uint _compareSampler;
@@ -135,25 +133,23 @@ public class ShadowFramebuffer(int resolution = Settings.ShadowResolution, int c
 
     public bool NeedsRender(int slot) => (_renderMask & (1u << slot)) != 0;
 
-    internal void BindForRendering(ShaderProgram shader, uint unit)
-    {
-        _atlas.Bind(unit);
-        GL.BindSampler(unit, _compareSampler);
-        _viewBuffer.Bind(ClusteredLightSystem.LightBindings.ShadowViews);
-
-        shader.SetUniform("shadowMap", (int) unit);
-        shader.SetUniform("uShadowCascadeCount", _sun.CascadeCount);
-        shader.SetUniform("uShadowSoftness", Softness);
-        shader.SetUniform("uShadowNormalOffset", NormalOffset);
-        shader.SetUniform("uShadowBlend", Blend);
-    }
-
     public override void Bind(EShadowTexture texture, uint unit)
     {
-        if (texture != EShadowTexture.Depth)
-            throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid shadow texture type");
-
-        _atlas.Bind(unit);
+        switch (texture)
+        {
+            case EShadowTexture.Depth:
+                _atlas.Bind(unit);
+                break;
+            case EShadowTexture.Comparison:
+                _atlas.Bind(unit);
+                GL.BindSampler(unit, _compareSampler);
+                break;
+            case EShadowTexture.Views:
+                _viewBuffer.Bind(unit);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(texture), texture, "Invalid shadow texture type");
+        }
     }
 
     private void AllocateSunSlots()
@@ -229,7 +225,7 @@ public class ShadowFramebuffer(int resolution = Settings.ShadowResolution, int c
         // shadow map size is fixed
     }
 
-    public override Texture[] GetTextures() => [];
+    protected override Texture[] CreateTextures() => [];
 
     public void DrawControls()
     {

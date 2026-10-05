@@ -1,6 +1,7 @@
 ﻿using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Component.Atmosphere;
 using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Assets.Exports.Component.Lights;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
@@ -16,6 +17,7 @@ using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
+using Snooper.Rendering.Components.Skybox;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Actors;
@@ -64,11 +66,14 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                         UPointLightComponent pointLight => new PointLightComponent(pointLight),
                         URectLightComponent rectLight => new RectLightComponent(rectLight),
                         UDirectionalLightComponent directionalLight => new DirectionalLightComponent(directionalLight),
+                        USkyLightComponent skyLight => new SkyLightComponent(skyLight),
                         _ => new SpatialComponent(light)
                     },
                     UAudioComponent audio => new AudioComponent(audio),
                     UTextRenderComponent text => new TextRenderComponent(text),
                     UCameraComponent camera => new CameraComponent(camera),
+                    USkyAtmosphereComponent sky => new SkyAtmosphereComponent(sky),
+                    UExponentialHeightFogComponent fog => new ExponentialHeightFogComponent(fog),
                     _ => new SpatialComponent(scene)
                 };
                 break;

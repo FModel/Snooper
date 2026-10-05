@@ -18,8 +18,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
-    public override uint? MaxBindingUsed => Bindings.BaseMaxBinding;
-    public override ActorSystemType SystemType => ActorSystemType.Rendering;
+    protected override uint? MaxBindingUsed => Bindings.BaseMaxBinding;
+    public override ActorSystemType SystemType => ActorSystemType.Geometry;
     protected override bool AllowDerivation => false;
 
     protected abstract Action<VertexArrayLayout> VertexLayout { get; }

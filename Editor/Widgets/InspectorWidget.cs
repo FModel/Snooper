@@ -181,15 +181,9 @@ public class InspectorWidget : PanelWidget
             ImGui.Separator();
 
             if (component is SkeletalMeshComponent sk) AssetRequestMenu.Animation(sk);
-            if (component is DirectionalLightComponent dirLight)
-            {
-                var lightSystem = component.Actor?.ActorManager?.GetSystem<ClusteredLightSystem>();
-                ImGui.BeginDisabled(lightSystem == null || lightSystem.DirectionalLight == dirLight);
-                if (ImGui.MenuItem("\uf185  Make Sun Light")) lightSystem!.DirectionalLight = dirLight;
-                ImGui.EndDisabled();
-            }
             if (component is SpatialComponent spatial)
             {
+                ActiveComponentMenu.Draw(spatial);
                 if (ImGui.MenuItem($"{Settings.EyeIcon}  Toggle Visibility")) spatial.SetVisibility(!spatial.IsVisible, ImGui.GetIO().KeyShift);
                 if (ImGui.MenuItem("\uf124  Teleport To")) spatial.TeleportTo();
             }

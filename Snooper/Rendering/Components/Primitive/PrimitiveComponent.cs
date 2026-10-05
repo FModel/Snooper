@@ -91,10 +91,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
-        if (component.TryGetValue(out bool castShadow, "CastShadow", "bCastStaticShadow", "bCastDynamicShadow"))
-        {
-            CastShadow = castShadow;
-        }
+        CastShadow = component.CastShadow && component.bCastDynamicShadow;
 
         if (component.TryGetValue(out float minDrawDistance, "MinDrawDistance"))
         {
@@ -110,7 +107,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     {
         var desc = component.SceneProxyDesc.PrimitiveSceneProxyDesc;
         IsVisible = component.bVisible || !desc.bIsHidden;
-        CastShadow = desc.CastShadow || desc.bCastStaticShadow || desc.bCastDynamicShadow;
+        CastShadow = desc.CastShadow && desc.bCastDynamicShadow;
         DrawDistance.X = desc.MinDrawDistance * Settings.GlobalScale;
         DrawDistance.Y = desc.CachedMaxDrawDistance * Settings.GlobalScale;
     }

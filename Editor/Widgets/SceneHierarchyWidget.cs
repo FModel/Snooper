@@ -243,13 +243,7 @@ public class SceneHierarchyWidget : PanelWidget
                 }
             }
             if (actor.RootComponent is SkeletalMeshComponent sk) AssetRequestMenu.Animation(sk);
-            if (actor.RootComponent is DirectionalLightComponent dirLight)
-            {
-                var lightSystem = actor.ActorManager?.GetSystem<ClusteredLightSystem>();
-                ImGui.BeginDisabled(lightSystem == null || lightSystem.DirectionalLight == dirLight);
-                if (ImGui.MenuItem("\uf185  Make Sun Light")) lightSystem!.DirectionalLight = dirLight;
-                ImGui.EndDisabled();
-            }
+            ActiveComponentMenu.Draw(actor.RootComponent);
             if (ImGui.MenuItem($"{Settings.EyeIcon}  Toggle Visibility")) actor.ToggleVisibility();
             if (ImGui.MenuItem("\uf124  Teleport To")) actor.RootComponent?.TeleportTo();
             if (ImGui.MenuItem("\uf1c9  Open JSON"))

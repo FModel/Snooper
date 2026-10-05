@@ -14,9 +14,9 @@ namespace Snooper.Rendering.Managers;
 public class GeometryRenderer(int originalWidth, int originalHeight) : IResizable, IMemoryDetailsProvider, IControllable, IDisposable
 {
     internal readonly ShadowFramebuffer _shadows = new();
-    private readonly DeferredFramebuffer _deferred = new(originalWidth, originalHeight);
-    private readonly ForwardFramebuffer _forward = new(originalWidth, originalHeight);
-    private readonly MaskFramebuffer _mask = new(originalWidth, originalHeight);
+    internal readonly DeferredFramebuffer _deferred = new(originalWidth, originalHeight);
+    internal readonly ForwardFramebuffer _forward = new(originalWidth, originalHeight);
+    internal readonly MaskFramebuffer _mask = new(originalWidth, originalHeight);
 
     private readonly List<RenderPass> _passes = [];
 
@@ -120,7 +120,7 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         _forward.Generate();
         _passes.Add(new RenderPass<GeometryRenderContext>("Forward Pass")
         {
-            PrePass = _ =>
+            PrePass = ctx =>
             {
                 // copy depth from deferred pass
                 GL.BlitNamedFramebuffer(_deferred, _forward, 0, 0, _deferred.Width, _deferred.Height, 0, 0, _forward.Width, _forward.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
@@ -133,6 +133,8 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
                 GL.BlendFuncSeparate(
                     BlendingFactorSrc.One, BlendingFactorDest.OneMinusSrcAlpha,
                     BlendingFactorSrc.One, BlendingFactorDest.OneMinusSrcAlpha);
+
+                ctx.Lighting.Bind();
             },
             Execute = ctx =>
             {
@@ -211,14 +213,6 @@ public class GeometryRenderer(int originalWidth, int originalHeight) : IResizabl
         _forward.Resize(newWidth, newHeight);
         _mask.Resize(newWidth, newHeight);
     }
-
-    public Texture[] GetTextures() =>
-    [
-        .._shadows.GetTextures(),
-        .._deferred.GetTextures(),
-        .._forward.GetTextures(),
-        .._mask.GetTextures(),
-    ];
 
     public void DrawControls()
     {

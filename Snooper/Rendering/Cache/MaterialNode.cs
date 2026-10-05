@@ -221,6 +221,7 @@ public sealed partial class MaterialNode
     {
         for (var node = this; node != null; node = node.Parent)
         {
+            if (node._textures.Count == 0) continue;
             foreach (var name in names)
             {
                 if (node._textures.TryGetValue(name, out var parameter) && parameter.Texture.Value is { } found)
@@ -281,6 +282,8 @@ public sealed partial class MaterialNode
         for (var node = this; node != null; node = node.Parent)
         {
             var own = values(node);
+            if (own.Count == 0) continue;
+
             foreach (var name in names)
             {
                 if (own.TryGetValue(name, out value)) return true;
@@ -305,16 +308,23 @@ public sealed partial class MaterialNode
 
         if (texture.CompressionSettings is not (TextureCompressionSettings.TC_Default or TextureCompressionSettings.TC_BC7 or TextureCompressionSettings.TC_LQ) ||
             texture.LODGroup is TextureGroup.TEXTUREGROUP_UI or TextureGroup.TEXTUREGROUP_Lightmap or TextureGroup.TEXTUREGROUP_Shadowmap or
-                TextureGroup.TEXTUREGROUP_Skybox or TextureGroup.TEXTUREGROUP_ImpostorNormalDepth)
+                TextureGroup.TEXTUREGROUP_Skybox or TextureGroup.TEXTUREGROUP_ImpostorNormalDepth || _occlusionName.IsMatch(parameterName))
             return EMaterialTextureKind.Other;
 
         if (_diffuseName.IsMatch(parameterName)) return EMaterialTextureKind.Diffuse;
-        if (_normalName.IsMatch(parameterName)) return EMaterialTextureKind.Normal;
-        if (_specularName.IsMatch(parameterName)) return EMaterialTextureKind.SpecularMasks;
+        if (!texture.SRGB)
+        {
+            if (_normalName.IsMatch(parameterName)) return EMaterialTextureKind.Normal;
+            if (_specularName.IsMatch(parameterName)) return EMaterialTextureKind.SpecularMasks;
+        }
         if (_emissiveName.IsMatch(parameterName)) return EMaterialTextureKind.Emissive;
 
         return texture.SRGB ? EMaterialTextureKind.Diffuse : EMaterialTextureKind.Other;
     }
+
+    [GeneratedRegex(@"Occlu|(?:^|_)AO(?:_|\d*$)|(?-i:(?<![A-Z])AO(?![a-z]))", RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-US")]
+    private static partial Regex RegexOcclusion();
+    private static readonly Regex _occlusionName = RegexOcclusion();
 
     [GeneratedRegex(CMaterialParams2.RegexDiffuse, RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-US")]
     private static partial Regex RegexDiffuse();

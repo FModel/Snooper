@@ -15,9 +15,16 @@ public enum EForwardTexture : byte
     Picking = 1
 }
 
+public enum ESkyTexture : byte
+{
+    Color = 0
+}
+
 public enum EShadowTexture : byte
 {
-    Depth = 0
+    Depth = 0,
+    Comparison = 1,
+    Views = 2
 }
 
 public enum EMaskTexture : byte

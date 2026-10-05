@@ -19,19 +19,28 @@ vec2 rsi(vec3 r0, vec3 rd, float sr) {
     );
 }
 
-vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g) {
+float ozone(float height) {
+    return max(0.0, 1.0 - abs(height - 25e3) / 15e3);
+}
+
+vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g, float kMieAbs, vec3 kOzn) {
     // Normalize the sun and view directions.
     pSun = normalize(pSun);
     r = normalize(r);
 
-    // Calculate the step size of the primary ray.
+    // Calculate the step size of the primary ray: from the viewer, or from where the ray enters the atmosphere,
+    // to where it leaves it or ends on the planet. The original took the whole chord, behind the viewer included.
     vec2 p = rsi(r0, r, rAtmos);
     if (p.x > p.y) return vec3(0,0,0);
-    p.y = min(p.y, rsi(r0, r, rPlanet).x);
+    p.x = max(p.x, 0.0);
+    vec2 ground = rsi(r0, r, rPlanet);
+    bool grounded = ground.x < ground.y && ground.x > 0.0;
+    if (grounded) p.y = min(p.y, ground.x);
+    if (p.y <= p.x) return vec3(0,0,0);
     float iStepSize = (p.y - p.x) / float(iSteps);
 
     // Initialize the primary ray time.
-    float iTime = 0.0;
+    float iTime = p.x;
 
     // Initialize accumulators for Rayleigh and Mie scattering.
     vec3 totalRlh = vec3(0,0,0);
@@ -40,6 +49,7 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
     // Initialize optical depth accumulators for the primary ray.
     float iOdRlh = 0.0;
     float iOdMie = 0.0;
+    float iOdOzn = 0.0;
 
     // Calculate the Rayleigh and Mie phases.
     float mu = dot(r, pSun);
@@ -64,6 +74,7 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
         // Accumulate optical depth.
         iOdRlh += odStepRlh;
         iOdMie += odStepMie;
+        iOdOzn += ozone(iHeight) * iStepSize;
 
         // Calculate the step size of the secondary ray.
         float jStepSize = rsi(iPos, pSun, rAtmos).y / float(jSteps);
@@ -74,6 +85,7 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
         // Initialize optical depth accumulators for the secondary ray.
         float jOdRlh = 0.0;
         float jOdMie = 0.0;
+        float jOdOzn = 0.0;
 
         // Sample the secondary ray.
         for (int j = 0; j < jSteps; j++) {
@@ -87,13 +99,14 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
             // Accumulate the optical depth.
             jOdRlh += exp(-jHeight / shRlh) * jStepSize;
             jOdMie += exp(-jHeight / shMie) * jStepSize;
+            jOdOzn += ozone(jHeight) * jStepSize;
 
             // Increment the secondary ray time.
             jTime += jStepSize;
         }
 
         // Calculate attenuation.
-        vec3 attn = exp(-(kMie * (iOdMie + jOdMie) + kRlh * (iOdRlh + jOdRlh)));
+        vec3 attn = exp(-((kMie + kMieAbs) * (iOdMie + jOdMie) + kRlh * (iOdRlh + jOdRlh) + kOzn * (iOdOzn + jOdOzn)));
 
         // Accumulate scattering.
         totalRlh += odStepRlh * attn;
@@ -104,6 +117,7 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
 
     }
 
-    // Calculate and return the final color.
+    // Calculate the final color.
+    // A ray that ends on the planet only carries the light scattered on the way: the ground itself is not drawn, as in the engine.
     return iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
 }

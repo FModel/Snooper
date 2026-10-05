@@ -1,5 +1,6 @@
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 
@@ -7,6 +8,7 @@ namespace Snooper.Rendering.Systems;
 
 public class GridSystem : PrimitiveSystem<GridComponent>
 {
+    public override ActorSystemType SystemType => ActorSystemType.Overlay;
     public override uint Order => 59;
     public override int Capacity => 1;
     protected override bool AllowDerivation => true;

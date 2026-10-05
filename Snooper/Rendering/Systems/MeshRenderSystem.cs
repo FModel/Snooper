@@ -16,7 +16,7 @@ public abstract class MeshRenderSystem<TComponent>(string[]? defines = null, int
     protected override bool AllowDerivation => true;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {
-        [CommandBufferType.Transparent] = new EmbeddedShader("mesh") { Defines = defines },
+        [CommandBufferType.Transparent] = new EmbeddedShader("mesh") { Defines = [..defines ?? [], ..ClusteredLightSystem.LightingDefines] },
         [CommandBufferType.Opaque] = new EmbeddedShader("mesh.vert", "geometry.frag") { Defines = defines }
     };
 

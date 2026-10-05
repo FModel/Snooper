@@ -100,10 +100,6 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 ctx.Geometry.Bind(EDeferredTexture.Color, 2);
                 ctx.Geometry.Bind(EDeferredTexture.Specular, 3);
 
-                shader.SetUniform("uInverseViewMatrix", ctx.Camera.InverseViewMatrix);
-                shader.SetUniform("uZNear", ctx.Camera.NearClipPlane);
-                shader.SetUniform("uZFar", ctx.Camera.FarClipPlane);
-
                 shader.SetUniform("useSsao", ctx.AmbientOcclusion);
                 if (ctx.AmbientOcclusion)
                 {
@@ -111,33 +107,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                     shader.SetUniform("ssao", 4);
                 }
 
-                if (ctx.LightSystem is { UseSceneLights: true, HasClusters: true } system)
-                {
-                    system.BindForRendering();
-                    shader.SetUniform("useLighting", true);
-                    shader.SetUniform("uGridDimX", system.GridDimensionX);
-                    shader.SetUniform("uGridDimY", system.GridDimensionY);
-                    shader.SetUniform("uGridDimZ", system.GridDimensionZ);
-                }
-                else shader.SetUniform("useLighting", false);
-
-                if (ctx.LightSystem?.DirectionalLight is { IsVisible: true, Actor.IsVisibleRecursive: true } light)
-                {
-                    Matrix4x4.Decompose(light.WorldMatrix, out _, out var rotation, out _);
-
-                    shader.SetUniform("useSunLight", true);
-                    shader.SetUniform("uSunDirection", Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation)));
-                    shader.SetUniform("uSunColor", light.Color);
-                    shader.SetUniform("uSunIntensity", light.Intensity);
-
-                    if (ctx.Shadows is { } shadows)
-                    {
-                        shader.SetUniform("useShadows", true);
-                        shadows.BindForRendering(shader, 5);
-                    }
-                    else shader.SetUniform("useShadows", false);
-                }
-                else shader.SetUniform("useSunLight", false);
+                ctx.Lighting.Bind();
             }
         });
 
@@ -205,7 +175,7 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
                 shader.SetUniform("uMode", ctx.Mode);
                 shader.SetUniform("uOverlay", ctx.Overlay);
                 shader.SetUniform("uShowGrid", ctx.ShowGrid);
-                shader.SetUniform("uMaxLightsPerCluster", ClusteredLightSystem.MaxLightsPerClusterLimit);
+                shader.SetUniform("uMaxLightsPerCluster", ClusteredLightSystem.MaxLightsPerCluster);
 
                 if (ctx.LightSystem is { UseSceneLights: true, HasClusters: true } system)
                 {
@@ -314,8 +284,8 @@ public class PostProcessor(int originalWidth, int originalHeight) : FullQuadFram
         return shader;
     }
 
-    public Texture GetFinalTexture() => base.GetTextures()[^1];
-    public override Texture[] GetTextures() =>
+    public Texture GetFinalTexture() => Color;
+    protected override Texture[] CreateTextures() =>
     [
         _ssaoBlurV,
         _lit,

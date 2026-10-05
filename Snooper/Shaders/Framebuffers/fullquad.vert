@@ -1,10 +1,10 @@
-﻿layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aTexCoords;
-
-out vec2 vTexCoords;
+﻿out vec2 vTexCoords;
 
 void main()
 {
-    gl_Position = vec4(aPos, 0.0, 1.0);
-    vTexCoords = aTexCoords;
+    // one triangle that covers the screen, from the vertex index alone
+    vec2 position = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2) * 2.0 - 1.0;
+
+    gl_Position = vec4(position, 0.0, 1.0);
+    vTexCoords = position * 0.5 + 0.5;
 }

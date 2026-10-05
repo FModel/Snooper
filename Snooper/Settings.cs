@@ -107,6 +107,10 @@ public static class Settings
     public const string UpRightAndDownLeftFromCenterIcon = "\uf424";
     public const string DownLeftAndUpRightToCenterIcon = "\uf422";
     public const string PlusIcon = "\uf067";
+    public const string CloudIcon = "\uf0c2";
+    public const string SmogIcon = "\uf75f";
+    public const string CloudSunIcon = "\uf6c4";
+    public const string SunIcon = "\uf185";
 
     public const string ViewportWindow = $"{CubeIcon}  Viewport";
     public const string SceneHierarchyWindow = $"{RoadIcon}  Hierarchy";
@@ -130,7 +134,7 @@ public static class Settings
     public const int MaxShadowCascades = 4;
     public const int MaxLocalShadowCasters = 4;
     public const int ShadowResolution = 2048;
-    public const int MaxShadowViews = MaxShadowCascades + MaxLocalShadowCasters;
+    public const int MaxShadowViews = MaxShadowCascades + MaxLocalShadowCasters < 32 ? MaxShadowCascades + MaxLocalShadowCasters : 32;
     public const int MaxCullingViews = 1 + MaxShadowViews;
 
     public const int MaxWeightmaps = 4;

@@ -31,7 +31,10 @@ public abstract class Framebuffer<TTextureEnum> : HandledObject, IBind, IResizab
 
     public abstract void Bind(TTextureEnum texture, uint unit);
     public abstract void Resize(int newWidth, int newHeight);
-    public abstract Texture[] GetTextures();
+
+    private Texture[]? _textures;
+    public Texture[] GetTextures() => _textures ??= CreateTextures();
+    protected abstract Texture[] CreateTextures();
 
     public abstract IEnumerable<MemoryDetail> GetMemoryDetails();
 

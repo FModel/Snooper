@@ -13,18 +13,21 @@ public class SettingsWidget : PanelWidget
     public override string PanelTitle => Settings.SettingsWindow;
     public override PanelGroup Group => PanelGroup.Engine;
 
+    private static readonly ActorSystemType[] _systemTypes = Enum.GetValues<ActorSystemType>();
+    private static readonly string[] _systemTypeNames = Enum.GetNames<ActorSystemType>();
+
     protected override void DrawContents(EditorManager editor)
     {
-        var lights = editor.GetSystem<ClusteredLightSystem>();
+        var lightSystem = editor.GetSystem<ClusteredLightSystem>();
 
         EditorUI.CollapsingTable("General", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
             EditorUI.Property("Fragment Color");
             EditorUI.FragmentColorCombo("##FragmentColor", ref editor.FragmentColor);
 
-            ImGui.BeginDisabled(lights == null);
-            var sceneLights = lights?.UseSceneLights ?? false;
-            if (EditorUI.Checkbox("Scene Lights", ref sceneLights)) lights!.UseSceneLights = sceneLights;
+            ImGui.BeginDisabled(lightSystem is not { IsSupported: true });
+            var sceneLights = lightSystem?.UseSceneLights ?? false;
+            if (EditorUI.Checkbox("Scene Lights", ref sceneLights)) lightSystem!.UseSceneLights = sceneLights;
             ImGui.EndDisabled();
         });
 
@@ -37,20 +40,35 @@ public class SettingsWidget : PanelWidget
         if (!ImGui.CollapsingHeader("Systems")) return;
 
         ImGui.Indent();
-        foreach (var system in editor.GetSystems<ActorSystem>())
+        for (var type = 0; type < _systemTypes.Length; type++)
         {
-            ImGui.PushID((int) system.Order);
-            ImGui.Checkbox("##Enabled", ref system.IsEnabled);
-            ImGui.PopID();
-            ImGui.SameLine();
+            var labelled = false;
+            foreach (var system in editor.GetSystems<ActorSystem>())
+            {
+                if (system.SystemType != _systemTypes[type]) continue;
 
-            var flags = ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.FramePadding;
-            if (system is not IControllable) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
+                if (!labelled)
+                {
+                    ImGui.SeparatorText(_systemTypeNames[type]);
+                    labelled = true;
+                }
 
-            if (!ImGui.TreeNodeEx(system.DisplayName, flags) || system is not IControllable controllable) continue;
+                ImGui.PushID((int) system.Order);
+                ImGui.BeginDisabled(!system.IsSupported);
+                var enabled = system.IsEnabled;
+                if (ImGui.Checkbox("##Enabled", ref enabled)) system.IsEnabled = enabled;
+                ImGui.EndDisabled();
+                ImGui.PopID();
+                ImGui.SameLine();
 
-            controllable.DrawControls();
-            ImGui.TreePop();
+                var flags = ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.FramePadding;
+                if (system is not IControllable) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
+
+                if (!ImGui.TreeNodeEx(system.DisplayName, flags) || system is not IControllable controllable) continue;
+
+                controllable.DrawControls();
+                ImGui.TreePop();
+            }
         }
         ImGui.Unindent();
     }

@@ -6,6 +6,7 @@ using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Core.Containers.Resources;
 using Snooper.Core.Containers.Textures;
+using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Primitives;
@@ -15,6 +16,7 @@ namespace Snooper.Rendering.Systems;
 
 public class TextRenderSystem : PrimitiveSystem<Vector4, TextRenderComponent, PerInstanceData, PerMaterialTextData>, IControllable
 {
+    public override ActorSystemType SystemType => ActorSystemType.Overlay;
     public override uint Order => 51;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {

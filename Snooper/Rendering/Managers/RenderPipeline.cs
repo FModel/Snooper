@@ -5,7 +5,6 @@ using Snooper.Core.Containers;
 using Snooper.Core.Containers.Textures;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Components.Camera;
-using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
@@ -15,6 +14,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 {
     private readonly GeometryRenderer _geometry = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
     private readonly PostProcessor _postProcess = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
+    private readonly SceneLighting _lighting = new();
 
     private bool _antiAliasing = true;
     public bool Shadows { get; set; } = true;
@@ -27,7 +27,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     private int _blurRadius = 2;
 
     private bool _debug;
-    private int _selectedTextureIndex = 0;
+    private Texture? _debugTexture;
     private float _split = 0.5f;
     private int _channel;
 
@@ -40,16 +40,18 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     {
         _geometry.Generate();
         _postProcess.Generate();
+        _lighting.Generate();
     }
 
-    public void RenderScene(CameraComponent camera, ICollection<ActorSystem> systems, DirectionalLightComponent? directionalLight)
+    public void RenderScene(CameraComponent camera, ICollection<ActorSystem> systems, ClusteredLightSystem? lightSystem)
     {
         var geometrySystems = systems.OfType<IGeometryRenderSystem>().ToArray();
         var computeSystems = systems.OfType<IComputeRenderSystem>().ToArray();
         _geometry.DoRenderPass("Compute Pass", new ComputeRenderContext(camera, computeSystems));
 
-        var castsShadows = Shadows && directionalLight is { IsVisible: true, Actor.IsVisibleRecursive: true };
-        var cullViews = _geometry.UpdateViews(camera, castsShadows ? directionalLight : null);
+        var sun = systems.OfType<DirectionalLightSystem>().FirstOrDefault()?.Active;
+        var castsShadows = Shadows && sun != null;
+        var cullViews = _geometry.UpdateViews(camera, castsShadows ? sun : null);
         _geometry.DoRenderPass("Cull Pass", new CullRenderContext(geometrySystems, cullViews));
 
         if (castsShadows)
@@ -58,7 +60,9 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
             _geometry.DoRenderPass("Shadow Pass", new ShadowRenderContext(meshSystems));
         }
 
-        var context = new GeometryRenderContext(camera, geometrySystems);
+        _lighting.Update(camera, lightSystem, sun, _geometry._shadows, castsShadows, systems.OfType<FogSystem>().FirstOrDefault()?.Active, systems.OfType<SkyLightSystem>().FirstOrDefault()?.Active);
+
+        var context = new GeometryRenderContext(camera, geometrySystems, _lighting);
         _geometry.DoRenderPass("Deferred Pass", context);
         _geometry.DoRenderPass("Forward Pass", context);
         _geometry.DoRenderPass("Mask Pass", context);
@@ -75,7 +79,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         }
 
         var geometryContext = new GeometryStageContext(_geometry);
-        var litContext = new LitStageContext(camera, _geometry, lightSystem, _ambientOcclusion, Shadows ? _geometry._shadows : null);
+        var litContext = new LitStageContext(camera, _geometry, _lighting, _ambientOcclusion, Shadows ? _geometry._shadows : null);
         _postProcess.DoStagePass("Lighting Pass", litContext);
         _postProcess.DoStagePass("Combine Pass", geometryContext);
         _postProcess.DoStagePass("Picking Pass", geometryContext);
@@ -89,8 +93,8 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
         Texture? texture = null;
         if (_debug)
         {
-            texture = GetTextures()[_selectedTextureIndex];
-            switch (texture.Name)
+            texture = _debugTexture;
+            switch (texture?.Name)
             {
                 case "PostProcess - Shadow Viz":
                 {
@@ -117,7 +121,6 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     public uint GetComponentId(Vector2 mousePos, Vector2 windowPos, Vector2 windowSize) => _postProcess.GetComponentId(mousePos, windowPos, windowSize);
 
     public Texture GetFinalTexture() => _postProcess.GetFinalTexture();
-    public Texture[] GetTextures() => [.._postProcess.GetTextures(), .._geometry.GetTextures()];
 
     public void Resize(int newWidth, int newHeight)
     {
@@ -157,19 +160,15 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
 
         EditorUI.PropertyValueTable("Debug View", () =>
         {
-            var textures = GetTextures();
+            _debugTexture ??= _postProcess.GetTextures()[0];
             EditorUI.Property("Texture");
-            if (ImGui.BeginCombo("##Texture Selector", textures[_selectedTextureIndex].Name))
+            if (ImGui.BeginCombo("##Texture Selector", _debugTexture.Name))
             {
-                for (var i = 0; i < textures.Length; i++)
-                {
-                    var isSelected = _selectedTextureIndex == i;
-                    if (ImGui.Selectable(textures[i].Name, isSelected))
-                    {
-                        _selectedTextureIndex = i;
-                    }
-                    if (isSelected) ImGui.SetItemDefaultFocus();
-                }
+                Rows(_postProcess.GetTextures());
+                Rows(_geometry._shadows.GetTextures());
+                Rows(_geometry._deferred.GetTextures());
+                Rows(_geometry._forward.GetTextures());
+                Rows(_geometry._mask.GetTextures());
                 ImGui.EndCombo();
             }
 
@@ -179,7 +178,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
             EditorUI.Property("Channel");
             ImGui.Combo("##Channel", ref _channel, "RGB\0R\0G\0B\0A\0");
 
-            if (textures[_selectedTextureIndex].Name == "PostProcess - Light Cluster Viz")
+            if (_debugTexture.Name == "PostProcess - Light Cluster Viz")
             {
                 EditorUI.Property("Cluster Mode");
                 ImGui.Combo("##Cluster Mode", ref _clusterVizMode, "Lights In Cluster\0Cluster Z Slice\0Column Peak\0");
@@ -190,21 +189,33 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
                 EditorUI.Property("Cluster Grid");
                 ImGui.Checkbox("##Cluster Grid", ref _clusterVizGrid);
             }
+
+            void Rows(Texture[] textures)
+            {
+                foreach (var texture in textures)
+                {
+                    var isSelected = texture.Equals(_debugTexture);
+                    if (ImGui.Selectable(texture.Name, isSelected)) _debugTexture = texture;
+                    if (isSelected) ImGui.SetItemDefaultFocus();
+                }
+            }
         });
     }
 
-    public long Allocated => _geometry.Allocated + _postProcess.Allocated;
-    public long Used => _geometry.Used + _postProcess.Used;
+    public long Allocated => _geometry.Allocated + _postProcess.Allocated + _lighting.Allocated;
+    public long Used => _geometry.Used + _postProcess.Used + _lighting.Used;
 
     public IEnumerable<MemoryDetail> GetMemoryDetails()
     {
         yield return new MemoryDetail("Geometry Renderer", _geometry);
         yield return new MemoryDetail("Post Processor", _postProcess);
+        yield return new MemoryDetail("Scene Lighting", _lighting);
     }
 
     public void Dispose()
     {
         _geometry.Dispose();
         _postProcess.Dispose();
+        _lighting.Dispose();
     }
 }

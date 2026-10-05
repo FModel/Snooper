@@ -70,9 +70,9 @@ public class SceneManager : ActorManager
     public override void Load()
     {
         DequeueViewports();
-        Pipeline.Generate();
 
         base.Load();
+        Pipeline.Generate();
     }
 
     public override void Update(float delta)
@@ -91,7 +91,7 @@ public class SceneManager : ActorManager
         var camera = MainViewport.Camera;
         var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
 
-        Pipeline.RenderScene(camera, Systems.Values, lightSystem?.DirectionalLight);
+        Pipeline.RenderScene(camera, Systems.Values, lightSystem);
         Pipeline.PostProcessScene(camera, lightSystem);
     }
 

@@ -43,8 +43,7 @@ public sealed class SunCascades
     {
         if (UpdateSplits(camera)) mask = uint.MaxValue;
 
-        Matrix4x4.Decompose(light.WorldMatrix, out _, out var rotation, out _);
-        var toLight = Vector3.Normalize(Vector3.Transform(Settings.ForwardVector, rotation));
+        var toLight = light.GetDirection();
 
         // never camera.Up: the look-at degenerates into a NaN matrix the moment the camera up vector
         // lines up with the light, which is what used to blank out a cascade at certain angles. this

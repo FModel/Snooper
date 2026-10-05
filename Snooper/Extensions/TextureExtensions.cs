@@ -1,4 +1,7 @@
-﻿using CUE4Parse.UE4.Assets.Exports.Texture;
+﻿using System.Buffers.Binary;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using CUE4Parse.UE4.Assets.Exports.Texture;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Cache;
@@ -10,7 +13,7 @@ public static class TextureExtensions
     // the default swizzle layout per game, then the layouts of specific texture suffixes in that game, which win over it
     private static readonly Dictionary<string, (string Default, (string Suffix, string Layout)[] Suffixes)> _maskLayouts = new()
     {
-        ["GAMEFACE"] = ("?RM",[]),
+        ["GAMEFACE"] = ("RM?",[]),
         ["HK_PROJECT"] = ("?RM",[("LP", "MR?")]),
         ["COSMICSHAKE"] = ("?RM",[]),
         ["PHOENIX"] = ("?RM",[]),
@@ -25,13 +28,24 @@ public static class TextureExtensions
         ["PJ033"] = ("RM?",[]),
     };
 
+    private static readonly (string Word, string Letter)[] _channelWords =
+    [
+        ("AmbientOcclusion", "O"),
+        ("Occlusion", "O"),
+        ("Roughness", "R"),
+        ("Metallic", "M"),
+        ("Metalness", "M"),
+        ("Specular", "S"),
+        ("Emissive", "E"),
+        ("Height", "H"),
+        ("AO", "O")
+    ];
+
     /// <summary>
     /// output must be R: Specular, G: Metallic, B: Roughness
     /// </summary>
     public static void SwizzlePerName(this Texture texture, string name, string game, out EMaskChannels missing)
     {
-        const string channels = "AOMRSEH?";
-
         var suffix = name.AsSpan().TrimEnd("0123456789").TrimEnd('_'); // exclude _ORM2, ORM_01
         suffix = suffix[(suffix.LastIndexOf('_') + 1)..];
 
@@ -39,36 +53,40 @@ public static class TextureExtensions
         {
             foreach (var (ending, layout) in layouts.Suffixes)
             {
-                if (suffix.Equals(ending, StringComparison.OrdinalIgnoreCase) && Swizzle(layout, out missing))
-                {
-                    return;
-                }
+                if (!suffix.Equals(ending, StringComparison.OrdinalIgnoreCase)) continue;
+
+                Swizzle(layout, out missing);
+                return;
             }
         }
 
-        if (suffix.Length is 3 or 4 && Swizzle(suffix, out missing))
+        var letters = suffix.ToString();
+        foreach (var (word, letter) in _channelWords)
         {
-            return;
+            letters = letters.Replace(word, letter, StringComparison.OrdinalIgnoreCase);
         }
 
-        if (layouts.Default is { } fallback)
-        {
-            Swizzle(fallback, out missing);
-        }
-        else
+        // glued to a word (BaseORM), the layout is the capitals the name ends with
+        var capitals = letters.AsSpan(letters.AsSpan().LastIndexOfAnyExceptInRange('A', 'Z') + 1);
+        if (Swizzle(letters, out missing) || Swizzle(capitals, out missing)) return;
+
+        if (layouts.Default is not { } fallback || !Swizzle(fallback, out missing))
         {
             missing = EMaskChannels.None; // trust the raw channels
         }
 
-        bool Swizzle(ReadOnlySpan<char> letters, out EMaskChannels absent)
+        bool Swizzle(ReadOnlySpan<char> layout, out EMaskChannels absent)
         {
+            const string channels = "AOMRSEH?";
+
             absent = EMaskChannels.None;
+            if (layout.Length is not (3 or 4)) return false;
 
             Span<int> sources = [(int) PixelFormat.Red, (int) PixelFormat.Green, (int) PixelFormat.Blue, (int) PixelFormat.Alpha];
             int specular = -1, metallic = -1, roughness = -1;
-            for (var i = 0; i < letters.Length; i++)
+            for (var i = 0; i < layout.Length; i++)
             {
-                var letter = char.ToUpperInvariant(letters[i]);
+                var letter = char.ToUpperInvariant(layout[i]);
                 if (!channels.Contains(letter)) return false;
 
                 switch (letter)
@@ -339,5 +357,65 @@ public static class TextureExtensions
         }
 
         return format;
+    }
+
+    public static bool TryGetFaceAverages(this UTextureCube texture, Span<Vector3> faces)
+    {
+        if (texture.PlatformData.Mips is not { Length: > 0 } mips || mips[^1].BulkData?.Data is not { } data) return false;
+
+        faces.Clear();
+        switch (texture.Format)
+        {
+            case EPixelFormat.PF_FloatRGBA:
+            {
+                var texels = MemoryMarshal.Cast<byte, Half>(data);
+                var perFace = texels.Length / 4 / faces.Length;
+                if (perFace == 0) return false;
+
+                for (var face = 0; face < faces.Length; face++)
+                {
+                    for (var i = face * perFace * 4; i < (face + 1) * perFace * 4; i += 4)
+                    {
+                        faces[face] += new Vector3((float) texels[i], (float) texels[i + 1], (float) texels[i + 2]) / perFace;
+                    }
+                }
+                return true;
+            }
+            case EPixelFormat.PF_DXT1:
+            {
+                // a block is two 565 colours then two bits a texel, which pick one of them or a blend: its first texel is enough
+                var perFace = data.Length / 8 / faces.Length;
+                if (perFace == 0) return false;
+
+                for (var face = 0; face < faces.Length; face++)
+                {
+                    for (var i = face * perFace * 8; i < (face + 1) * perFace * 8; i += 8)
+                    {
+                        var first = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(i));
+                        var second = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(i + 2));
+                        var (a, b) = (Rgb565(first), Rgb565(second));
+                        var texel = (data[i + 4] & 3) switch
+                        {
+                            0 => a,
+                            1 => b,
+                            2 => first > second ? (a * 2 + b) / 3 : (a + b) / 2,
+                            _ => first > second ? (a + b * 2) / 3 : Vector3.Zero
+                        };
+                        faces[face] += (texture.SRGB ? ToLinear(texel) : texel) / perFace;
+                    }
+                }
+                return true;
+            }
+            default:
+#if DEBUG
+                throw new NotSupportedException($"Cubemap {texture.Name} is {texture.Format}, which is not read.");
+#else
+                return false;
+#endif
+        }
+
+        static Vector3 Rgb565(ushort color) => new((color >> 11) / 31.0f, ((color >> 5) & 63) / 63.0f, (color & 31) / 31.0f);
+        static Vector3 ToLinear(Vector3 color) => new(Channel(color.X), Channel(color.Y), Channel(color.Z));
+        static float Channel(float value) => value <= 0.04045f ? value / 12.92f : MathF.Pow((value + 0.055f) / 1.055f, 2.4f);
     }
 }

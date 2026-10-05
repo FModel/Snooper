@@ -1,11 +1,11 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
-using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
+using Snooper.Core.Hardware;
 using Snooper.Core.Systems;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Camera;
@@ -57,35 +57,34 @@ public readonly struct ClusterData
     public readonly uint Count;    // Number of lights in this cluster
 }
 
-public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemoryDetailsProvider, IControllable, IResizable
+public class ClusteredLightSystem : ComputeRenderSystem<LocalLightComponent>, IMemoryDetailsProvider, IControllable, IResizable
 {
     private const int TileSize = 32;
     private const int WorkGroupSize = 64;
-    private const int MaxLightsPerCluster = 128;
+    public const int MaxLightsPerCluster = 128;
 
-    internal abstract class LightBindings : Bindings
+    private abstract class LightBindings : Bindings
     {
-        public const uint LightData = BaseMaxBinding + 1;
-        public const uint LightClusterData = BaseMaxBinding + 2;
-        public const uint LightIndexList = BaseMaxBinding + 3;
-        public const uint LightClusterAabbs = BaseMaxBinding + 4;
-        public const uint ShadowViews = BaseMaxBinding + 5;
-        public const uint MaxBinding = ShadowViews;
+        public const uint LightData = TranslucentMaxBinding + 1;
+        public const uint LightClusterData = TranslucentMaxBinding + 2;
+        public const uint LightIndexList = TranslucentMaxBinding + 3;
+        public const uint LightClusterAabbs = TranslucentMaxBinding + 4;
+        public const uint MaxBinding = LightClusterAabbs;
 
         public static readonly string[] OwnDefines =
         [
+            "CLUSTERED_LIGHTS",
             Define("LIGHT_DATA", LightData),
             Define("LIGHT_CLUSTER_DATA", LightClusterData),
             Define("LIGHT_INDEX_LIST", LightIndexList),
-            Define("LIGHT_CLUSTER_AABBS", LightClusterAabbs),
-            Define("SHADOW_VIEWS", ShadowViews)
+            Define("LIGHT_CLUSTER_AABBS", LightClusterAabbs)
         ];
     }
 
-    public override ActorSystemType SystemType => ActorSystemType.Custom;
+    public override ActorSystemType SystemType => ActorSystemType.Environment;
     public override uint Order => 99; // at least after TransformSystem
     public override int Capacity => 10000;
-    public override uint? MaxBindingUsed => LightBindings.MaxBinding;
+    protected override uint? MaxBindingUsed => LightBindings.MaxBinding;
 
     private readonly ShaderStorageBuffer<LightData> _lightDataBuffer = new();
     private readonly ShaderStorageBuffer<ClusterAABB> _clusterAABBBuffer = new(BufferUsageHint.DynamicDraw);
@@ -111,33 +110,9 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     private bool _clustersDirty = true;
     private Matrix4x4 _lastClusterProjection;
 
-    public bool UseSceneLights
-    {
-        get;
-        set
-        {
-            if (field == value) return;
+    public bool UseSceneLights { get; set; }
 
-            field = value;
-            DirectionalLight?.SetVisibility(!value);
-        }
-    }
-
-    internal DirectionalLightComponent? DirectionalLight
-    {
-        get;
-        set
-        {
-            if (field == value) return;
-
-            if (field != null) field.SetVisibility(false);
-            field = value;
-            if (field != null) field.SetVisibility(!UseSceneLights);
-        }
-    }
-
-    internal static string[] LightingDefines => LightBindings.OwnDefines;
-    internal static int MaxLightsPerClusterLimit => MaxLightsPerCluster;
+    internal static string[] LightingDefines => LightBindings.MaxBinding < DeviceInfo.MaxShaderStorageBufferBindings ? LightBindings.OwnDefines : [];
 
     protected override void OnLoad()
     {
@@ -226,7 +201,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         _lightCullingProgram.Unuse();
     }
 
-    protected override void OnComponentUpdate(LightComponent component, float delta)
+    protected override void OnComponentUpdate(LocalLightComponent component, float delta)
     {
         var data = component.GetLightData();
         if (component._allocation is null)
@@ -239,17 +214,7 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
         }
     }
 
-    protected override void OnActorComponentAdded(LightComponent component)
-    {
-        base.OnActorComponentAdded(component);
-
-        if (DirectionalLight == null && component is DirectionalLightComponent { CastShadows: true } dirLight)
-        {
-            DirectionalLight = dirLight;
-        }
-    }
-
-    protected override void OnActorComponentRemoved(LightComponent component, EEndPlayReason reason)
+    protected override void OnActorComponentRemoved(LocalLightComponent component, EEndPlayReason reason)
     {
         base.OnActorComponentRemoved(component, reason);
 
@@ -260,16 +225,11 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
             _lightDataBuffer.Remove(allocation);
         }
         component._allocation = null;
-
-        if (component == DirectionalLight)
-        {
-            DirectionalLight = null;
-        }
     }
 
     public void Resize(int newWidth, int newHeight)
     {
-        if (_screenWidth == newWidth && _screenHeight == newHeight) return;
+        if (!IsSupported || (_screenWidth == newWidth && _screenHeight == newHeight)) return;
 
         _screenWidth = newWidth;
         _screenHeight = newHeight;
@@ -316,11 +276,6 @@ public class ClusteredLightSystem : ComputeRenderSystem<LightComponent>, IMemory
     {
         EditorUI.PropertyValueTable("Lighting Table", () =>
         {
-            ImGui.BeginDisabled(DirectionalLight == null);
-            var check = DirectionalLight?.IsVisible ?? false;
-            if (EditorUI.Checkbox("Sun Light", ref check)) DirectionalLight?.SetVisibility(check);
-            ImGui.EndDisabled();
-
             EditorUI.Text("Lights", $"{ComponentsCount}/{Capacity}");
             EditorUI.Text("Clusters", $"{_numClusters} ({GridDimensionX} x {GridDimensionY} x {GridDimensionZ}) split into {_numWorkGroups} work groups");
             EditorUI.Text("Buffer", $"{_lightDataBuffer.Count} Element(s) ({_lightDataBuffer.Used.GetReadableSize()} / {_lightDataBuffer.Allocated.GetReadableSize()})");

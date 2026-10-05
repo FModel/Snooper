@@ -276,7 +276,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     }
 
     public T? GetSystem<T>() where T : ActorSystem => GetSystems<T>().FirstOrDefault();
-    public IEnumerable<T> GetSystems<T>() where T : ActorSystem => GetSystemsInternal<T>();
+    public IEnumerable<T> GetSystems<T>() where T : IGameSystem => GetSystemsInternal<T>();
     internal IEnumerable<T> GetSystemsInternal<T>() => Systems.Values.OfType<T>();
 
     public bool IsDisposed { get; private set; }

@@ -11,9 +11,27 @@ public abstract class Bindings
     public const uint MaterialTable = 6;
     public const uint BaseMaxBinding = MaterialTable;
 
+    // a copy of SkinnedBindings.MaxBinding to keep in sync.
+    // a translucent mesh computes lights and shadows in its own shader, for every fragment, where the deferred pass does it once per pixel.
+    // so it is drawn with the lights bound next to its own buffers: this offsets the light bindings past them, and everyone pays the price for it
+    // TODO: could be reworked
+    protected const uint TranslucentMaxBinding = BaseMaxBinding + 9;
+
+    // ------------ scene lighting ------------
+    // shared with the shaders, bound by each pass that reads them (forward, lighting)
+    // uniform block indices
+    public const uint SceneDataBlock = 0;
+    public const uint ShadowViewsBlock = 1;
+    // texture unit, reserved, its compare sampler stays on it after the pass
+    public const uint ShadowMapUnit = 15;
+
     protected static string Define(string name, uint binding) => $"BINDING_{name} {binding}";
 
     public static string GlslDefines { get; } = string.Join('\n',
+        $"#define BINDING_SCENE_DATA {SceneDataBlock}",
+        $"#define BINDING_SHADOW_VIEWS {ShadowViewsBlock}",
+        $"#define UNIT_SHADOW_MAP {ShadowMapUnit}",
+        $"#define MAX_SHADOW_VIEWS {Settings.MaxShadowViews}",
         $"#define BINDING_INSTANCE_DATA {InstanceData}",
         $"#define BINDING_MATERIAL_DATA {MaterialData}",
         $"#define BINDING_DRAW_STATIC {DrawStatic}",

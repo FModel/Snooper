@@ -8,10 +8,11 @@ public interface IRenderContext;
 
 public readonly struct NoRenderContext : IRenderContext;
 
-public readonly struct GeometryRenderContext(CameraComponent camera, IEnumerable<IGeometryRenderSystem> systems) : IRenderContext
+public readonly struct GeometryRenderContext(CameraComponent camera, IEnumerable<IGeometryRenderSystem> systems, SceneLighting lighting) : IRenderContext
 {
     public readonly CameraComponent Camera = camera;
     public readonly IEnumerable<IGeometryRenderSystem> Systems = systems;
+    public readonly SceneLighting Lighting = lighting;
 }
 
 public readonly struct ComputeRenderContext(CameraComponent camera, IEnumerable<IComputeRenderSystem> systems) : IRenderContext

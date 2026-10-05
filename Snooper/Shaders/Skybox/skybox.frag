@@ -1,36 +1,34 @@
 ﻿layout (location = 1) out uint gPicking;
 
-#include "Skybox/atmosphere.glsl"
+#include "Skybox/sky.glsl"
+#include "Lighting/fog.glsl"
 
 in vec3 vTexCoords;
 
+uniform bool useSun; // without one nothing lights the atmosphere, only the fog shows
+uniform sampler2D uSky;
 uniform vec3 uSunPos;
-uniform float uSunIntensity;
-uniform float uSunRadius;
-uniform float uSunAtmosphereRadius;
+uniform float uSunDisc; // cosine of the sun's angular radius
 
 out vec4 FragColor;
 
 void main()
 {
-    vec3 color = atmosphere(
-        normalize(vTexCoords),          // normalized ray direction
-        vec3(0, 6372e3, 0),             // ray origin
-        uSunPos,                        // position of the sun
-        uSunIntensity,                  // intensity of the sun
-        uSunRadius,                     // radius of the planet in meters
-        uSunAtmosphereRadius,           // radius of the atmosphere in meters
-        vec3(5.5e-6, 13.0e-6, 22.4e-6), // Rayleigh scattering coefficient
-        21e-6,                          // Mie scattering coefficient
-        8e3,                            // Rayleigh scale height
-        1.2e3,                          // Mie scale height
-        0.758                           // Mie preferred scattering direction
-    );
+    vec3 direction = normalize(vTexCoords);
+    vec3 color = vec3(0.0);
+    if (useSun)
+    {
+        color = texture(uSky, SkyDirectionToUv(direction)).rgb;
 
-    // Apply exposure.
-    color = 1.0 - exp(-1.0 * color);
+        // the sun itself, too small for the texture: a disc as wide as its light says, tinted by the sky around it so it reddens with it
+        float mu = dot(direction, normalize(uSunPos));
+        float edge = max(fwidth(mu), 1e-7);
+        float disc = smoothstep(uSunDisc - edge, uSunDisc + edge, mu);
+        vec3 tint = color / max(max(color.r, max(color.g, color.b)), 1e-4);
+        color += disc * 50.0 * tint * smoothstep(-0.01, 0.01, direction.y);
+    }
 
-    FragColor = vec4(color, 1.0);
+    FragColor = vec4(ApplySkyFog(SkyExposure(color), direction), 1.0);
     
     gPicking = 0u;
 }

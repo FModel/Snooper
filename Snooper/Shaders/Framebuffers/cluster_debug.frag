@@ -1,6 +1,8 @@
 in vec2 vTexCoords;
 
+#ifdef CLUSTERED_LIGHTS
 #include "Buffers/PerLightData.glsl"
+#endif
 
 uniform sampler2D gPosition;
 uniform sampler2D sceneTexture;
@@ -75,6 +77,7 @@ void main()
         return;
     }
 
+#ifdef CLUSTERED_LIGHTS
     if (uMode == 2)
     {
         // Depth-independent view: the fullest cluster anywhere along this tile's column. Shows where
@@ -109,6 +112,7 @@ void main()
             hasViz = count > 0u;
         }
     }
+#endif
 
     // Scene stays underneath, desaturated, so geometry reads as context without competing with the ramp.
     float luma = dot(scene, vec3(0.299, 0.587, 0.114));

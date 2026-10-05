@@ -28,7 +28,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     }
 
     public override uint Order => 21;
-    public override uint? MaxBindingUsed => LandscapeBindings.MaxBinding;
+    protected override uint? MaxBindingUsed => LandscapeBindings.MaxBinding;
     protected override Dictionary<CommandBufferType, ShaderProgram> Shaders { get; } = new()
     {
         [CommandBufferType.Opaque] = new EmbeddedShader("Landscape/landscape")

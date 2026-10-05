@@ -17,6 +17,9 @@ public sealed class AudioSystem : ComputeRenderSystem<AudioComponent>, IControll
     public override ActorSystemType SystemType => ActorSystemType.Audio;
     public override uint Order => 100;
     public override int Capacity => 10000;
+#if !DEBUG
+    public override bool IsSupported => false;
+#endif
 
     private ALDevice _device;
     private ALContext _context;

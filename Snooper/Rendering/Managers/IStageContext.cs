@@ -30,11 +30,11 @@ public readonly struct BlurStageContext(int radius, GeometryRenderer geometry) :
     public readonly GeometryRenderer Geometry = geometry;
 }
 
-public readonly struct LitStageContext(CameraComponent camera, GeometryRenderer geometry, ClusteredLightSystem? lightSystem, bool ambientOcclusion = true, ShadowFramebuffer? shadows = null) : IStageContext
+public readonly struct LitStageContext(CameraComponent camera, GeometryRenderer geometry, SceneLighting lighting, bool ambientOcclusion = true, ShadowFramebuffer? shadows = null) : IStageContext
 {
     public readonly CameraComponent Camera = camera;
     public readonly GeometryRenderer Geometry = geometry;
-    public readonly ClusteredLightSystem? LightSystem = lightSystem;
+    public readonly SceneLighting Lighting = lighting;
     public readonly bool AmbientOcclusion = ambientOcclusion;
     public readonly ShadowFramebuffer? Shadows = shadows;
 }

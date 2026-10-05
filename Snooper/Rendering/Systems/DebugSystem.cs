@@ -16,6 +16,7 @@ namespace Snooper.Rendering.Systems;
 
 public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, PerMaterialDebugData>(PrimitiveType.Lines), IControllable
 {
+    public override ActorSystemType SystemType => ActorSystemType.Overlay;
     public override uint Order => 50;
     protected override bool AllowDerivation => true;
     protected override bool IsCulled => false;
@@ -86,9 +87,13 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
             {
                 Toggle(lightSystem.GetComponents<RectLightComponent>(), _showRectLightBounds);
             }
+        }
+
+        if (ActorManager?.GetSystem<DirectionalLightSystem>() is { } sunSystem)
+        {
             if (ImGui.Checkbox("Show Directional Light Arrows", ref _showDirectionalLightArrows))
             {
-                Toggle(lightSystem.GetComponents<DirectionalLightComponent>(), _showDirectionalLightArrows);
+                Toggle(sunSystem.GetComponents<DirectionalLightComponent>(), _showDirectionalLightArrows);
             }
         }
 
