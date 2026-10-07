@@ -89,7 +89,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     {
         Name = owner.Name;
         Path = owner.GetCleanPath();
-        Guid = new FGuid((uint)owner.Name.GetHashCode());
+        Guid = new FGuid((uint) (Path ?? owner.Name).GetHashCode());
 
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
@@ -110,7 +110,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     {
         Name = owner.Name;
         Path = owner.GetCleanPath();
-        Guid = new FGuid((uint)owner.Name.GetHashCode());
+        Guid = new FGuid((uint) (Path ?? owner.Name).GetHashCode());
 
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;

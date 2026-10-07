@@ -66,7 +66,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     }
 
     public readonly bool CastShadow = true;
-    public readonly Vector2 DrawDistance = Vector2.Zero;
+    public Vector2 DrawDistance { get; protected init; } = Vector2.Zero;
 
     /// <summary>
     /// opaque pass requires shader support for writing to multiple render targets, so by default it's disabled and primitives are rendered in the translucent pass
@@ -95,11 +95,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
         if (component.TryGetValue(out float minDrawDistance, "MinDrawDistance"))
         {
-            DrawDistance.X = minDrawDistance * Settings.GlobalScale;
+            DrawDistance = DrawDistance with { X = minDrawDistance * Settings.GlobalScale };
         }
         if (component.TryGetValue(out float maxDrawDistance, "CachedMaxDrawDistance"))
         {
-            DrawDistance.Y = maxDrawDistance * Settings.GlobalScale;
+            DrawDistance = DrawDistance with { Y = maxDrawDistance * Settings.GlobalScale };
         }
     }
 
@@ -108,8 +108,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         var desc = component.SceneProxyDesc.PrimitiveSceneProxyDesc;
         IsVisible = component.bVisible || !desc.bIsHidden;
         CastShadow = desc.CastShadow && desc.bCastDynamicShadow;
-        DrawDistance.X = desc.MinDrawDistance * Settings.GlobalScale;
-        DrawDistance.Y = desc.CachedMaxDrawDistance * Settings.GlobalScale;
+        DrawDistance = new Vector2(desc.MinDrawDistance, desc.CachedMaxDrawDistance) * Settings.GlobalScale;
     }
 
     protected PrimitiveComponent(USceneComponent component) : base(component)

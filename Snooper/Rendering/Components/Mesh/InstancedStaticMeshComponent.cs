@@ -15,12 +15,22 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
     private readonly Transform[] _originalInstancedTransforms;
     private readonly bool[] _instanceDirtyFlags;
 
-    public InstancedStaticMeshComponent(UStaticMesh staticMesh, UInstancedStaticMeshComponent component) : base(staticMesh, component)
+    public InstancedStaticMeshComponent(UStaticMesh staticMesh, UInstancedStaticMeshComponent component) : this(staticMesh, component, component.GetInstances())
     {
-        var instances = component.GetInstances();
+
+    }
+
+    protected InstancedStaticMeshComponent(UStaticMesh staticMesh, UInstancedStaticMeshComponent component, FInstancedStaticMeshInstanceData[] instances) : base(staticMesh, component)
+    {
         foreach (var data in instances)
         {
             LocalInstancedTransforms.Add(data.TransformData);
+        }
+
+        var cullDistance = component.InstanceEndCullDistance * Settings.GlobalScale;
+        if (cullDistance > 0.0f && (DrawDistance.Y == 0.0f || cullDistance < DrawDistance.Y))
+        {
+            DrawDistance = DrawDistance with { Y = cullDistance };
         }
 
         IsVisible = IsVisible && LocalInstancedTransforms.Count > 0;

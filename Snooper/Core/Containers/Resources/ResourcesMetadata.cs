@@ -4,11 +4,12 @@ using Snooper.UI;
 
 namespace Snooper.Core.Containers.Resources;
 
-public class DrawBufferAllocation(DrawAllocation allocation, CommandBufferType bufferType, uint materialIndex)
+public class DrawBufferAllocation(DrawAllocation allocation, CommandBufferType bufferType, uint materialIndex, uint instanceCount)
 {
     public DrawAllocation Allocation = allocation;
     public CommandBufferType BufferType = bufferType;
     public readonly uint MaterialIndex = materialIndex;
+    public readonly uint InstanceCount = instanceCount;
 }
 
 public class ResourcesMetadata(GeometryHandle geometryHandle, BufferAllocation instanceAllocation, BufferAllocation? materialAllocation, DrawBufferAllocation[] drawAllocations) : IControllable

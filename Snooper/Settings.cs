@@ -129,6 +129,7 @@ public static class Settings
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";
     public const int MaxNumberOfLods = 8;
+    public const int MaxInstancesPerDraw = 1024;
     public const int NumberOfSamples = 4;
     public const float GlobalScale = 0.01f;
 

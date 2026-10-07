@@ -4,6 +4,7 @@ using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Primitive;
 
 namespace Snooper.Core.Containers.Resources;
@@ -82,27 +83,33 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         }
 
         const uint currentLod = 0u;
-        var drawAllocations = new DrawBufferAllocation[descriptor.Lods[currentLod].Sections.Length];
+        var sections = descriptor.Lods[currentLod].Sections;
+        var chunks = component is HierarchicalInstancedStaticMeshComponent { InstanceChunks: { } ranges } ? ranges : [(0, instanceAllocation.Length)];
+        var drawAllocations = new DrawBufferAllocation[sections.Length * chunks.Length];
 
         var bufferType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
         var buffer = _commands.GetBuffer(bufferType);
-        for (var i = 0u; i < drawAllocations.Length; i++)
+        var d = 0;
+        foreach (var (start, count) in chunks)
         {
-            var section = descriptor.Lods[currentLod].Sections[i];
-            var instanceCount = component.IsMaterialVisible(section.MaterialIndex) ? (uint)instanceAllocation.Length : 0u;
-            var command = new DrawElementsIndirectCommand(section, instanceCount, geometryHandle, (uint)instanceAllocation.StartIndex);
-            var draw = new PerDrawStatic(
-                geometryHandle,
-                i,
-                (uint) (materialAllocation?.StartIndex ?? int.MaxValue),
-                section,
-                (uint) component.Id,
-                command,
-                component.CastShadow,
-                component.DrawDistance,
-                component.IsOutlined);
+            for (var i = 0u; i < sections.Length; i++)
+            {
+                var section = sections[i];
+                var instanceCount = component.IsMaterialVisible(section.MaterialIndex) ? (uint) count : 0u;
+                var command = new DrawElementsIndirectCommand(section, instanceCount, geometryHandle, (uint) (instanceAllocation.StartIndex + start));
+                var draw = new PerDrawStatic(
+                    geometryHandle,
+                    i,
+                    (uint) (materialAllocation?.StartIndex ?? int.MaxValue),
+                    section,
+                    (uint) component.Id,
+                    command,
+                    component.CastShadow,
+                    component.DrawDistance,
+                    component.IsOutlined);
 
-            drawAllocations[i] = new DrawBufferAllocation(buffer.Add(command, draw, new PerDrawCulled(geometryHandle, section)), bufferType, section.MaterialIndex);
+                drawAllocations[d++] = new DrawBufferAllocation(buffer.Add(command, draw, new PerDrawCulled(geometryHandle, section)), bufferType, section.MaterialIndex, (uint) count);
+            }
         }
 
         component.MarkClean(DirtyFlags.InstanceData | DirtyFlags.Visibility | DirtyFlags.Opacity | DirtyFlags.Outline | DirtyFlags.ManualLodSwap);
@@ -129,7 +136,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         {
             foreach (var draw in metadata.DrawAllocations)
             {
-                var data = component.IsMaterialVisible(draw.MaterialIndex) ? (uint)metadata.InstanceAllocation.Length : 0u;
+                var data = component.IsMaterialVisible(draw.MaterialIndex) ? draw.InstanceCount : 0u;
                 var buffer = _commands.GetBuffer(draw.BufferType);
                 buffer.Commands.UpdateCustom(draw.Allocation.Command, data, DrawElementsIndirectCommand.InstanceCountOffset);
                 buffer.StaticData.UpdateCustom(draw.Allocation.Static, data, PerDrawStatic.OriginalInstanceCountOffset);

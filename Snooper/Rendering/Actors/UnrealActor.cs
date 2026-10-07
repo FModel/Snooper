@@ -41,6 +41,7 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                     // Get.*Mesh() is not being used because it ignores null fields, null meaning discard the mesh for this component (ig?)
                     UStaticMeshComponent sm when sm.TryGetValue<UStaticMesh>(out var mesh, "StaticMesh") => sm switch
                     {
+                        UHierarchicalInstancedStaticMeshComponent hism => new HierarchicalInstancedStaticMeshComponent(mesh, hism),
                         UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(mesh, ism),
                         USplineMeshComponent spline => new SplineMeshComponent(mesh, spline),
                         _ => new StaticMeshComponent(mesh, sm)
