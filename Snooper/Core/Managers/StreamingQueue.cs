@@ -16,6 +16,8 @@ internal sealed class StreamingQueue
     private readonly ConcurrentQueue<(StreamableActor Owner, Actor? Built, Exception? Error)> _built = new();
     private int _building;
 
+    internal bool IsIdle => _waiting.Count == 0 && _building == 0;
+
     internal void Load(StreamableActor streamable)
     {
         if (streamable.State is not (EStreamingState.Unloaded or EStreamingState.Failed)) return;

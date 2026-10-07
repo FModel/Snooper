@@ -157,7 +157,7 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         LocalTransform.Rotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
     }
 
-    public CameraComponent(Transform? transform = null, string? name = null) : base(transform, name)
+    protected CameraComponent(Transform? transform = null, string? name = null) : base(transform, name)
     {
 
     }

@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Camera;
 
@@ -13,7 +14,7 @@ public enum CameraType : byte
 /// <summary>
 /// camera that can move via keyboard and mouse input
 /// </summary>
-public class InteractiveCameraComponent : CameraComponent
+public class InteractiveCameraComponent(Transform? transform = null, string? name = null) : CameraComponent(transform, name)
 {
     public CameraType ViewType { get; set; } = CameraType.Free;
 

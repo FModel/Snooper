@@ -14,7 +14,8 @@ public class AllocationCounts
     public uint Components; // total number of components in the system
     public uint UniqueComponents; // number of unique components (based on descriptor guid)
     public uint Instances; // total number of instances across all components
-    public uint Draws; // we have one draw call per section in LOD0 per component
+    public uint OpaqueDraws; // we have one draw call per section in LOD0 per component, per instance chunk, in the buffer the component starts in
+    public uint TransparentDraws;
     public uint Materials; // total number of materials across all components
     public uint Sections; // total number of sections across all LODs of all unique components
     public uint Indices; // total number of indices across all LODs of all unique components
@@ -47,18 +48,19 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public void Allocate(AllocationCounts counts)
     {
         _geometry.Allocate(counts);
-        if (counts.Draws > 0) _commands.Allocate(counts.Draws);
+        _commands.Allocate(counts.OpaqueDraws, counts.TransparentDraws);
         if (counts.Instances > 0) _instanceData.Allocate(counts.Instances);
         _materialData.Allocate(counts.Sections + 1); // one material per unique section, after the not ready one
         if (counts.Materials > 0) _materialTable.Allocate(counts.Materials);
         _materialData.Add(default); // not ready material every component starts at
 
         Log.Information(
-            "Allocated {Components:N0} components ({UniqueComponents:N0} unique): {Instances:N0} instances, {Draws:N0} draws, {Materials:N0} materials | {Vertices:N0} vertices ({ColoredVertices:N0} colored), {Indices:N0} indices, {Sections:N0} sections",
+            "Allocated {Components:N0} components ({UniqueComponents:N0} unique): {Instances:N0} instances, {OpaqueDraws:N0} + {TransparentDraws:N0} draws, {Materials:N0} materials | {Vertices:N0} vertices ({ColoredVertices:N0} colored), {Indices:N0} indices, {Sections:N0} sections",
             counts.Components,
             counts.UniqueComponents,
             counts.Instances,
-            counts.Draws,
+            counts.OpaqueDraws,
+            counts.TransparentDraws,
             counts.Materials,
             counts.Vertices,
             counts.ColoredVertices,

@@ -245,12 +245,20 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     private void DequeueSystems(FrameBudget? budget = null)
     {
         var count = 0;
-        while (_systemsToLoad.Count > 0 && (count == 0 || budget?.Exhausted != true))
+        var entering = _entering.Count > 0 || !Streaming.IsIdle;
+        for (var remaining = _systemsToLoad.Count; remaining > 0 && (count == 0 || budget?.Exhausted != true); remaining--)
         {
             var system = _systemsToLoad.Dequeue();
             if (system.EnqueuedComponentsCount == 0)
             {
                 system.Dispose();
+                continue;
+            }
+
+            if (system.SystemType is not (ActorSystemType.Scene or ActorSystemType.Environment) && entering)
+            {
+                // requeue systems that buffer allocates from what enters, so they can size their buffers correctly
+                _systemsToLoad.Enqueue(system);
                 continue;
             }
 

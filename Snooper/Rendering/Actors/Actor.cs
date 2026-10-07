@@ -53,9 +53,7 @@ public class Actor : TreeNode
     public ActorComponentCollection Components { get; }
     public ActorChildrenCollection Children { get; }
 
-    private Actor? _parent;
-    public Actor? Parent => _parent;
-
+    public Actor? Parent { get; private set; }
     public ActorManager? ActorManager { get; private set; }
 
     public uint Revision { get; private set; }
@@ -141,7 +139,7 @@ public class Actor : TreeNode
 
     public bool IsDescendantOf(Actor other)
     {
-        for (var current = _parent; current != null; current = current._parent)
+        for (var current = Parent; current != null; current = current.Parent)
         {
             if (current == other) return true;
         }
@@ -152,7 +150,7 @@ public class Actor : TreeNode
     {
         if (!CanAttachTo(newParent, attachTo, out var relation)) return false;
 
-        if (_parent != newParent) MoveUnder(newParent);
+        if (Parent != newParent) MoveUnder(newParent);
         RootComponent?.AttachTo(relation, socket);
 
         Log.Verbose("{Actor} attached to {Target}", Name, relation?.Name ?? newParent.Name);
@@ -173,7 +171,7 @@ public class Actor : TreeNode
             Log.Warning("{Actor} cannot be attached to {Target}, which is already below it", Name, newParent.Name);
             return false;
         }
-        if (_parent is null)
+        if (Parent is null)
         {
             Log.Warning("{Actor} has no parent to be moved away from", Name);
             return false;
@@ -189,7 +187,7 @@ public class Actor : TreeNode
 
     private void MoveUnder(Actor newParent)
     {
-        var oldParent = _parent!;
+        var oldParent = Parent!;
         var manager = ActorManager;
 
         if (manager is null || newParent.ActorManager != manager)
@@ -203,7 +201,7 @@ public class Actor : TreeNode
         oldParent.Children.RemoveQuiet(this);
         newParent.Children.AddQuiet(this);
 
-        _parent = newParent;
+        Parent = newParent;
         OnHierarchyChanged();
         if (oldParent.IsOutlined != newParent.IsOutlined && !IsNodeSelected)
             OnOutlineChanged();
@@ -224,7 +222,7 @@ public class Actor : TreeNode
 
     internal void OnChildAdded(Actor actor)
     {
-        actor._parent = this;
+        actor.Parent = this;
         actor.RootComponent?.Relation = RootComponent;
         actor.OnHierarchyChanged();
 
@@ -240,7 +238,7 @@ public class Actor : TreeNode
 
         actor.SetScene(null, EEndPlayReason.Destroyed);
 
-        actor._parent = null;
+        actor.Parent = null;
         actor.RootComponent?.Relation = null;
         actor.OnHierarchyChanged();
     }
@@ -281,8 +279,8 @@ public class Actor : TreeNode
 
     private void OnHierarchyChanged()
     {
-        NodeDepth = (_parent?.NodeDepth ?? -1) + 1;
-        IsVisibleRecursive = IsVisible && (_parent?.IsVisibleRecursive ?? true);
+        NodeDepth = (Parent?.NodeDepth ?? -1) + 1;
+        IsVisibleRecursive = IsVisible && (Parent?.IsVisibleRecursive ?? true);
 
         foreach (var component in Components)
             component.OnActorVisibilityChanged();
