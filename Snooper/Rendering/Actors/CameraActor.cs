@@ -4,11 +4,11 @@ namespace Snooper.Rendering.Actors;
 
 public class CameraActor : Actor
 {
-    public SceneCameraComponent CameraComponent { get; }
+    public InteractiveCameraComponent CameraComponent { get; }
 
     public CameraActor(string name) : base(name)
     {
-        CameraComponent = new SceneCameraComponent();
+        CameraComponent = new InteractiveCameraComponent();
 
         Components.Add(CameraComponent);
     }

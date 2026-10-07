@@ -19,6 +19,7 @@ public class LevelActor : UnrealActor
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("SplineComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("CameraComponent"));
 
         if (actor is AInstancedFoliageActor { FoliageInfos: { } foliages })
         {

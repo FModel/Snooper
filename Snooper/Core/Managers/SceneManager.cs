@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Numerics;
+﻿using System.Numerics;
 using CUE4Parse.FileProvider;
 using OpenTK.Windowing.Desktop;
 using Snooper.Core.Containers;
@@ -7,7 +6,6 @@ using Snooper.Hosting;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Managers;
 using Snooper.Rendering.Systems;
 
@@ -16,7 +14,6 @@ namespace Snooper.Core.Managers;
 public class SceneManager : ActorManager
 {
     public GameWindow Window { get; }
-    public Viewport? MainViewport { get; private set; }
 
     public Actor? RootActor
     {
@@ -57,10 +54,7 @@ public class SceneManager : ActorManager
         Teardown();
     }
 
-    protected readonly ObservableCollection<Viewport> Viewports = [];
     public readonly RenderPipeline Pipeline = new();
-
-    private readonly HashSet<CameraComponent> _cameras = [];
 
     protected SceneManager(GameWindow wnd, IFileProvider fileProvider) : base(fileProvider)
     {
@@ -69,8 +63,6 @@ public class SceneManager : ActorManager
 
     public override void Load()
     {
-        DequeueViewports();
-
         base.Load();
         Pipeline.Generate();
     }
@@ -78,17 +70,14 @@ public class SceneManager : ActorManager
     public override void Update(float delta)
     {
         Bridge.Drain();
-        DequeueViewports(Budget);
 
         base.Update(delta);
     }
 
     public override void Render()
     {
-        // TODO: we do not support multiple cameras yet
-        if (MainViewport == null) return;
+        if (GetSystem<CameraSystem>()?.Active is not { } camera) return;
 
-        var camera = MainViewport.Camera;
         var lightSystem = Systems.Values.OfType<ClusteredLightSystem>().FirstOrDefault();
 
         Pipeline.RenderScene(camera, Systems.Values, lightSystem);
@@ -125,66 +114,9 @@ public class SceneManager : ActorManager
         }
     }
 
-    protected sealed override void AddComponent(ActorComponent component, Actor actor)
-    {
-        base.AddComponent(component, actor);
-
-        if (component is CameraComponent camera)
-        {
-            _cameras.Add(camera);
-
-            if (camera is InteractiveCameraComponent interactiveCamera)
-            {
-                _viewportsToLoad.Enqueue(new Viewport(interactiveCamera));
-            }
-        }
-    }
-
-    protected sealed override void RemoveComponent(ActorComponent component, Actor actor, EEndPlayReason reason)
-    {
-        base.RemoveComponent(component, actor, reason);
-
-        if (component is CameraComponent camera)
-        {
-            _cameras.Remove(camera);
-
-            if (camera is InteractiveCameraComponent interactiveCamera)
-            {
-                var viewport = Viewports.FirstOrDefault(v => v.Camera == interactiveCamera);
-                if (viewport != null)
-                {
-                    Viewports.Remove(viewport);
-                    if (MainViewport == viewport)
-                    {
-                        MainViewport = Viewports.FirstOrDefault();
-                    }
-                }
-            }
-        }
-    }
-
-    private readonly Queue<Viewport> _viewportsToLoad = [];
-    private void DequeueViewports(FrameBudget? budget = null)
-    {
-        var count = 0;
-        while (_viewportsToLoad.Count > 0 && (count == 0 || budget?.Exhausted != true))
-        {
-            var viewport = _viewportsToLoad.Dequeue();
-            viewport.Resize(Window.ClientSize.X, Window.ClientSize.Y);
-
-            Viewports.Add(viewport);
-            MainViewport ??= viewport;
-
-            count++;
-        }
-    }
-
     public override void Resize(int newWidth, int newHeight)
     {
         base.Resize(newWidth, newHeight);
-
-        foreach (var viewport in Viewports)
-            viewport.Resize(newWidth, newHeight);
 
         Pipeline.Resize(newWidth, newHeight);
     }
@@ -235,7 +167,5 @@ public class SceneManager : ActorManager
         TextureCache.ClearAndDispose();
 
         Pipeline.Dispose();
-        _cameras.Clear();
-        Viewports.Clear();
     }
 }

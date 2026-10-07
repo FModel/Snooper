@@ -13,6 +13,8 @@ using Snooper;
 using Snooper.Core;
 using Snooper.Core.Managers;
 using Snooper.Hosting;
+using Snooper.Rendering.Components.Camera;
+using Snooper.Rendering.Systems;
 
 namespace Editor.Managers;
 
@@ -238,6 +240,7 @@ public abstract class ImGuiManager : SceneManager
             if (Window.IsKeyPressed(Keys.Escape) && !ImGui.GetIO().WantTextInput && !ImGui.IsPopupOpen(string.Empty, ImGuiPopupFlags.AnyPopup))
                 Window.Close();
 
+            var active = GetSystem<CameraSystem>()?.Active;
             if (_show)
             {
                 _controller.Update(Window, delta);
@@ -254,23 +257,28 @@ public abstract class ImGuiManager : SceneManager
                     OnViewportLeftClick(mousePos, Vector2.Zero, viewportSize);
                 }
 
-                MainViewport?.Camera.Resize(Window.ClientSize.X, Window.ClientSize.Y);
+                active?.Resize(Window.ClientSize.X, Window.ClientSize.Y);
             }
 
-            if (!ImGui.GetIO().WantTextInput)
-                MainViewport?.Camera.Update(Window.KeyboardState, delta);
-
-            if (Window.CursorState == CursorState.Grabbed)
+            if (active is InteractiveCameraComponent camera)
             {
-                if (MainViewport != null && Window.MouseState.ScrollDelta.Y != 0)
+                if (!ImGui.GetIO().WantTextInput)
                 {
-                    var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
-                    MainViewport.Camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
-                    Notifications.Push("camera.speed", Settings.SpeedIcon, $"Camera Speed {MainViewport.Camera.MovementSpeed:0.#}");
+                    camera.Update(Window.KeyboardState, delta);
                 }
 
-                MainViewport?.Camera.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
-                if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
+                if (Window.CursorState == CursorState.Grabbed)
+                {
+                    if (Window.MouseState.ScrollDelta.Y != 0)
+                    {
+                        var multiplier = Window.KeyboardState.IsKeyDown(Keys.LeftShift) ? 5 : 1f;
+                        camera.MovementSpeed += Window.MouseState.ScrollDelta.Y * multiplier;
+                        Notifications.Push("camera.speed", Settings.SpeedIcon, $"Camera Speed {camera.MovementSpeed:0.#}");
+                    }
+
+                    camera.Update(Window.MouseState.Delta.X, Window.MouseState.Delta.Y);
+                    if (Window.IsMouseButtonReleased(MouseButton.Right)) Window.CursorState = CursorState.Normal;
+                }
             }
         }
 

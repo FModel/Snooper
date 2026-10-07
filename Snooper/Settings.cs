@@ -58,6 +58,7 @@ public static class Settings
     public const string CubesIcon = "\uf1b3";
     public const string DiceD6Icon = "\uf6d1";
     public const string TriangleExclamationIcon = "\uf071";
+    public const string LockIcon = "\uf023";
     public const string SpinnerIcon = "\uf110";
     public const string CityIcon = "\uf64f";
     public const string DownloadIcon = "\uf019";

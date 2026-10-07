@@ -163,6 +163,7 @@ public static class MaterialCache
                 if (layerIndex > 0) continue;
                 if (!hasColor && normal == null) return null;
             }
+            else diffuseColor = diffuseColor.AsTint(); // so it never darkens what the texture shows
 
             var roughness = Vector2.UnitY;
             if (node.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))

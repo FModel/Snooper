@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Systems;
 using Snooper.UI;
 using System.Numerics;
 using ImGuiNET;
@@ -106,12 +107,11 @@ public class HierarchicalActor : Actor
 
     internal static void DrawLoadControls(Actor owner, Action<Vector3> loadAround, Action unloadAll)
     {
-        var camera = owner.ActorManager is SceneManager { MainViewport.Camera: { } main } ? main : null;
-
         var availWidth = ImGui.GetContentRegionAvail().X;
         var spacing = ImGui.GetStyle().ItemSpacing.X;
         var buttonSize = new Vector2((availWidth - spacing) / 2, 0);
 
+        var camera = owner.ActorManager?.GetSystem<CameraSystem>()?.Active;
         ImGui.BeginDisabled(camera is null);
         if (ImGui.Button("Load Around Camera", buttonSize) && camera is not null)
         {

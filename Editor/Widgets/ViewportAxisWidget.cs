@@ -164,7 +164,7 @@ public class ViewportAxisWidget
         }
 
         var clicked = mouseInWidget && HoveredAxis >= 0 && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
-        if (clicked) camera.SnapRotationTo(SnapRotations[HoveredAxis]);
+        if (clicked && camera is InteractiveCameraComponent interactive) interactive.SnapRotationTo(SnapRotations[HoveredAxis]);
 
         return clicked;
     }

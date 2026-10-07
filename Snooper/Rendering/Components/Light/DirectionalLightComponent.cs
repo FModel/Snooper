@@ -24,7 +24,7 @@ public class DirectionalLightComponent : LightComponent
         SourceAngle = component.LightSourceAngle;
         IsAtmosphereSun = component is { bAtmosphereSunLight: true, AtmosphereSunLightIndex: 0 };
 
-        // forward axis difference, don't ask why only here
+        // forward axis difference, don't ask why only here (same for CameraComponent)
         LocalTransform.Rotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
     }
 

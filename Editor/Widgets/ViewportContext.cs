@@ -27,17 +27,16 @@ public sealed class ViewportGrid
     }
 }
 
-public readonly struct ViewportContext(InteractiveCameraComponent camera, ImDrawListPtr drawList, Vector2 position, Vector2 size, OPERATION operation, MODE mode, ViewportGrid grid)
+public readonly struct ViewportContext(CameraComponent camera, ImDrawListPtr drawList, Vector2 position, Vector2 size, OPERATION operation, MODE mode, ViewportGrid grid)
 {
-    public readonly InteractiveCameraComponent Camera = camera;
+    public readonly CameraComponent Camera = camera;
     public readonly ImDrawListPtr DrawList = drawList;
     public readonly Vector2 Position = position;
     public readonly Vector2 Size = size;
     public readonly OPERATION Operation = operation;
     public readonly MODE Mode = mode;
-    private readonly ViewportGrid _grid = grid;
 
-    public Vector2 Cell() => _grid.Cell();
+    public Vector2 Cell() => grid.Cell();
 
     public bool Manipulate(ref Matrix4x4 matrix) => Manipulate(ref matrix, Operation, Mode);
     public bool Manipulate(ref Matrix4x4 matrix, OPERATION operation, MODE mode)

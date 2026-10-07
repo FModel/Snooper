@@ -22,13 +22,34 @@ public enum CameraMode : byte
 public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResizable
 {
     protected const float FieldOfViewMin = 30.0f;
-    protected const float FieldOfViewMax = 120.0f;
+    protected const float FieldOfViewMax = 150.0f;
 
-    public float FieldOfView = 90.0f;
+    protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Projection;
 
     public float Width { get; private set; } = 16.0f;
     public float Height { get; private set; } = 9.0f;
-    public float AspectRatio { get; private set; } = 1.777778f;
+    public float FieldOfView
+    {
+        get;
+        set
+        {
+            if (field.Equals(value)) return;
+
+            field = value;
+            MarkDirty(DirtyFlags.Projection);
+        }
+    } = 110.0f;
+    public float AspectRatio
+    {
+        get;
+        private set
+        {
+            if (field.Equals(value)) return;
+
+            field = value;
+            MarkDirty(DirtyFlags.Projection);
+        }
+    } = 1.777778f;
 
     public float OrthoWidth { get; } = 15.0f;
     public float OrthoNearClipPlane { get; private set; } = 0.01f;
@@ -60,7 +81,7 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     public Matrix4x4 InverseViewMatrix { get; private set; } = Matrix4x4.Identity;
     public Matrix4x4 InverseProjectionMatrix { get; private set; } = Matrix4x4.Identity;
 
-    public float FieldOfViewRadians => MathF.PI / 180.0f * FieldOfView;
+    public float FieldOfViewRadians => 2.0f * MathF.Atan(MathF.Tan(float.DegreesToRadians(FieldOfView) * 0.5f) / _aspectRatio);
     public float NearClipPlane
     {
         get => ProjectionMode switch
@@ -71,6 +92,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         };
         set
         {
+            if (NearClipPlane.Equals(value)) return;
+
             switch (ProjectionMode)
             {
                 case CameraMode.Orthographic:
@@ -82,6 +105,7 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+            MarkDirty(DirtyFlags.Projection);
         }
     }
     public float FarClipPlane
@@ -94,6 +118,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         };
         set
         {
+            if (FarClipPlane.Equals(value)) return;
+
             switch (ProjectionMode)
             {
                 case CameraMode.Orthographic:
@@ -105,6 +131,7 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+            MarkDirty(DirtyFlags.Projection);
         }
     }
 
@@ -112,19 +139,22 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     public Vector3 Up => Vector3.Transform(Settings.UpVector, LocalTransform.Rotation);
     public Vector3 Right => Vector3.Cross(Up, Forward);
 
+    // the horizontal FieldOfView becomes vertical through this, not the viewport's aspect, else resizing a panel zooms
+    private readonly float _aspectRatio = 1.777778f;
+
     public CameraComponent(UCameraComponent component) : base(component)
     {
-        FieldOfView = component.GetOrDefault(nameof(FieldOfView), FieldOfView);
-        AspectRatio = component.GetOrDefault(nameof(AspectRatio), AspectRatio);
+        FieldOfView = component.FieldOfView;
+        _aspectRatio = component.AspectRatio;
 
-        OrthoWidth = component.GetOrDefault(nameof(OrthoWidth), OrthoWidth);
-        OrthoNearClipPlane = component.GetOrDefault(nameof(OrthoNearClipPlane), OrthoNearClipPlane);
-        OrthoFarClipPlane = component.GetOrDefault(nameof(OrthoFarClipPlane), OrthoFarClipPlane);
+        OrthoWidth = component.OrthoWidth * Settings.GlobalScale;
+        OrthoNearClipPlane = component.OrthoNearClipPlane * Settings.GlobalScale;
+        OrthoFarClipPlane = component.OrthoFarClipPlane * Settings.GlobalScale;
 
-        PerspectiveNearClipPlane = component.GetOrDefault(nameof(PerspectiveNearClipPlane), PerspectiveNearClipPlane);
-        PerspectiveFarClipPlane = component.GetOrDefault(nameof(PerspectiveFarClipPlane), PerspectiveFarClipPlane);
+        ProjectionMode = component.ProjectionMode == ECameraProjectionMode.Orthographic ? CameraMode.Orthographic : CameraMode.Perspective;
 
-        ProjectionMode = component.GetOrDefault(nameof(ProjectionMode), ProjectionMode);
+        // forward axis difference, don't ask why only here (same for DirectionalLightComponent)
+        LocalTransform.Rotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
     }
 
     public CameraComponent(Transform? transform = null, string? name = null) : base(transform, name)
@@ -148,6 +178,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         reverse.M33 = -1.0f;
         reverse.M43 = 1.0f;
         ProjectionMatrix = projection * reverse;
+
+        MarkClean(DirtyFlags.Projection);
     }
 
     public override string Icon => "\uf030";
@@ -158,7 +190,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
 
         EditorUI.CollapsingTable("Camera", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
-            EditorUI.DragFloat("FOV", ref FieldOfView, 0.1f, FieldOfViewMin, FieldOfViewMax, "%.2f deg");
+            var fov = FieldOfView;
+            if (EditorUI.DragFloat("FOV", ref fov, 0.1f, FieldOfViewMin, FieldOfViewMax, "%.2f deg")) FieldOfView = fov;
 
             var nearClip = NearClipPlane;
             var farClip = FarClipPlane;

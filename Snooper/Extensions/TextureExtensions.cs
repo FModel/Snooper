@@ -2,6 +2,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Assets.Exports.Texture;
+using CUE4Parse_Conversion.Textures.BC;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Textures;
 using Snooper.Rendering.Cache;
@@ -402,6 +403,25 @@ public static class TextureExtensions
                             _ => first > second ? (a + b * 2) / 3 : Vector3.Zero
                         };
                         faces[face] += (texture.SRGB ? ToLinear(texel) : texel) / perFace;
+                    }
+                }
+                return true;
+            }
+            case EPixelFormat.PF_BC6H:
+            {
+                // a block is two 64-bit words, decoded to 16 texels of four halves: its first texel is enough
+                var words = MemoryMarshal.Cast<byte, ulong>(data);
+                var perFace = words.Length / 2 / faces.Length;
+                if (perFace == 0) return false;
+
+                Span<ulong> block = stackalloc ulong[16];
+                var texel = MemoryMarshal.Cast<ulong, Half>(block);
+                for (var face = 0; face < faces.Length; face++)
+                {
+                    for (var i = face * perFace * 2; i < (face + 1) * perFace * 2; i += 2)
+                    {
+                        BCDecoder.DecodeBC6HBlock(words[i], words[i + 1], block);
+                        faces[face] += new Vector3((float) texel[0], (float) texel[1], (float) texel[2]) / perFace;
                     }
                 }
                 return true;

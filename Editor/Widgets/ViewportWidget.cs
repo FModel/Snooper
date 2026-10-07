@@ -34,13 +34,7 @@ public class ViewportWidget : PanelWidget
 
     protected override void DrawContents(EditorManager editor)
     {
-        if (editor.MainViewport is not { } viewport)
-        {
-            ImGui.TextDisabled("No viewport.");
-            return;
-        }
-
-        if (viewport.Camera.Actor?.ActorManager is not InterfaceManager manager)
+        if (editor.GetSystem<CameraSystem>()?.Active is not { } camera)
         {
             ImGui.TextDisabled("No camera.");
             return;
@@ -51,8 +45,8 @@ public class ViewportWidget : PanelWidget
         contentSize.X -= ImGui.GetScrollX();
         contentSize.Y -= ImGui.GetScrollY();
 
-        viewport.Camera.Resize((int) contentSize.X, (int) contentSize.Y);
-        ImGui.Image(manager.Pipeline.GetFinalTexture().GetPointer(), contentSize, Vector2.UnitY, Vector2.UnitX);
+        camera.Resize((int) contentSize.X, (int) contentSize.Y);
+        ImGui.Image(editor.Pipeline.GetFinalTexture().GetPointer(), contentSize, Vector2.UnitY, Vector2.UnitX);
         var imageHovered = ImGui.IsItemHovered();
 
         var itemMin = ImGui.GetItemRectMin();
@@ -61,12 +55,16 @@ public class ViewportWidget : PanelWidget
         ImGuizmo.SetRect(itemMin.X, itemMin.Y, contentSize.X, contentSize.Y);
 
         _grid.Reset(contentPos + contentSize with { Y = 0f });
-        var context = new ViewportContext(viewport.Camera, drawList, contentPos, contentSize, _gizmoOperation, MODE.LOCAL, _grid);
+        var context = new ViewportContext(camera, drawList, contentPos, contentSize, _gizmoOperation, MODE.LOCAL, _grid);
 
         bool captured;
         using (Profiler.Cpu("Axis")) captured = editor._viewportAxis.Draw(context);
 
-        var component = manager.SelectedComponent ?? manager.SelectedActor?.RootComponent;
+        var component = editor.SelectedComponent ?? editor.SelectedActor?.RootComponent;
+        if (editor.Window.CursorState == CursorState.Grabbed && camera is InteractiveCameraComponent { ViewType: CameraType.Orbital } orbitalCamera)
+        {
+            DrawOrbitCircle(orbitalCamera, component, drawList, contentPos, contentSize);
+        }
         using (Profiler.Cpu("Gizmos"))
         {
             captured |= component switch
@@ -81,30 +79,29 @@ public class ViewportWidget : PanelWidget
         using (Profiler.Cpu("Toolbar")) DrawToolbar(editor, contentPos, component is SpatialComponent { IsEditable: true } || editor.IsSkeletonTreeOpen);
         using (Profiler.Cpu("Cards")) DrawCards(editor, contentPos, contentSize);
 
-        using (Profiler.Cpu("Footer")) DrawFooterOverlay(contentPos, contentSize);
-        using (Profiler.Cpu("Notifications")) editor._notificationOverlay.Draw(drawList, contentPos, contentSize);
+        DrawFooterOverlay(contentPos, contentSize);
+        if (camera is not InteractiveCameraComponent)
+            DrawFixedCameraOverlay(drawList, contentPos, contentSize);
+
+        editor._notificationOverlay.Draw(drawList, contentPos, contentSize);
 
         if (imageHovered && !ImGui.IsAnyItemActive() && !ImGuizmo.IsUsing() && !captured)
         {
-            if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+            var interactive = camera is InteractiveCameraComponent;
+            if (interactive && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
             {
-                manager.Window.CursorState = CursorState.Grabbed;
+                editor.Window.CursorState = CursorState.Grabbed;
             }
 
             if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                manager.OnViewportLeftClick(ImGui.GetMousePos(), contentPos, contentSize);
+                editor.OnViewportLeftClick(ImGui.GetMousePos(), contentPos, contentSize);
             }
-            if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && component is SpatialComponent spatial)
+            if (interactive && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && component is SpatialComponent spatial)
             {
                 spatial.TeleportTo();
                 Notifications.Push("camera.focus", Settings.FocusIcon, $"Focused {spatial.Name}");
             }
-        }
-
-        if (manager.Window.CursorState == CursorState.Grabbed && viewport.Camera is { ViewType: CameraType.Orbital } orbitalCamera)
-        {
-            DrawOrbitCircle(orbitalCamera, component, contentPos, contentSize);
         }
     }
 
@@ -216,6 +213,17 @@ public class ViewportWidget : PanelWidget
         return false;
     }
 
+    private static void DrawFixedCameraOverlay(ImDrawListPtr drawList, Vector2 contentPos, Vector2 contentSize)
+    {
+        var thickness = ImGui.GetFrameHeight() * 0.1f;
+        drawList.AddRect(contentPos, contentPos + contentSize, ImGui.GetColorU32(Settings.OrangeColor), 0.0f, ImDrawFlags.None, thickness);
+
+        const string text = $"{Settings.LockIcon} {Settings.CameraIcon}";
+        var size = ImGui.CalcTextSize(text);
+        ImGui.SetCursorScreenPos(contentPos + new Vector2((contentSize.X - size.X) * 0.5f, Padding));
+        ImGui.TextColored(Settings.OrangeColor, text);
+    }
+
     private void DrawFooterOverlay(Vector2 contentPos, Vector2 contentSize)
     {
         ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold]);
@@ -234,13 +242,12 @@ public class ViewportWidget : PanelWidget
         ImGui.PopFont();
     }
 
-    private void DrawOrbitCircle(InteractiveCameraComponent camera, ActorComponent? component, Vector2 contentPos, Vector2 contentSize)
+    private void DrawOrbitCircle(InteractiveCameraComponent camera, ActorComponent? component, ImDrawListPtr drawList, Vector2 contentPos, Vector2 contentSize)
     {
         var orbitCenter = camera.GetLocalTransform().Position - camera.Forward * camera.OrbitDistance;
         var circleY = component is SpatialComponent spatial ? spatial.GizmoMatrix.Translation.Y : 0f;
         var viewProj = camera.ViewMatrix * camera.ProjectionMatrix;
 
-        var drawList = ImGui.GetWindowDrawList();
         var col = ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.25f));
         var radius = MathF.Max(camera.OrbitDistance * 0.4f, 0.15f);
 

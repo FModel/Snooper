@@ -316,8 +316,8 @@ public class SpatialComponent : ActorComponent
         if (Actor?.ActorManager is not SceneManager manager)
             return;
 
-        var camera = manager.MainViewport?.Camera ?? manager.RootActor?.Children.OfType<CameraActor>().FirstOrDefault()?.CameraComponent;
-        if (camera is null) return;
+        var active = manager.GetSystem<CameraSystem>()?.Active ?? manager.RootActor?.Children.OfType<CameraActor>().FirstOrDefault()?.CameraComponent;
+        if (active is not InteractiveCameraComponent camera) return;
 
         var (center, distance) = GetTeleportPosition(camera, camera.LocalTransform.Rotation);
         camera.TeleportTo(center, distance);
