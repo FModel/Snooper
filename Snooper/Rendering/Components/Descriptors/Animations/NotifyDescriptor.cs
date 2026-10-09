@@ -13,14 +13,11 @@ public sealed class NotifyDescriptor
 
     public bool IsState => Duration > 0f;
 
-    private FPackageIndex? _notify;
+    private readonly FPackageIndex? _notify;
 
-    public NotifyDescriptor(FAnimNotifyEvent notify, bool load)
+    public NotifyDescriptor(FAnimNotifyEvent notify)
     {
-        if (load)
-        {
-            _notify = notify.NotifyStateClass ?? notify.Notify;
-        }
+        _notify = notify.NotifyStateClass ?? notify.Notify;
 
         Name = notify.NotifyName?.Text ?? "Notify";
         Duration = notify.Duration;
@@ -28,10 +25,5 @@ public sealed class NotifyDescriptor
         TriggerTime = notify.GetTime() + notify.TriggerTimeOffset;
     }
 
-    internal UObject? Consume()
-    {
-        var notify = _notify;
-        _notify = null;
-        return notify?.Load();
-    }
+    internal UObject? Load() => _notify?.Load();
 }

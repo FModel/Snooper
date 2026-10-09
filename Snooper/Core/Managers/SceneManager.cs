@@ -163,6 +163,7 @@ public class SceneManager : ActorManager
 
         ThreadManager.ClearAndDispose();
         MeshCache.ClearAndDispose();
+        AnimationCache.Clear();
         MaterialCache.ClearAndDispose();
         TextureCache.ClearAndDispose();
 

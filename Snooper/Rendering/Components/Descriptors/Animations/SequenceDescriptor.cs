@@ -27,7 +27,7 @@ public sealed class SequenceDescriptor : SequenceBaseDescriptor
     private readonly SegmentDescriptor[] _segments;
     public override IReadOnlyList<SegmentDescriptor> Segments => _segments;
 
-    public SequenceDescriptor(UAnimSequence owner, AnimationDescriptor? outer = null) : base(owner, outer)
+    public SequenceDescriptor(UAnimSequence owner) : base(owner)
     {
         var skeleton = owner.Skeleton?.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
         _sequence = skeleton.ConvertAnims(owner).Sequences.FirstOrDefault() ?? throw new InvalidOperationException($"Failed to convert animation asset {owner.Name} for skeleton {skeleton.Name}");;

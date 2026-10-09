@@ -5,6 +5,7 @@ using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Descriptors.Animations;
 using Snooper.Rendering.Components.Mesh;
@@ -76,14 +77,7 @@ public sealed class AnimationPlayback
 
     public static AnimationPlayback? Create(UAnimationAsset animation, float playPosition = 0f, float playRate = 1f)
     {
-        SequenceBaseDescriptor? descriptor = animation switch
-        {
-            UAnimMontage montage => new MontageDescriptor(montage),
-            UAnimComposite composite => new CompositeDescriptor(composite),
-            UAnimSequence sequence => new SequenceDescriptor(sequence),
-            _ => null
-        };
-
+        var descriptor = AnimationCache.GetOrCreate(animation);
         return descriptor == null ? null : new AnimationPlayback(descriptor, playPosition, playRate);
     }
 
@@ -102,7 +96,7 @@ public sealed class AnimationPlayback
     {
         foreach (var descriptor in Animation.Notifies)
         {
-            switch (descriptor.Consume())
+            switch (descriptor.Load())
             {
                 // Fortnite
                 case UFortAnimNotifyState_SpawnProp sp:

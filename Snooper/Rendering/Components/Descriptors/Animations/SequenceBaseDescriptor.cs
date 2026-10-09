@@ -12,7 +12,7 @@ public abstract class SequenceBaseDescriptor : AnimationDescriptor
 
     public abstract IReadOnlyList<SegmentDescriptor> Segments { get; }
 
-    protected SequenceBaseDescriptor(UAnimSequenceBase owner, AnimationDescriptor? outer = null) : base(owner, outer)
+    protected SequenceBaseDescriptor(UAnimSequenceBase owner) : base(owner)
     {
         if (owner.Notifies is not { Length: > 0 } notifies)
         {
@@ -23,7 +23,7 @@ public abstract class SequenceBaseDescriptor : AnimationDescriptor
         Notifies = new NotifyDescriptor[notifies.Length];
         for (var i = 0; i < Notifies.Length; i++)
         {
-            Notifies[i] = new NotifyDescriptor(notifies[i], outer is null);
+            Notifies[i] = new NotifyDescriptor(notifies[i]);
         }
     }
 

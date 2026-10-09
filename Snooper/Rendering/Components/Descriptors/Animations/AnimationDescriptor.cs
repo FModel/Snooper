@@ -1,6 +1,7 @@
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using ImGuiNET;
 using Snooper.Extensions;
+using Snooper.Rendering.Cache;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Descriptors.Animations;
@@ -12,20 +13,13 @@ public abstract class AnimationDescriptor : IControllable
 
     public readonly SkeletonDescriptor Skeleton;
 
-    protected AnimationDescriptor(UAnimationAsset owner, AnimationDescriptor? outer = null)
+    protected AnimationDescriptor(UAnimationAsset owner)
     {
         Name = owner.Name;
         Path = owner.GetCleanPath() ?? "N/A";
-        Skeleton = outer?.Skeleton ?? Create();
 
-        SkeletonDescriptor Create()
-        {
-            var skeleton = owner.Skeleton?.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
-
-            var descriptor = new SkeletonDescriptor(skeleton.ReferenceSkeleton);
-            descriptor.SetOwner(skeleton);
-            return descriptor;
-        }
+        var skeleton = owner.Skeleton?.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
+        Skeleton = AnimationCache.GetOrCreate(skeleton);
     }
 
     protected virtual string Subtitle => string.Empty;
