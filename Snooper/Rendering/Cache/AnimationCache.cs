@@ -15,6 +15,9 @@ public static class AnimationCache
     private static readonly ConcurrentDictionary<FGuid, Lazy<SkeletonDescriptor>> _skeletons = new();
     private static readonly ConcurrentDictionary<FGuid, Lazy<SequenceBaseDescriptor>> _animations = new();
 
+    public static IEnumerable<SequenceBaseDescriptor> Animations => _animations.Values.Where(x => x.IsValueCreated).Select(x => x.Value);
+    public static IEnumerable<SkeletonDescriptor> Skeletons => _skeletons.Values.Where(x => x.IsValueCreated).Select(x => x.Value);
+
     public static SkeletonDescriptor GetOrCreate(USkeleton skeleton) => GetOrCreate(_skeletons, skeleton.Guid, () =>
     {
         var descriptor = new SkeletonDescriptor(skeleton.ReferenceSkeleton);

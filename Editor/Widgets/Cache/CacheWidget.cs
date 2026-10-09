@@ -22,6 +22,8 @@ public class CacheWidget : PanelWidget
     [
         new BufferTab(),
         new TextureCacheTab(),
+        new MeshCacheTab(),
+        new AnimationCacheTab(),
     ];
 
     protected override void DrawContents(EditorManager editor)

@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Objects.Core.Misc;
 using Serilog;
 using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Cache;
 
@@ -10,6 +11,8 @@ public static class MeshCache
     private static readonly ILogger Log = Serilog.Log.ForContext("SourceContext", nameof(MeshCache));
 
     private static readonly ConcurrentDictionary<(FGuid, Type), Lazy<object>> _cache = new();
+
+    public static IEnumerable<PrimitiveDescriptor<Vertex>> Descriptors => _cache.Values.Where(x => x.IsValueCreated).Select(x => x.Value).OfType<PrimitiveDescriptor<Vertex>>();
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate<TVertex>(FGuid guid, Func<FGuid, PrimitiveDescriptor<TVertex>> factory) where TVertex : unmanaged
     {
