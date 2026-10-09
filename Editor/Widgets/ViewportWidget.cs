@@ -45,17 +45,27 @@ public class ViewportWidget : PanelWidget
         contentSize.X -= ImGui.GetScrollX();
         contentSize.Y -= ImGui.GetScrollY();
 
-        camera.Resize((int) contentSize.X, (int) contentSize.Y);
-        ImGui.Image(editor.Pipeline.GetFinalTexture().GetPointer(), contentSize, Vector2.UnitY, Vector2.UnitX);
+        var imagePos = contentPos;
+        var imageSize = contentSize;
+        if (camera.ConstrainAspectRatio)
+        {
+            imageSize = contentSize.X / contentSize.Y > camera.AspectRatio
+                ? contentSize with { X = contentSize.Y * camera.AspectRatio }
+                : contentSize with { Y = contentSize.X / camera.AspectRatio };
+            imagePos += (contentSize - imageSize) * 0.5f;
+            ImGui.SetCursorScreenPos(imagePos);
+        }
+
+        camera.Resize((int) imageSize.X, (int) imageSize.Y);
+        ImGui.Image(editor.Pipeline.GetFinalTexture().GetPointer(), imageSize, Vector2.UnitY, Vector2.UnitX);
         var imageHovered = ImGui.IsItemHovered();
 
-        var itemMin = ImGui.GetItemRectMin();
         var drawList = ImGui.GetWindowDrawList();
         ImGuizmo.SetDrawlist(drawList);
-        ImGuizmo.SetRect(itemMin.X, itemMin.Y, contentSize.X, contentSize.Y);
+        ImGuizmo.SetRect(imagePos.X, imagePos.Y, imageSize.X, imageSize.Y);
 
-        _grid.Reset(contentPos + contentSize with { Y = 0f });
-        var context = new ViewportContext(camera, drawList, contentPos, contentSize, _gizmoOperation, MODE.LOCAL, _grid);
+        _grid.Reset(imagePos + imageSize with { Y = 0f });
+        var context = new ViewportContext(camera, drawList, imagePos, imageSize, _gizmoOperation, MODE.LOCAL, _grid);
 
         bool captured;
         using (Profiler.Cpu("Axis")) captured = editor._viewportAxis.Draw(context);
@@ -81,7 +91,7 @@ public class ViewportWidget : PanelWidget
 
         DrawFooterOverlay(contentPos, contentSize);
         if (camera is not InteractiveCameraComponent)
-            DrawFixedCameraOverlay(drawList, contentPos, contentSize);
+            DrawFixedCameraOverlay(drawList, imagePos, imageSize);
 
         editor._notificationOverlay.Draw(drawList, contentPos, contentSize);
 
@@ -95,7 +105,7 @@ public class ViewportWidget : PanelWidget
 
             if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                editor.OnViewportLeftClick(ImGui.GetMousePos(), contentPos, contentSize);
+                editor.OnViewportLeftClick(ImGui.GetMousePos(), imagePos, imageSize);
             }
             if (interactive && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && component is SpatialComponent spatial)
             {

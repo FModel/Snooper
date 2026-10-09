@@ -78,7 +78,7 @@ public class InspectorWidget : PanelWidget
     private void DrawSearchBar()
     {
         ImGui.SetNextItemWidth(-1);
-        if (ImGui.InputTextWithHint("##ComponentFilter", $"{Settings.MagnifyingGlassIcon}  Filter Components", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputTextWithHint("##ComponentFilter", $"{Settings.MagnifyingGlassIcon}  Filter Components", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll))
         {
             _dirty = true;
         }

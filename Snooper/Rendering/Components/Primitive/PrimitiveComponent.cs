@@ -234,7 +234,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     private const string MaterialsLabel = "Materials";
     private HeaderButtons MaterialsButtons => field ??= new HeaderButtons(MaterialsLabel)
-        .Add(Settings.PaletteIcon, "Material Editor", () => WindowRequests.Request(Settings.MaterialEditorWindow))
+        .Add(Settings.PaletteIcon, "Material Inspector", () => WindowRequests.Request(Settings.MaterialInspectorWindow))
         .Add(() => VisibilityIcon, () => HasVisibleMaterial ? "Hide All" : "Show All", () => SetMaterialsVisible(!HasVisibleMaterial), null, () => VisibilityColor);
 
     private PropertyToggleButton[] MaterialButtons => field ??=

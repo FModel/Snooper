@@ -19,7 +19,7 @@ public class StaticMeshComponent : MeshComponent
 
     }
 
-    public StaticMeshComponent(UStaticMesh staticMesh, Transform? transform = null) : base(staticMesh.Materials, transform, staticMesh.Name)
+    public StaticMeshComponent(UStaticMesh staticMesh, Transform? transform = null, FPackageIndex?[]? materials = null) : base(materials ?? staticMesh.Materials, transform, staticMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }

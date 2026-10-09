@@ -87,7 +87,7 @@ public class TextureCacheTab : ICacheTab
         if (MemoryChart.Chip("Containers", _view == EView.Containers)) Show(EView.Containers);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(-1f);
-        ImGui.InputTextWithHint("##TextureCacheFilter", _filterHint, ref _search, 128, ImGuiInputTextFlags.AutoSelectAll);
+        ImGui.InputTextWithHint("##TextureCacheFilter", _filterHint, ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll);
 
         ImGui.Dummy(gap);
         ImGui.PopStyleVar();

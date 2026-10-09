@@ -120,9 +120,9 @@ public static class Settings
     public const string LogWindow = $"{TerminalIcon}  Logs";
     public const string SettingsWindow = $"{GearIcon}  Settings";
     public const string ContentWindow = $"{BoxArchiveIcon}  Content";
-    public const string MorphEditorWindow = $"{BarsProgressIcon}  Morph Editor";
+    public const string MorphTargetsWindow = $"{BarsProgressIcon}  Morph Targets";
     public const string SkeletonWindow = $"{BoneIcon}  Skeleton Tree";
-    public const string MaterialEditorWindow = $"{PaletteIcon}  Material Editor";
+    public const string MaterialInspectorWindow = $"{PaletteIcon}  Material Inspector";
     public const string TextureInspectorWindow = $"{ImageIcon}  Texture Inspector";
     public const string MemoryWindow = $"{DatabaseIcon}  Memory";
 

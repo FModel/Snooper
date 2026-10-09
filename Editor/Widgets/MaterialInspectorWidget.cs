@@ -19,9 +19,9 @@ namespace Editor.Widgets;
 /// Every edit goes through <see cref="MaterialSection.BeginEdit"/>, so the shared cache entry is never
 /// mutated — the section gets a private clone the first time anything here changes.
 /// </summary>
-public class MaterialEditorWidget : PanelWidget
+public class MaterialInspectorWidget : PanelWidget
 {
-    public override string PanelTitle => Settings.MaterialEditorWindow;
+    public override string PanelTitle => Settings.MaterialInspectorWindow;
     public override PanelGroup Group => PanelGroup.Tools;
 
     public override bool IsOpen { get; set; }
@@ -94,14 +94,13 @@ public class MaterialEditorWidget : PanelWidget
         }
         else if (ImGui.BeginTabBar("##MaterialTabs"))
         {
-            DrawContainerTabs(section, container);
-
             if (parsed is not null && ImGui.BeginTabItem("Parameters##ParametersTab"))
             {
                 DrawParameters(parsed);
                 ImGui.EndTabItem();
             }
 
+            DrawContainerTabs(section, container);
             ImGui.EndTabBar();
         }
         ImGui.Unindent();
@@ -173,7 +172,7 @@ public class MaterialEditorWidget : PanelWidget
     private void DrawParameters(MaterialNode node)
     {
         ImGui.SetNextItemWidth(-1);
-        ImGui.InputTextWithHint("##MaterialParameterFilter", $"{Settings.MagnifyingGlassIcon}  Filter by name or value", ref _parameterSearch, 128, ImGuiInputTextFlags.AutoSelectAll);
+        ImGui.InputTextWithHint("##MaterialParameterFilter", $"{Settings.MagnifyingGlassIcon}  Filter by name or value", ref _parameterSearch, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll);
 
         node.DrawControls(_parameterSearch);
     }

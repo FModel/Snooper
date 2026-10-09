@@ -16,6 +16,16 @@ public static class NumericExtensions
         };
     }
 
+    public static string FormatAspectRatio(this float ratio)
+    {
+        for (var height = 1; height <= 20; height++)
+        {
+            var width = MathF.Round(ratio * height);
+            if (MathF.Abs(width / height - ratio) < 0.005f) return $"{width}/{height}";
+        }
+        return $"{ratio:0.00}/1";
+    }
+
     public static Vector3 AsTint(this Vector3 color)
     {
         var brightest = MathF.Max(color.X, MathF.Max(color.Y, color.Z));

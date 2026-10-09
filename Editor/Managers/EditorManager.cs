@@ -15,7 +15,7 @@ namespace Editor.Managers;
 public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : InterfaceManager(wnd, fileProvider)
 {
     private readonly MainMenuBarWidget _mainMenuBar = new();
-    private static readonly MaterialEditorWidget _materialEditor = new();
+    private static readonly MaterialInspectorWidget _materialInspector = new();
     private static readonly SkeletonTreeWidget _skeletonTree = new();
 
     internal IReadOnlyList<IPanelWidget> Panels { get; } =
@@ -30,7 +30,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         // new ContentWidget(),
         new MorphTargetWidget(),
         _skeletonTree,
-        _materialEditor,
+        _materialInspector,
         new TextureInspectorWidget(),
     ];
 
@@ -95,6 +95,6 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     {
         _skeletonEditor.Reset();
         _sunOverlay.Reset();
-        _materialEditor.Reset();
+        _materialInspector.Reset();
     }
 }

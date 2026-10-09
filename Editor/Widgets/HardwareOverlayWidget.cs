@@ -240,7 +240,7 @@ public class HardwareOverlayWidget : IViewportCard
         if (!ImGui.TreeNodeEx($"Extensions ({support.Extensions.Length})###Extensions", ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.NoTreePushOnOpen)) return;
 
         ImGui.SetNextItemWidth(-1f);
-        ImGui.InputTextWithHint("##ExtensionFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll);
+        ImGui.InputTextWithHint("##ExtensionFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll);
 
         if (ImGui.BeginChild("##ExtensionList", new Vector2(0f, Line * 12f)))
         {

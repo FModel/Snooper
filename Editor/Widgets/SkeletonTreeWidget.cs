@@ -48,7 +48,7 @@ public class SkeletonTreeWidget : PanelWidget
         }
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - (ImGui.GetFrameHeight() + style.ItemInnerSpacing.X) * 4f);
-        if (ImGui.InputTextWithHint("##BoneFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputTextWithHint("##BoneFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll))
         {
             _dirty = true;
         }

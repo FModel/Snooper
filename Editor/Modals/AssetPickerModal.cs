@@ -129,7 +129,7 @@ public abstract class AssetPickerModal<T> where T : class
         if (ImGui.IsWindowAppearing()) ImGui.SetKeyboardFocusHere();
 
         ImGui.SetNextItemWidth(MathF.Max(ImGui.GetContentRegionAvail().X - countWidth - spacing * 2, ImGui.GetFrameHeight() * 4));
-        if (ImGui.InputTextWithHint("##PickerFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputTextWithHint("##PickerFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll))
         {
             _dirty = true;
         }

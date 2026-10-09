@@ -61,7 +61,7 @@ public class SceneHierarchyWidget : PanelWidget
         var style = ImGui.GetStyle();
 
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - (ImGui.GetFrameHeight() + style.ItemInnerSpacing.X) * 2f);
-        if (ImGui.InputTextWithHint("##ActorFilter", $"{Settings.MagnifyingGlassIcon}  Filter Actors", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputTextWithHint("##ActorFilter", $"{Settings.MagnifyingGlassIcon}  Filter Actors", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll))
         {
             _dirty = true;
         }
@@ -177,7 +177,7 @@ public class SceneHierarchyWidget : PanelWidget
             var target = _newActorParent ?? actor;
             ImGui.TextDisabled($"Child of {target?.Name}");
             ImGui.SetNextItemWidth(-1);
-            var confirmed = ImGui.InputTextWithHint("##NewActorName", "Name...", ref _newActorName, 128, ImGuiInputTextFlags.EnterReturnsTrue);
+            var confirmed = ImGui.InputTextWithHint("##NewActorName", "Name...", ref _newActorName, 128, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.EscapeClearsAll);
 
             ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
 

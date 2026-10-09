@@ -527,7 +527,7 @@ public class SpatialComponent : ActorComponent
         if (!ImGui.BeginCombo("##AttachSocket", string.IsNullOrEmpty(AttachSocketName) ? "None" : AttachSocketName, ImGuiComboFlags.HeightLarge)) return;
 
         ImGui.SetNextItemWidth(-1);
-        ImGui.InputTextWithHint("##SocketFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _socketFilter, 64);
+        ImGui.InputTextWithHint("##SocketFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _socketFilter, 64, ImGuiInputTextFlags.EscapeClearsAll);
 
         BuildSocketEntries(sockets, skeleton);
 

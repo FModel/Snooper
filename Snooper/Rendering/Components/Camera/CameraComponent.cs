@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -51,6 +52,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         }
     } = 1.777778f;
 
+    public bool ConstrainAspectRatio { get; }
+
     public float OrthoWidth { get; } = 15.0f;
     public float OrthoNearClipPlane { get; private set; } = 0.01f;
     public float OrthoFarClipPlane { get; private set; } = 20000.0f;
@@ -81,7 +84,7 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     public Matrix4x4 InverseViewMatrix { get; private set; } = Matrix4x4.Identity;
     public Matrix4x4 InverseProjectionMatrix { get; private set; } = Matrix4x4.Identity;
 
-    public float FieldOfViewRadians => 2.0f * MathF.Atan(MathF.Tan(float.DegreesToRadians(FieldOfView) * 0.5f) / _aspectRatio);
+    public float FieldOfViewRadians => 2.0f * MathF.Atan(MathF.Tan(float.DegreesToRadians(FieldOfView) * 0.5f) / _originalAspectRatio);
     public float NearClipPlane
     {
         get => ProjectionMode switch
@@ -140,12 +143,14 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     public Vector3 Right => Vector3.Cross(Up, Forward);
 
     // the horizontal FieldOfView becomes vertical through this, not the viewport's aspect, else resizing a panel zooms
-    private readonly float _aspectRatio = 1.777778f;
+    private readonly float _originalAspectRatio = 1.777778f;
 
     public CameraComponent(UCameraComponent component) : base(component)
     {
         FieldOfView = component.FieldOfView;
-        _aspectRatio = component.AspectRatio;
+        _originalAspectRatio = component.AspectRatio;
+        ConstrainAspectRatio = component.bConstrainAspectRatio;
+        if (ConstrainAspectRatio) AspectRatio = _originalAspectRatio;
 
         OrthoWidth = component.OrthoWidth * Settings.GlobalScale;
         OrthoNearClipPlane = component.OrthoNearClipPlane * Settings.GlobalScale;
@@ -190,6 +195,9 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
 
         EditorUI.CollapsingTable("Camera", ImGuiTreeNodeFlags.DefaultOpen, () =>
         {
+            EditorUI.Text("Projection Mode", ProjectionMode.ToString());
+            EditorUI.Text("Aspect Ratio", $"{AspectRatio.FormatAspectRatio()}{(ConstrainAspectRatio ? " (constrained)" : "")}");
+
             var fov = FieldOfView;
             if (EditorUI.DragFloat("FOV", ref fov, 0.1f, FieldOfViewMin, FieldOfViewMax, "%.2f deg")) FieldOfView = fov;
 
@@ -211,6 +219,6 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     {
         Width = newWidth;
         Height = newHeight;
-        AspectRatio = Width / Height;
+        AspectRatio = ConstrainAspectRatio ? _originalAspectRatio : Width / Height;
     }
 }

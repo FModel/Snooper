@@ -11,7 +11,7 @@ namespace Editor.Widgets;
 
 public class MorphTargetWidget : PanelWidget
 {
-    public override string PanelTitle => Settings.MorphEditorWindow;
+    public override string PanelTitle => Settings.MorphTargetsWindow;
     public override PanelGroup Group => PanelGroup.Tools;
 
     public override bool IsOpen { get; set; } // this widget is opened on demand
@@ -84,7 +84,7 @@ public class MorphTargetWidget : PanelWidget
         var inputWidth = MathF.Max(ImGui.GetContentRegionAvail().X - activeWidth - resetWidth - style.ItemSpacing.X * 3, ImGui.GetFrameHeight() * 3);
 
         ImGui.SetNextItemWidth(inputWidth);
-        if (ImGui.InputTextWithHint("##MorphFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        if (ImGui.InputTextWithHint("##MorphFilter", $"{Settings.MagnifyingGlassIcon}  Filter", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll))
         {
             _dirty = true;
         }

@@ -366,6 +366,7 @@ public sealed partial class MaterialNode
         }
     }
 
+    private ParameterView? _view;
     internal void DrawControls(string filter)
     {
         var chain = new List<MaterialNode>();
@@ -379,34 +380,13 @@ public sealed partial class MaterialNode
             ImGui.TextColored(Settings.OrangeColor, $"{Settings.TriangleExclamationIcon}  Parent not parsed, what it sets is missing here");
         }
 
-        var kinds = new (string Title, bool Open, Func<MaterialNode, IEnumerable<Entry>> Read)[]
+        if (_view is not { } view || view.Filter != filter || view.ChainLength != chain.Count)
         {
-            ("Base", true, Base),
-            ("Scalars", true, node => node._scalars.Select(x => new Entry(x.Key, x.Value.ToString("0.####")))),
-            ("Switches", true, node => node._switches.Select(x => new Entry(x.Key, x.Value.ToString()))),
-            ("Vectors", true, node => node._vectors.Select(x => new Entry(x.Key, $"{x.Value.R:0.###}, {x.Value.G:0.###}, {x.Value.B:0.###}, {x.Value.A:0.###}", Color: x.Value))),
-            ("Textures", true, node => node._textures.Select(x => new Entry(x.Key, x.Value.Name, x.Value.Path))),
-            ("Referenced", false, node => node._referencedTextures.Select(x => new Entry(x.Name, string.Empty, x.Path))),
-        };
+            _view = view = Build();
+        }
 
-        foreach (var (title, open, read) in kinds)
+        foreach (var (title, open, rows) in view.Kinds)
         {
-            var rows = new List<(string Name, List<(MaterialNode Node, Entry Entry)> Writers)>();
-            var index = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            foreach (var node in chain)
-            {
-                foreach (var entry in read(node))
-                {
-                    if (!index.TryGetValue(entry.Name, out var i))
-                    {
-                        index[entry.Name] = i = rows.Count;
-                        rows.Add((entry.Name, []));
-                    }
-                    rows[i].Writers.Add((node, entry));
-                }
-            }
-
-            if (filter.Length > 0) rows.RemoveAll(row => !row.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) && !row.Writers.Exists(x => x.Entry.Display.Contains(filter, StringComparison.OrdinalIgnoreCase)));
             if (rows.Count == 0) continue;
 
             if (!ImGui.TreeNodeEx($"{title} ({rows.Count})##{title}", (open ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None) | ImGuiTreeNodeFlags.SpanAvailWidth)) continue;
@@ -419,56 +399,110 @@ public sealed partial class MaterialNode
             ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, 1f);
             ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch, 1f);
 
-            foreach (var (name, writers) in rows)
+            unsafe
             {
-                var entry = writers[0].Entry;
-
-                ImGui.TableNextRow();
-                ImGui.TableNextColumn();
-                if (ImGui.Selectable($"{name}##{title}", false, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
+                var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
+                clipper.Begin(rows.Count);
+                while (clipper.Step())
                 {
-                    var onName = ImGui.TableGetHoveredColumn() == 0;
-                    ImGui.SetClipboardText(onName ? name : entry.Path ?? entry.Value);
-                    Notifications.Push("material.copy", Settings.CopyIcon, onName ? "name copied" : "value copied");
-                }
-
-                var replaced = writers.Skip(1).Where(x => x.Entry.Display != entry.Display).DistinctBy(x => x.Entry.Display).ToList();
-                if (ImGui.IsItemHovered() && replaced.Count > 0)
-                {
-                    ImGui.BeginTooltip();
-                    foreach (var (node, value) in replaced)
+                    for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                     {
-                        ImGui.TextDisabled($"Parent {chain.IndexOf(node)}");
-                        ImGui.SameLine();
-                        if (value.Color is { } replacedColor)
-                        {
-                            ImGui.ColorButton($"##{title}{name}{node.Name}", new Vector4(replacedColor.R, replacedColor.G, replacedColor.B, replacedColor.A), ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(ImGui.GetTextLineHeight()));
-                            ImGui.SameLine();
-                        }
-                        ImGui.TextUnformatted(value.Display);
+                        DrawRow(title, rows[i]);
                     }
-                    ImGui.EndTooltip();
                 }
 
-                if (replaced.Count > 0)
-                {
-                    ImGui.SameLine();
-                    ImGui.TextDisabled($"+{replaced.Count}");
-                }
-
-                ImGui.TableNextColumn();
-                if (entry.Color is { } c)
-                {
-                    ImGui.ColorButton($"##{title}{name}", new Vector4(c.R, c.G, c.B, c.A), ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(ImGui.GetTextLineHeight()));
-                    ImGui.SameLine();
-                }
-                ImGui.TextUnformatted(entry.Value);
+                clipper.End();
+                clipper.Destroy();
             }
 
             ImGui.EndTable();
             ImGui.TreePop();
         }
 
+        ParameterView Build()
+        {
+            var kinds = new (string Title, bool Open, Func<MaterialNode, IEnumerable<Entry>> Read)[]
+            {
+                ("Base", true, Base),
+                ("Scalars", true, node => node._scalars.Select(x => new Entry(x.Key, x.Value.ToString("0.####")))),
+                ("Switches", true, node => node._switches.Select(x => new Entry(x.Key, x.Value.ToString()))),
+                ("Vectors", true, node => node._vectors.Select(x => new Entry(x.Key, $"{x.Value.R:0.###}, {x.Value.G:0.###}, {x.Value.B:0.###}, {x.Value.A:0.###}", Color: x.Value))),
+                ("Textures", true, node => node._textures.Select(x => new Entry(x.Key, x.Value.Name, x.Value.Path))),
+                ("Referenced", false, node => node._referencedTextures.Select(x => new Entry(x.Name, string.Empty, x.Path))),
+            };
+
+            var built = new (string Title, bool Open, List<Row> Rows)[kinds.Length];
+            for (var k = 0; k < kinds.Length; k++)
+            {
+                var (title, open, read) = kinds[k];
+                var rows = new List<Row>();
+                var index = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (var node in chain)
+                {
+                    foreach (var entry in read(node))
+                    {
+                        if (!index.TryGetValue(entry.Name, out var i))
+                        {
+                            index[entry.Name] = i = rows.Count;
+                            rows.Add(new Row(entry.Name, []));
+                        }
+                        rows[i].Writers.Add((node, entry));
+                    }
+                }
+
+                if (filter.Length > 0) rows.RemoveAll(row => !row.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) && !row.Writers.Exists(x => x.Entry.Display.Contains(filter, StringComparison.OrdinalIgnoreCase)));
+                built[k] = (title, open, rows);
+            }
+
+            return new ParameterView(filter, chain.Count, built);
+        }
+
+        void DrawRow(string title, Row row)
+        {
+            var (name, writers) = row;
+            var entry = writers[0].Entry;
+
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            if (ImGui.Selectable($"{name}##{title}", false, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
+            {
+                var onName = ImGui.TableGetHoveredColumn() == 0;
+                ImGui.SetClipboardText(onName ? name : entry.Path ?? entry.Value);
+                Notifications.Push("material.copy", Settings.CopyIcon, onName ? "name copied" : "value copied");
+            }
+
+            var replaced = writers.Skip(1).Where(x => x.Entry.Display != entry.Display).DistinctBy(x => x.Entry.Display).ToList();
+            if (ImGui.IsItemHovered() && replaced.Count > 0)
+            {
+                ImGui.BeginTooltip();
+                foreach (var (node, value) in replaced)
+                {
+                    ImGui.TextDisabled($"Parent {chain.IndexOf(node)}");
+                    ImGui.SameLine();
+                    if (value.Color is { } replacedColor)
+                    {
+                        ImGui.ColorButton($"##{title}{name}{node.Name}", new Vector4(replacedColor.R, replacedColor.G, replacedColor.B, replacedColor.A), ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(ImGui.GetTextLineHeight()));
+                        ImGui.SameLine();
+                    }
+                    ImGui.TextUnformatted(value.Display);
+                }
+                ImGui.EndTooltip();
+            }
+
+            if (replaced.Count > 0)
+            {
+                ImGui.SameLine();
+                ImGui.TextDisabled($"+{replaced.Count}");
+            }
+
+            ImGui.TableNextColumn();
+            if (entry.Color is { } c)
+            {
+                ImGui.ColorButton($"##{title}{name}", new Vector4(c.R, c.G, c.B, c.A), ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(ImGui.GetTextLineHeight()));
+                ImGui.SameLine();
+            }
+            ImGui.TextUnformatted(entry.Value);
+        }
 
         static IEnumerable<Entry> Base(MaterialNode node)
         {
@@ -482,4 +516,7 @@ public sealed partial class MaterialNode
     {
         public string Display => Value.Length > 0 ? Value : Path ?? string.Empty;
     }
+
+    private readonly record struct Row(string Name, List<(MaterialNode Node, Entry Entry)> Writers);
+    private sealed record ParameterView(string Filter, int ChainLength, (string Title, bool Open, List<Row> Rows)[] Kinds);
 }

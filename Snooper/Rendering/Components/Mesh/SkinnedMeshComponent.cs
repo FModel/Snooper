@@ -391,7 +391,7 @@ public class SkinnedMeshComponent : MeshComponent
 
     private const string MorphsLabel = "Morph Targets";
     private HeaderButtons MorphsButtons => field ??= new HeaderButtons(MorphsLabel)
-        .Add(Settings.BarsProgressIcon, "Morph Editor", () => WindowRequests.Request(Settings.MorphEditorWindow));
+        .Add(Settings.BarsProgressIcon, "Morph Targets", () => WindowRequests.Request(Settings.MorphTargetsWindow));
 
     private const string SkeletonLabel = "Skeleton";
     private HeaderButtons SkeletonButtons => field ??= new HeaderButtons(SkeletonLabel)
