@@ -5,7 +5,6 @@ using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using ImGuiNET;
 using Snooper.Extensions;
-using Snooper.Core.Containers.Buffers;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.UI;
 
@@ -28,67 +27,53 @@ public class SkeletonDescriptor : IControllable
     public string? Path { get; private set; }
     public FGuid Guid { get; private set; }
 
-    internal BufferAllocation? _poseAllocation;
-
-    /// <summary>
-    /// local-space transform for each bone for the current frame. This is the single source of truth for bone transforms.
-    /// </summary>
-    public Matrix4x4[] BoneLocalMatrices { get; }
-
     /// <summary>
     /// this is never modified after construction.
     /// </summary>
     public BoneDescriptor[] BoneDescriptors { get; }
 
     /// <summary>
-    /// model-space transform for each bone for the current frame. This is always recalculated from BoneLocalMatrices.
-    /// Never set this array directly.
+    /// model-space transform for each bone for the bind pose
+    /// this is never modified after construction.
     /// </summary>
-    public Matrix4x4[] BoneMatrices { get; }
+    public Matrix4x4[] BindPoseMatrices { get; }
 
     public IReadOnlyDictionary<string, uint> BoneNameToIndex => _boneNameToIndex;
     private readonly Dictionary<string, uint> _boneNameToIndex;
 
-    public int BoneCount => BoneLocalMatrices.Length;
+    public int BoneCount => BoneDescriptors.Length;
 
     public SkeletonDescriptor(FReferenceSkeleton reference)
     {
-        BoneLocalMatrices = new Matrix4x4[reference.FinalRefBonePose.Length];
-        BoneDescriptors = new BoneDescriptor[BoneCount];
-        BoneMatrices = new Matrix4x4[BoneCount];
+        BoneDescriptors = new BoneDescriptor[reference.FinalRefBonePose.Length];
+        BindPoseMatrices = new Matrix4x4[BoneCount];
         _boneNameToIndex = new Dictionary<string, uint>(BoneCount, StringComparer.OrdinalIgnoreCase);
 
         for (var boneIndex = 0u; boneIndex < BoneCount; boneIndex++)
         {
             var info = reference.FinalRefBoneInfo[boneIndex];
-            var descriptor = new BoneDescriptor(info.Name.Text, info.ParentIndex, reference.FinalRefBonePose[boneIndex]);
-
-            BoneLocalMatrices[boneIndex] = descriptor.BindPoseLocalMatrix;
-            BoneDescriptors[boneIndex] = descriptor;
-            _boneNameToIndex.Add(descriptor.Name, boneIndex);
+            Add(boneIndex, new BoneDescriptor(info.Name.Text, info.ParentIndex, reference.FinalRefBonePose[boneIndex]));
         }
-
-        RecalculateBoneMatrices();
     }
 
     public SkeletonDescriptor(IReadOnlyList<MeshBoneDto> bones)
     {
-        BoneLocalMatrices = new Matrix4x4[bones.Count];
-        BoneDescriptors = new BoneDescriptor[BoneCount];
-        BoneMatrices = new Matrix4x4[BoneCount];
+        BoneDescriptors = new BoneDescriptor[bones.Count];
+        BindPoseMatrices = new Matrix4x4[BoneCount];
         _boneNameToIndex = new Dictionary<string, uint>(BoneCount, StringComparer.OrdinalIgnoreCase);
 
         for (var boneIndex = 0u; boneIndex < BoneCount; boneIndex++)
         {
             var bone = bones[(int) boneIndex];
-            var descriptor = new BoneDescriptor(bone.Name, bone.ParentIndex, bone.Transform);
-
-            BoneLocalMatrices[boneIndex] = descriptor.BindPoseLocalMatrix;
-            BoneDescriptors[boneIndex] = descriptor;
-            _boneNameToIndex.Add(descriptor.Name, boneIndex);
+            Add(boneIndex, new BoneDescriptor(bone.Name, bone.ParentIndex, bone.Transform));
         }
+    }
 
-        RecalculateBoneMatrices();
+    private void Add(uint boneIndex, BoneDescriptor descriptor)
+    {
+        BoneDescriptors[boneIndex] = descriptor;
+        BindPoseMatrices[boneIndex] = descriptor.IsRoot ? descriptor.BindPoseLocalMatrix : descriptor.BindPoseLocalMatrix * BindPoseMatrices[descriptor.ParentIndex];
+        _boneNameToIndex.Add(descriptor.Name, boneIndex);
     }
 
     internal void SetOwner(USkeleton owner)
@@ -121,49 +106,6 @@ public class SkeletonDescriptor : IControllable
             }
 
             return children;
-        }
-    }
-
-    public void MoveBone(int boneIndex, Matrix4x4 matrix)
-    {
-        var pi = BoneDescriptors[boneIndex].ParentIndex;
-        if (pi >= 0 && Matrix4x4.Invert(BoneMatrices[pi], out var parentMatrix))
-        {
-            BoneLocalMatrices[boneIndex] = matrix * parentMatrix;
-        }
-        else
-        {
-            BoneLocalMatrices[boneIndex] = matrix;
-        }
-
-        RecalculateBoneMatrices(boneIndex);
-    }
-
-    public bool IsBoneEdited(int boneIndex) => BoneLocalMatrices[boneIndex] != BoneDescriptors[boneIndex].BindPoseLocalMatrix;
-
-    public void ResetBone(int boneIndex)
-    {
-        BoneLocalMatrices[boneIndex] = BoneDescriptors[boneIndex].BindPoseLocalMatrix;
-        RecalculateBoneMatrices(boneIndex);
-    }
-
-    public void ResetAllBones()
-    {
-        for (var i = 0; i < BoneCount; i++)
-        {
-            BoneLocalMatrices[i] = BoneDescriptors[i].BindPoseLocalMatrix;
-        }
-        RecalculateBoneMatrices();
-    }
-
-    public void RecalculateBoneMatrices(int start = -1, int end = -1)
-    {
-        var from = start >= 0 ? start : 0;
-        var to = end >= 0 && end < BoneCount ? end : BoneCount - 1;
-        for (var i = from; i <= to; i++)
-        {
-            var pi = BoneDescriptors[i].ParentIndex;
-            BoneMatrices[i] = pi < 0 ? BoneLocalMatrices[i] : BoneLocalMatrices[i] * BoneMatrices[pi];
         }
     }
 
@@ -216,7 +158,7 @@ public class SkeletonDescriptor : IControllable
         var minY = float.MaxValue; var maxY = float.MinValue;
         for (var i = 0; i < BoneCount; i++)
         {
-            var m = BoneMatrices[i];
+            var m = BindPoseMatrices[i];
             var p = new Vector2(m.M41, -m.M42);
 
             if (p.X < minX) minX = p.X;
@@ -233,7 +175,7 @@ public class SkeletonDescriptor : IControllable
         var cx = (minX + maxX) * 0.5f;
         var cy = (minY + maxY) * 0.5f;
 
-        Vector2 ToScreen(int bone) => new(canvasPos.X + canvasSize.X * 0.5f + (BoneMatrices[bone].M41 - cx) * fitScale, canvasPos.Y + canvasSize.Y * 0.5f + (-BoneMatrices[bone].M42 - cy) * fitScale);
+        Vector2 ToScreen(int bone) => new(canvasPos.X + canvasSize.X * 0.5f + (BindPoseMatrices[bone].M41 - cx) * fitScale, canvasPos.Y + canvasSize.Y * 0.5f + (-BindPoseMatrices[bone].M42 - cy) * fitScale);
 
         var dl = ImGui.GetWindowDrawList();
         dl.AddRectFilled(canvasPos, canvasPos + canvasSize, 0xFF_14_14_14);

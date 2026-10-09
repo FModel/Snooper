@@ -29,12 +29,14 @@ public class SkeletonTreeWidget : PanelWidget
 
     protected override void DrawContents(EditorManager editor)
     {
-        if ((editor.SelectedComponent ?? editor.SelectedActor?.RootComponent) is not SkinnedMeshComponent { Descriptor.Skeleton: { } skeleton } mesh)
+        if ((editor.SelectedComponent ?? editor.SelectedActor?.RootComponent) is not SkinnedMeshComponent mesh)
         {
             ImGui.TextDisabled("No skinned mesh selected.");
             return;
         }
 
+        var pose = mesh.Pose;
+        var skeleton = pose.Skeleton;
         var style = ImGui.GetStyle();
         var sockets = mesh.Descriptor.Sockets;
 
@@ -199,7 +201,7 @@ public class SkeletonTreeWidget : PanelWidget
             }
             else
             {
-                var edited = skeleton.IsBoneEdited(row.Bone);
+                var edited = pose.IsBoneEdited(row.Bone);
                 if (edited) ImGui.PushStyleColor(ImGuiCol.Text, Settings.OrangeColor);
                 ImGui.SetNextItemOpen(!_collapsed.Contains(row.Bone));
                 ImGui.TreeNodeEx(skeleton.GetBoneName(row.Bone), flags);

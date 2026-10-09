@@ -27,6 +27,7 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
     protected ComponentPair CreateComponentPair(FPackageIndex ptr)
     {
         FPackageIndex? parent = null;
+        FPackageIndex? leader = null;
         SpatialComponent component;
 
         var data = ptr.Load();
@@ -35,6 +36,7 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
             case USceneComponent scene:
             {
                 parent = scene.GetOrDefault<FPackageIndex?>("AttachParent");
+                leader = (scene as USkinnedMeshComponent)?.LeaderPoseComponent;
 
                 component = scene switch
                 {
@@ -91,12 +93,13 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
             }
         }
 
-        return new ComponentPair(parent, component);
+        return new ComponentPair(parent, leader, component);
     }
 
-    protected readonly struct ComponentPair(FPackageIndex? parentPtr, SpatialComponent component)
+    protected readonly struct ComponentPair(FPackageIndex? parentPtr, FPackageIndex? leaderPtr, SpatialComponent component)
     {
         public readonly FPackageIndex? ParentPtr = parentPtr;
+        public readonly FPackageIndex? LeaderPtr = leaderPtr;
         public readonly SpatialComponent Component = component;
     }
 }

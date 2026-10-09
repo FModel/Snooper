@@ -178,10 +178,10 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
 
         if (Meshes[descriptor.Guid].UploadedBy == component.Id)
         {
-            var inverseBoneMatrices = new Matrix4x4[skeleton.BoneMatrices.Length];
+            var inverseBoneMatrices = new Matrix4x4[skeleton.BindPoseMatrices.Length];
             for (var i = 0; i < inverseBoneMatrices.Length; i++)
             {
-                Matrix4x4.Invert(skeleton.BoneMatrices[i], out inverseBoneMatrices[i]);
+                Matrix4x4.Invert(skeleton.BindPoseMatrices[i], out inverseBoneMatrices[i]);
             }
 
             var data = new PerMeshSkinningData
@@ -232,11 +232,12 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
             _skinMeshData.Upsert((int)metadata.GeometryHandle.MeshIndex, data);
         }
 
-        skeleton._poseAllocation = _poseData.AddRange(skeleton.BoneMatrices);
+        var pose = component.Pose;
+        pose._poseAllocation = _poseData.AddRange(pose.BoneMatrices);
 
         var instanceData = new PerInstanceSkinningData
         {
-            BasePose = (uint)skeleton._poseAllocation.Value.StartIndex,
+            BasePose = (uint)pose._poseAllocation.Value.StartIndex,
             BaseMorphWeight = uint.MaxValue
         };
 
@@ -248,6 +249,8 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         }
 
         _skinInstanceData.Upsert(metadata.InstanceAllocation.StartIndex, instanceData);
+
+        if (component.Leader != null) component.MarkDirty(DirtyFlags.Animation);
     }
 
     protected override void OnComponentUpdate(SkinnedMeshComponent component, float delta)
@@ -263,38 +266,50 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
             component.MarkClean(DirtyFlags.Morph);
         }
 
-        if (!component.IsDirty(DirtyFlags.Animation) || component is not SkeletalMeshComponent { Descriptor.Skeleton: { } skeleton } meshComponent) return;
+        if (!component.IsDirty(DirtyFlags.Animation)) return;
 
-        // TODO: do not animate invisible meshes
-        if (meshComponent.Playback is { Animation: { Segments.Count: > 0 } animation } playback)
+        var pose = component.Pose;
+        if (component is { Leader.Pose: var leaderPose, LeaderBoneMap: { } leaderBoneMap })
         {
-            var time = playback.Time;
-            foreach (var (boneName, boneIndex) in skeleton.BoneNameToIndex)
-            {
-                // for each vertex bone, find its skeleton bone
-                if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex) ||
-                    !animation.TryGetSegment(skeletonIndex, time, out var segment))
-                    continue;
-
-                skeleton.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, skeleton.BoneDescriptors[boneIndex]._transform);
-            }
+            pose.Follow(leaderPose, leaderBoneMap);
         }
         else
         {
-            // manually moved a bone
+            // TODO: do not animate invisible meshes
+            if (component is SkeletalMeshComponent { Playback: { Animation: { Segments.Count: > 0 } animation } playback })
+            {
+                var time = playback.Time;
+                foreach (var (boneName, boneIndex) in pose.Skeleton.BoneNameToIndex)
+                {
+                    // for each vertex bone, find its skeleton bone
+                    if (!animation.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var skeletonIndex) ||
+                        !animation.TryGetSegment(skeletonIndex, time, out var segment))
+                        continue;
+
+                    pose.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, pose.Skeleton.BoneDescriptors[boneIndex]._transform);
+                }
+            }
+            else
+            {
+                // manually moved a bone
+            }
+
+            pose.RecalculateBoneMatrices();
         }
 
-        skeleton.RecalculateBoneMatrices();
-
-        if (skeleton._poseAllocation is { } poseAllocation)
+        if (pose._poseAllocation is { } poseAllocation)
         {
-            _poseData.Update(poseAllocation, skeleton.BoneMatrices);
+            _poseData.Update(poseAllocation, pose.BoneMatrices);
         }
         component.MarkClean(DirtyFlags.Animation);
 
         foreach (var child in component.Children)
         {
             child.MarkDirty(DirtyFlags.Transform);
+        }
+        foreach (var follower in component.Followers)
+        {
+            follower.MarkDirty(DirtyFlags.Animation);
         }
     }
 
@@ -311,7 +326,8 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
             component._morphWeightAllocation = null;
         }
 
-        if (component.Descriptor.Skeleton is not { _poseAllocation: { } poseAllocation } descriptor) return;
+        var pose = component.Pose;
+        if (pose._poseAllocation is not { } poseAllocation) return;
 
         // only a component leaving on its own gives its slot back: on a scene swap or a shutdown the
         // whole buffer goes with the system, so freeing slot by slot would be wasted work
@@ -319,7 +335,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         {
             _poseData.Remove(poseAllocation);
         }
-        descriptor._poseAllocation = null; // cleared either way tho, the descriptor outlives the buffer
+        pose._poseAllocation = null; // cleared either way tho, the pose outlives the buffer
     }
 
     public override void Dispose()

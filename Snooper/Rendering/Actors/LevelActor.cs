@@ -32,10 +32,10 @@ public class LevelActor : UnrealActor
                         EnqueuePointers(staticMesh.Component);
                         break;
                     }
-                    case FFoliageActor:
-                    {
-                        throw new NotImplementedException("FoliageActor is not supported yet");
-                    }
+                    // case FFoliageActor:
+                    // {
+                    //     throw new NotImplementedException("FoliageActor is not supported yet");
+                    // }
                 }
             }
         }
@@ -93,6 +93,14 @@ public class LevelActor : UnrealActor
                 root = CreateComponentRecursive(components, pair.ParentPtr);
 
             pair.Component.Relation = components[pair.ParentPtr];
+        }
+
+        if (pair is { LeaderPtr: { IsNull: false } leaderPtr, Component: SkinnedMeshComponent skinned })
+        {
+            if (!components.ContainsKey(leaderPtr))
+                CreateComponentRecursive(components, leaderPtr);
+
+            skinned.Leader = components[leaderPtr] as SkinnedMeshComponent;
         }
 
         components.TryAdd(ptr, pair.Component);

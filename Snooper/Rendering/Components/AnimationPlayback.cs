@@ -202,7 +202,7 @@ public sealed class AnimationPlayback
     {
         if (!_components.Remove(component)) return;
 
-        component.Descriptor.Skeleton?.ResetAllBones();
+        component.Pose.ResetAllBones();
         component.MarkDirty(DirtyFlags.Animation);
 
         RefreshAttachments();
@@ -261,7 +261,7 @@ public sealed class AnimationPlayback
         var matches = 0;
         foreach (var component in _components)
         {
-            if (!component.Descriptor.HasSocket(socket)) continue;
+            if (!component.HasSocket(socket)) continue;
 
             match ??= component;
             matches++;

@@ -150,6 +150,8 @@ public class SceneHierarchyWidget : PanelWidget
                 clipper.End();
                 clipper.Destroy();
             }
+
+            if (!isSearching) DrawStickyParent(frameHeightWithSpacing);
         }
         ImGui.EndChild();
 
@@ -308,6 +310,7 @@ public class SceneHierarchyWidget : PanelWidget
             var btnW = ImGui.CalcTextSize(icon).X + style.FramePadding.X * 2;
             ImGui.SameLine(rightEdge - btnW);
             ImGui.BeginDisabled(!sa2.CanLoad);
+            ImGui.SetNextItemAllowOverlap();
             if (ImGui.Button(icon)) sa2.Load();
             ImGui.EndDisabled();
         }
@@ -317,6 +320,7 @@ public class SceneHierarchyWidget : PanelWidget
             ImGui.SameLine(rightEdge - btnW);
             var isHidden = !actor.IsVisibleRecursive;
             if (isHidden) ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
+            ImGui.SetNextItemAllowOverlap();
             if (ImGui.Button(actor.IsVisibleRecursive ? Settings.EyeIcon : Settings.EyeSlashIcon)) actor.ToggleVisibility();
             if (isHidden) ImGui.PopStyleColor();
         }
@@ -324,6 +328,32 @@ public class SceneHierarchyWidget : PanelWidget
         ImGui.PopStyleColor();
 
         ImGui.PopID();
+    }
+
+    private void DrawStickyParent(float rowHeight)
+    {
+        var scrollY = ImGui.GetScrollY();
+        var first = (int) (scrollY / rowHeight);
+        if (first <= 0 || first >= _flatNodes.Count) return;
+
+        var depth = _flatNodes[first].NodeDepth;
+        var parent = first - 1;
+        while (parent >= 0 && _flatNodes[parent].NodeDepth >= depth) parent--;
+        if (parent < 0) return;
+
+        var actor = _flatNodes[parent];
+        var end = first + 1;
+        while (end < _flatNodes.Count && _flatNodes[end].NodeDepth > actor.NodeDepth) end++;
+        var pushUp = Math.Clamp(rowHeight - (end * rowHeight - scrollY), 0f, rowHeight);
+
+        var min = ImGui.GetWindowPos() - new Vector2(0f, pushUp);
+        var max = min + new Vector2(ImGui.GetWindowWidth() - (ImGui.GetScrollMaxY() > 0f ? ImGui.GetStyle().ScrollbarSize : 0f), rowHeight);
+        var drawList = ImGui.GetWindowDrawList();
+        drawList.AddRectFilled(min, max, ImGui.GetColorU32(ImGuiCol.WindowBg));
+
+        ImGui.SetCursorScreenPos(min);
+        DrawFlatNode(actor);
+        drawList.AddLine(min with { Y = max.Y }, max, ImGui.GetColorU32(ImGuiCol.Separator));
     }
 
     private void BuildFlatList(IEnumerable<Actor> actors, bool isSearching = false, string search = "")

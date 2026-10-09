@@ -7,7 +7,7 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Editor.Widgets;
 
-public class SkeletonEditorWidget : IViewportTool<MeshComponent>
+public class SkeletonEditorWidget : IViewportTool<SkinnedMeshComponent>
 {
     private const uint ColDim = 0xFF_D0_D0_D0;
     private const uint ColSocket = 0xFF_80_FF_80;
@@ -29,17 +29,17 @@ public class SkeletonEditorWidget : IViewportTool<MeshComponent>
 
     private readonly List<int> _stack = []; // what sits under the cursor, a bone as its index, a socket as ~index
 
-    public bool Draw(in ViewportContext viewport, MeshComponent mesh)
+    public bool Draw(in ViewportContext viewport, SkinnedMeshComponent mesh)
     {
-        var skinned = mesh as SkinnedMeshComponent;
-        var skeleton = mesh.Descriptor.Skeleton;
+        var pose = mesh.Pose;
+        var skeleton = pose.Skeleton;
         var sockets = mesh.Descriptor.Sockets;
-        var bones = skeleton?.BoneCount ?? 0;
+        var bones = pose.BoneCount;
         var shown = SkeletonTreeWidget.ShowSockets ? sockets.Length : 0; // sockets follow the toggle of the skeleton tree
         if (bones == 0 && shown == 0) return false;
 
-        var selectedBone = skinned?.SelectedBone ?? -1;
-        var selectedSocket = shown > 0 ? skinned?.SelectedSocket ?? -1 : -1;
+        var selectedBone = mesh.SelectedBone;
+        var selectedSocket = shown > 0 ? mesh.SelectedSocket : -1;
         var selected = selectedSocket >= 0 ? ~selectedSocket : selectedBone >= 0 ? selectedBone : None;
 
         var drawList = viewport.DrawList;
@@ -53,7 +53,7 @@ public class SkeletonEditorWidget : IViewportTool<MeshComponent>
 
         for (var i = 0; i < bones; i++)
         {
-            Project(skeleton!.BoneMatrices[i].Translation, out _screens[i], out _depths[i]);
+            Project(pose.BoneMatrices[i].Translation, out _screens[i], out _depths[i]);
         }
 
         for (var i = 0; i < shown; i++)
@@ -62,7 +62,7 @@ public class SkeletonEditorWidget : IViewportTool<MeshComponent>
             if (sockets[i] is not { } socket) continue;
 
             var matrix = socket.LocalMatrix;
-            if (_socketBones[i] >= 0) matrix *= skeleton!.BoneMatrices[_socketBones[i]];
+            if (_socketBones[i] >= 0) matrix *= pose.BoneMatrices[_socketBones[i]];
             Project(matrix.Translation, out _socketScreens[i], out _socketDepths[i]);
         }
 
@@ -91,7 +91,7 @@ public class SkeletonEditorWidget : IViewportTool<MeshComponent>
 
         for (var i = 0; i < bones; i++)
         {
-            var parent = skeleton!.GetBoneParentIndex(i);
+            var parent = skeleton.GetBoneParentIndex(i);
             if (parent < 0 || float.IsNaN(_depths[i]) || float.IsNaN(_depths[parent])) continue;
 
             // everything is thin, dim and hollow so it blends with the mesh, only the selection and what is under the cursor
@@ -134,18 +134,18 @@ public class SkeletonEditorWidget : IViewportTool<MeshComponent>
 
             if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                if (target >= 0) skinned?.SelectedBone = target;
-                else skinned?.SelectedSocket = ~target;
+                if (target >= 0) mesh.SelectedBone = target;
+                else mesh.SelectedSocket = ~target;
             }
         }
 
-        if (skeleton != null && selectedBone >= 0)
+        if (selectedBone >= 0)
         {
-            var matrix = skeleton.BoneMatrices[selectedBone] * mesh.GizmoMatrix;
+            var matrix = pose.BoneMatrices[selectedBone] * mesh.GizmoMatrix;
             if (viewport.Manipulate(ref matrix, viewport.Operation, MODE.LOCAL))
             {
                 Matrix4x4.Invert(mesh.GizmoMatrix, out var inverse);
-                skinned?.MoveBone(selectedBone, matrix * inverse);
+                mesh.MoveBone(selectedBone, matrix * inverse);
             }
         }
 
@@ -177,7 +177,7 @@ public class SkeletonEditorWidget : IViewportTool<MeshComponent>
                     _ => null
                 };
 
-                _socketBones[i] = bone != null && skeleton?.BoneNameToIndex.TryGetValue(bone, out var index) == true ? (int) index : -1;
+                _socketBones[i] = bone != null && skeleton.BoneNameToIndex.TryGetValue(bone, out var index) ? (int) index : -1;
             }
         }
 
@@ -223,7 +223,7 @@ public class SkeletonEditorWidget : IViewportTool<MeshComponent>
             }
         }
 
-        string Name(int id) => id >= 0 ? $"[{id}] {skeleton?.GetBoneName(id)}" : $"{Settings.PlugIcon} {sockets[~id]?.Name}";
+        string Name(int id) => id >= 0 ? $"[{id}] {skeleton.GetBoneName(id)}" : $"{Settings.PlugIcon} {sockets[~id]?.Name}";
 
         // filled unless a thickness makes it an outline
         void Diamond(Vector2 center, float half, uint color, float thickness = 0f)

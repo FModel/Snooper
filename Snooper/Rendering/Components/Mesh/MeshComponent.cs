@@ -117,6 +117,10 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         Materials = new MaterialSection[_materials.Length];
     }
 
+    protected ISocketDescriptor? FindSocket(string name) => Descriptor.Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    public virtual bool HasSocket(string name) => FindSocket(name) != null;
+    public virtual Matrix4x4 GetSocketModelMatrix(string name) => FindSocket(name)?.LocalMatrix ?? Matrix4x4.Identity;
+
     public void RegisterTextureData(UBuildingTextureData textureData, int layerIndex)
     {
         while (_textureData.Count <= layerIndex)

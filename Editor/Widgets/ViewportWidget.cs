@@ -69,7 +69,7 @@ public class ViewportWidget : PanelWidget
         {
             captured |= component switch
             {
-                MeshComponent mesh when editor.IsSkeletonTreeOpen => editor._skeletonEditor.Draw(context, mesh),
+                SkinnedMeshComponent mesh when editor.IsSkeletonTreeOpen => editor._skeletonEditor.Draw(context, mesh),
                 DirectionalLightComponent light => editor._sunOverlay.Draw(context, light),
                 SpatialComponent { IsEditable: true } spatial => DrawGizmo(context, spatial),
                 _ => false

@@ -19,6 +19,35 @@ public abstract class SkinnedMeshComponent : MeshComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Morph;
 
+    public SkeletonPose Pose
+    {
+        get => field ?? throw new InvalidOperationException($"Pose not initialized for {Name} of type {GetType().Name}.");
+        private init;
+    }
+
+    public int[]? LeaderBoneMap { get; private set; }
+    public List<SkinnedMeshComponent> Followers { get; } = [];
+    public SkinnedMeshComponent? Leader
+    {
+        get;
+        internal set
+        {
+            if (field == value || value is null) return;
+
+            field?.Followers.Remove(this);
+            field = value;
+            value.Followers.Add(this);
+
+            var skeleton = Pose.Skeleton;
+            var leader = value.Pose.Skeleton;
+            LeaderBoneMap = new int[skeleton.BoneCount];
+            for (var i = 0; i < LeaderBoneMap.Length; i++)
+            {
+                LeaderBoneMap[i] = leader.BoneNameToIndex.TryGetValue(skeleton.GetBoneName(i), out var index) ? (int) index : -1;
+            }
+        }
+    }
+
     private float[]? _morphWeights;
     public float[] MorphWeights => _morphWeights ??= new float[Descriptor.Morphs?.Count ?? 0];
     internal BufferAllocation? _morphWeightAllocation;
@@ -26,30 +55,6 @@ public abstract class SkinnedMeshComponent : MeshComponent
     // a bone or a socket, never both
     public int SelectedBone { get; set { field = value; if (value >= 0) SelectedSocket = -1; } } = -1;
     public int SelectedSocket { get; set { field = value; if (value >= 0) SelectedBone = -1; } } = -1;
-
-    public void MoveBone(int index, Matrix4x4 matrix)
-    {
-        if (Descriptor.Skeleton is not { } skeleton) return;
-
-        skeleton.MoveBone(index, matrix);
-        MarkDirty(DirtyFlags.Animation);
-    }
-
-    public void ResetBone(int index)
-    {
-        if (Descriptor.Skeleton is not { } skeleton) return;
-
-        skeleton.ResetBone(index);
-        MarkDirty(DirtyFlags.Animation);
-    }
-
-    public void ResetBones()
-    {
-        if (Descriptor.Skeleton is not { } skeleton) return;
-
-        skeleton.ResetAllBones();
-        MarkDirty(DirtyFlags.Animation);
-    }
 
     protected SkinnedMeshComponent(SkinnedMeshComponent other) : base(other)
     {
@@ -59,16 +64,52 @@ public abstract class SkinnedMeshComponent : MeshComponent
     protected SkinnedMeshComponent(USkinnedAsset skinnedAsset, Transform? transform = null) : base(skinnedAsset.Materials, transform, skinnedAsset.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skinnedAsset, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
+        if (Descriptor.Skeleton is { } skeleton) Pose = new SkeletonPose(skeleton);
     }
 
     protected SkinnedMeshComponent(USkeleton skeleton, Transform? transform = null) : base([], transform, skeleton.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeleton, descriptor => new SkeletonGeometry(descriptor, ESkeletonShape.Adaptive));
+        if (Descriptor.Skeleton is { } skeletonDescriptor) Pose = new SkeletonPose(skeletonDescriptor);
     }
 
     protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, USkinnedMeshComponent component) : base(skeletalMesh.Materials, component)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
+        if (Descriptor.Skeleton is { } skeleton) Pose = new SkeletonPose(skeleton);
+    }
+
+    public void MoveBone(int index, Matrix4x4 matrix)
+    {
+        Pose.MoveBone(index, matrix);
+        MarkDirty(DirtyFlags.Animation);
+    }
+
+    public void ResetBone(int index)
+    {
+        Pose.ResetBone(index);
+        MarkDirty(DirtyFlags.Animation);
+    }
+
+    public void ResetBones()
+    {
+        Pose.ResetAllBones();
+        MarkDirty(DirtyFlags.Animation);
+    }
+
+    public override bool HasSocket(string name) => base.HasSocket(name) || Pose.Skeleton.BoneNameToIndex.ContainsKey(name);
+    public override Matrix4x4 GetSocketModelMatrix(string name)
+    {
+        var socket = FindSocket(name);
+        var boneName = socket is SkeletalMeshSocketDescriptor sk ? sk.BoneName : name;
+
+        var matrix = socket?.LocalMatrix ?? Matrix4x4.Identity;
+        if (Pose.Skeleton.BoneNameToIndex.TryGetValue(boneName, out var boneIndex))
+        {
+            matrix *= Pose.BoneMatrices[boneIndex];
+        }
+
+        return matrix;
     }
 
     private class SkeletonGeometry : Geometry
@@ -76,7 +117,7 @@ public abstract class SkinnedMeshComponent : MeshComponent
         public SkeletonGeometry(SkeletonDescriptor descriptor, ESkeletonShape shape) : base(descriptor)
         {
             var count = descriptor.BoneCount;
-            var matrices = descriptor.BoneMatrices;
+            var matrices = descriptor.BindPoseMatrices;
 
             var vertices = new List<Vertex>(count * 48);
             var indices = new List<uint>(count * 132);

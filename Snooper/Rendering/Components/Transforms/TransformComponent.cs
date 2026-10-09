@@ -193,7 +193,7 @@ public class SpatialComponent : ActorComponent
         var relationMatrix = Relation.WorldMatrix;
         if (!string.IsNullOrEmpty(AttachSocketName) && Relation is MeshComponent mesh)
         {
-            relationMatrix = mesh.Descriptor.GetSocketModelMatrix(AttachSocketName) * relationMatrix;
+            relationMatrix = mesh.GetSocketModelMatrix(AttachSocketName) * relationMatrix;
         }
 
         return relationMatrix;

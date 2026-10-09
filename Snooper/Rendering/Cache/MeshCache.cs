@@ -11,14 +11,14 @@ public static class MeshCache
 
     private static readonly ConcurrentDictionary<(FGuid, Type), Lazy<object>> _cache = new();
 
-    public static PrimitiveDescriptor<TVertex> GetOrCreate<TVertex>(FGuid guid, Func<PrimitiveDescriptor<TVertex>> factory) where TVertex : unmanaged
+    public static PrimitiveDescriptor<TVertex> GetOrCreate<TVertex>(FGuid guid, Func<FGuid, PrimitiveDescriptor<TVertex>> factory) where TVertex : unmanaged
     {
         var key = (guid, typeof(TVertex));
 
         var lazy = _cache.GetOrAdd(key, _ => new Lazy<object>(() =>
         {
             Log.Debug("Cache miss for descriptor {Guid} with vertex type {VertexType}, creating new descriptor", guid, typeof(TVertex).Name);
-            return factory();
+            return factory(guid);
         }, LazyThreadSafetyMode.ExecutionAndPublication));
 
         if (lazy.IsValueCreated)
