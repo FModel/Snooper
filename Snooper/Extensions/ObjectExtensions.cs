@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using CUE4Parse.GameTypes.Nascar.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Misc;
@@ -11,6 +12,7 @@ public static class ObjectExtensions
     public static string? GetCleanPath(this UObject owner) => owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
 
     public static FGuid ToGuid(this UObject owner) => new((uint) (owner.GetCleanPath() ?? owner.Name).GetHashCode());
+    public static FGuid ToGuid(this UIRMesh owner, uint meshIndex) => new((uint) (owner.GetCleanPath() ?? owner.Name).GetHashCode() ^ meshIndex);
 
     public static FInstancedStaticMeshInstanceData[] GetSortedInstances(this UHierarchicalInstancedStaticMeshComponent component, out FClusterNode_DEPRECATED[]? tree)
     {

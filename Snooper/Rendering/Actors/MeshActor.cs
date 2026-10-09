@@ -1,6 +1,8 @@
-﻿using CUE4Parse.UE4.Assets.Exports.Animation;
+﻿using CUE4Parse.GameTypes.Nascar.Assets.Exports;
+using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
+using CUE4Parse.UE4.Assets.Exports.Houdini;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
@@ -10,6 +12,19 @@ namespace Snooper.Rendering.Actors;
 public class MeshActor : Actor
 {
     public MeshActor(UStaticMesh staticMesh, Transform? transform = null) : base(staticMesh)
+    {
+        Components.Add(new StaticMeshComponent(staticMesh, transform));
+    }
+
+    public MeshActor(UIRMesh staticMesh, Transform? transform = null) : base(staticMesh)
+    {
+        for (var i = 0u; i < staticMesh.Info.PartCount; i++)
+        {
+            Components.Add(new StaticMeshComponent(staticMesh, i, null, transform));
+        }
+    }
+
+    public MeshActor(UHoudiniStaticMesh staticMesh, Transform? transform = null) : base(staticMesh)
     {
         Components.Add(new StaticMeshComponent(staticMesh, transform));
     }

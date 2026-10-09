@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Assets.Exports;
+﻿using CUE4Parse.GameTypes.Nascar.Assets.Exports;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Atmosphere;
@@ -12,6 +13,7 @@ using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.UObject;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
@@ -48,6 +50,7 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                         USplineMeshComponent spline => new SplineMeshComponent(mesh, spline),
                         _ => new StaticMeshComponent(mesh, sm)
                     },
+                    UIRMeshComponent ir when ir.Mesh.TryLoad<UIRMesh>(out var mesh) => new ContainerComponent(mesh, ir),
                     USkinnedMeshComponent skm when skm.TryGetValue<USkeletalMesh>(out var mesh, "SkeletalMesh", "SkinnedAsset") => skm switch
                     {
                         UInstancedSkinnedMeshComponent isk => new InstancedSkinnedMeshComponent(mesh, isk),

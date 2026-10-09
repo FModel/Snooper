@@ -2,10 +2,12 @@
 using CUE4Parse.FileProvider;
 using CUE4Parse_Conversion.Dto;
 using CUE4Parse_Conversion.Options;
+using CUE4Parse.GameTypes.Nascar.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
+using CUE4Parse.UE4.Assets.Exports.Houdini;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
@@ -73,6 +75,42 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         for (var i = 0; i < Lods.Length; i++)
         {
             Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
+        }
+
+        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
+        for (var i = 0; i < Sockets.Length; i++)
+        {
+            if (!dto.Sockets[i].TryLoad<UStaticMeshSocket>(out var socket)) continue;
+            Sockets[i] = new StaticMeshSocketDescriptor(socket);
+        }
+    }
+
+    private PrimitiveDescriptor(FGuid guid, UIRMesh owner, uint meshIndex, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) : this(guid, owner)
+    {
+        using var dto = new StaticMeshDto(owner, (int) meshIndex);
+        Bounds = new CullingBounds(dto.Bounds);
+        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
+        for (var i = 0; i < Lods.Length; i++)
+        {
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
+        }
+
+        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
+        for (var i = 0; i < Sockets.Length; i++)
+        {
+            if (!dto.Sockets[i].TryLoad<UStaticMeshSocket>(out var socket)) continue;
+            Sockets[i] = new StaticMeshSocketDescriptor(socket);
+        }
+    }
+
+    private PrimitiveDescriptor(FGuid guid, UHoudiniStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) : this(guid, owner)
+    {
+        using var dto = new StaticMeshDto(owner);
+        Bounds = new CullingBounds(dto.Bounds);
+        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
+        for (var i = 0; i < Lods.Length; i++)
+        {
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
         }
 
         Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
@@ -167,6 +205,12 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.LightingGuid, guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
+
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(UIRMesh owner, uint meshIndex, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+        => MeshCache.GetOrCreate(owner.ToGuid(meshIndex), guid => new PrimitiveDescriptor<TVertex>(guid, owner, meshIndex, factory));
+
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(UHoudiniStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+        => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UGeometryCollection owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
