@@ -1,20 +1,24 @@
 ﻿using System.Numerics;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Mesh;
+using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Visualization;
 
 public class InstancedMeshBoundsVisualization : DebugComponent
 {
-    private readonly InstancedStaticMeshComponent _owner;
+    private readonly MeshComponent _owner;
+    private readonly InstancedTransforms _instances;
 
-    public InstancedMeshBoundsVisualization(InstancedStaticMeshComponent owner) : base(owner.IsVisible ? Settings.VisibleMeshBounds : Settings.HiddenMeshBounds, name: $"{owner.Name} (Instance Bounds)")
+    public InstancedMeshBoundsVisualization(MeshComponent owner, InstancedTransforms instances) : base(owner.IsVisible ? Settings.VisibleMeshBounds : Settings.HiddenMeshBounds, name: $"{owner.Name} (Instance Bounds)")
     {
         _owner = owner;
+        _instances = instances;
+
         Descriptor = new PrimitiveDescriptor<Vector3>(owner.Descriptor.Bounds, () => new Geometry(owner.Descriptor.Bounds));
     }
 
-    protected override int InstanceCount => _owner.LocalInstancedTransforms.Count;
+    public override int InstanceCount => _instances.Count;
 
     public override Matrix4x4[] GetWorldMatrices(int index = -1) => _owner.GetWorldMatrices(index);
 

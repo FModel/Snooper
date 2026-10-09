@@ -113,7 +113,7 @@ public class SpatialComponent : ActorComponent
     private readonly bool _originalAbsScale;
     private bool _isTransformDirty;
 
-    protected virtual int InstanceCount => 1;
+    public virtual int InstanceCount => 1;
 
     public string? AttachSocketName
     {
@@ -290,7 +290,6 @@ public class SpatialComponent : ActorComponent
     {
         LocalTransform = transform;
         _isTransformDirty = true;
-        MarkDirty(DirtyFlags.Transform); // TODO: fix, for imgui LocalTransform = transform, so we need to force it dirty
     }
 
     protected virtual void ResetLocalTransform(int index = -1)
@@ -462,7 +461,7 @@ public class SpatialComponent : ActorComponent
             }
 
             var edited  = false;
-            var t = GetLocalTransform(_instanceIndex);
+            var t = (Transform) GetLocalTransform(_instanceIndex).Clone(); // dragged in place, so never the live one
 
             EditorUI.PropertyWithToggle("Position", PositionButtons);
             edited |= EditorUI.DragAxes("Position", ref t.Position);

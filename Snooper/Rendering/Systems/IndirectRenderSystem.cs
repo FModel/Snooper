@@ -130,7 +130,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     protected virtual void Count(TComponent component, bool first)
     {
         Counts.Components++;
-        Counts.Instances += component is InstancedStaticMeshComponent i ? (uint)i.LocalInstancedTransforms.Count : 1;
+        Counts.Instances += (uint)component.InstanceCount;
         if (component.Descriptor.Lods.Length > 0)
         {
             var draws = (uint)component.Descriptor.Lods[0].Sections.Length * (uint)(component is HierarchicalInstancedStaticMeshComponent { InstanceChunks: { } chunks } ? chunks.Length : 1);

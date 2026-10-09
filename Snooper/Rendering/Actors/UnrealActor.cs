@@ -48,7 +48,12 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                         USplineMeshComponent spline => new SplineMeshComponent(mesh, spline),
                         _ => new StaticMeshComponent(mesh, sm)
                     },
-                    USkeletalMeshComponent sk when sk.TryGetValue<USkeletalMesh>(out var mesh, "SkeletalMesh", "SkinnedAsset") => new SkeletalMeshComponent(mesh, sk),
+                    USkinnedMeshComponent skm when skm.TryGetValue<USkeletalMesh>(out var mesh, "SkeletalMesh", "SkinnedAsset") => skm switch
+                    {
+                        UInstancedSkinnedMeshComponent isk => new InstancedSkinnedMeshComponent(mesh, isk),
+                        USkeletalMeshComponent sk => new SkeletalMeshComponent(mesh, sk),
+                        _ => new SkinnedMeshComponent(mesh, skm)
+                    },
                     UGeometryCollectionComponent gc when gc.RestCollection?.TryLoad<UGeometryCollection>(out var collection) == true => new GeometryCollectionComponent(gc, collection),
                     ULandscapeComponent landscape => new LandscapeMeshComponent(landscape),
                     ULandscapeSplinesComponent splines => new LandscapeSplinesComponent(splines),

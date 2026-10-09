@@ -248,7 +248,10 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
             instanceData.BaseMorphWeight = (uint)component._morphWeightAllocation.Value.StartIndex;
         }
 
-        _skinInstanceData.Upsert(metadata.InstanceAllocation.StartIndex, instanceData);
+        for (var i = 0; i < metadata.InstanceAllocation.Length; i++)
+        {
+            _skinInstanceData.Upsert(metadata.InstanceAllocation.StartIndex + i, instanceData); // TODO: animate per instance, on the gpu
+        }
 
         if (component.Leader != null) component.MarkDirty(DirtyFlags.Animation);
     }

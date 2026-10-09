@@ -192,7 +192,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         if (lowest >= -0.001f || !Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
             return false;
 
-        var transform = GetLocalTransform();
+        var transform = (Transform) GetLocalTransform().Clone();
         transform.Position -= Vector3.TransformNormal(new Vector3(0f, lowest, 0f), invRelation);
         SetLocalTransform(transform);
         return true;

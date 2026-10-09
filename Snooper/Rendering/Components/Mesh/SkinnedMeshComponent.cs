@@ -15,7 +15,7 @@ using Snooper.UI;
 namespace Snooper.Rendering.Components.Mesh;
 
 [DefaultActorSystem(typeof(SkinnedMeshRenderSystem))]
-public abstract class SkinnedMeshComponent : MeshComponent
+public class SkinnedMeshComponent : MeshComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Morph;
 
@@ -73,9 +73,9 @@ public abstract class SkinnedMeshComponent : MeshComponent
         if (Descriptor.Skeleton is { } skeletonDescriptor) Pose = new SkeletonPose(skeletonDescriptor);
     }
 
-    protected SkinnedMeshComponent(USkeletalMesh skeletalMesh, USkinnedMeshComponent component) : base(skeletalMesh.Materials, component)
+    public SkinnedMeshComponent(USkinnedAsset skinnedAsset, USkinnedMeshComponent component) : base(skinnedAsset.Materials, component)
     {
-        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeletalMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
+        Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skinnedAsset, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
         if (Descriptor.Skeleton is { } skeleton) Pose = new SkeletonPose(skeleton);
     }
 

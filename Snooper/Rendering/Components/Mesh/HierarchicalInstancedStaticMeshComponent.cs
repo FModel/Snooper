@@ -17,7 +17,7 @@ public class HierarchicalInstancedStaticMeshComponent : InstancedStaticMeshCompo
 
         // "The number of instances in the ClusterTree. Subsequent instances will always be rendered."
         var built = component.NumBuiltInstances;
-        if (built < LocalInstancedTransforms.Count) chunks.Add((built, LocalInstancedTransforms.Count - built));
+        if (built < Instances.Count) chunks.Add((built, Instances.Count - built));
 
         InstanceChunks = [.. chunks];
 
