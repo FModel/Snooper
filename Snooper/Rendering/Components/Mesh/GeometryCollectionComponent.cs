@@ -74,17 +74,13 @@ public class GeometryCollectionComponent : StaticMeshComponent
             // Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
 
             var group = new FName("Transform");
-
-            var meshIndices = collection.GetAttributeValue<int>("AutoInstanceMeshIndex", group);
-            if (meshIndices is not { Length: > 0 }) return;
-
-            var transforms = collection.GetAttributeValue<FTransform>("Transform", group);
-            if (transforms is not { Length: > 0 }) return;
+            if (!collection.TryGetAttributeValue<int>("AutoInstanceMeshIndex", group, out var meshIndices) ||
+                !collection.TryGetAttributeValue<FTransform>("Transform", group, out var transforms)) return;
 
             const int rigid = 1;
-            var simulationTypes = collection.GetAttributeValue<int>("SimulationType", group);
-            var parents = collection.GetAttributeValue<int>("Parent", group);
-            var hides = collection.GetAttributeValue<bool>("Hide", group); // TODO: maybe we should support hiding instances
+            collection.TryGetAttributeValue<int>("SimulationType", group, out var simulationTypes);
+            collection.TryGetAttributeValue<int>("Parent", group, out var parents);
+            collection.TryGetAttributeValue<bool>("Hide", group, out var hides); // TODO: maybe we should support hiding instances
 
             var placements = new List<Transform>?[meshes.Length];
             for (var i = 0; i < transforms.Length; i++)

@@ -13,6 +13,7 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Meshes;
+using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Snooper.Extensions;
 using Snooper.Hosting;
@@ -55,21 +56,17 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Sockets = [];
     }
 
-    private PrimitiveDescriptor(FGuid guid, UObject owner)
+    private PrimitiveDescriptor(FGuid guid, UObject owner, StaticMeshDto dto, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
         Path = owner.GetCleanPath();
         Guid = guid;
-        Lods = [];
-        Sockets = [];
-    }
 
-    private PrimitiveDescriptor(FGuid guid, UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) : this(guid, owner)
-    {
+        if (dto.LODs.Count == 0) throw new InvalidOperationException($"Mesh {Path} has no LODs");
+
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
-        using var dto = new StaticMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat);
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)
@@ -77,73 +74,21 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
             Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
         }
 
-        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
-        for (var i = 0; i < Sockets.Length; i++)
-        {
-            if (!dto.Sockets[i].TryLoad<UStaticMeshSocket>(out var socket)) continue;
-            Sockets[i] = new StaticMeshSocketDescriptor(socket);
-        }
+        Sockets = ReadSockets(dto.Sockets);
     }
 
-    private PrimitiveDescriptor(FGuid guid, UIRMesh owner, uint meshIndex, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) : this(guid, owner)
+    private PrimitiveDescriptor(FGuid guid, USkinnedAsset owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
-        using var dto = new StaticMeshDto(owner, (int) meshIndex);
-        Bounds = new CullingBounds(dto.Bounds);
-        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
-        for (var i = 0; i < Lods.Length; i++)
-        {
-            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
-        }
-
-        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
-        for (var i = 0; i < Sockets.Length; i++)
-        {
-            if (!dto.Sockets[i].TryLoad<UStaticMeshSocket>(out var socket)) continue;
-            Sockets[i] = new StaticMeshSocketDescriptor(socket);
-        }
-    }
-
-    private PrimitiveDescriptor(FGuid guid, UHoudiniStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) : this(guid, owner)
-    {
-        using var dto = new StaticMeshDto(owner);
-        Bounds = new CullingBounds(dto.Bounds);
-        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
-        for (var i = 0; i < Lods.Length; i++)
-        {
-            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory);
-        }
-
-        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
-        for (var i = 0; i < Sockets.Length; i++)
-        {
-            if (!dto.Sockets[i].TryLoad<UStaticMeshSocket>(out var socket)) continue;
-            Sockets[i] = new StaticMeshSocketDescriptor(socket);
-        }
-    }
-
-    private PrimitiveDescriptor(FGuid guid, UGeometryCollection owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) : this(guid, owner)
-    {
-        var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
-        if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
-
-        using var dto = new StaticMeshDto(owner, Bridge.Options.NaniteMeshFormat);
-        if (dto.LODs.Count == 0) throw new InvalidOperationException(); // just so we fallback to collection groups
-        Bounds = new CullingBounds(dto.Bounds);
-        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
-        for (var i = 0; i < Lods.Length; i++)
-        {
-            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
-        }
-
-        Sockets = [];
-    }
-
-    private PrimitiveDescriptor(FGuid guid, USkinnedAsset owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory) : this(guid, owner)
-    {
-        var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
-        if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
+        Name = owner.Name;
+        Path = owner.GetCleanPath();
+        Guid = guid;
 
         using var dto = new SkeletalMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat, Bridge.Options.LoadMorphTargets);
+        if (dto.LODs.Count == 0) throw new InvalidOperationException($"Mesh {Path} has no LODs");
+
+        var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
+        if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
+
         Bounds = new CullingBounds(dto.Bounds);
         Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
         for (var i = 0; i < Lods.Length; i++)
@@ -157,12 +102,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
             Skeleton.SetOwner(skeleton);
         }
 
-        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
-        for (var i = 0; i < Sockets.Length; i++)
-        {
-            if (!dto.Sockets[i].TryLoad<USkeletalMeshSocket>(out var socket)) continue;
-            Sockets[i] = new SkeletalMeshSocketDescriptor(socket);
-        }
+        Sockets = ReadSockets(dto.Sockets);
 
         if (dto.MorphTargets is { Length: > 0 } morphTargets)
         {
@@ -171,8 +111,12 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         }
     }
 
-    private PrimitiveDescriptor(FGuid guid, USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory) : this(guid, owner)
+    private PrimitiveDescriptor(FGuid guid, USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory)
     {
+        Name = owner.Name;
+        Path = owner.GetCleanPath();
+        Guid = guid;
+
         using var dto = new SkeletonDto(owner);
         Bounds = new CullingBounds(dto.Bounds);
 
@@ -180,16 +124,29 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Skeleton.SetOwner(owner);
 
         Lods = [new LodDescriptor<TVertex>(factory(Skeleton), true)];
-
-        Sockets = new ISocketDescriptor[dto.Sockets?.Length ?? 0];
-        for (var i = 0; i < Sockets.Length; i++)
-        {
-            if (!dto.Sockets[i].TryLoad<USkeletalMeshSocket>(out var socket)) continue;
-            Sockets[i] = new SkeletalMeshSocketDescriptor(socket);
-        }
+        Sockets = ReadSockets(dto.Sockets);
     }
 
-    private Action<FColor[]>? CreateJunoColorRemap(IFileProvider? provider, string? path)
+    private static ISocketDescriptor?[] ReadSockets(FPackageIndex[]? sockets)
+    {
+        if (sockets is null || sockets.Length == 0) return [];
+
+        var descriptors = new ISocketDescriptor?[sockets.Length];
+        for (var i = 0; i < descriptors.Length; i++)
+        {
+            if (!sockets[i].TryLoad(out var export)) continue;
+
+            descriptors[i] = export switch
+            {
+                UStaticMeshSocket socket => new StaticMeshSocketDescriptor(socket),
+                USkeletalMeshSocket socket => new SkeletalMeshSocketDescriptor(socket),
+                _ => null
+            };
+        }
+        return descriptors;
+    }
+
+    private static Action<FColor[]>? CreateJunoColorRemap(IFileProvider? provider, string? path)
     {
         if (provider is null || path?.StartsWith("FortniteGame/Plugins/GameFeatures/Juno/", StringComparison.OrdinalIgnoreCase) != true)
             return null;
@@ -204,16 +161,32 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     }
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.LightingGuid, guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
+        => MeshCache.GetOrCreate(owner.LightingGuid, guid =>
+        {
+            using var dto = new StaticMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat);
+            return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
+        });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UIRMesh owner, uint meshIndex, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.ToGuid(meshIndex), guid => new PrimitiveDescriptor<TVertex>(guid, owner, meshIndex, factory));
+        => MeshCache.GetOrCreate(owner.ToGuid(meshIndex), guid =>
+        {
+            using var dto = new StaticMeshDto(owner, (int) meshIndex);
+            return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
+        });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UHoudiniStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
+        => MeshCache.GetOrCreate(owner.ToGuid(), guid =>
+        {
+            using var dto = new StaticMeshDto(owner);
+            return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
+        });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UGeometryCollection owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
+        => MeshCache.GetOrCreate(owner.ToGuid(), guid =>
+        {
+            using var dto = new StaticMeshDto(owner, Bridge.Options.NaniteMeshFormat);
+            return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
+        });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkinnedAsset owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
