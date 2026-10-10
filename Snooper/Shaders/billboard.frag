@@ -27,13 +27,13 @@ void main()
 {
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    PerMaterialData materialData = uMaterialDataBuffer[MaterialSlot(draw, culled)];
+    uint material = MaterialSlot(draw, culled);
 
     vec4 color = vec4(1.0);
-    if (materialData.IsReady)
+    if (uMaterialDataBuffer[material].IsReady)
     {
-        color = texture(TO_SAMPLER(materialData.Sprite), vTexCoords);
-        if (color.a < materialData.OpacityMask)
+        color = texture(TO_SAMPLER(uMaterialDataBuffer[material].Sprite), vTexCoords);
+        if (color.a < uMaterialDataBuffer[material].OpacityMask)
         {
             discard;
         }

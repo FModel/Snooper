@@ -71,14 +71,14 @@ uniform float uContourInterval;
 uniform mat4 uViewMatrix;
 
 // every painted layer in its own color, blended by weight
-vec3 getColorFromLayers(PerMaterialData materialData, TileLayers layers)
+vec3 getColorFromLayers(uint material, TileLayers layers)
 {
     const vec3 unpainted = vec3(0.25);
 
     float quadFraction = 1.0 / uQuadCount;
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
 
-    int weightmapCount = int(materialData.WeightmapCount);
+    int weightmapCount = int(uMaterialDataBuffer[material].WeightmapCount);
 
     vec3 blendColor = vec3(0.0);
     float totalWeight = 0.0;
@@ -86,12 +86,12 @@ vec3 getColorFromLayers(PerMaterialData materialData, TileLayers layers)
 
     for (int i = 0; i < weightmapCount; i++)
     {
-        sampler2D weightmap = TO_SAMPLER(materialData.Weightmaps[i]);
+        sampler2D weightmap = TO_SAMPLER(uMaterialDataBuffer[material].Weightmaps[i]);
         vec2 weightmapSize = textureSize(weightmap, 0);
         vec2 texelSize = 1.0 / weightmapSize;
         vec2 weightmapUvSize = vec2(uSizeQuads) / weightmapSize;
 
-        vec2 uv2 = materialData.WeightmapScaleBias + subPatchOffset * weightmapUvSize + fs_in.vTessCoord * (weightmapUvSize * quadFraction);
+        vec2 uv2 = uMaterialDataBuffer[material].WeightmapScaleBias + subPatchOffset * weightmapUvSize + fs_in.vTessCoord * (weightmapUvSize * quadFraction);
         uv2 = uv2 * (1.0 - texelSize) + 0.5 * texelSize;
 
         vec4 weightmapColor = texture(weightmap, uv2);
@@ -193,7 +193,7 @@ void main()
 {
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    PerMaterialData material = uMaterialDataBuffer[MaterialSlot(draw, culled)];
+    uint material = MaterialSlot(draw, culled);
 
     vec3 normal = normalize(fs_in.TBN * vec3(0.0, 0.0, 1.0));
 
@@ -202,7 +202,7 @@ void main()
     {
         color = getColorFromSlope(normal);
     }
-    else if (uColorMode == COLOR_LAYERS && material.IsReady)
+    else if (uColorMode == COLOR_LAYERS && uMaterialDataBuffer[material].IsReady)
     {
         color = getColorFromLayers(material, uTileLayers[draw.BaseMaterial + culled.MaterialIndex]);
     }

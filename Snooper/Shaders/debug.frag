@@ -22,12 +22,12 @@ void main()
 {
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    PerMaterialData materialData = uMaterialDataBuffer[MaterialSlot(draw, culled)];
+    uint material = MaterialSlot(draw, culled);
 
     vec3 color = vec3(0.75);
-    if (materialData.IsReady)
+    if (uMaterialDataBuffer[material].IsReady)
     {
-        color = materialData.LineColor;
+        color = uMaterialDataBuffer[material].LineColor;
     }
 
     FragColor = vec4(color, 1.0);

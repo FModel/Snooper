@@ -62,7 +62,7 @@ vec3 UvGridColor(vec2 uv)
     return color;
 }
 
-Surface ResolveSurface(PerMaterialData material)
+Surface ResolveSurface(uint material)
 {
     Surface surface;
     surface.Color = fs_in.vFragColor;
@@ -74,18 +74,19 @@ Surface ResolveSurface(PerMaterialData material)
 
     vec3 normal = vec3(0.0, 0.0, 1.0);
 
-    if (vColorMode == 0 && material.IsReady)
+    if (vColorMode == 0 && uMaterialDataBuffer[material].IsReady)
     {
         LayerData layer = SampleLayer(material, vTexLayer, fs_in.vTexCoords);
 
         uint blendMode = GetBlendMode(material);
-        if (blendMode == 1u && layer.diffuse.a < material.Opacity) // masked
+        float opacity = uMaterialDataBuffer[material].Opacity;
+        if (blendMode == 1u && layer.diffuse.a < opacity) // masked
         {
             surface.Discard = true;
         }
         else if (blendMode == 2u) // translucent
         {
-            surface.Opacity = material.Opacity > 0.0 ? material.Opacity : layer.diffuse.a;
+            surface.Opacity = opacity > 0.0 ? opacity : layer.diffuse.a;
         }
         else if (blendMode == 3u) // additive
         {

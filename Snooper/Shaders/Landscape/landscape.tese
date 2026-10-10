@@ -72,8 +72,8 @@ void main()
 
     PerDrawStatic draw = uDrawStatic[gDrawID];
     PerDrawCulled culled = FetchCulled(gDrawID);
-    PerMaterialData materialData = uMaterialDataBuffer[MaterialSlot(draw, culled)];
-    if (!materialData.IsReady)
+    uint material = MaterialSlot(draw, culled);
+    if (!uMaterialDataBuffer[material].IsReady)
     {
         te_out.vViewPos = vec3(0.0);
         te_out.TBN = mat3(uViewMatrix);
@@ -87,18 +87,18 @@ void main()
 
     // Hole: if a visibility layer exists, sample it and discard the patch by
     // pushing the vertex out of clip space when the channel value > 0.5.
-    if (materialData.VisibilityTextureIndex != 0xFFFFFFFFu)
+    if (uMaterialDataBuffer[material].VisibilityTextureIndex != 0xFFFFFFFFu)
     {
-        sampler2D weightmap = TO_SAMPLER(materialData.Weightmaps[materialData.VisibilityTextureIndex]);
+        sampler2D weightmap = TO_SAMPLER(uMaterialDataBuffer[material].Weightmaps[uMaterialDataBuffer[material].VisibilityTextureIndex]);
 
         vec2 weightmapSize = textureSize(weightmap, 0);
         vec2 weightmapTexelSize = 1.0 / weightmapSize;
         vec2 weightmapUvSize = vec2(uSizeQuads) / weightmapSize;
 
-        vec2 visUv = materialData.WeightmapScaleBias + subPatchOffset * weightmapUvSize + vec2(u, v) * (weightmapUvSize * quadFraction);
+        vec2 visUv = uMaterialDataBuffer[material].WeightmapScaleBias + subPatchOffset * weightmapUvSize + vec2(u, v) * (weightmapUvSize * quadFraction);
         visUv = visUv * (1.0 - weightmapTexelSize) + 0.5 * weightmapTexelSize;
 
-        if (texture(weightmap, visUv)[materialData.VisibilityChannelIndex] > 0.5)
+        if (texture(weightmap, visUv)[uMaterialDataBuffer[material].VisibilityChannelIndex] > 0.5)
         {
             gl_Position = vec4(2.0, 2.0, -1.0, 1.0);
             te_out.vViewPos = vec3(0.0);
@@ -108,12 +108,12 @@ void main()
         }
     }
 
-    sampler2D heightmap = TO_SAMPLER(materialData.Heightmap);
+    sampler2D heightmap = TO_SAMPLER(uMaterialDataBuffer[material].Heightmap);
     vec2 heightmapSize = textureSize(heightmap, 0);
     vec2 heightmapTexelSize = 1.0 / heightmapSize;
     vec2 heightmapUvSize = vec2(uSizeQuads) / heightmapSize;
 
-    vec2 uv = materialData.HeightmapScaleBias + subPatchOffset * heightmapUvSize + vec2(u, v) * (heightmapUvSize * quadFraction);
+    vec2 uv = uMaterialDataBuffer[material].HeightmapScaleBias + subPatchOffset * heightmapUvSize + vec2(u, v) * (heightmapUvSize * quadFraction);
     uv = uv * (1.0 - heightmapTexelSize) + 0.5 * heightmapTexelSize;
 
     vec4 color = texture(heightmap, uv);

@@ -52,7 +52,7 @@ bool GetVertexDebugColor(PerDrawStatic draw, PerDrawCulled culled, int instance,
 #if defined(MESH_FRAGMENT_STAGE)
 // Final surface colour. vertexColor is the interpolated vs_out.vFragColor, which is how a
 // variant hands per-vertex work to the fragment stage without touching the VS_OUT block.
-vec3 GetSurfaceColor(PerMaterialData material, LayerData layer, vec3 vertexColor);
+vec3 GetSurfaceColor(uint material, LayerData layer, vec3 vertexColor);
 #endif
 
 // ------------------------------------------------------------------ variant registry
@@ -93,7 +93,7 @@ bool GetVertexDebugColor(PerDrawStatic draw, PerDrawCulled culled, int instance,
 #endif
 
 #if defined(MESH_FRAGMENT_STAGE) && !defined(OVERRIDE_SURFACE_COLOR)
-vec3 GetSurfaceColor(PerMaterialData material, LayerData layer, vec3 vertexColor)
+vec3 GetSurfaceColor(uint material, LayerData layer, vec3 vertexColor)
 {
     return layer.diffuse.rgb;
 }
