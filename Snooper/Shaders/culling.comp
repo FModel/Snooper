@@ -1,9 +1,14 @@
+// built twice
+#ifdef CULL_CHUNKED
 layout(local_size_x = 32) in;
 
 shared uint sMinVisible[32];
 shared uint sMaxVisible[32];
 shared float sClosestDist[32];
 shared uint sAnyVisible[32];
+#else
+layout(local_size_x = CULL_GROUP_SIZE) in;
+#endif
 
 struct PrimitiveDescriptor // per-LOD data only, mesh-wide data lives in PerMeshData
 {
@@ -36,6 +41,13 @@ layout(std430, binding = BINDING_CULL_SECTIONS) buffer SectionDescriptorsBuffer
 {
     SectionDescriptor uSectionDescriptors[];
 };
+
+#ifdef CULL_CHUNKED
+layout(std430, binding = BINDING_CULL_CHUNKED) readonly buffer ChunkedDrawsBuffer
+{
+    uint uChunkedDraws[];
+};
+#endif
 
 uniform vec4 uFrustumPlanes[MAX_CULLING_VIEWS * 6];
 uniform vec4 uLodReference[MAX_CULLING_VIEWS];
@@ -80,86 +92,20 @@ bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
         a.BaseVertex == b.BaseVertex;
 }
 
-void main()
+bool testInstance(uint planeBase, PerDrawStatic draw, PerMeshData mesh, vec3 lodRefPos, bool trustBounds, uint instance, out float dist)
 {
-    uint drawId = gl_WorkGroupID.x;
-    uint view = gl_WorkGroupID.y;
-    uint threadId = gl_LocalInvocationID.x;
-    uint threadCount = gl_WorkGroupSize.x;
+    mat4 modelMatrix = uInstanceDataBuffer[instance].Matrix;
 
-    bool maskView = view == uMaskView;
-    bool shadowView = !maskView && view != 0u;
-    if (drawId >= uViewCapacity || (!maskView && view >= uViewCount)) return;
+    vec3 worldCenter = (modelMatrix * vec4(mesh.Center, 1.0)).xyz;
+    mat3 m = mat3(modelMatrix);
+    vec3 worldExtents = abs(m[0]) * mesh.Extents.x + abs(m[1]) * mesh.Extents.y + abs(m[2]) * mesh.Extents.z;
 
-    bool trustBounds = uViewCount > 0u; // if we call this with uViewCount == 0, we don't trust the bounds, won't cull anything, and lod will stay at what the upload set was
-    uint cullView = maskView ? 0u : view;
-    uint slot = view * uViewCapacity + drawId;
-    uint planeBase = cullView * 6u;
+    dist = length(lodRefPos - worldCenter);
+    return !trustBounds || (isVisible(planeBase, worldCenter, worldExtents) && isWithinDrawDistance(draw.MinDrawDistance, draw.MaxDrawDistance, dist));
+}
 
-    PerDrawStatic draw = uDrawStatic[drawId];
-
-    if ((shadowView && draw.CastShadow == 0u) || (maskView && draw.Outlined == 0u))
-    {
-        uDrawCommandBuffer[slot].InstanceCount = 0;
-        return;
-    }
-
-    PerMeshData mesh = uMeshDataBuffer[draw.MeshIndex];
-    PrimitiveDescriptor primitive = uPrimitiveDescriptors[draw.MeshIndex];
-    uint instanceCount = draw.OriginalInstanceCount;
-    uint baseInstance = draw.OriginalBaseInstance;
-
-    vec3 lodRefPos = uLodReference[cullView].xyz;
-    float lodScale = uLodReference[cullView].w;
-    float lodOrthoExtent = uLodOrthoExtent[cullView];
-
-    uint localMin = 0xFFFFFFFFu;
-    uint localMax = 0;
-    float localClosest = 3.402823e+38;
-    uint localAny = 0u;
-
-    for (uint j = threadId; j < instanceCount; j += threadCount)
-    {
-        mat4 modelMatrix = uInstanceDataBuffer[baseInstance + j].Matrix;
-
-        vec3 worldCenter = (modelMatrix * vec4(mesh.Center, 1.0)).xyz;
-        mat3 m = mat3(modelMatrix);
-        vec3 worldExtents = abs(m[0]) * mesh.Extents.x + abs(m[1]) * mesh.Extents.y + abs(m[2]) * mesh.Extents.z;
-
-        float dist = length(lodRefPos - worldCenter);
-        if (!trustBounds || (isVisible(planeBase, worldCenter, worldExtents) && isWithinDrawDistance(draw.MinDrawDistance, draw.MaxDrawDistance, dist)))
-        {
-            localMin = min(localMin, j);
-            localMax = max(localMax, j);
-            localClosest = min(localClosest, dist);
-            localAny = 1u;
-        }
-    }
-
-    sMinVisible[threadId] = localMin;
-    sMaxVisible[threadId] = localMax;
-    sClosestDist[threadId] = localClosest;
-    sAnyVisible[threadId] = localAny;
-    barrier();
-
-    // reduction
-    for (uint offset = threadCount / 2u; offset > 0u; offset >>= 1u)
-    {
-        if (threadId < offset)
-        {
-            sMinVisible[threadId] = min(sMinVisible[threadId], sMinVisible[threadId + offset]);
-            sMaxVisible[threadId] = max(sMaxVisible[threadId], sMaxVisible[threadId + offset]);
-            sClosestDist[threadId] = min(sClosestDist[threadId], sClosestDist[threadId + offset]);
-            sAnyVisible[threadId] |= sAnyVisible[threadId + offset];
-        }
-        barrier();
-    }
-
-    if (threadId != 0)
-    {
-        return;
-    }
-
+void resolve(uint slot, uint cullView, PerDrawStatic draw, PerMeshData mesh, bool trustBounds, uint minVisible, uint maxVisible, float closestDist, bool anyVisible)
+{
     DrawElementsIndirectCommand cmd = uDrawCommandBuffer[slot];
     PerDrawCulled culled = uDrawCulled[slot];
 
@@ -167,10 +113,12 @@ void main()
     uint newLod = culled.Lod;
     uint newMaterialIndex = culled.MaterialIndex;
     uint newBaseColor = culled.BaseColor;
-    if (sAnyVisible[0] == 1u)
+    if (anyVisible)
     {
-        newCmd.BaseInstance = baseInstance + sMinVisible[0];
-        newCmd.InstanceCount = sMaxVisible[0] - sMinVisible[0] + 1;
+        PrimitiveDescriptor primitive = uPrimitiveDescriptors[draw.MeshIndex];
+
+        newCmd.BaseInstance = draw.OriginalBaseInstance + minVisible;
+        newCmd.InstanceCount = maxVisible - minVisible + 1;
 
         uint chosenLod = 0u;
         if (mesh.MaxLOD > 0u && trustBounds)
@@ -183,9 +131,11 @@ void main()
             else
             {
                 // Automatic LOD selection based on screen size
+                float lodScale = uLodReference[cullView].w;
+                float lodOrthoExtent = uLodOrthoExtent[cullView];
                 float screenRadius = lodOrthoExtent > 0.0
                     ? mesh.SphereRadius / lodOrthoExtent
-                    : mesh.SphereRadius * lodScale / sClosestDist[0];
+                    : mesh.SphereRadius * lodScale / closestDist;
                 float screenSize = screenRadius * 2.0;
 
                 for (uint i = 1u; i <= mesh.MaxLOD; ++i)
@@ -246,4 +196,94 @@ void main()
         uDrawCulled[slot].MaterialIndex = newMaterialIndex;
         uDrawCulled[slot].BaseColor     = newBaseColor;
     }
+}
+
+void main()
+{
+#ifdef CULL_CHUNKED
+    uint entry = uChunkedDraws[gl_WorkGroupID.x];
+    if (entry == 0u) return; // a freed entry
+    uint drawId = entry - CHUNKED_DRAW_OFFSET;
+#else
+    uint drawId = gl_GlobalInvocationID.x;
+#endif
+    uint view = gl_WorkGroupID.y;
+
+    bool maskView = view == uMaskView;
+    bool shadowView = !maskView && view != 0u;
+    if (drawId >= uViewCapacity || (!maskView && view >= uViewCount)) return;
+
+    bool trustBounds = uViewCount > 0u; // if we call this with uViewCount == 0, we don't trust the bounds, won't cull anything, and lod will stay at what the upload set was
+    uint cullView = maskView ? 0u : view;
+    uint slot = view * uViewCapacity + drawId;
+    uint planeBase = cullView * 6u;
+
+    PerDrawStatic draw = uDrawStatic[drawId];
+#ifndef CULL_CHUNKED
+    if (draw.OriginalInstanceCount > MAX_INSTANCES_PER_THREAD) return; // the chunked dispatch takes it
+#endif
+
+    if ((shadowView && draw.CastShadow == 0u) || (maskView && draw.Outlined == 0u))
+    {
+        uDrawCommandBuffer[slot].InstanceCount = 0;
+        return;
+    }
+
+    PerMeshData mesh = uMeshDataBuffer[draw.MeshIndex];
+    uint instanceCount = draw.OriginalInstanceCount;
+    uint baseInstance = draw.OriginalBaseInstance;
+    vec3 lodRefPos = uLodReference[cullView].xyz;
+
+    uint localMin = 0xFFFFFFFFu;
+    uint localMax = 0;
+    float localClosest = 3.402823e+38;
+    uint localAny = 0u;
+
+#ifdef CULL_CHUNKED
+    uint threadId = gl_LocalInvocationID.x;
+    uint threadCount = gl_WorkGroupSize.x;
+    for (uint j = threadId; j < instanceCount; j += threadCount)
+#else
+    for (uint j = 0u; j < instanceCount; ++j)
+#endif
+    {
+        float dist;
+        if (testInstance(planeBase, draw, mesh, lodRefPos, trustBounds, baseInstance + j, dist))
+        {
+            localMin = min(localMin, j);
+            localMax = max(localMax, j);
+            localClosest = min(localClosest, dist);
+            localAny = 1u;
+        }
+    }
+
+#ifdef CULL_CHUNKED
+    sMinVisible[threadId] = localMin;
+    sMaxVisible[threadId] = localMax;
+    sClosestDist[threadId] = localClosest;
+    sAnyVisible[threadId] = localAny;
+    barrier();
+
+    // reduction
+    for (uint offset = threadCount / 2u; offset > 0u; offset >>= 1u)
+    {
+        if (threadId < offset)
+        {
+            sMinVisible[threadId] = min(sMinVisible[threadId], sMinVisible[threadId + offset]);
+            sMaxVisible[threadId] = max(sMaxVisible[threadId], sMaxVisible[threadId + offset]);
+            sClosestDist[threadId] = min(sClosestDist[threadId], sClosestDist[threadId + offset]);
+            sAnyVisible[threadId] |= sAnyVisible[threadId + offset];
+        }
+        barrier();
+    }
+
+    if (threadId != 0)
+    {
+        return;
+    }
+
+    resolve(slot, cullView, draw, mesh, trustBounds, sMinVisible[0], sMaxVisible[0], sClosestDist[0], sAnyVisible[0] == 1u);
+#else
+    resolve(slot, cullView, draw, mesh, trustBounds, localMin, localMax, localClosest, localAny == 1u);
+#endif
 }

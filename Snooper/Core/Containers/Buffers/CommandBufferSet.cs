@@ -18,12 +18,12 @@ public class CommandBufferSet(int viewCount = 1) : IMemoryDetailsProvider, IDisp
         _transparent.Generate();
     }
 
-    public void Allocate(uint opaqueDraws, uint transparentDraws)
+    public void Allocate(uint opaqueDraws, uint transparentDraws, uint chunkedDraws)
     {
         // a draw starts in the buffer its component names and moves to the transparent one when its material resolves translucent
-        if (opaqueDraws > 0) _opaque.Allocate(opaqueDraws);
+        if (opaqueDraws > 0) _opaque.Allocate(opaqueDraws, chunkedDraws);
         transparentDraws += (uint)Math.Ceiling(opaqueDraws * 0.2);
-        if (transparentDraws > 0) _transparent.Allocate(transparentDraws);
+        if (transparentDraws > 0) _transparent.Allocate(transparentDraws, chunkedDraws);
     }
 
     public IndirectDrawBuffer GetBuffer(CommandBufferType type) => type switch

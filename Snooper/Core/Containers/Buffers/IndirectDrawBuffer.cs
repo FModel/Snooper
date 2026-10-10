@@ -12,6 +12,8 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
     public DrawIndirectBuffer Commands { get; } = new(usageHint, viewCount);
     public ShaderStorageBuffer<PerDrawCulled> CulledData { get; } = new(usageHint, viewCount);
     public ShaderStorageBuffer<PerDrawStatic> StaticData { get; } = new(usageHint);
+    public ShaderStorageBuffer<uint> ChunkedDraws { get; } = new(usageHint); // indices of draws that are too large to be culled in a single thread
+    public const uint ChunkedDrawOffset = 1; // draw 0 is an actual gl_DrawID, and a freed slot is also 0, so we offset indices
 
     public readonly int ViewCount = viewCount >= 1 ? viewCount : throw new ArgumentOutOfRangeException(nameof(viewCount), viewCount, "A draw buffer needs at least one slice.");
     public int Capacity => Commands.Capacity;
@@ -23,23 +25,33 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
         Commands.Generate();
         CulledData.Generate();
         StaticData.Generate();
+        ChunkedDraws.Generate();
     }
 
-    public void Allocate(uint size)
+    public void Allocate(uint size, uint chunked)
     {
         Commands.Allocate(size);
         CulledData.Allocate(size);
         StaticData.Allocate(size);
+        ChunkedDraws.Allocate(Math.Max(chunked, 1u));
     }
 
-    public DrawAllocation Add(DrawElementsIndirectCommand command, PerDrawStatic data, PerDrawCulled output)
+    public DrawAllocation Add(DrawElementsIndirectCommand command, PerDrawStatic data, PerDrawCulled output, uint instanceCount)
     {
         var commandAllocation = Commands.Add(command);
         var dataAllocation = StaticData.Add(data);
         var outputAllocation = CulledData.Add(output);
         Debug.Assert(commandAllocation.StartIndex == dataAllocation.StartIndex && commandAllocation.StartIndex == outputAllocation.StartIndex,
             "Draw command, per-draw data and per-draw output buffers must stay index-aligned.");
-        return new DrawAllocation(commandAllocation, dataAllocation, outputAllocation);
+
+        BufferAllocation? chunkedAllocation = null;
+        if (instanceCount > Settings.MaxInstancesPerCullThread)
+        {
+            // this draw is too large to be culled in a single thread
+            chunkedAllocation = ChunkedDraws.Add((uint) commandAllocation.StartIndex + ChunkedDrawOffset);
+        }
+
+        return new DrawAllocation(commandAllocation, dataAllocation, outputAllocation, chunkedAllocation);
     }
 
     public DrawAllocation CopyFrom(IndirectDrawBuffer source, DrawAllocation allocation)
@@ -49,7 +61,15 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
         var outputAllocation = CulledData.CopyFrom(source.CulledData, allocation.Culled);
         Debug.Assert(commandAllocation.StartIndex == dataAllocation.StartIndex && commandAllocation.StartIndex == outputAllocation.StartIndex,
             "Draw command, per-draw data and per-draw output buffers must stay index-aligned.");
-        return new DrawAllocation(commandAllocation, dataAllocation, outputAllocation);
+
+        BufferAllocation? chunkedAllocation = null;
+        if (allocation.Chunked != null)
+        {
+            // this draw was chunked in the source buffer, so we need to chunk it in this buffer as well
+            chunkedAllocation = ChunkedDraws.Add((uint) commandAllocation.StartIndex + ChunkedDrawOffset);
+        }
+
+        return new DrawAllocation(commandAllocation, dataAllocation, outputAllocation, chunkedAllocation);
     }
 
     public int GetViewBase(int view) => (view < MaskViewIndex ? view : 0) * Capacity;
@@ -64,6 +84,8 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
         Commands.Remove(allocation.Command);
         CulledData.Remove(allocation.Culled);
         StaticData.Remove(allocation.Static);
+        if (allocation.Chunked is { } chunked)
+            ChunkedDraws.Remove(chunked);
     }
 
     public void Clear()
@@ -71,6 +93,7 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
         Commands.Clear();
         CulledData.Clear();
         StaticData.Clear();
+        ChunkedDraws.Clear();
     }
 
     public void Dispose()
@@ -78,18 +101,20 @@ public sealed class IndirectDrawBuffer(int viewCount = 1, BufferUsageHint usageH
         Commands.Dispose();
         CulledData.Dispose();
         StaticData.Dispose();
+        ChunkedDraws.Dispose();
     }
 
-    public long Allocated => Commands.Allocated + StaticData.Allocated + CulledData.Allocated;
-    public long Used => Commands.Used + StaticData.Used + CulledData.Used;
+    public long Allocated => Commands.Allocated + StaticData.Allocated + CulledData.Allocated + ChunkedDraws.Allocated;
+    public long Used => Commands.Used + StaticData.Used + CulledData.Used + ChunkedDraws.Used;
     public BufferStatistics? GetBufferStatistics() => Commands.GetBufferStatistics();
 }
 
-public readonly struct DrawAllocation(BufferAllocation command, BufferAllocation @static, BufferAllocation culled)
+public readonly struct DrawAllocation(BufferAllocation command, BufferAllocation @static, BufferAllocation culled, BufferAllocation? chunked)
 {
     public readonly BufferAllocation Command = command;
     public readonly BufferAllocation Culled = culled;
     public readonly BufferAllocation Static = @static;
+    public readonly BufferAllocation? Chunked = chunked;
 }
 
 public readonly struct PerDrawStatic(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, DrawElementsIndirectCommand command, bool castShadow, Vector2 drawDistances, bool outlined)

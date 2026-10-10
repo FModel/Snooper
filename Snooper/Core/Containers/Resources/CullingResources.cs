@@ -12,9 +12,24 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
     private readonly ShaderStorageBuffer<PerMeshData> _meshes = new();
     private readonly ShaderStorageBuffer<PrimitiveOffsets> _primitives = new();
     private readonly ShaderStorageBuffer<SectionOffsets> _sections = new();
-    private readonly ComputeShader _compute = new("culling.comp")
+    private const int GroupSize = 64;
+
+    private static readonly string[] _computeDefines =
+    [
+        $"MAX_CULLING_VIEWS {Settings.MaxCullingViews}",
+        $"MAX_INSTANCES_PER_THREAD {Settings.MaxInstancesPerCullThread}",
+        $"CULL_GROUP_SIZE {GroupSize}",
+        $"CHUNKED_DRAW_OFFSET {IndirectDrawBuffer.ChunkedDrawOffset}u",
+        .. CullingBindings.OwnDefines
+    ];
+
+    private readonly ComputeShader _compute = new("culling.comp") // fast path for draws with low instance counts, everything about thread sharing is stripped out
     {
-        Defines = [$"MAX_CULLING_VIEWS {Settings.MaxCullingViews}", ..CullingBindings.OwnDefines]
+        Defines = _computeDefines
+    };
+    private readonly ComputeShader _chunkedCompute = new("culling.comp") // for draws with high instance counts
+    {
+        Defines = [.._computeDefines, "CULL_CHUNKED"]
     };
 
     private abstract class CullingBindings : Bindings
@@ -22,13 +37,15 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         public const uint DrawCommands = BaseMaxBinding + 1;
         public const uint CullLodData = BaseMaxBinding + 2;
         public const uint CullSections = BaseMaxBinding + 3;
-        public const uint MaxBinding = CullSections;
+        public const uint CullChunked = BaseMaxBinding + 4;
+        public const uint MaxBinding = CullChunked;
 
         public static readonly string[] OwnDefines =
         [
             Define("DRAW_COMMANDS", DrawCommands),
             Define("CULL_LOD_DATA", CullLodData),
-            Define("CULL_SECTIONS", CullSections)
+            Define("CULL_SECTIONS", CullSections),
+            Define("CULL_CHUNKED", CullChunked)
         ];
     }
 
@@ -40,6 +57,8 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
 
         _compute.Generate();
         _compute.Link();
+        _chunkedCompute.Generate();
+        _chunkedCompute.Link();
     }
 
     public void Allocate(AllocationCounts counts)
@@ -102,14 +121,6 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
             _lodOrthoExtents[i] = views[i].LodOrthoExtent;
         }
 
-        _compute.Use();
-        _compute.SetUniform("uFrustumPlanes", _planes);
-        _compute.SetUniform("uLodReference", _lodReferences);
-        _compute.SetUniform("uLodOrthoExtent", _lodOrthoExtents);
-        _compute.SetUniform("uViewCount", (uint) viewCount);
-        _compute.SetUniform("uMaskView", (uint) commands.MaskViewIndex);
-        _compute.SetUniform("uViewCapacity", (uint) commands.Capacity);
-
         commands.Commands.Bind(CullingBindings.DrawCommands);
         commands.StaticData.Bind(Bindings.DrawStatic);
         commands.CulledData.Bind(Bindings.DrawCulled);
@@ -118,9 +129,29 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _primitives.Bind(CullingBindings.CullLodData);
         _sections.Bind(CullingBindings.CullSections);
 
-        GL.DispatchCompute(commands.Extent, commands.ViewCount, 1);
+        Dispatch(_compute, (commands.Extent + GroupSize - 1) / GroupSize);
+        if (commands.ChunkedDraws.Extent > 0)
+        {
+            commands.ChunkedDraws.Bind(CullingBindings.CullChunked);
+            Dispatch(_chunkedCompute, commands.ChunkedDraws.Extent);
+        }
+
         GL.MemoryBarrier(MemoryBarrierFlags.CommandBarrierBit | MemoryBarrierFlags.ShaderStorageBarrierBit);
-        _compute.Unuse();
+        return;
+
+        void Dispatch(ComputeShader compute, int groups)
+        {
+            compute.Use();
+            compute.SetUniform("uFrustumPlanes", _planes);
+            compute.SetUniform("uLodReference", _lodReferences);
+            compute.SetUniform("uLodOrthoExtent", _lodOrthoExtents);
+            compute.SetUniform("uViewCount", (uint) viewCount);
+            compute.SetUniform("uMaskView", (uint) commands.MaskViewIndex);
+            compute.SetUniform("uViewCapacity", (uint) commands.Capacity);
+
+            GL.DispatchCompute(groups, commands.ViewCount, 1);
+            compute.Unuse();
+        }
     }
 
     public void Remove(BufferAllocation mesh, BufferAllocation primitives, List<BufferAllocation> sections)
@@ -137,6 +168,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         _primitives.Dispose();
         _sections.Dispose();
         _compute.Dispose();
+        _chunkedCompute.Dispose();
     }
 
     public long Allocated
@@ -148,6 +180,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
             total += _primitives.Allocated;
             total += _sections.Allocated;
             total += _compute.Allocated;
+            total += _chunkedCompute.Allocated;
             return total;
         }
     }
@@ -161,6 +194,7 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
             total += _primitives.Used;
             total += _sections.Used;
             total += _compute.Used;
+            total += _chunkedCompute.Used;
             return total;
         }
     }
@@ -171,5 +205,6 @@ public class CullingResources : IMemoryDetailsProvider, IDisposable
         yield return new MemoryDetail("Primitive Offsets", _primitives);
         yield return new MemoryDetail("Section Offsets", _sections);
         yield return new MemoryDetail("Culling Compute Shader", _compute);
+        yield return new MemoryDetail("Chunked Culling Compute Shader", _chunkedCompute);
     }
 }

@@ -16,6 +16,7 @@ public class AllocationCounts
     public uint Instances; // total number of instances across all components
     public uint OpaqueDraws; // we have one draw call per section in LOD0 per component, per instance chunk, in the buffer the component starts in
     public uint TransparentDraws;
+    public uint ChunkedDraws; // the draws with more instances than a cull thread scans alone, whichever buffer they are in
     public uint Materials; // total number of materials across all components
     public uint Sections; // total number of sections across all LODs of all unique components
     public uint Indices; // total number of indices across all LODs of all unique components
@@ -48,7 +49,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public void Allocate(AllocationCounts counts)
     {
         _geometry.Allocate(counts);
-        _commands.Allocate(counts.OpaqueDraws, counts.TransparentDraws);
+        _commands.Allocate(counts.OpaqueDraws, counts.TransparentDraws, counts.ChunkedDraws);
         if (counts.Instances > 0) _instanceData.Allocate(counts.Instances);
         _materialData.Allocate(counts.Sections + 1); // one material per unique section, after the not ready one
         if (counts.Materials > 0) _materialTable.Allocate(counts.Materials);
@@ -110,7 +111,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                     component.DrawDistance,
                     component.IsOutlined);
 
-                drawAllocations[d++] = new DrawBufferAllocation(buffer.Add(command, draw, new PerDrawCulled(geometryHandle, section)), bufferType, section.MaterialIndex, (uint) count);
+                drawAllocations[d++] = new DrawBufferAllocation(buffer.Add(command, draw, new PerDrawCulled(geometryHandle, section), (uint) count), bufferType, section.MaterialIndex, (uint) count);
             }
         }
 
