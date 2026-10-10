@@ -5,6 +5,7 @@ using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using ImGuiNET;
+using Serilog;
 using Snooper.Core;
 using Snooper.Rendering.Components.Descriptors.Animations;
 using Snooper.Rendering.Components.Transforms;
@@ -82,9 +83,9 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
         {
             session.Add(manager.FileProvider.LoadPackageObject(Animation.Path, Animation.Name));
         }
-        catch
+        catch (Exception e)
         {
-            //
+            Log.Warning(e, "{Animation} could not be queued for export", Animation.Path);
         }
     }
 

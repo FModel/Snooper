@@ -7,6 +7,7 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
+using Serilog;
 using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Managers;
@@ -191,9 +192,9 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             //     }
             // }
         }
-        catch
+        catch (Exception e)
         {
-            //
+            Log.Warning(e, "{Mesh} could not be queued for export", Descriptor.Path);
         }
     }
 

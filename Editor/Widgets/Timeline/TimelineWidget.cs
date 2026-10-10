@@ -2,6 +2,7 @@ using System.Numerics;
 using Editor.Managers;
 using ImGuiNET;
 using Snooper;
+using Snooper.Hosting;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Descriptors.Animations;
@@ -243,7 +244,7 @@ public class TimelineWidget : PanelWidget
         switch (row.Kind)
         {
             case TimelineRowKind.Header:
-                DrawAnimationContextMenu(row);
+                DrawAnimationContextMenu(manager, row);
                 break;
             case TimelineRowKind.Player when row.Component is SkeletalMeshComponent player:
                 DrawPlayerContextMenu(player);
@@ -336,7 +337,7 @@ public class TimelineWidget : PanelWidget
         drawList.PopClipRect();
     }
 
-    private static void DrawAnimationContextMenu(TimelineRow row)
+    private static void DrawAnimationContextMenu(InterfaceManager manager, TimelineRow row)
     {
         if (!ImGui.BeginPopupContextItem()) return;
 
@@ -345,7 +346,7 @@ public class TimelineWidget : PanelWidget
 
         if (ImGui.MenuItem($"{TimelineStyle.ExportIcon}  Export"))
         {
-            // the export goes through the host's session once the bridge carries it
+            Bridge.Export(session => session.Add(manager.FileProvider.LoadPackageObject(row.Animation.Path, row.Animation.Name)));
         }
 
         ImGui.EndPopup();

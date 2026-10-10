@@ -2,7 +2,7 @@
 using Snooper.Rendering.Actors;
 using System.Numerics;
 using Editor.Managers;
-using Editor.Modals;
+using Snooper.Hosting;
 using Serilog;
 using Snooper;
 using Snooper.Rendering.Components.Light;
@@ -271,7 +271,7 @@ public class SceneHierarchyWidget : PanelWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-                ExportModal.Instance.Export(actor);
+                Bridge.Export(actor);
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))

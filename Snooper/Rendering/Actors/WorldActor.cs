@@ -6,6 +6,7 @@ using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition.DataLayer;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
+using Serilog;
 using Snooper.Rendering.Components.Transforms;
 using ImGuiNET;
 
@@ -151,9 +152,21 @@ public class WorldActor : Actor
         {
             session.Add(manager.FileProvider.LoadPackageObject(Path, Name));
         }
-        catch
+        catch (Exception e)
         {
-            //
+            Log.Warning(e, "{World} could not be queued for export", Name);
+        }
+
+        ExportLoaded(this);
+
+        void ExportLoaded(Actor actor)
+        {
+            foreach (var child in actor.Children)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (child is StreamableActor { IsLoaded: true }) child.Export(session, ct);
+                else ExportLoaded(child);
+            }
         }
     }
 

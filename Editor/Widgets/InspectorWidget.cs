@@ -9,6 +9,7 @@ using Serilog;
 using Snooper;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
+using Snooper.Hosting;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
@@ -209,7 +210,7 @@ public class InspectorWidget : PanelWidget
 
             if (ImGui.MenuItem("\uf56e  Export"))
             {
-                ExportModal.Instance.Export(component);
+                Bridge.Export(component);
             }
             ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))

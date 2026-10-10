@@ -1,7 +1,8 @@
+using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports;
 using Snooper.Core;
-using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Mesh;
+using Snooper.UI;
 
 namespace Snooper.Hosting;
 
@@ -53,6 +54,27 @@ public static class Bridge
     }
 
     public static void CancelRequest() => PendingRequest = null;
+
+    public static void Export(TreeNode node) => Export(session => node.Export(session));
+    public static void Export(Action<ExportSession> queue)
+    {
+        Task.Run(() =>
+        {
+            var session = Host.Session;
+            var before = session.TotalQueued;
+            try
+            {
+                queue(session);
+            }
+            catch (Exception e)
+            {
+                Serilog.Log.Error(e, "Could not queue the export");
+                return;
+            }
+
+            if (session.TotalQueued > before) Host.ShowExportSession();
+        });
+    }
 
     internal static void Drain()
     {
