@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -21,6 +22,17 @@ public class PointLightComponent : LocalLightComponent
         SoftSourceRadius = component.SoftSourceRadius * Settings.GlobalScale;
         SourceLength = component.SourceLength * Settings.GlobalScale;
         UseInverseSquaredFalloff = component.bUseInverseSquaredFalloff;
+    }
+
+    public PointLightComponent(float intensity, Vector3? color = null, float attenuationRadius = 10.0f, float sourceRadius = 0.0f, Transform? transform = null, string? name = null) : this(attenuationRadius, intensity, color ?? Vector3.One, true, "S_LightPoint", transform, name)
+    {
+        SourceRadius = sourceRadius;
+    }
+
+    protected PointLightComponent(float attenuationRadius, float intensity, Vector3 color, bool castShadows, string sprite, Transform? transform = null, string? name = null) : base(attenuationRadius, intensity, color, castShadows, sprite, transform, name)
+    {
+        LightFalloffExponent = 8.0f;
+        UseInverseSquaredFalloff = true;
     }
 
     protected override DebugComponent CreateDebugVisualization() => new PointLightComponentVisualization(this);

@@ -72,6 +72,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         ExportModal.Instance.Draw();
         TexturePickerModal.Instance.Draw();
         MaterialPickerModal.Instance.Draw();
+        AddComponentModal.Instance.Draw();
     }
 
     private void OpenPanel(string title)

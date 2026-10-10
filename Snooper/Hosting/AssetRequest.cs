@@ -13,20 +13,21 @@ public enum AssetRequestKind
     SkeletalMesh,
     Animation,
     Material,
-    Texture
+    Texture,
+    Parameter
 }
 
 public sealed class AssetRequest
 {
     public readonly AssetRequestKind Kind;
     public readonly Type AssetType;
-    public readonly ActorComponent Target;
+    public readonly ActorComponent? Target;
     public readonly object? Subject;
     public string DisplayText { get; }
 
     private readonly Action<UObject> _apply;
 
-    private AssetRequest(AssetRequestKind kind, Type assetType, ActorComponent target, object? subject, string text, Action<UObject> apply)
+    private AssetRequest(AssetRequestKind kind, Type assetType, ActorComponent? target, object? subject, string text, Action<UObject> apply)
     {
         Kind = kind;
         AssetType = assetType;
@@ -39,16 +40,20 @@ public sealed class AssetRequest
     public bool Accepts(UObject asset) => AssetType.IsInstanceOfType(asset);
     public bool IsFor(ActorComponent component) => Target == component;
     public bool IsFor(ActorComponent component, object subject) => IsFor(component) && Equals(Subject, subject);
+    public bool IsFor(object subject) => Target is null && Equals(Subject, subject);
 
     internal void Apply(UObject asset)
     {
-        if (Target.Scene is null) return;
+        if (Target is { Scene: null }) return;
         _apply(asset);
     }
 
     internal static AssetRequest Animation(SkeletalMeshComponent target)
         => new(AssetRequestKind.Animation, typeof(UAnimationAsset), target, null, $"Requesting an animation for {target.Name}",
             asset => target.SetAnimation((UAnimationAsset) asset));
+
+    internal static AssetRequest Parameter(Type assetType, object subject, string text, Action<UObject> apply)
+        => new(AssetRequestKind.Parameter, assetType, null, subject, text, apply);
 
     // internal static AssetRequest Material(MeshComponent target, MaterialSection section)
     //     => new(AssetRequestKind.Material, typeof(UMaterialInterface), target, section, $"Requesting a material for {target.Name} (slot {section.Index})",

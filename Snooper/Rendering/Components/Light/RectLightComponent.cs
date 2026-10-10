@@ -1,6 +1,7 @@
 ﻿using CUE4Parse.UE4.Assets.Exports.Component.Lights;
 using Snooper.Rendering.Systems;
 using System.Numerics;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
 using Snooper.UI;
 
@@ -21,6 +22,14 @@ public class RectLightComponent : LocalLightComponent
         BarnDoorAngle = component.BarnDoorAngle;
         BarnDoorLength = component.BarnDoorLength * Settings.GlobalScale;
         LightFunctionConeAngle = component.LightFunctionConeAngle;
+    }
+
+    public RectLightComponent(float intensity, Vector3? color = null, float width = 0.64f, float height = 0.64f, float attenuationRadius = 10.0f, Transform? transform = null, string? name = null) : base(attenuationRadius, intensity, color ?? Vector3.One, true, "S_LightRect", transform, name)
+    {
+        Width = width;
+        Height = height;
+        BarnDoorAngle = 88.0f;
+        BarnDoorLength = 0.2f;
     }
 
     protected override DebugComponent CreateDebugVisualization() => new RectLightComponentVisualization(this);

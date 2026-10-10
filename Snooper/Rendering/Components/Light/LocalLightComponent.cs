@@ -1,8 +1,10 @@
-﻿using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports.Component.Lights;
 using CUE4Parse.UE4.Objects.Engine;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
@@ -35,6 +37,11 @@ public abstract class LocalLightComponent : LightComponent
                 : Intensity * LightUtils.GetUnitsConversionFactor(IntensityUnits, ELightUnits.Candelas, cosine);
             IntensityUnits = ELightUnits.Candelas;
         }
+    }
+
+    protected LocalLightComponent(float attenuationRadius, float intensity, Vector3 color, bool castShadows, string sprite, Transform? transform = null, string? name = null) : base(intensity, color, castShadows, sprite, transform, name)
+    {
+        AttenuationRadius = attenuationRadius;
     }
 
     public LightData GetLightData()

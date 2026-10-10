@@ -10,6 +10,7 @@ using Snooper;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Editor.Widgets;
 
@@ -53,34 +54,33 @@ public class InspectorWidget : PanelWidget
             _dirty = true;
         }
 
-        DrawSearchBar();
+        DrawSearchBar(actor);
 
         ImGui.SeparatorText($"{actor.Name} ({actor.Class ?? "N/A"} - {componentCount} Component{(componentCount != 1 ? "s" : "")})");
         actor.DrawControls();
         DrawClippedTree(actor);
 
         (selectedComponent ?? actor.RootComponent)?.DrawControls();
-
-        ImGui.SeparatorText("");
-        ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.Header));
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGui.GetColorU32(ImGuiCol.HeaderHovered));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGui.GetColorU32(ImGuiCol.ButtonActive));
-        var width = ImGui.GetContentRegionAvail().X;
-        ImGui.BeginDisabled();
-        if (ImGui.Button($"{Settings.AddIcon}  Add Component", new Vector2(width, 0)))
-        {
-
-        }
-        ImGui.EndDisabled();
-        ImGui.PopStyleColor(3);
     }
 
-    private void DrawSearchBar()
+    private void DrawSearchBar(Actor actor)
     {
-        ImGui.SetNextItemWidth(-1);
+        var style = ImGui.GetStyle();
+
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetFrameHeight() - style.ItemInnerSpacing.X);
         if (ImGui.InputTextWithHint("##ComponentFilter", $"{Settings.MagnifyingGlassIcon}  Filter Components", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll))
         {
             _dirty = true;
+        }
+
+        ImGui.SameLine(0, style.ItemInnerSpacing.X);
+        if (ImGui.Button(Settings.PlusIcon, new Vector2(ImGui.GetFrameHeight()))) ImGui.OpenPopup("##AddComponent");
+        if (ImGui.IsItemHovered()) EditorUI.Tooltip("Add Component");
+
+        if (ImGui.BeginPopup("##AddComponent"))
+        {
+            AddComponentModal.Instance.DrawMenu(actor);
+            ImGui.EndPopup();
         }
     }
 

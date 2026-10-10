@@ -28,6 +28,7 @@ public static class Bridge
     };
 
     public static void RequestAnimation(SkeletalMeshComponent target) => Request(AssetRequest.Animation(target));
+    public static void RequestParameter(Type assetType, object subject, string text, Action<UObject> apply) => Request(AssetRequest.Parameter(assetType, subject, text, apply));
     // public static void RequestMaterial(MeshComponent target, MaterialSection section) => Request(AssetRequest.Material(target, section));
 
     private static void Request(AssetRequest request)

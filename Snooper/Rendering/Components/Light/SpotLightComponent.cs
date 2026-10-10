@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.Lights;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -15,6 +16,12 @@ public class SpotLightComponent : PointLightComponent
     {
         InnerConeAngle = component.InnerConeAngle;
         OuterConeAngle = component.OuterConeAngle;
+    }
+
+    public SpotLightComponent(float intensity, Vector3? color = null, float outerConeAngle = 44.0f, float innerConeAngle = 0.0f, float attenuationRadius = 10.0f, Transform? transform = null, string? name = null) : base(attenuationRadius, intensity, color ?? Vector3.One, true, "S_LightSpot", transform, name)
+    {
+        InnerConeAngle = innerConeAngle;
+        OuterConeAngle = outerConeAngle;
     }
 
     protected override DebugComponent CreateDebugVisualization() => new SpotLightComponentVisualization(this);
