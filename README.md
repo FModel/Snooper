@@ -22,16 +22,16 @@ Snooper targets .NET 10 and requires a GPU with OpenGL 4.6 and bindless texture 
 
 ### Screenshots:
 <p align="center">
-  <img width="100%" alt="Snooper" src="https://github.com/user-attachments/assets/a863e6ae-d51f-4dda-89f9-2deab03644c9" />
+  <img width="100%" alt="Valorant in Snooper" src="https://github.com/user-attachments/assets/e2c5c5c4-d3fc-409a-9c5f-eafb07b30777" />
 </p>
 <table>
   <tr>
-    <td width="50%"><img alt="Snooper" src="https://github.com/user-attachments/assets/1eb0c9f0-3028-4f66-9141-bb93118f935c" /></td>
-    <td width="50%"><img alt="Snooper" src="https://github.com/user-attachments/assets/7bcda493-42eb-49a0-938a-c3fd7a47548a" /></td>
+    <td width="50%"><img alt="Stray in Snooper" src="https://github.com/user-attachments/assets/682d5d59-8f0f-4f94-89d3-662ffdcd344e" /></td>
+    <td width="50%"><img alt="MultiVersus in Snooper" src="https://github.com/user-attachments/assets/4005737c-f463-4a59-9c6c-d6c00d2ed019" /></td>
   </tr>
   <tr>
-    <td width="50%"><img alt="Snooper" src="https://github.com/user-attachments/assets/ef18866a-401d-4b09-9d70-b39b40264c75" /></td>
-    <td width="50%"><img alt="Snooper" src="https://github.com/user-attachments/assets/7751be5c-85a3-4440-9c59-27b5e7dbddf6" /></td>
+    <td width="50%"><img alt="Fortnite in Snooper" src="https://github.com/user-attachments/assets/0ea411e2-f542-4865-b807-bfcf315a4d05" /></td>
+    <td width="50%"><img alt="Marvel Rivals in Snooper" src="https://github.com/user-attachments/assets/c240b674-7b7c-4939-82ca-724f878eb43d" /></td>
   </tr>
 </table>
 
