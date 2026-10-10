@@ -4,13 +4,6 @@ using ImGuiNET;
 namespace Editor.Widgets.Timeline;
 
 /// <summary>
-/// The colours a row is drawn in, chosen by whose clock it runs on. <see cref="Head"/> is that clock's
-/// own position and doubles as the row's accent, being the vivid end of its hue: a driven prop keeps
-/// its own time, so it runs at its own rate and holds at its own end.
-/// </summary>
-internal readonly record struct TimelinePalette(Vector4 Bar, Vector4 BarAlt, Vector4 Active, Vector4 Head);
-
-/// <summary>
 /// What the timeline is measured and inked in, and the two pieces of chrome every part of it shares.
 /// The inks are the hardware overlay's family, which works because every hue is a vivid accent over a
 /// dark fill rather than a wash of mid tones: same inks here, same reason.
@@ -24,7 +17,7 @@ internal static class TimelineStyle
     public const string ExportIcon = "\uf56e";    // file-export
 
     public const float NameWidth = 210f;   // the left gutter holding the component tree
-    public const float RulerHeight = 18f;
+    public static float RulerHeight => ImGui.GetFrameHeight(); // the transport's buttons sit in it, so it is a row of them
     public const float IndentWidth = 12f;
     public const float BarInset = 2f;      // vertical gap between a bar and its row
     public const float MinTickGap = 64f;   // smallest pixel gap between two ruler labels
@@ -40,6 +33,10 @@ internal static class TimelineStyle
     public static readonly Vector4 Text = new(0.86f, 0.88f, 0.90f, 1f);
     public static readonly Vector4 Dim = new(0.42f, 0.46f, 0.52f, 1f);
     public static readonly Vector4 Track = new(1f, 1f, 1f, 0.05f);
+
+    /// <summary>What a row sits on, by kind: an animation's row is a band, a player's a lighter one, the rest sit on the window.</summary>
+    public static readonly Vector4 HeaderBand = new(1f, 1f, 1f, 0.07f);
+    public static readonly Vector4 PlayerBand = new(1f, 1f, 1f, 0.03f);
     public static readonly Vector4 Notify = new(0.95f, 0.75f, 0.25f, 1f);
     public static readonly Vector4 Curve = new(0.72f, 0.56f, 0.98f, 1f);
 
@@ -50,19 +47,11 @@ internal static class TimelineStyle
     /// </summary>
     public static readonly Vector4 Rate = new(0.92f, 0.82f, 0.18f, 1f);
 
-    /// <summary>The actor's own performance, on the overlay's blue.</summary>
-    public static readonly TimelinePalette Own = new(
-        new Vector4(0.14f, 0.22f, 0.40f, 1f),
-        new Vector4(0.17f, 0.27f, 0.48f, 1f),
-        new Vector4(0.23f, 0.36f, 0.62f, 1f),
-        new Vector4(0.38f, 0.62f, 0.98f, 1f));
-
-    /// <summary>Anything that performance drives, on the overlay's green.</summary>
-    public static readonly TimelinePalette Driven = new(
-        new Vector4(0.12f, 0.28f, 0.20f, 1f),
-        new Vector4(0.15f, 0.34f, 0.25f, 1f),
-        new Vector4(0.20f, 0.46f, 0.33f, 1f),
-        new Vector4(0.36f, 0.76f, 0.52f, 1f));
+    /// <summary>The clips and sections, on the overlay's blue, and <see cref="Head"/> for a clock's own position.</summary>
+    public static readonly Vector4 Bar = new(0.14f, 0.22f, 0.40f, 1f);
+    public static readonly Vector4 BarAlt = new(0.17f, 0.27f, 0.48f, 1f);
+    public static readonly Vector4 Active = new(0.23f, 0.36f, 0.62f, 1f);
+    public static readonly Vector4 Head = new(0.38f, 0.62f, 0.98f, 1f);
 
     /// <summary>
     /// Frameless square toggle, the default button chrome would drown a strip this small.

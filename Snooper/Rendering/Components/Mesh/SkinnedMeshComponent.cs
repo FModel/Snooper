@@ -32,19 +32,34 @@ public class SkinnedMeshComponent : MeshComponent
         get;
         internal set
         {
-            if (field == value || value is null) return;
+            if (field == value) return;
+            for (var above = value; above != null; above = above.Leader)
+            {
+                if (above == this) return; // a pose cannot be copied around a loop
+            }
 
             field?.Followers.Remove(this);
             field = value;
-            value.Followers.Add(this);
 
-            var skeleton = Pose.Skeleton;
-            var leader = value.Pose.Skeleton;
-            LeaderBoneMap = new int[skeleton.BoneCount];
-            for (var i = 0; i < LeaderBoneMap.Length; i++)
+            if (value is null)
             {
-                LeaderBoneMap[i] = leader.BoneNameToIndex.TryGetValue(skeleton.GetBoneName(i), out var index) ? (int) index : -1;
+                LeaderBoneMap = null;
+                Pose.ResetAllBones();
             }
+            else
+            {
+                value.Followers.Add(this);
+
+                var skeleton = Pose.Skeleton;
+                var leader = value.Pose.Skeleton;
+                LeaderBoneMap = new int[skeleton.BoneCount];
+                for (var i = 0; i < LeaderBoneMap.Length; i++)
+                {
+                    LeaderBoneMap[i] = leader.BoneNameToIndex.TryGetValue(skeleton.GetBoneName(i), out var index) ? (int) index : -1;
+                }
+            }
+
+            MarkDirty(DirtyFlags.Animation);
         }
     }
 

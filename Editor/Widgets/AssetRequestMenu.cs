@@ -12,9 +12,10 @@ internal static class AssetRequestMenu
     {
         var pending = Bridge.PendingRequest is { Kind: AssetRequestKind.Animation } request && request.IsFor(component);
         var canBrowse = Bridge.Host.CanBrowseAssets;
+        var playing = component.Animation is not null;
 
         ImGui.BeginDisabled(!canBrowse);
-        if (ImGui.MenuItem(pending ? $"{Settings.BanIcon}  Cancel Animation Request" : $"{Settings.PlayIcon}  Set Animation"))
+        if (ImGui.MenuItem(pending ? $"{Settings.BanIcon}  Cancel Animation Request" : playing ? $"{Settings.PlayIcon}  Play Another Animation" : $"{Settings.PlayIcon}  Play Animation"))
         {
             if (pending) Bridge.CancelRequest();
             else Bridge.RequestAnimation(component);
@@ -25,5 +26,7 @@ internal static class AssetRequestMenu
         {
             EditorUI.Tooltip($"{Bridge.Host.Name} cannot browse assets");
         }
+
+        if (playing && ImGui.MenuItem($"{Settings.StopIcon}  Stop Playing Animation")) component.SetAnimation(null);
     }
 }

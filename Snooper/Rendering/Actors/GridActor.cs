@@ -4,8 +4,8 @@ namespace Snooper.Rendering.Actors;
 
 public class GridActor : Actor
 {
-    public GridActor(bool transparent) : base("Grid")
+    public GridActor(bool opaque) : base("Grid")
     {
-        Components.Add(transparent ? new GridComponent() : new OpaqueGridComponent());
+        Components.Add(opaque ? new OpaqueGridComponent() : new GridComponent());
     }
 }

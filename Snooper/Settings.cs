@@ -71,6 +71,7 @@ public static class Settings
     public const string FolderOpenIcon = "\uf07c";
     public const string BanIcon = "\uf05e";
     public const string PlayIcon = "\uf04b";
+    public const string StopIcon = "\uf04d";
     public const string FileImportIcon = "\uf56f";
     public const string FileExportIcon = "\uf56e";
     public const string PowerOffIcon = "\uf011";

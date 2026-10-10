@@ -4,23 +4,22 @@ using ImGuiNET;
 using Snooper;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
+using Snooper.Rendering.Components.Descriptors.Animations;
 using Snooper.Rendering.Components.Mesh;
-using Snooper.Rendering.Systems;
 
 namespace Editor.Widgets.Timeline;
 
 /// <summary>
-/// Playback view of the selected actor, tied to <see cref="SkinnedMeshRenderSystem"/>: what it is
-/// playing, when each sequence, notify and curve lands, and what those animations drive through the
-/// components attached to them. The transport drives that actor's clocks only, so pausing or seeking
-/// one performance leaves every other actor in the scene running.
+/// Playback view of the selected actor, one block per animation it plays, all on one scale: how each
+/// is cut and keyed, who plays it, who follows them, and the clips their props play. The transport
+/// drives that actor's clocks only, so pausing or seeking one performance leaves every other actor running.
 /// </summary>
 public class TimelineWidget : PanelWidget
 {
     public override string PanelTitle => TimelineStyle.Title;
     public override PanelGroup Group => PanelGroup.Editor;
 
-    private readonly TimelineRowBuilder _builder = new();
+    private readonly TimelineRows _rows = new();
     private readonly TimelineLayout _layout = new();
 
     private Actor? _lastActor;
@@ -29,13 +28,6 @@ public class TimelineWidget : PanelWidget
 
     protected override void DrawContents(EditorManager editor)
     {
-        var system = editor.GetSystem<SkinnedMeshRenderSystem>();
-        if (system == null)
-        {
-            TimelineEmptyState.Draw("Nothing to play", "This scene has no skinned meshes.");
-            return;
-        }
-
         var actor = editor.SelectedActor ?? editor.SelectedComponent?.Actor;
         if (actor == null)
         {
@@ -43,15 +35,14 @@ public class TimelineWidget : PanelWidget
             return;
         }
 
-        _builder.Refresh(actor);
-        if (_builder.Rows.Count == 0)
+        _rows.Refresh(actor);
+        if (_rows.Blocks.Count == 0)
         {
-            TimelineEmptyState.Draw("Nothing animated", $"{actor.Name} has no component playing an animation.");
+            TimelineEmptyState.Draw("Nothing animated", $"{actor.Name} plays no animation, set one on a skeletal mesh.");
             return;
         }
 
         TrackSelection(editor, actor);
-        DrawTransport(actor);
 
         // the rows measure the track, so the ruler that has to line up with it is drawn afterwards
         // and only its strip is set aside here
@@ -62,28 +53,36 @@ public class TimelineWidget : PanelWidget
         DrawRuler(origin.Y);
     }
 
-    /// <summary>
-    /// The actor's own position, which is the performance's clock and so the first one listed. Every mesh
-    /// taking part reads it, and only what the performance drives keeps a clock of its own.
-    /// </summary>
-    private float Playhead => _builder.Clocks.Count > 0 ? _builder.Clocks[0].Time : 0f;
+    /// <summary>The actor's playhead: the first clock of its first animation.</summary>
+    private float Playhead => _rows.Blocks[0].Time;
 
     private bool IsPlaying
     {
         get
         {
-            foreach (var clock in _builder.Clocks)
+            foreach (var block in _rows.Blocks)
             {
-                if (clock.IsPlaying) return true;
+                foreach (var clock in block.Clocks)
+                {
+                    if (clock.IsPlaying) return true;
+                }
             }
 
             return false;
         }
     }
 
-    private void Seek(float time)
+    private void SeekAll(float time)
     {
-        foreach (var clock in _builder.Clocks)
+        foreach (var block in _rows.Blocks)
+        {
+            Seek(block, time);
+        }
+    }
+
+    private static void Seek(TimelineBlock block, float time)
+    {
+        foreach (var clock in block.Clocks)
         {
             clock.Seek(time);
         }
@@ -109,58 +108,50 @@ public class TimelineWidget : PanelWidget
         _scrollTarget = -1;
         if (selected == null) return;
 
-        for (var i = 0; i < _builder.Rows.Count; i++)
+        for (var i = 0; i < _rows.Rows.Count; i++)
         {
-            if (_builder.Rows[i].Component != selected || _builder.Rows[i].Kind != TimelineRowKind.Component) continue;
+            if (_rows.Rows[i].Component != selected) continue;
 
             _scrollTarget = i;
             return;
         }
     }
 
-    private void DrawTransport(Actor actor)
+    /// <summary>
+    /// The strip above the rows: the transport in the gutter, the one scale on the track. Dragging the
+    /// scale scrubs every clock of the actor, which is why it takes the width of the track and not of
+    /// the window.
+    /// </summary>
+    private void DrawRuler(float top)
     {
-        if (TimelineStyle.IconButton("##rewind", TimelineStyle.RewindIcon, false, "Back to the start"))
-        {
-            Seek(0f);
-        }
+        var drawList = ImGui.GetWindowDrawList();
+        var bottom = top + TimelineStyle.RulerHeight;
+
+        ImGui.SetCursorScreenPos(new Vector2(_layout.TrackX - TimelineStyle.NameWidth, top));
+        if (TimelineStyle.IconButton("##rewind", TimelineStyle.RewindIcon, false, "Back to the start")) SeekAll(0f);
 
         var playing = IsPlaying;
-        ImGui.SameLine();
+        ImGui.SameLine(0f, ImGui.GetStyle().ItemInnerSpacing.X);
         if (TimelineStyle.IconButton("##play", playing ? TimelineStyle.PauseIcon : TimelineStyle.PlayIcon, playing, playing ? "Pause" : "Play"))
         {
-            foreach (var clock in _builder.Clocks)
+            foreach (var block in _rows.Blocks)
             {
-                clock.IsPlaying = !playing;
+                foreach (var clock in block.Clocks)
+                {
+                    clock.IsPlaying = !playing;
+                }
             }
         }
 
-        ImGui.SameLine();
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextColored(TimelineStyle.Text, $"{Playhead:0.00}");
-        ImGui.SameLine(0f, 3f);
-        ImGui.TextColored(TimelineStyle.Dim, $"/ {_builder.Duration:0.00}s");
-
-        var rate = _builder.Clocks.Count > 0 ? _builder.Clocks[0].PlayRate : 1f;
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(80f);
-        if (ImGui.DragFloat("##Speed", ref rate, 0.01f, 0.05f, 8f, "%.2fx"))
+        ImGui.SetCursorScreenPos(new Vector2(_layout.TrackX, top));
+        ImGui.InvisibleButton("##Scrub", new Vector2(_layout.TrackWidth, TimelineStyle.RulerHeight));
+        if (ImGui.IsItemActive())
         {
-            foreach (var clock in _builder.Clocks)
-            {
-                // a driven prop keeps whatever rate it was given: retiming the performance from here
-                // would silently wipe it, and the inspector is where a prop's own rate is set
-                if (!clock.IsDriven) clock.PlayRate = rate;
-            }
+            var ratio = (ImGui.GetMousePos().X - _layout.TrackX) / _layout.TrackWidth;
+            SeekAll(Math.Clamp(ratio, 0f, 1f) * _layout.Duration);
         }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Playback speed");
 
-        // whose performance this is, since the window no longer lists every actor
-        ImGui.SameLine();
-        var nameWidth = ImGui.CalcTextSize(actor.Name).X;
-        var rightEdge = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X;
-        ImGui.SetCursorPosX(MathF.Max(ImGui.GetCursorPosX(), rightEdge - nameWidth));
-        ImGui.TextColored(TimelineStyle.Dim, actor.Name);
+        TimelineTrack.DrawRuler(drawList, _layout, top, bottom, Playhead);
     }
 
     private void DrawRows(InterfaceManager manager)
@@ -173,7 +164,7 @@ public class TimelineWidget : PanelWidget
         }
 
         var drawList = ImGui.GetWindowDrawList();
-        _layout.Measure(_builder.Duration);
+        _layout.Measure(_rows.Duration);
 
         var pitch = ImGui.GetFrameHeightWithSpacing();
         if (_scrollTarget >= 0)
@@ -185,12 +176,12 @@ public class TimelineWidget : PanelWidget
         unsafe
         {
             var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
-            clipper.Begin(_builder.Rows.Count, pitch);
+            clipper.Begin(_rows.Rows.Count, pitch);
             while (clipper.Step())
             {
                 for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                 {
-                    DrawRow(manager, _builder.Rows[i]);
+                    DrawRow(manager, _rows.Rows[i]);
                 }
             }
 
@@ -198,69 +189,23 @@ public class TimelineWidget : PanelWidget
             clipper.Destroy();
         }
 
-        // one playhead over every row, matching the ruler handle, and the edge of the gutter
+        // the actor's playhead over every row, matching the ruler handle, and the edge of the gutter
         var top = ImGui.GetWindowPos().Y;
         var bottom = top + ImGui.GetWindowHeight();
         drawList.AddLine(new Vector2(_layout.TrackX, top), new Vector2(_layout.TrackX, bottom), ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.08f)));
 
         var headX = MathF.Round(_layout.TimeToX(Playhead));
-        drawList.AddLine(new Vector2(headX, top), new Vector2(headX, bottom), ImGui.GetColorU32(TimelineStyle.Own.Head with { W = 0.55f }));
+        drawList.AddLine(new Vector2(headX, top), new Vector2(headX, bottom), ImGui.GetColorU32(TimelineStyle.Head with { W = 0.55f }));
 
         ImGui.EndChild();
-    }
-
-    /// <summary>
-    /// The scale the rows are read against, drawn over the track they measured. Dragging it scrubs the
-    /// whole performance, which is why it takes the width of the track and not of the window.
-    /// </summary>
-    private void DrawRuler(float top)
-    {
-        var drawList = ImGui.GetWindowDrawList();
-        var bottom = top + TimelineStyle.RulerHeight;
-
-        ImGui.SetCursorScreenPos(new Vector2(_layout.TrackX, top));
-        ImGui.InvisibleButton("##Scrub", new Vector2(_layout.TrackWidth, TimelineStyle.RulerHeight));
-        if (ImGui.IsItemActive())
-        {
-            var ratio = (ImGui.GetMousePos().X - _layout.TrackX) / _layout.TrackWidth;
-            Seek(Math.Clamp(ratio, 0f, 1f) * _builder.Duration);
-        }
-
-        var step = TimelineStyle.TickSteps[^1];
-        foreach (var candidate in TimelineStyle.TickSteps)
-        {
-            if (candidate / _builder.Duration * _layout.TrackWidth < TimelineStyle.MinTickGap) continue;
-
-            step = candidate;
-            break;
-        }
-
-        var left = _layout.TrackX - TimelineStyle.NameWidth;
-        drawList.AddLine(new Vector2(left, bottom), new Vector2(left + _layout.RowWidth, bottom), ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.10f)));
-
-        for (var t = 0f; t <= _builder.Duration + 0.0001f; t += step)
-        {
-            var x = MathF.Round(_layout.TimeToX(t));
-            drawList.AddLine(new Vector2(x, bottom - 4f), new Vector2(x, bottom), ImGui.GetColorU32(TimelineStyle.Dim));
-            drawList.AddText(new Vector2(x + 3f, top), ImGui.GetColorU32(TimelineStyle.Dim), $"{t:0.##}s");
-        }
-
-        // the playhead handle lives in the ruler, the line itself is drawn over the rows
-        var headX = MathF.Round(_layout.TimeToX(Playhead));
-        var color = ImGui.GetColorU32(TimelineStyle.Own.Head);
-        drawList.AddLine(new Vector2(headX, top), new Vector2(headX, bottom), color);
-        drawList.AddTriangleFilled(
-            new Vector2(headX - 4f, bottom - 5f),
-            new Vector2(headX + 4f, bottom - 5f),
-            new Vector2(headX, bottom),
-            color);
     }
 
     /// <summary>
     /// One row, hung off a real tree node so it carries an arrow, a highlight and a context menu the
     /// way the hierarchy and inspector rows do. Only the gutter text is drawn by hand, because it has
     /// to elide and share the column with a right-aligned detail, and the track is all draw list work
-    /// over the top: the node spans the full width, so the whole row is one hit target.
+    /// over the top: the node spans the full width, so the whole row is one hit target, and holding it
+    /// over the track scrubs whatever clock the row owns.
     /// </summary>
     private void DrawRow(InterfaceManager manager, TimelineRow row)
     {
@@ -268,7 +213,16 @@ public class TimelineWidget : PanelWidget
         var drawList = ImGui.GetWindowDrawList();
         var indentX = origin.X + row.Depth * TimelineStyle.IndentWidth;
 
-        ImGui.PushID(row.Component.Id);
+        // the band under the row, before the node so its own highlight draws over it
+        var band = row.Kind switch
+        {
+            TimelineRowKind.Header => TimelineStyle.HeaderBand,
+            TimelineRowKind.Player => TimelineStyle.PlayerBand,
+            _ => Vector4.Zero
+        };
+        if (band.W > 0f) drawList.AddRectFilled(origin, new Vector2(origin.X + _layout.RowWidth, origin.Y + _layout.RowHeight), ImGui.GetColorU32(band));
+
+        ImGui.PushID(row.Id);
         ImGui.SetCursorPosX(ImGui.GetCursorPosX() + row.Depth * TimelineStyle.IndentWidth);
 
         var flags = ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.AllowOverlap |
@@ -278,23 +232,45 @@ public class TimelineWidget : PanelWidget
         if (!row.Expandable) flags |= ImGuiTreeNodeFlags.Leaf;
         else ImGui.SetNextItemOpen(row.Expanded, ImGuiCond.Always);
 
-        // a component owns several rows, so the id has to say which one this is
+        // an animation or a component owns several rows, so the id has to say which one this is
         var open = ImGui.TreeNodeEx($"##{row.Kind}{row.Index}", flags, string.Empty);
         var hovered = ImGui.IsItemHovered();
         var toggled = ImGui.IsItemToggledOpen();
         var clicked = ImGui.IsItemClicked(ImGuiMouseButton.Left);
+        var held = ImGui.IsItemActive();
 
-        // the menu hangs off the last item submitted, so it has to be raised before the toggle is
-        if (row.Selectable) DrawRowContextMenu(row);
-
-        // the toggle overlaps the node, so it has to be asked whether it took the click first
-        var consumed = DrawPlayToggle(row, origin);
+        // the menu hangs off the last item submitted, so it has to be raised before anything overlaps it
+        switch (row.Kind)
+        {
+            case TimelineRowKind.Header:
+                DrawAnimationContextMenu(row);
+                break;
+            case TimelineRowKind.Player when row.Component is SkeletalMeshComponent player:
+                DrawPlayerContextMenu(player);
+                break;
+            case TimelineRowKind.Follower when row.Component is SkinnedMeshComponent follower:
+                DrawFollowerContextMenu(follower);
+                break;
+        }
 
         if (toggled)
         {
-            _builder.SetExpanded(row, open);
+            _rows.SetExpanded(row, open);
         }
-        else if (clicked && !consumed && row.Selectable)
+        else if (held && ImGui.GetMousePos().X >= _layout.TrackX)
+        {
+            var target = Math.Clamp(_layout.XToTime(ImGui.GetMousePos().X), 0f, row.Animation.Duration);
+            switch (row)
+            {
+                case { Kind: TimelineRowKind.Player, Clock: { } clock }:
+                    clock.Seek(target);
+                    break;
+                case { Kind: TimelineRowKind.Header }:
+                    Seek(row.Block, target);
+                    break;
+            }
+        }
+        else if (clicked && row.Selectable)
         {
             // selecting from the timeline itself must not yank the view around, so the selection is
             // marked as already seen
@@ -304,90 +280,63 @@ public class TimelineWidget : PanelWidget
 
         ImGui.PopID();
 
-        // where this component is inside its own animation right now, which a driven prop running at
-        // its own rate or holding at its own end will have drifted away from the actor's clock
-        var head = Playhead;
-        var local = row.Skeletal?.Playback is { Duration: > 0f } clock ? clock.Time : head;
+        // the one thing a curve row cannot know until the clock moves, measured here so the gutter and
+        // the plot read the same number off one evaluation
+        var time = row.Block.Time;
+        var value = row.Kind == TimelineRowKind.Curve ? TimelineCurves.Value(row.Animation, row.Label, time) : null;
 
-        // the one thing a row cannot know until the clock moves, measured here so the gutter and the
-        // plot read the same number off one evaluation
-        var value = row.HasReadout && row.Animation is { } animation ? TimelineCurves.Value(animation, row.Label, local) : null;
-
-        DrawRowLabel(drawList, row, origin, indentX, value);
+        DrawRowLabel(drawList, row, origin, indentX, time, value);
 
         drawList.PushClipRect(new Vector2(_layout.TrackX, origin.Y), new Vector2(origin.X + _layout.RowWidth, origin.Y + _layout.RowHeight), true);
-        TimelineTrack.Draw(drawList, _layout, row, origin, head, local, value);
+        TimelineTrack.Draw(drawList, _layout, row, origin, time, value);
         drawList.PopClipRect();
 
         if (!hovered) return;
 
-        if (ImGui.GetMousePos().X >= _layout.TrackX)
-        {
-            DrawTrackTooltip(row);
-        }
-        else
-        {
-            // the gutter elides, so the full name has to be reachable somehow
-            ImGui.SetTooltip(row.BarLabel.Length > 0 && row.BarLabel != row.Label ? $"{row.Label}\n{row.BarLabel}" : row.Label);
-        }
+        if (ImGui.GetMousePos().X >= _layout.TrackX) DrawTrackTooltip(row);
+        else ImGui.SetTooltip(row.Label); // the gutter elides, so the full name has to be reachable somehow
     }
 
     /// <summary>
     /// The gutter text, drawn over the node the way the node would have drawn its own label: past the
-    /// arrow it reserved, on the baseline its frame padding puts text on.
+    /// arrow it reserved, on the baseline its frame padding puts text on. The right end carries the
+    /// detail: an animation's time, a group's count, a curve's value.
     /// </summary>
-    private void DrawRowLabel(ImDrawListPtr drawList, TimelineRow row, Vector2 origin, float indentX, float? value)
+    private void DrawRowLabel(ImDrawListPtr drawList, TimelineRow row, Vector2 origin, float indentX, float time, float? value)
     {
         var textY = origin.Y + _layout.TextPadY;
         var x = indentX + _layout.ArrowWidth;
-        var detail = row.HasReadout ? value is { } under ? $"{under:0.##}" : string.Empty : row.Detail;
+
+        var detail = row.Kind switch
+        {
+            TimelineRowKind.Header => $"{time:0.00} / {row.Animation.Duration:0.00}s",
+            TimelineRowKind.Curve => value is { } under ? $"{under:0.##}" : string.Empty,
+            _ => row.Detail
+        };
+
+        var color = row.Kind switch
+        {
+            TimelineRowKind.Header => TimelineStyle.Text,
+            TimelineRowKind.Player => row.Clock is { IsPlaying: true } ? TimelineStyle.Text : TimelineStyle.Dim,
+            _ => TimelineStyle.Dim
+        };
 
         drawList.PushClipRect(origin, new Vector2(_layout.TrackX - 4f, origin.Y + _layout.RowHeight), true);
 
-        var color = row.Kind == TimelineRowKind.Component
-            ? row.Skeletal?.Playback is { IsPlaying: false } ? TimelineStyle.Dim : TimelineStyle.Text
-            : TimelineStyle.Dim;
-
-        // the detail owns the right end of the gutter, so the name gets whatever is left and no more.
-        // A component row carries no detail, which is what leaves that end free for its play toggle
-        var reserved = detail.Length > 0 ? ImGui.CalcTextSize(detail).X : 0f;
-        if (reserved > 0f)
+        var reserved = 0f;
+        if (detail.Length > 0)
         {
+            reserved = ImGui.CalcTextSize(detail).X;
             drawList.AddText(new Vector2(_layout.TrackX - 8f - reserved, textY), ImGui.GetColorU32(TimelineStyle.Dim), detail);
             reserved += 8f;
         }
-        else if (row.HasToggle) reserved = _layout.ArrowWidth + 8f;
 
         drawList.AddText(new Vector2(x, textY), ImGui.GetColorU32(color), row.FitLabel(_layout.TrackX - 8f - reserved - x));
 
         drawList.PopClipRect();
     }
 
-    /// <summary>
-    /// The row's own play toggle, at the far end of the gutter where the hierarchy keeps its eye. It
-    /// overlaps the node rather than sitting inside it, so it reports back whether it ate the click.
-    /// </summary>
-    private bool DrawPlayToggle(TimelineRow row, Vector2 origin)
-    {
-        if (!row.HasToggle) return false;
-
-        if (row.Skeletal?.Playback is not { } clock) return false;
-
-        ImGui.SameLine();
-        ImGui.SetCursorScreenPos(new Vector2(_layout.TrackX - _layout.ArrowWidth - 4f, origin.Y));
-
-        // no tooltip: the glyph says what it does, and the row already raises one of its own
-        if (!TimelineStyle.IconButton("##Toggle", clock.IsPlaying ? TimelineStyle.PauseIcon : TimelineStyle.PlayIcon, false, string.Empty, new Vector2(_layout.ArrowWidth, _layout.RowHeight)))
-        {
-            return ImGui.IsItemHovered();
-        }
-
-        // every mesh bound to this performance follows, which is the point of it being one clock
-        clock.IsPlaying = !clock.IsPlaying;
-        return true;
-    }
-
-    private static void DrawRowContextMenu(TimelineRow row)
+    private static void DrawAnimationContextMenu(TimelineRow row)
     {
         if (!ImGui.BeginPopupContextItem()) return;
 
@@ -396,69 +345,111 @@ public class TimelineWidget : PanelWidget
 
         if (ImGui.MenuItem($"{TimelineStyle.ExportIcon}  Export"))
         {
-            // ExportModal.Instance.Export(actor, "./exports_v2", new ExportOptions());
+            // the export goes through the host's session once the bridge carries it
         }
-        ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
-        if (ImGui.MenuItem($"{Settings.TrashIcon}  Delete"))
-        {
-            // actor.Parent?.Children.Remove(actor);
-            // _dirty = true;
-        }
-        ImGui.PopStyleColor();
 
         ImGui.EndPopup();
     }
 
     /// <summary>
-    /// Names the section or the segment under the cursor, or reads out the curve there, since a plot
+    /// Binding is only ever the explicit pick from the host. Following is the one thing the timeline
+    /// does itself: a skinned mesh of the same actor wears this one's pose, bone for bone by name.
+    /// </summary>
+    private static void DrawPlayerContextMenu(SkeletalMeshComponent player)
+    {
+        if (!ImGui.BeginPopupContextItem()) return;
+
+        ImGui.TextDisabled(player.Name);
+        ImGui.Separator();
+
+        AssetRequestMenu.Animation(player);
+
+        if (player.Actor is { } actor && ImGui.BeginMenu($"{Settings.LinkIcon}  Followers"))
+        {
+            ImGui.PushItemFlag(ImGuiItemFlags.AutoClosePopups, false); // several are usually ticked in a row
+
+            var others = 0;
+            for (var i = 0; i < actor.Components.Count; i++)
+            {
+                if (actor.Components[i] is not SkinnedMeshComponent other || other == player) continue;
+
+                others++;
+                var following = other.Leader == player;
+                if (ImGui.MenuItem(other.Name, string.Empty, following)) other.Leader = following ? null : player;
+            }
+
+            if (others == 0) ImGui.TextDisabled("No other skinned mesh on this actor.");
+
+            ImGui.PopItemFlag();
+            ImGui.EndMenu();
+        }
+
+        ImGui.EndPopup();
+    }
+
+    private static void DrawFollowerContextMenu(SkinnedMeshComponent follower)
+    {
+        if (!ImGui.BeginPopupContextItem()) return;
+
+        ImGui.TextDisabled(follower.Name);
+        ImGui.Separator();
+
+        if (ImGui.MenuItem($"{Settings.LinkIcon}  Stop Following")) follower.Leader = null;
+
+        ImGui.EndPopup();
+    }
+
+    /// <summary>
+    /// Names the section or the clip under the cursor, or reads out the curve there, since a plot
     /// normalised to its own range carries no scale of its own. Notifies get no tooltip: each one carries
     /// its name in the gutter, and the long notify states span the whole montage, so hit testing them
     /// only ever reported whichever happened to come first.
     /// </summary>
     private void DrawTrackTooltip(TimelineRow row)
     {
-        if (row.Animation is not { } animation) return;
-
+        var animation = row.Animation;
         var time = _layout.XToTime(ImGui.GetMousePos().X);
 
-        if (row.Kind == TimelineRowKind.Curve)
+        switch (row.Kind)
         {
-            if (TimelineCurves.Value(animation, row.Label, time) is { } value) ImGui.SetTooltip($"{row.Label}\n{value:0.###} at {time:0.00}s");
-            return;
-        }
-
-        // the component row carries the montage's sections, drawn cut to their own part rather than
-        // elided, so the name one of them could not fit and where it hands over next are read here
-        if (row.Kind == TimelineRowKind.Component)
-        {
-            var sections = row.Montage?.Sections ?? [];
-            for (var i = 0; i < sections.Length; i++)
+            case TimelineRowKind.Curve:
             {
-                var section = sections[i];
-                if (!section.IsActiveAt(time)) continue;
-
-                var next = section.NextIndex < 0 ? "ends"
-                    : section.NextIndex == i ? $"{Settings.LoopIcon} {Settings.InfinityIcon}"
-                    : sections[section.NextIndex].Name;
-
-                ImGui.SetTooltip($"{animation.Name}\n{section.Name}  {section.StartTime:0.00}s -> {section.EndTime:0.00}s  ({section.Duration:0.00}s)\nthen {next}");
-                return;
+                if (TimelineCurves.Value(animation, row.Label, time) is { } value) ImGui.SetTooltip($"{row.Label}\n{value:0.###} at {time:0.00}s");
+                break;
             }
+            case TimelineRowKind.Header when animation is MontageDescriptor { Sections.Length: > 0 } montage:
+            {
+                for (var i = 0; i < montage.Sections.Length; i++)
+                {
+                    var section = montage.Sections[i];
+                    if (!section.IsActiveAt(time)) continue;
 
-            // sectionless, so the row is showing the animation itself rather than any part of it
-            ImGui.SetTooltip($"{animation.Name}\n{animation.Duration:0.00}s");
-            return;
-        }
+                    var next = section.NextIndex < 0 ? "ends"
+                        : section.NextIndex == i ? $"{Settings.LoopIcon} {Settings.InfinityIcon}"
+                        : montage.Sections[section.NextIndex].Name;
 
-        if (row.Kind != TimelineRowKind.Slot) return;
+                    ImGui.SetTooltip($"{section.Name}  {section.StartTime:0.00}s -> {section.EndTime:0.00}s  ({section.Duration:0.00}s)\nthen {next}");
+                    break;
+                }
+                break;
+            }
+            case TimelineRowKind.Header or TimelineRowKind.Slot:
+            {
+                foreach (var segment in row.Kind == TimelineRowKind.Slot ? row.Segments : animation.Segments)
+                {
+                    if (!segment.IsActiveAt(time)) continue;
 
-        foreach (var segment in row.Segments)
-        {
-            if (!segment.IsActiveAt(time)) continue;
-
-            var loop = segment.LoopCount > 1 ? $"  {Settings.LoopIcon} {segment.LoopCount}" : string.Empty;
-            ImGui.SetTooltip($"{segment.Sequence.Name}\n{segment.StartPos:0.00}s -> {segment.EndPos:0.00}s{loop}\n{segment.Sequence.FrameCount} frames @ {segment.Sequence.FrameRate:0.#} fps");
-            return;
+                    var loop = segment.LoopCount > 1 ? $"  {Settings.LoopIcon} {segment.LoopCount}" : string.Empty;
+                    ImGui.SetTooltip($"{segment.Sequence.Name}\n{segment.StartPos:0.00}s -> {segment.EndPos:0.00}s{loop}\n{segment.Sequence.FrameCount} frames @ {segment.Sequence.FrameRate:0.#} fps");
+                    break;
+                }
+                break;
+            }
+            case TimelineRowKind.Player when row.Clock is { } clock:
+            {
+                ImGui.SetTooltip($"{clock.Time:0.00}s of {animation.Duration:0.00}s at {clock.PlayRate:0.##}x\ndrag to seek");
+                break;
+            }
         }
     }
 }

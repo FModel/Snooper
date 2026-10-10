@@ -1,69 +1,57 @@
 using System.Numerics;
 using ImGuiNET;
 using Snooper;
+using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Descriptors.Animations;
 
 namespace Editor.Widgets.Timeline;
 
 /// <summary>
-/// Everything a row draws to the right of the gutter: its bars, its markers, its plot, and the clock
-/// it runs on. The window has already clipped this to the row, so nothing here has to.
+/// Everything a row draws to the right of the gutter: sections and clips, markers, plots, and the
+/// clocks. The window has already clipped this to the row, so nothing here has to.
 /// </summary>
 internal static class TimelineTrack
 {
-    /// <param name="head">The actor's own position, which every row is read against.</param>
-    /// <param name="local">And this row's, which a driven prop will have drifted away from.</param>
-    /// <param name="value">What a curve row is worth under its clock, measured once for the row.</param>
-    public static void Draw(ImDrawListPtr drawList, TimelineLayout layout, TimelineRow row, Vector2 origin, float head, float local, float? value)
+    /// <param name="time">The block's own position, which its clips, markers and curves are read against.</param>
+    /// <param name="value">What a curve row is worth under that clock, measured once for the row.</param>
+    public static void Draw(ImDrawListPtr drawList, TimelineLayout layout, TimelineRow row, Vector2 origin, float time, float? value)
     {
         var top = origin.Y + TimelineStyle.BarInset;
         var bottom = origin.Y + layout.RowHeight - TimelineStyle.BarInset;
-        var palette = row.Palette;
+        var animation = row.Animation;
 
         switch (row.Kind)
         {
-            case TimelineRowKind.Component when row.Animation is { } animation:
+            case TimelineRowKind.Header:
             {
-                drawList.AddRectFilled(new Vector2(layout.TimeToX(0f), top), new Vector2(layout.TimeToX(animation.Duration), bottom), ImGui.GetColorU32(TimelineStyle.Track));
-
-                // a montage's own structure, the slots below carrying what plays over it. The sections
-                // name themselves, so the animation is named in the gutter and on hover instead
-                if (row.Montage is { Sections.Length: > 0 } montage)
+                // a montage reads as its sections, anything else as its clips
+                if (animation is MontageDescriptor { Sections.Length: > 0 } montage)
                 {
                     for (var i = 0; i < montage.Sections.Length; i++)
                     {
-                        DrawSection(drawList, layout, montage.Sections[i], i, local, palette, top, bottom, origin.Y);
+                        DrawSection(drawList, layout, montage.Sections[i], i, time, top, bottom, origin.Y);
                     }
-                    break;
                 }
-
-                for (var i = 0; i < animation.Segments.Count; i++)
+                else
                 {
-                    DrawSegmentBar(drawList, layout, animation.Segments[i], local, i % 2 == 0 ? palette.Bar : palette.BarAlt, palette, top, bottom);
+                    for (var i = 0; i < animation.Segments.Count; i++)
+                    {
+                        DrawSegment(drawList, layout, animation.Segments[i], i, time, top, bottom, origin.Y);
+                    }
                 }
-
-                // without segments the bar is only the faint track fill, which cannot carry white
-                DrawBarLabel(drawList, layout, row, layout.TimeToX(0f), layout.TimeToX(animation.Duration), origin.Y, animation.Segments.Count > 0 ? TimelineStyle.Text : TimelineStyle.Dim);
                 break;
             }
-            case TimelineRowKind.Component:
-            {
-                // driven but not animated: it is simply attached for the whole of its driver's animation
-                drawList.AddRectFilled(new Vector2(layout.TimeToX(0f), top), new Vector2(layout.TimeToX(layout.Duration), bottom), ImGui.GetColorU32(palette.Bar with { W = 0.55f }));
-                DrawBarLabel(drawList, layout, row, layout.TimeToX(0f), layout.TimeToX(layout.Duration), origin.Y, TimelineStyle.Dim);
-                break;
-            }
-            case TimelineRowKind.Slot when row.Animation is { } animation:
+            case TimelineRowKind.Slot:
             {
                 drawList.AddRectFilled(new Vector2(layout.TimeToX(0f), top), new Vector2(layout.TimeToX(animation.Duration), bottom), ImGui.GetColorU32(TimelineStyle.Track));
 
                 for (var i = 0; i < row.Segments.Length; i++)
                 {
-                    DrawSegment(drawList, layout, row.Segments[i], i, local, palette, top, bottom, origin.Y);
+                    DrawSegment(drawList, layout, row.Segments[i], i, time, top, bottom, origin.Y);
                 }
                 break;
             }
-            case TimelineRowKind.NotifyGroup or TimelineRowKind.Notifies when row.Animation is { } animation:
+            case TimelineRowKind.NotifyGroup or TimelineRowKind.Notifies:
             {
                 var spans = row.Kind == TimelineRowKind.Notifies;
                 DrawGroupLine(drawList, layout, animation, top, bottom);
@@ -77,32 +65,107 @@ internal static class TimelineTrack
                 }
                 break;
             }
-            case TimelineRowKind.CurveGroup when row.Animation is { } animation:
+            case TimelineRowKind.CurveGroup:
             {
                 // the notify group's line, since this row is read the same way: not for a shape but
                 // for when the thing under it happens
                 TimelineCurves.DrawActivity(drawList, layout, row.CurveActivity, DrawGroupLine(drawList, layout, animation, top, bottom));
                 break;
             }
-            case TimelineRowKind.Curve when row.Animation is { } animation:
+            case TimelineRowKind.Curve:
             {
                 drawList.AddRectFilled(new Vector2(layout.TimeToX(0f), top), new Vector2(layout.TimeToX(animation.Duration), bottom), ImGui.GetColorU32(TimelineStyle.Track));
-                TimelineCurves.DrawPlot(drawList, layout, row, animation, local, value, top, bottom);
+                TimelineCurves.DrawPlot(drawList, layout, row, animation, time, value, top, bottom);
+                break;
+            }
+            case TimelineRowKind.Player when row.Clock is { } clock:
+            {
+                DrawClock(drawList, layout, clock, top, bottom, origin.Y);
+                break;
+            }
+            case TimelineRowKind.Follower when row.Clock is { } leader:
+            {
+                // dotted up to the leader's time: the follower is wherever its leader is
+                var middle = (top + bottom) * 0.5f;
+                var end = layout.TimeToX(leader.Time);
+                var color = ImGui.GetColorU32(TimelineStyle.Dim);
+                for (var x = layout.TimeToX(0f); x < end; x += 6f)
+                {
+                    drawList.AddLine(new Vector2(x, middle), new Vector2(MathF.Min(x + 3f, end), middle), color);
+                }
                 break;
             }
         }
+    }
 
-        // this row's clock, in its own colour, and only once it has left the actor's playhead behind
-        var x = MathF.Round(layout.TimeToX(local));
-        if (MathF.Abs(local - head) > 0.001f)
+    /// <summary>
+    /// The one scale every block is drawn to, in the strip above the rows, and the actor's playhead on
+    /// it: the first clock of its first animation.
+    /// </summary>
+    public static void DrawRuler(ImDrawListPtr drawList, TimelineLayout layout, float top, float bottom, float time)
+    {
+        var dim = ImGui.GetColorU32(TimelineStyle.Dim);
+
+        var step = TimelineStyle.TickSteps[^1];
+        foreach (var candidate in TimelineStyle.TickSteps)
         {
-            drawList.AddLine(new Vector2(x, top), new Vector2(x, bottom), ImGui.GetColorU32(palette.Head));
+            if (candidate / layout.Duration * layout.TrackWidth < TimelineStyle.MinTickGap) continue;
+
+            step = candidate;
+            break;
         }
 
-        if (row is { Kind: TimelineRowKind.Component, Skeletal.Playback: { } clock })
+        var left = layout.TrackX - TimelineStyle.NameWidth;
+        drawList.AddLine(new Vector2(left, bottom), new Vector2(left + layout.RowWidth, bottom), ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.10f)));
+
+        for (var t = 0f; t <= layout.Duration + 0.0001f; t += step)
         {
-            DrawRate(drawList, layout, clock.PlayRate, x, origin.Y);
+            var x = MathF.Round(layout.TimeToX(t));
+            drawList.AddLine(new Vector2(x, bottom - 4f), new Vector2(x, bottom), dim);
+            drawList.AddText(new Vector2(x + 3f, top), dim, $"{t:0.##}s");
         }
+
+        var headX = MathF.Round(layout.TimeToX(time));
+        var color = ImGui.GetColorU32(TimelineStyle.Head);
+        drawList.AddLine(new Vector2(headX, top), new Vector2(headX, bottom), color);
+        drawList.AddTriangleFilled(new Vector2(headX - 4f, bottom - 5f), new Vector2(headX + 4f, bottom - 5f), new Vector2(headX, bottom), color);
+    }
+
+    /// <summary>
+    /// A clock: the stretch it has played as a bar with its time on it, a dot where it is, and its rate
+    /// when that is not the plain one. The dot is what the row is dragged by.
+    /// </summary>
+    private static void DrawClock(ImDrawListPtr drawList, TimelineLayout layout, AnimationPlayback clock, float top, float bottom, float rowY)
+    {
+        var left = layout.TimeToX(0f);
+        var right = layout.TimeToX(clock.Duration);
+        var x = layout.TimeToX(clock.Time);
+        var middle = (top + bottom) * 0.5f;
+        var head = ImGui.GetColorU32(clock.IsPlaying ? TimelineStyle.Head : TimelineStyle.Dim);
+
+        drawList.AddRectFilled(new Vector2(left, top), new Vector2(right, bottom), ImGui.GetColorU32(TimelineStyle.Track));
+        drawList.AddRectFilled(new Vector2(left, top), new Vector2(x, bottom), ImGui.GetColorU32(clock.IsPlaying ? TimelineStyle.Active : TimelineStyle.Bar));
+
+        // the time rides the end of the bar, inside it while it fits and past the dot before that
+        var text = $"{clock.Time:0.00}s";
+        var width = ImGui.CalcTextSize(text).X;
+        var textX = x - left > width + 12f ? x - width - 8f : x + 8f;
+        drawList.AddText(new Vector2(textX, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Text), text);
+
+        drawList.AddCircleFilled(new Vector2(x, middle), (bottom - top) * 0.3f, head);
+
+        if (MathF.Abs(clock.PlayRate - 1f) <= 0.001f) return;
+
+        // semibold at a smaller size, the same trick the hardware band uses to stay legible when it
+        // has to sit on top of something else
+        var rate = $"{clock.PlayRate:0.##}x";
+        var font = ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold];
+        var fontSize = ImGui.GetFontSize() * TimelineStyle.RateFontScale;
+        var rateWidth = font.CalcTextSizeA(fontSize, float.MaxValue, 0f, rate).X;
+        var rateX = textX > x ? textX + width + 6f : x + 8f;
+        if (rateX + rateWidth > layout.TrackX + layout.TrackWidth) rateX = textX - rateWidth - 6f;
+
+        drawList.AddText(font, fontSize, new Vector2(rateX, rowY + layout.TextPadY + 1f), ImGui.GetColorU32(TimelineStyle.Rate), rate);
     }
 
     /// <summary>The bed a group row's markers sit on, and the height they sit at.</summary>
@@ -114,37 +177,23 @@ internal static class TimelineTrack
     }
 
     /// <summary>
-    /// One sequence span, lifted a step while the clock is inside it. The lift stops well short of the
-    /// accent so the fill still carries a white label. The hairline that keeps neighbours apart is
-    /// taken off the near side, so a bar closing the animation still closes the track.
+    /// One clip, named on its own box the way a clip is labelled in any editing timeline. Cut to that
+    /// box rather than elided: a row draws several of them at widths that move with the zoom, so the
+    /// tooltip is what a box too narrow to name is read with.
     /// </summary>
-    private static void DrawSegmentBar(ImDrawListPtr drawList, TimelineLayout layout, SegmentDescriptor segment, float local, Vector4 fill, TimelinePalette palette, float top, float bottom)
-    {
-        var active = segment.IsActiveAt(local);
-
-        drawList.AddRectFilled(
-            new Vector2(layout.TimeToX(segment.StartPos) + (segment.StartPos > 0f ? 1f : 0f), top),
-            new Vector2(layout.TimeToX(segment.EndPos), bottom),
-            ImGui.GetColorU32(active ? palette.Active : fill));
-    }
-
-    /// <summary>
-    /// One segment on its slot, named on its own box the way a clip is labelled in any editing
-    /// timeline. Cut to that box rather than elided: a slot draws several of them at widths that move
-    /// with the zoom, so the tooltip is what a box too narrow to name is read with.
-    /// </summary>
-    private static void DrawSegment(ImDrawListPtr drawList, TimelineLayout layout, SegmentDescriptor segment, int index, float local, TimelinePalette palette, float top, float bottom, float rowY)
+    private static void DrawSegment(ImDrawListPtr drawList, TimelineLayout layout, SegmentDescriptor segment, int index, float time, float top, float bottom, float rowY)
     {
         var left = layout.TimeToX(segment.StartPos);
         var right = layout.TimeToX(segment.EndPos);
-        var fill = segment.IsActiveAt(local) ? palette.Active : index % 2 == 0 ? palette.Bar : palette.BarAlt;
+        var fill = segment.IsActiveAt(time) ? TimelineStyle.Active : index % 2 == 0 ? TimelineStyle.Bar : TimelineStyle.BarAlt;
 
+        // the hairline that keeps neighbours apart is taken off the near side, so a clip closing the
+        // animation still closes the track
         drawList.AddRectFilled(new Vector2(left + (segment.StartPos > 0f ? 1f : 0f), top), new Vector2(right, bottom), ImGui.GetColorU32(fill));
 
         drawList.PushClipRect(new Vector2(left, rowY), new Vector2(right, rowY + layout.RowHeight), true);
         drawList.AddText(new Vector2(left + 5f, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Text), segment.Sequence.Name);
 
-        // a segment set to replay its clip says so on its own box, now that it has no row of its own
         if (segment.LoopCount > 1)
         {
             var text = $"{Settings.LoopIcon} {segment.LoopCount}";
@@ -156,22 +205,18 @@ internal static class TimelineTrack
     }
 
     /// <summary>
-    /// One montage section, filled like a segment bar because it is read for the same thing: which of
-    /// them the clock is inside. Sections meet end to end, so the row reads as a strip cut into parts
-    /// rather than as bars laid on a track. A section naming itself carries the loop glyph, that being
-    /// the whole of what holds an animation on it.
+    /// One montage section, filled like a clip because it is read for the same thing: which of them the
+    /// clock is inside. Sections meet end to end, so the row reads as a strip cut into parts. A section
+    /// naming itself as next carries the loop glyph, that being the whole of what holds an animation on it.
     /// </summary>
-    private static void DrawSection(ImDrawListPtr drawList, TimelineLayout layout, SectionDescriptor section, int index, float local, TimelinePalette palette, float top, float bottom, float rowY)
+    private static void DrawSection(ImDrawListPtr drawList, TimelineLayout layout, SectionDescriptor section, int index, float time, float top, float bottom, float rowY)
     {
         var left = layout.TimeToX(section.StartTime);
         var right = layout.TimeToX(section.EndTime);
-        var fill = section.IsActiveAt(local) ? palette.Active : index % 2 == 0 ? palette.Bar : palette.BarAlt;
+        var fill = section.IsActiveAt(time) ? TimelineStyle.Active : index % 2 == 0 ? TimelineStyle.Bar : TimelineStyle.BarAlt;
 
-        // the hairline off the near side, the way a segment bar takes it, so the strip still closes
         drawList.AddRectFilled(new Vector2(left + (section.StartTime > 0f ? 1f : 0f), top), new Vector2(right, bottom), ImGui.GetColorU32(fill));
 
-        // cut to its own part rather than elided: a section too narrow to name is read off the tooltip,
-        // and eliding every one of them would measure text on every frame
         drawList.PushClipRect(new Vector2(left, rowY), new Vector2(right, rowY + layout.RowHeight), true);
         drawList.AddText(new Vector2(left + 5f, rowY + layout.TextPadY), ImGui.GetColorU32(TimelineStyle.Text), section.Name);
 
@@ -182,42 +227,6 @@ internal static class TimelineTrack
         }
 
         drawList.PopClipRect();
-    }
-
-    /// <summary>
-    /// The asset name rides on its own bar, the way a clip is labelled in any editing timeline. It is
-    /// the only column wide enough to hold one.
-    /// </summary>
-    private static void DrawBarLabel(ImDrawListPtr drawList, TimelineLayout layout, TimelineRow row, float left, float right, float rowY, Vector4 color)
-    {
-        if (row.BarLabel.Length == 0) return;
-
-        drawList.PushClipRect(new Vector2(left, rowY), new Vector2(right, rowY + layout.RowHeight), true);
-        drawList.AddText(new Vector2(left + 5f, rowY + layout.TextPadY), ImGui.GetColorU32(color), row.FitBarLabel(right - left - 8f));
-        drawList.PopClipRect();
-    }
-
-    /// <summary>
-    /// How fast the row is playing, riding its clock tick since the tick is the thing moving at that
-    /// rate. Only worth the ink when it is not 1x, which since props got their own clocks no longer
-    /// means the whole actor was retimed.
-    /// </summary>
-    private static void DrawRate(ImDrawListPtr drawList, TimelineLayout layout, float rate, float tickX, float rowY)
-    {
-        if (Math.Abs(rate - 1f) <= 0.001f) return;
-
-        // semibold at a smaller size, the same trick the hardware band uses to stay legible when it
-        // has to sit on top of something else
-        var text = $"{rate:0.##}x";
-        var font = ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold];
-        var fontSize = ImGui.GetFontSize() * TimelineStyle.RateFontScale;
-        var width = font.CalcTextSizeA(fontSize, float.MaxValue, 0f, text).X;
-
-        // reads on the near side of the tick rather than run off the end of the track
-        var right = layout.TrackX + layout.TrackWidth;
-        var x = tickX + 4f + width <= right ? tickX + 4f : tickX - 4f - width;
-
-        drawList.AddText(font, fontSize, new Vector2(x, rowY + layout.TextPadY + 1f), ImGui.GetColorU32(TimelineStyle.Rate), text);
     }
 
     private static void DrawNotify(ImDrawListPtr drawList, TimelineLayout layout, NotifyDescriptor notify, float top, float bottom, bool spans)

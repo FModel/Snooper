@@ -1,43 +1,55 @@
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Descriptors.Animations;
-using Snooper.Rendering.Components.Mesh;
-using Snooper.Rendering.Components.Transforms;
 
 namespace Editor.Widgets.Timeline;
 
 internal enum TimelineRowKind
 {
-    Component,
+    /// <summary>An animation: its sections or clips on the track, and the parent of everything below.</summary>
+    Header,
 
-    /// <summary>
-    /// One slot of an animation with every segment laid on it. Segments on a slot never overlap, so a
-    /// slot carrying a dozen of them still costs one line.
-    /// </summary>
+    /// <summary>One slot of a montage with its clips, only when the slot says more than the header already does.</summary>
     Slot,
 
-    /// <summary>Every notify of an animation on one line, and the parent of its per-track rows.</summary>
+    /// <summary>Every notify of the animation on one line, and the parent of its per-track rows.</summary>
     NotifyGroup,
     Notifies,
 
-    /// <summary>Every curve of an animation on one line, and the parent of its per-curve rows.</summary>
+    /// <summary>Every curve of the animation on one line, and the parent of its per-curve rows.</summary>
     CurveGroup,
-    Curve
+    Curve,
+
+    /// <summary>A skeletal mesh of the actor playing the animation on a clock of its own, a prop a performance pulled in included.</summary>
+    Player,
+
+    /// <summary>A skinned mesh wearing the player's pose, with no clock of its own.</summary>
+    Follower
+}
+
+/// <summary>One animation the actor plays, and the clocks of everything playing it.</summary>
+internal sealed class TimelineBlock(SequenceBaseDescriptor animation)
+{
+    public readonly SequenceBaseDescriptor Animation = animation;
+    public readonly List<AnimationPlayback> Clocks = [];
+
+    /// <summary>The block's own position, which is its first clock: what its clips, markers and curves are read against.</summary>
+    public float Time => Clocks[0].Time;
 }
 
 /// <summary>
 /// One line of the timeline. Rows are built only when the actor's shape changes, so anything a row can
-/// work out about itself from the asset is worked out once here rather than every frame: what a curve
-/// is keyed over, where its animation is busy, and how its names read cut to the gutter.
+/// work out about itself from the asset is worked out once here rather than every frame.
 /// </summary>
 internal sealed class TimelineRow
 {
     public required TimelineRowKind Kind;
-    public required int Depth;
-    public required ActorComponent Component;
+    public required TimelineBlock Block;
+    public int Depth;
+    public ActorComponent? Component;
+    public AnimationPlayback? Clock; // a player's own, dragged to seek it alone; a follower carries its leader's
     public string Label = string.Empty;
     public string Detail = string.Empty;
-    public string BarLabel = string.Empty;
-    public int Index;    // sequence index, notify track index, or the curve's place in the group
+    public int Index;    // the slot's, notify track's or curve's place among its kind, which is what tells their rows apart
     public bool Expandable;
     public bool Expanded;
 
@@ -48,37 +60,20 @@ internal sealed class TimelineRow
     /// <summary>When the curves of a group row are doing something, and how much.</summary>
     public TimelineCurves.Activity[] CurveActivity = [];
 
-    /// <summary>The clock the row runs on, which every row of a component shares.</summary>
-    public SkeletalMeshComponent? Skeletal => Component as SkeletalMeshComponent;
-
-    public SequenceBaseDescriptor? Animation => Skeletal?.Animation;
-
-    /// <summary>The sections, which only a montage lays its timeline out in.</summary>
-    public MontageDescriptor? Montage => Animation as MontageDescriptor;
-
     /// <summary>What a slot row draws, gathered with the row rather than filtered by name every frame.</summary>
     public SegmentDescriptor[] Segments = [];
 
-    /// <summary>A prop the performance moves rather than a component performing it.</summary>
-    public bool Driven => Component is SpatialComponent { Relation: SkeletalMeshComponent };
+    public SequenceBaseDescriptor Animation => Block.Animation;
 
-    public TimelinePalette Palette => Driven ? TimelineStyle.Driven : TimelineStyle.Own;
+    public int Id => Component?.Id ?? Animation.Path.GetHashCode();
 
-    /// <summary>Only an animated component carries a toggle, and only those carry no detail.</summary>
-    public bool HasToggle => Kind == TimelineRowKind.Component && Animation != null;
-
-    public bool Selectable => Kind is TimelineRowKind.Component or TimelineRowKind.Slot;
-
-    /// <summary>A curve row reads out what it is worth right now, which no other row has to.</summary>
-    public bool HasReadout => Kind == TimelineRowKind.Curve;
+    public bool Selectable => Component is not null;
 
     private string _elidedLabel = string.Empty;
-    private string _elidedBar = string.Empty;
     private float _labelWidth = float.NaN;
-    private float _barWidth = float.NaN;
 
     /// <summary>
-    /// The names cut to what they are given, remembered until that width changes. Eliding measures the
+    /// The name cut to what it is given, remembered until that width changes. Eliding measures the
     /// text a handful of times to find the cut, and a row that has not been resized would find the
     /// same one every frame.
     /// </summary>
@@ -89,14 +84,5 @@ internal sealed class TimelineRow
         _labelWidth = width;
         _elidedLabel = TimelineStyle.Elide(Label, width);
         return _elidedLabel;
-    }
-
-    public string FitBarLabel(float width)
-    {
-        if (width == _barWidth) return _elidedBar;
-
-        _barWidth = width;
-        _elidedBar = TimelineStyle.Elide(BarLabel, width);
-        return _elidedBar;
     }
 }
