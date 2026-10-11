@@ -18,9 +18,10 @@
     <ItemGroup>
       <None Remove="Shaders\**\*" />
       <None Remove="Fonts\**\*" />
-  
+      <None Remove="Resources\**\*" />
       <EmbeddedResource Include="Shaders\**\*" />
       <EmbeddedResource Include="Fonts\**\*" />
+      <EmbeddedResource Include="Resources\**\*" />
     </ItemGroup>
 
 </Project>

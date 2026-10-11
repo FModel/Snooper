@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="tile" cx="80" cy="40" r="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2E323C" />
+      <stop offset="1" stop-color="#0E0F13" />
+    </radialGradient>
+  </defs>
+  <rect x="6" y="6" width="244" height="244" rx="44" fill="url(#tile)" />
+  <path
+    d="M 193,62 L 95.46,62.00 A 18,18 0 0 0 82.73,67.27 L 67.27,82.73 A 18,18 0 0 0 62.00,95.46 L 62.00,96.12 A 18,18 0 0 0 67.79,109.35 L 82.83,123.23 A 18,18 0 0 0 95.04,128.00 L 160.54,128.00 A 18,18 0 0 1 173.27,133.27 L 188.73,148.73 A 18,18 0 0 1 194.00,161.46 L 194.00,160.54 A 18,18 0 0 1 188.73,173.27 L 173.27,188.73 A 18,18 0 0 1 160.54,194.00 L 63,194"
+    fill="none" stroke="#F4F6FA" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt" />
+  <rect x="171" y="51" width="22" height="22" fill="#409CFF" />
+</svg>

@@ -7,9 +7,9 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Serilog;
+using SixLabors.ImageSharp.PixelFormats;
 using Snooper;
 using Snooper.Core;
-using Snooper.Core.Hardware;
 
 namespace Editor;
 
@@ -35,6 +35,7 @@ public partial class EditorWindow : GameWindow
             AutoIconify = false,
             StartVisible = startVisible,
             StartFocused = startVisible,
+            Icon = LoadIcon(),
             Title = $"Snooper ({Settings.APP_SHORT_COMMIT_ID} - {Settings.APP_BUILD_DATE:MMM d, yyyy})"
         })
     {
@@ -62,6 +63,17 @@ public partial class EditorWindow : GameWindow
             Manager.UnloadScene();
             Hide();
         };
+    }
+
+    private static OpenTK.Windowing.Common.Input.WindowIcon LoadIcon()
+    {
+        var assembly = typeof(EditorWindow).Assembly;
+        using var stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.Resources.Snooper.png")
+                           ?? throw new FileNotFoundException("Embedded window icon not found.");
+        using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(stream);
+        var pixels = new byte[image.Width * image.Height * 4];
+        image.CopyPixelDataTo(pixels);
+        return new OpenTK.Windowing.Common.Input.WindowIcon(new OpenTK.Windowing.Common.Input.Image(image.Width, image.Height, pixels));
     }
 
     private void DoLoad()
