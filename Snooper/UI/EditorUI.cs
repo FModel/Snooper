@@ -87,10 +87,10 @@ public static class EditorUI
         return ImGui.DragFloat4("##" + label, ref value, speed, min, max, format);
     }
 
-    public static bool DragFloat(string label, ref float value, float speed = 0.01f, float min = float.MinValue, float max = float.MaxValue, string? format = null)
+    public static bool DragFloat(string label, ref float value, float speed = 0.01f, float min = float.MinValue, float max = float.MaxValue, string? format = null, ImGuiSliderFlags flags = ImGuiSliderFlags.None)
     {
         Property(label);
-        return ImGui.DragFloat("##" + label, ref value, speed, min, max, format);
+        return ImGui.DragFloat("##" + label, ref value, speed, min, max, format, flags);
     }
 
     public static bool SliderInt(string label, ref int value, int min, int max, string? format = null)

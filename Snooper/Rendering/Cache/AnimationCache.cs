@@ -18,7 +18,7 @@ public static class AnimationCache
     public static IEnumerable<SequenceBaseDescriptor> Animations => _animations.Values.Where(x => x.IsValueCreated).Select(x => x.Value);
     public static IEnumerable<SkeletonDescriptor> Skeletons => _skeletons.Values.Where(x => x.IsValueCreated).Select(x => x.Value);
 
-    public static SkeletonDescriptor GetOrCreate(USkeleton skeleton) => GetOrCreate(_skeletons, skeleton.Guid, () =>
+    public static SkeletonDescriptor GetOrCreate(USkeleton skeleton) => GetOrCreate(_skeletons, skeleton.ToGuid(), () =>
     {
         var descriptor = new SkeletonDescriptor(skeleton.ReferenceSkeleton);
         descriptor.SetOwner(skeleton);

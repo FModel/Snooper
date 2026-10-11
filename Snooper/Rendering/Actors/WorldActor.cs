@@ -17,25 +17,27 @@ public class WorldActor : Actor
     private readonly Dictionary<string, string> _dataLayers = new();
     private readonly HashSet<string> _visibleDataLayers = [];
 
-    public WorldActor(UWorld world) : base(world)
+    public WorldActor(UWorld world, IProgress<string>? progress = null) : base(world)
     {
         Components.Add(new SpatialComponent(null, "WorldRoot"));
 
         var level = world.PersistentLevel.Load<ULevel>();
         if (level == null) return;
 
-        ProcessDataLayers(level);
-        ProcessWorldPartition(level);
+        ProcessDataLayers();
+        ProcessWorldPartition();
 
         var parents = new Dictionary<FPackageIndex, SpatialComponent>();
         var created = new List<LevelActor>();
-        foreach (var ptr in level.Actors)
+        var length = level.Actors.Length;
+        for (var i = 0; i < length; i++)
         {
-            if (ptr == null || !ptr.TryLoad<UObject>(out var data))
+            if (level.Actors[i] is not { } ptr || ptr.IsNull || !ptr.TryLoad<UObject>(out var data))
             {
                 continue;
             }
 
+            progress?.Report($"{world.Name} ... Actors {i}/{length}");
             var a = new LevelActor(data, parents);
             if (a.RootComponent is not null)
             {
@@ -66,40 +68,41 @@ public class WorldActor : Actor
         created.Clear();
         parents.Clear();
 
-        // Parallel.ForEach(world.StreamingLevels, new ParallelOptions { MaxDegreeOfParallelism = 10 }, Process);
-        for (var i = 0; i < world.StreamingLevels?.Length; i++)
+        length = world.StreamingLevels?.Length ?? 0;
+        for (var i = 0; i < length; i++)
         {
-            // TODO: these fucking streaming levels can reference each other
-            Process(world.StreamingLevels[i]);
+            progress?.Report($"{world.Name} ... Streaming Levels {i}/{length}");
+            Process(world.StreamingLevels![i]); // TODO: these fucking streaming levels can reference each other
         }
-    }
 
-    private void ProcessDataLayers(ULevel level)
-    {
-        if (!level.WorldDataLayers.TryLoad<AWorldDataLayers>(out var worldDataLayers)) return;
-
-        foreach (var instancePtr in worldDataLayers.DataLayerInstances)
+        void ProcessDataLayers()
         {
-            if (!instancePtr.TryLoad<UDataLayerInstance>(out var instance)) continue;
+            if (!level.WorldDataLayers.TryLoad<AWorldDataLayers>(out var worldDataLayers)) return;
 
-            switch (instance)
+            progress?.Report($"{world.Name} ... Data Layers");
+            foreach (var instancePtr in worldDataLayers.DataLayerInstances)
             {
-                case UDataLayerInstanceWithAsset withAsset when withAsset.DataLayerAsset.TryLoad<UDataLayerAsset>(out var dataLayer):
-                    _dataLayers[withAsset.Name] = dataLayer.Name;
-                    if (withAsset.InitialRuntimeState is EDataLayerRuntimeState.Activated)
-                        _visibleDataLayers.Add(withAsset.Name);
-                    break;
+                if (!instancePtr.TryLoad<UDataLayerInstance>(out var instance)) continue;
+
+                switch (instance)
+                {
+                    case UDataLayerInstanceWithAsset withAsset when withAsset.DataLayerAsset.TryLoad<UDataLayerAsset>(out var dataLayer):
+                        _dataLayers[withAsset.Name] = dataLayer.Name;
+                        if (withAsset.InitialRuntimeState is EDataLayerRuntimeState.Activated)
+                            _visibleDataLayers.Add(withAsset.Name);
+                        break;
+                }
             }
         }
-    }
+        void ProcessWorldPartition()
+        {
+            if (!level.WorldSettings.TryLoad<AWorldSettings>(out var worldSettings) ||
+                worldSettings.WorldPartition == null || !worldSettings.WorldPartition.TryLoad<UWorldPartition>(out var worldPartition))
+                return;
 
-    private void ProcessWorldPartition(ULevel level)
-    {
-        if (!level.WorldSettings.TryLoad<AWorldSettings>(out var worldSettings) ||
-            worldSettings.WorldPartition == null || !worldSettings.WorldPartition.TryLoad<UWorldPartition>(out var worldPartition))
-            return;
-
-        Children.Add(new PartitionActor(worldPartition, _visibleDataLayers));
+            progress?.Report($"{world.Name} ... World Partition");
+            Children.Add(new PartitionActor(worldPartition, _visibleDataLayers));
+        }
     }
 
     private void Process(FPackageIndex? ptr)
@@ -117,7 +120,6 @@ public class WorldActor : Actor
                 for (var i = 0; i < hlod.SpatiallyLoadedCells.Length; i++)
                 {
                     Process(hlod.SpatiallyLoadedCells[i]); // UWorldPartitionRuntimeLevelStreamingCell
-                    if (i > 150) break; // TODO: optimize
                 }
                 break;
             }
@@ -126,7 +128,6 @@ public class WorldActor : Actor
                 for (var i = 0; i < spatial.StreamingGrids[0].GridLevels[0].LayerCells.Length; i++)
                 {
                     Process(spatial.StreamingGrids[0].GridLevels[0].LayerCells[i].GridCells[0]); // UWorldPartitionRuntimeLevelStreamingCell
-                    if (i > 50) break; // TODO: optimize
                 }
                 break;
             }

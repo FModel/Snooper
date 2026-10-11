@@ -2,6 +2,7 @@
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.UI;
 
 namespace Snooper.Rendering.Components.Camera;
 
@@ -14,7 +15,7 @@ public enum CameraType : byte
 /// <summary>
 /// camera that can move via keyboard and mouse input
 /// </summary>
-public class InteractiveCameraComponent(Transform? transform = null, string? name = null) : CameraComponent(transform, name)
+public class InteractiveCameraComponent(float movementSpeed = 1, Transform? transform = null, string? name = null) : CameraComponent(transform, name)
 {
     public CameraType ViewType { get; set; } = CameraType.Free;
 
@@ -28,7 +29,7 @@ public class InteractiveCameraComponent(Transform? transform = null, string? nam
     {
         get;
         set => field = MathF.Max(1f, value);
-    } = 1f;
+    } = movementSpeed;
 
     private Vector3 _velocity = Vector3.Zero;
     private float _zoomVelocity = 0f;
@@ -193,5 +194,13 @@ public class InteractiveCameraComponent(Transform? transform = null, string? nam
         _snapStart    = LocalTransform.Rotation;
         _snapTarget   = targetRotation;
         _snapProgress = 0f;
+    }
+
+    protected override void DrawCameraControls()
+    {
+        base.DrawCameraControls();
+
+        var speed = MovementSpeed;
+        if (EditorUI.DragFloat("Movement Speed", ref speed, 0.1f, 1f, 1000f)) MovementSpeed = speed;
     }
 }

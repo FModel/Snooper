@@ -7,6 +7,7 @@ namespace Editor.Widgets;
 public class JsonViewerWidget
 {
     private readonly Dictionary<int, TreeNode> _openWindows = [];
+    private readonly List<int> _toClose = [];
 
     public void Open(TreeNode node)
     {
@@ -17,7 +18,7 @@ public class JsonViewerWidget
     {
         if (_openWindows.Count == 0) return;
 
-        var toClose = new List<int>();
+        _toClose.Clear();
 
         foreach (var (id, node) in _openWindows)
         {
@@ -26,7 +27,7 @@ public class JsonViewerWidget
             if (!ImGui.Begin($"\uf1c9  {node.Name}##JsonViewer{id}", ref open, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking))
             {
                 ImGui.End();
-                if (!open) toClose.Add(id);
+                if (!open) _toClose.Add(id);
                 continue;
             }
 
@@ -49,10 +50,10 @@ public class JsonViewerWidget
             }
 
             ImGui.End();
-            if (!open) toClose.Add(id);
+            if (!open) _toClose.Add(id);
         }
 
-        foreach (var id in toClose)
+        foreach (var id in _toClose)
             _openWindows.Remove(id);
     }
 

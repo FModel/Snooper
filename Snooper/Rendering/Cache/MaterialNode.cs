@@ -7,6 +7,7 @@ using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
+using CUE4Parse.UE4.Versions;
 using CUE4Parse.Utils;
 using ImGuiNET;
 using Snooper.Core;
@@ -178,7 +179,6 @@ public sealed partial class MaterialNode
             var legacy = cached.TryGetValue(out FStructFallback nested, "Parameters");
             var data = legacy ? nested : cached;
             var infos = legacy ? "ParameterInfos" : "ParameterInfoSet";
-            var textureEntry = legacy ? 2 : 3;
 
             if (!data.TryGetAllValues(out FStructFallback[] entries, "RuntimeEntries")) return;
 
@@ -196,6 +196,25 @@ public sealed partial class MaterialNode
                     _vectors.TryAdd(vectorInfos[i].Name.Text, vectors[i]);
             }
 
+            if (!legacy)
+            {
+                // Match enum order in FMemoryImageArchive.ReadMaterialParameterType
+                var switchEntry = material.Owner?.Provider?.Versions.Game switch
+                {
+                    >= EGame.GAME_UE5_5 => (int) EMaterialParameterType.StaticSwitch,
+                    >= EGame.GAME_UE5_2 => 7,
+                    _ => 6
+                };
+
+                if (entries.Length > switchEntry && data.TryGetValue(out bool[] switches, "StaticSwitchValues") &&
+                    entries[switchEntry].TryGetValue(out FMaterialParameterInfo[] switchInfos, infos))
+                {
+                    for (var i = 0; i < switchInfos.Length && i < switches.Length; i++)
+                        _switches.TryAdd(switchInfos[i].Name.Text, switches[i]);
+                }
+            }
+
+            var textureEntry = legacy ? 2 : 3;
             if (entries.Length <= textureEntry || !entries[textureEntry].TryGetValue(out FMaterialParameterInfo[] textureInfos, infos)) return;
 
             if (legacy)

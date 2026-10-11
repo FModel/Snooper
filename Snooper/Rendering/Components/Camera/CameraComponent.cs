@@ -204,15 +204,22 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
             var nearClip = NearClipPlane;
             var farClip = FarClipPlane;
 
-            var edited = EditorUI.DragFloat("Near Clip Plane", ref nearClip, 0.1f, 0.01f, farClip - 0.1f);
-            edited |= EditorUI.DragFloat("Far Clip Plane", ref farClip, 1.0f, nearClip + 0.1f, 100000.0f);
+            var edited = EditorUI.DragFloat("Near Clip Plane", ref nearClip, 0.1f, 0.01f, farClip - 0.1f, flags: ImGuiSliderFlags.AlwaysClamp);
+            edited |= EditorUI.DragFloat("Far Clip Plane", ref farClip, 1.0f, nearClip + 0.1f, 100000.0f, flags: ImGuiSliderFlags.AlwaysClamp);
 
             if (edited)
             {
                 NearClipPlane = nearClip;
                 FarClipPlane = farClip;
             }
+
+            DrawCameraControls();
         });
+    }
+
+    protected virtual void DrawCameraControls()
+    {
+
     }
 
     public void Resize(int newWidth, int newHeight)

@@ -161,7 +161,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     }
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.LightingGuid, guid =>
+        => MeshCache.GetOrCreate(owner.ToGuid((uint) Bridge.Options.NaniteMeshFormat), guid =>
         {
             using var dto = new StaticMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat);
             return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
@@ -182,17 +182,17 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UGeometryCollection owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.ToGuid(), guid =>
+        => MeshCache.GetOrCreate(owner.ToGuid((uint) Bridge.Options.NaniteMeshFormat), guid =>
         {
             using var dto = new StaticMeshDto(owner, Bridge.Options.NaniteMeshFormat);
             return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
         });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkinnedAsset owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
+        => MeshCache.GetOrCreate(owner.ToGuid((uint) Bridge.Options.NaniteMeshFormat | (Bridge.Options.LoadMorphTargets ? 1u << 8 : 0u)), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.Guid, guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
+        => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
 
     private int _selectedLod;
     public void DrawControls()
