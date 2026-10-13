@@ -198,7 +198,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
     }
 
-    protected override DebugComponent CreateDebugVisualization() => new BoxComponent(Descriptor.Bounds, IsVisible ? Settings.VisibleMeshBounds : Settings.HiddenMeshBounds, name: $"{Name} (Bounds)");
+    protected override DebugComponent CreateDebugVisualization() => new MeshBoundsVisualization(this);
 
     protected class Geometry : PrimitiveData<Vertex>
     {

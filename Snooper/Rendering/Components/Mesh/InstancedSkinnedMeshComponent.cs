@@ -2,7 +2,6 @@
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.Rendering.Components.Visualization;
 
 namespace Snooper.Rendering.Components.Mesh;
 
@@ -24,8 +23,6 @@ public class InstancedSkinnedMeshComponent : SkinnedMeshComponent
         Instances = new InstancedTransforms(transforms);
         IsVisible = IsVisible && instances.Length > 0;
     }
-
-    protected override DebugComponent CreateDebugVisualization() => new InstancedMeshBoundsVisualization(this, Instances);
 
     public override Transform GetLocalTransform(int index = -1) => index < 0 ? base.GetLocalTransform(index) : Instances[index];
     public override void SetLocalTransform(Transform transform, int index = -1)

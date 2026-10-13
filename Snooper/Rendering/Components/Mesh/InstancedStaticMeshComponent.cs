@@ -2,7 +2,6 @@
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.Rendering.Components.Visualization;
 
 namespace Snooper.Rendering.Components.Mesh;
 
@@ -40,8 +39,6 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
         Instances = new InstancedTransforms([.. transforms]);
         IsVisible = IsVisible && transforms.Count > 0;
     }
-
-    protected override DebugComponent CreateDebugVisualization() => new InstancedMeshBoundsVisualization(this, Instances);
 
     public override Transform GetLocalTransform(int index = -1) => index < 0 ? base.GetLocalTransform(index) : Instances[index];
     public override void SetLocalTransform(Transform transform, int index = -1)

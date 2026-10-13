@@ -19,6 +19,26 @@ public class SkinnedMeshComponent : MeshComponent
 {
     protected override DirtyFlags SupportedDirtyFlags => base.SupportedDirtyFlags | DirtyFlags.Morph;
 
+    public override CullingBounds Bounds
+    {
+        get
+        {
+            if (Descriptor.BoneSphereRadii is not { } radii) return base.Bounds;
+
+            var matrices = Pose.BoneMatrices;
+            var min = new Vector3(float.MaxValue);
+            var max = new Vector3(float.MinValue);
+            for (var b = 0; b < radii.Length && b < matrices.Length; b++)
+            {
+                if (radii[b] <= 0f) continue;
+                var radius = new Vector3(radii[b]);
+                min = Vector3.Min(min, matrices[b].Translation - radius);
+                max = Vector3.Max(max, matrices[b].Translation + radius);
+            }
+            return min.X <= max.X ? new CullingBounds((min + max) * 0.5f, (max - min) * 0.5f) : base.Bounds;
+        }
+    }
+
     public SkeletonPose Pose
     {
         get => field ?? throw new InvalidOperationException($"Pose not initialized for {Name} of type {GetType().Name}.");

@@ -10,6 +10,8 @@ struct PerDrawStatic
     float MinDrawDistance;
     float MaxDrawDistance; // 0 for no limit
     uint Outlined; // 0 or 1
+    float BoundsCenter[3]; // the component's box, in its own space
+    float BoundsExtents[3];
 };
 
 layout(std430, binding = BINDING_DRAW_STATIC) readonly buffer PerDrawStaticBuffer

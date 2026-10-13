@@ -92,13 +92,16 @@ bool equals(DrawElementsIndirectCommand a, DrawElementsIndirectCommand b)
         a.BaseVertex == b.BaseVertex;
 }
 
-bool testInstance(uint planeBase, PerDrawStatic draw, PerMeshData mesh, vec3 lodRefPos, bool trustBounds, uint instance, out float dist)
+bool testInstance(uint planeBase, PerDrawStatic draw, vec3 lodRefPos, bool trustBounds, uint instance, out float dist)
 {
     mat4 modelMatrix = uInstanceDataBuffer[instance].Matrix;
 
-    vec3 worldCenter = (modelMatrix * vec4(mesh.Center, 1.0)).xyz;
+    vec3 center = vec3(draw.BoundsCenter[0], draw.BoundsCenter[1], draw.BoundsCenter[2]);
+    vec3 extents = vec3(draw.BoundsExtents[0], draw.BoundsExtents[1], draw.BoundsExtents[2]);
+
+    vec3 worldCenter = (modelMatrix * vec4(center, 1.0)).xyz;
     mat3 m = mat3(modelMatrix);
-    vec3 worldExtents = abs(m[0]) * mesh.Extents.x + abs(m[1]) * mesh.Extents.y + abs(m[2]) * mesh.Extents.z;
+    vec3 worldExtents = abs(m[0]) * extents.x + abs(m[1]) * extents.y + abs(m[2]) * extents.z;
 
     dist = length(lodRefPos - worldCenter);
     return !trustBounds || (isVisible(planeBase, worldCenter, worldExtents) && isWithinDrawDistance(draw.MinDrawDistance, draw.MaxDrawDistance, dist));
@@ -248,7 +251,7 @@ void main()
 #endif
     {
         float dist;
-        if (testInstance(planeBase, draw, mesh, lodRefPos, trustBounds, baseInstance + j, dist))
+        if (testInstance(planeBase, draw, lodRefPos, trustBounds, baseInstance + j, dist))
         {
             localMin = min(localMin, j);
             localMax = max(localMax, j);

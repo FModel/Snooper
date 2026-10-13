@@ -109,7 +109,8 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
                     command,
                     component.CastShadow,
                     component.DrawDistance,
-                    component.IsOutlined);
+                    component.IsOutlined,
+                    component.Bounds);
 
                 drawAllocations[d++] = new DrawBufferAllocation(buffer.Add(command, draw, new PerDrawCulled(geometryHandle, section), (uint) count), bufferType, section.MaterialIndex, (uint) count);
             }
@@ -169,6 +170,17 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         {
             _instanceData.QueueUpdate(metadata.InstanceAllocation, component.GetPerInstanceData());
             component.MarkClean(DirtyFlags.InstanceData);
+        }
+    }
+
+    public void UpdateBounds(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
+    {
+        if (component.Metadata is not { } metadata) return;
+
+        var bounds = component.Bounds;
+        foreach (var draw in metadata.DrawAllocations)
+        {
+            _commands.GetBuffer(draw.BufferType).StaticData.UpdateCustom(draw.Allocation.Static, bounds, PerDrawStatic.BoundsOffset);
         }
     }
 

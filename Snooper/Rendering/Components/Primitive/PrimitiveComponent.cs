@@ -38,6 +38,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public ResourcesMetadata? Metadata { get; internal set; }
 
+    public virtual CullingBounds Bounds => Descriptor.Bounds;
+
     public abstract MaterialSection[] Materials { get; }
 
     private bool? _isOpaque;
@@ -156,7 +158,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         var right = Vector3.Transform(Settings.RightVector, rotation);
         var up = Vector3.Transform(Settings.UpVector, rotation);
 
-        var center = Vector3.Transform(Descriptor.Bounds.Center, GizmoMatrix);
+        var center = Vector3.Transform(Bounds.Center, GizmoMatrix);
 
         var distance = 0f;
         for (var i = 0; i < 8; i++)
@@ -173,9 +175,10 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     private Vector3 GetBoundsCorner(int index)
     {
-        var extents = Descriptor.Bounds.Extents;
+        var bounds = Bounds;
+        var extents = bounds.Extents;
 
-        return Descriptor.Bounds.Center + new Vector3(
+        return bounds.Center + new Vector3(
             (index & 1) == 0 ? -extents.X : extents.X,
             (index & 2) == 0 ? -extents.Y : extents.Y,
             (index & 4) == 0 ? -extents.Z : extents.Z);
@@ -289,7 +292,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         void DrawMesh()
         {
             EditorUI.Text("Name", Descriptor.Name);
-            EditorUI.Text("Bounds", Descriptor.Bounds.BoundsFormatted);
+            EditorUI.Text("Bounds", Bounds.BoundsFormatted);
             EditorUI.Text("Shadow", CastShadow ? "Cast" : "None");
             if (DrawDistance != Vector2.Zero)
             {

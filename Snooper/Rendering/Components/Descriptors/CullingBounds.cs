@@ -1,27 +1,20 @@
 ﻿using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Objects.Core.Math;
 
 namespace Snooper.Rendering.Components.Descriptors;
 
-public readonly struct CullingBounds : ICloneable
+[StructLayout(LayoutKind.Sequential)]
+public readonly struct CullingBounds
 {
     public readonly Vector3 Center;
     public readonly Vector3 Extents;
-    public readonly string BoundsFormatted;
-
-    private CullingBounds(CullingBounds other)
-    {
-        Center = other.Center;
-        Extents = other.Extents;
-        BoundsFormatted = other.BoundsFormatted;
-    }
 
     public CullingBounds(Vector3 center, Vector3 extents)
     {
         Center = center;
         Extents = extents;
-        BoundsFormatted = GetBoundsFormatted();
     }
 
     public CullingBounds(Vector3 extents) : this(Vector3.Zero, extents)
@@ -41,8 +34,9 @@ public readonly struct CullingBounds : ICloneable
 
         Center = new Vector3(center.X, center.Z, center.Y);
         Extents = new Vector3(extents.X, extents.Z, extents.Y);
-        BoundsFormatted = GetBoundsFormatted();
     }
+
+    public string BoundsFormatted => GetBoundsFormatted();
 
     private string GetBoundsFormatted()
     {
@@ -59,5 +53,4 @@ public readonly struct CullingBounds : ICloneable
     public static implicit operator CullingBounds(FBox box) => new(box);
 
     public override string ToString() => $"Center: {Center}, Extents: {Extents}";
-    public object Clone() => new CullingBounds(this);
 }

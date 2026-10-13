@@ -34,6 +34,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     public SkeletonDescriptor? Skeleton { get; }
     public ISocketDescriptor?[] Sockets { get; }
     public MorphDescriptor? Morphs { get; }
+    public float[]? BoneSphereRadii { get; }
 
     private PrimitiveDescriptor(PrimitiveDescriptor<TVertex> other)
     {
@@ -41,7 +42,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = other.Path;
         Guid = other.Guid;
         ColorMode = other.ColorMode;
-        Bounds = (CullingBounds) other.Bounds.Clone();
+        Bounds = other.Bounds;
         Lods = [];
         Skeleton = null;
         Sockets = [];
@@ -108,6 +109,27 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         {
             owner.PopulateMorphTargetVerticesData();
             Morphs = MorphDescriptor.Create(morphTargets, Lods);
+        }
+
+        BoneSphereRadii = GetBoneSphereRadii(dto.LODs[0].Vertices, Skeleton.BindPoseMatrices);
+
+        float[] GetBoneSphereRadii(SkinnedMeshVertex[] vertices, Matrix4x4[] bindPose)
+        {
+            var radii = new float[bindPose.Length];
+            foreach (var vertex in vertices)
+            {
+                var position = new Vector3(vertex.Position.X, vertex.Position.Z, vertex.Position.Y) * Settings.GlobalScale;
+
+                var total = 0;
+                foreach (var influence in vertex.Influences) total += influence.RawWeight;
+
+                foreach (var influence in vertex.Influences)
+                {
+                    if (influence.RawWeight * 4 < total || influence.Bone >= radii.Length) continue;
+                    radii[influence.Bone] = MathF.Max(radii[influence.Bone], Vector3.Distance(position, bindPose[influence.Bone].Translation));
+                }
+            }
+            return radii;
         }
     }
 

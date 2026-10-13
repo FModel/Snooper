@@ -304,6 +304,8 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         {
             _poseData.Update(poseAllocation, pose.BoneMatrices);
         }
+
+        Resources.UpdateBounds(component);
         component.MarkClean(DirtyFlags.Animation);
 
         foreach (var child in component.Children)

@@ -117,7 +117,7 @@ public readonly struct DrawAllocation(BufferAllocation command, BufferAllocation
     public readonly BufferAllocation? Chunked = chunked;
 }
 
-public readonly struct PerDrawStatic(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, DrawElementsIndirectCommand command, bool castShadow, Vector2 drawDistances, bool outlined)
+public readonly struct PerDrawStatic(GeometryHandle geometry, uint sectionId, uint baseMaterial, SectionDescriptor section, uint pickingId, DrawElementsIndirectCommand command, bool castShadow, Vector2 drawDistances, bool outlined, CullingBounds bounds)
 {
     public readonly uint MeshIndex = geometry.MeshIndex; // index into the per-mesh buffers (PerMeshData, PrimitiveOffsets)
     public readonly uint SectionId = sectionId; // section index in the current model (0-X)
@@ -129,9 +129,11 @@ public readonly struct PerDrawStatic(GeometryHandle geometry, uint sectionId, ui
     public readonly float MinDrawDistance = drawDistances.X;
     public readonly float MaxDrawDistance = drawDistances.Y;
     public readonly uint Outlined = outlined ? 1u : 0u; // 0 or 1
+    public readonly CullingBounds Bounds = bounds;
 
     public static readonly int OriginalInstanceCountOffset = (int)Marshal.OffsetOf<PerDrawStatic>(nameof(OriginalInstanceCount));
     public static readonly int OutlinedOffset = (int)Marshal.OffsetOf<PerDrawStatic>(nameof(Outlined));
+    public static readonly int BoundsOffset = (int)Marshal.OffsetOf<PerDrawStatic>(nameof(Bounds));
 }
 
 public readonly struct PerDrawCulled(GeometryHandle geometry, SectionDescriptor section)
