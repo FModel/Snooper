@@ -2,7 +2,6 @@ using Serilog;
 using Serilog.Core;
 using System.Reflection;
 using CUE4Parse.FileProvider;
-using ImGuiNET;
 using Snooper.Core.Containers;
 using Snooper.Core.Hardware;
 using Snooper.Core.Systems;
@@ -11,7 +10,6 @@ using Snooper.Rendering;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components;
-using Snooper.Rendering.Systems;
 using Snooper.UI;
 
 namespace Snooper.Core.Managers;
@@ -21,6 +19,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     private static Func<ActorSystem, bool> IsSystemNotOfType(Type type) => x => x.GetType() != type;
 
     public uint FragmentColor = FragmentColorMode.Disabled;
+    public bool UseDiffuseColor = fileProvider.ProjectName is not ("DeadByDaylight" or "CosmicShake");
     public readonly WireframeOptions Wireframe = new();
 
     public int ActorCount { get; private set; }

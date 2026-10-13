@@ -52,6 +52,7 @@ public abstract class PrimitiveSystem<TVertex, TComponent, TInstanceData, TPerMa
         shader.SetUniform("uViewMatrix", camera.ViewMatrix);
         shader.SetUniform("uProjectionMatrix", camera.ProjectionMatrix);
         shader.SetUniform("uFragmentColorMode", ActorManager?.FragmentColor ?? FragmentColorMode.Disabled);
+        shader.SetUniform("uUseDiffuseColor", ActorManager?.UseDiffuseColor ?? true);
         var wireframe = ActorManager?.Wireframe;
         var wired = wireframe is { Enabled: true };
         shader.SetUniform("uWireframe", wired);

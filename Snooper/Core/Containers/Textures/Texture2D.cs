@@ -53,7 +53,7 @@ public class Texture2D(int width, int height,
 
         Prepare(); // does nothing when a worker already did, or when there is no asset behind this texture
         if (_levels is null) return;
-        Reset(Width, Height, _levels, !_terrain);
+        Reset(Width, Height, _levels, !_terrain && FormatInfo is not CompressedTextureFormatInfo); // no mips for a compressed texture cooked without them, the gpu decompresses and re-compresses every level on the cpu, it's laggy
         _levels = null;
 
         if (!_terrain) Swizzle();

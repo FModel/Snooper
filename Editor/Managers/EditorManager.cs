@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.FileProvider;
 using Editor.Modals;
+using ImGuiNET;
 using OpenTK.Windowing.Desktop;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -44,6 +45,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
 
     internal IReadOnlyList<IViewportCard> Cards => field ??= [_profilerOverlay, _hardwareOverlay];
     internal bool IsSkeletonTreeOpen => _skeletonTree.IsOpen;
+    internal bool _resetLayout;
 
     public override void Update(float delta)
     {
@@ -52,9 +54,16 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         _viewportAxis.Update(delta);
     }
 
+
     protected override void RenderInterface()
     {
         _mainMenuBar.Draw(this);
+
+        if (_resetLayout || !DockBuilder.HasNode(DockSpaceId))
+        {
+            _resetLayout = false;
+            BuildDefaultLayout();
+        }
 
         base.RenderInterface();
 
@@ -72,15 +81,42 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         TexturePickerModal.Instance.Draw();
         MaterialPickerModal.Instance.Draw();
         AddComponentModal.Instance.Draw();
-    }
 
-    private void OpenPanel(string title)
-    {
-        foreach (var panel in Panels)
+        void OpenPanel(string title)
         {
-            if (panel.PanelTitle != title) continue;
-            panel.Focus();
-            break;
+            foreach (var panel in Panels)
+            {
+                if (panel.PanelTitle != title) continue;
+                panel.Focus();
+                break;
+            }
+        }
+
+        void BuildDefaultLayout()
+        {
+            DockBuilder.Reset(DockSpaceId, ImGui.GetMainViewport().WorkSize);
+
+            const float column = 0.25f;
+            const float rest = column / (1f - column);
+
+            var right = DockBuilder.Split(DockSpaceId, ImGuiDir.Right, column, out var left);
+            var inspector = DockBuilder.Split(right, ImGuiDir.Down, 0.5f, out var hierarchy);
+            var bottom = DockBuilder.Split(left, ImGuiDir.Down, 0.15f, out var top);
+            var side = DockBuilder.Split(top, ImGuiDir.Right, rest, out var centre);
+            var logs = DockBuilder.Split(bottom, ImGuiDir.Right, rest, out var timeline);
+
+            DockBuilder.Dock(Settings.ViewportWindow, centre);
+            DockBuilder.Dock(Settings.MemoryWindow, centre);
+            DockBuilder.Dock(Settings.TextureInspectorWindow, centre);
+            DockBuilder.Dock(Settings.MorphTargetsWindow, side);
+            DockBuilder.Dock(Settings.MaterialInspectorWindow, side);
+            DockBuilder.Dock(Settings.SkeletonWindow, side);
+            DockBuilder.Dock(Settings.TimelineWindow, timeline);
+            DockBuilder.Dock(Settings.LogWindow, logs);
+            DockBuilder.Dock(Settings.SceneHierarchyWindow, hierarchy);
+            DockBuilder.Dock(Settings.SettingsWindow, hierarchy);
+            DockBuilder.Dock(Settings.InspectorWindow, inspector);
+            DockBuilder.Finish(DockSpaceId);
         }
     }
 

@@ -2,7 +2,6 @@ using System.Numerics;
 using CUE4Parse_Conversion.Animations;
 using CUE4Parse_Conversion.Writers.ActorX.Structs.Animations;
 using CUE4Parse.UE4.Assets.Exports.Animation;
-using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Engine.Curves;
 using Snooper.Rendering.Components.Transforms;
 
@@ -16,6 +15,8 @@ public sealed class SequenceDescriptor : SequenceBaseDescriptor
     public readonly float SourceLength;
     public readonly float FrameRate;
     public readonly float RateScale;
+    public readonly bool EnableRootMotion;
+    public readonly ERootMotionRootLock RootLock;
 
     /// <summary>
     /// How many keys the tracks actually carry, against the <see cref="FrameCount"/> the sequence declares.
@@ -35,6 +36,8 @@ public sealed class SequenceDescriptor : SequenceBaseDescriptor
         FrameCount = _sequence.NumFrames;
         SourceLength = _sequence.OriginalSequence.SequenceLength;
         RateScale = _sequence.OriginalSequence.RateScale;
+        EnableRootMotion = owner.bEnableRootMotion || owner.bForceRootLock;
+        RootLock = owner.RootMotionRootLock;
 
         // the last key lands on the length rather than a frame past it, so the rate is taken over one
         // fewer. Off by that one, a sequence runs a frame fast and then holds its last key to make the
@@ -61,15 +64,28 @@ public sealed class SequenceDescriptor : SequenceBaseDescriptor
 
     public bool IsAnimatingBone(uint skeletonIndex) => _sequence.OriginalSequence.FindTrackForBoneIndex((int) skeletonIndex) >= 0;
 
-    public Matrix4x4 GetBoneMatrix(uint skeletonIndex, float localTime, FTransform bindBonePose)
+    public Matrix4x4 GetBoneMatrix(uint skeletonIndex, float localTime, BoneDescriptor bone)
     {
-        var boneOrientation = bindBonePose.Rotation;
-        var bonePosition = bindBonePose.Translation;
-        var boneScale = bindBonePose.Scale3D;
+        if (!EnableRootMotion || !bone.IsRoot) return Sample(localTime).ToMatrix();
 
-        // we are indexing into tracks but tracks are added for each skeleton bone
-        _sequence.Tracks[(int) skeletonIndex].GetBoneTransform(localTime * FrameRate, FrameCount, ref boneOrientation, ref bonePosition, ref boneScale);
-        _sequence.RetargetBoneTransform((int) skeletonIndex, bindBonePose, ref boneOrientation, ref bonePosition, ref boneScale);
-        return new Transform(bonePosition, boneOrientation, boneScale).ToMatrix();
+        return RootLock switch
+        {
+            ERootMotionRootLock.RefPose => bone.BindPoseLocalMatrix,
+            ERootMotionRootLock.AnimFirstFrame => Sample(0f).ToMatrix(),
+            _ => Matrix4x4.Identity
+        };
+
+        Transform Sample(float time)
+        {
+            var bindBonePose = bone._transform;
+            var boneOrientation = bindBonePose.Rotation;
+            var bonePosition = bindBonePose.Translation;
+            var boneScale = bindBonePose.Scale3D;
+
+            // we are indexing into tracks but tracks are added for each skeleton bone
+            _sequence.Tracks[(int) skeletonIndex].GetBoneTransform(time * FrameRate, FrameCount, ref boneOrientation, ref bonePosition, ref boneScale);
+            _sequence.RetargetBoneTransform((int) skeletonIndex, bindBonePose, ref boneOrientation, ref bonePosition, ref boneScale);
+            return new Transform(bonePosition, boneOrientation, boneScale);
+        }
     }
 }

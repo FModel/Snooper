@@ -17,7 +17,7 @@ public class WorldActor : Actor
     private readonly Dictionary<string, string> _dataLayers = new();
     private readonly HashSet<string> _visibleDataLayers = [];
 
-    public WorldActor(UWorld world, IProgress<string>? progress = null) : base(world)
+    public WorldActor(UWorld world, IProgress<string>? progress = null, CancellationToken ct = default) : base(world)
     {
         Components.Add(new SpatialComponent(null, "WorldRoot"));
 
@@ -32,12 +32,13 @@ public class WorldActor : Actor
         var length = level.Actors.Length;
         for (var i = 0; i < length; i++)
         {
+            ct.ThrowIfCancellationRequested();
             if (level.Actors[i] is not { } ptr || ptr.IsNull || !ptr.TryLoad<UObject>(out var data))
             {
                 continue;
             }
 
-            progress?.Report($"{world.Name} ... Actors {i}/{length}");
+            progress?.Report($"{world.Name} ... Actors {i + 1}/{length}");
             var a = new LevelActor(data, parents);
             if (a.RootComponent is not null)
             {
@@ -45,8 +46,13 @@ public class WorldActor : Actor
             }
         }
 
-        foreach (var actor in created)
+        length = created.Count;
+        for (var i = 0; i < length; i++)
         {
+            ct.ThrowIfCancellationRequested();
+            var actor = created[i];
+            progress?.Report($"{world.Name} ... Actor Hierarchy {i + 1}/{length}");
+
             var parent = actor.ProcessEnqueuedComponents(parents);
             if (parent is { IsNull: false })
             {
@@ -71,7 +77,8 @@ public class WorldActor : Actor
         length = world.StreamingLevels?.Length ?? 0;
         for (var i = 0; i < length; i++)
         {
-            progress?.Report($"{world.Name} ... Streaming Levels {i}/{length}");
+            ct.ThrowIfCancellationRequested();
+            progress?.Report($"{world.Name} ... Streaming Levels {i + 1}/{length}");
             Process(world.StreamingLevels![i]); // TODO: these fucking streaming levels can reference each other
         }
 
@@ -79,7 +86,7 @@ public class WorldActor : Actor
         {
             if (!level.WorldDataLayers.TryLoad<AWorldDataLayers>(out var worldDataLayers)) return;
 
-            progress?.Report($"{world.Name} ... Data Layers");
+            progress?.Report($"{world.Name} ... Processing Data Layers");
             foreach (var instancePtr in worldDataLayers.DataLayerInstances)
             {
                 if (!instancePtr.TryLoad<UDataLayerInstance>(out var instance)) continue;
@@ -100,7 +107,7 @@ public class WorldActor : Actor
                 worldSettings.WorldPartition == null || !worldSettings.WorldPartition.TryLoad<UWorldPartition>(out var worldPartition))
                 return;
 
-            progress?.Report($"{world.Name} ... World Partition");
+            progress?.Report($"{world.Name} ... Processing World Partition");
             Children.Add(new PartitionActor(worldPartition, _visibleDataLayers));
         }
     }

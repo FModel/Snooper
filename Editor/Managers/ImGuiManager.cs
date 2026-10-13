@@ -304,7 +304,8 @@ public abstract class ImGuiManager : SceneManager
         }
     }
 
-    protected virtual void RenderInterface() => ImGui.DockSpaceOverViewport();
+    protected static uint DockSpaceId => ImGui.GetID("Snooper.DockSpace");
+    protected virtual void RenderInterface() => ImGui.DockSpaceOverViewport(DockSpaceId, ImGui.GetMainViewport());
 
     public override void Dispose()
     {

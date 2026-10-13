@@ -25,6 +25,8 @@ public class SettingsWidget : PanelWidget
             EditorUI.Property("Fragment Color");
             EditorUI.FragmentColorCombo("##FragmentColor", ref editor.FragmentColor);
 
+            EditorUI.Checkbox("Diffuse Color", ref editor.UseDiffuseColor);
+
             ImGui.BeginDisabled(lightSystem is not { IsSupported: true });
             var sceneLights = lightSystem?.UseSceneLights ?? false;
             if (EditorUI.Checkbox("Scene Lights", ref sceneLights)) lightSystem!.UseSceneLights = sceneLights;

@@ -5,6 +5,7 @@ using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Transforms;
+using Snooper.Rendering.Components.Visualization;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
 
@@ -186,6 +187,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
 
         MarkClean(DirtyFlags.Projection);
     }
+
+    protected override DebugComponent CreateDebugVisualization() => new CameraComponentVisualization(this);
 
     public override string Icon => "\uf030";
 

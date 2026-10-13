@@ -25,6 +25,7 @@ public static class Settings
     public static readonly Vector3 SpotLight = new(0.05f, 0.80f, 0.75f);
     public static readonly Vector3 RectLight = new(0.45f, 0.20f, 0.95f);
     public static readonly Vector3 DirectionalLight = new(0.95f, 0.80f, 0.10f);
+    public static readonly Vector3 Camera = new(0.15f, 0.15f, 0.15f);
 
     public const uint AxisColorX = 0xFF_55_3E_E9;
     public const uint AxisColorY = 0xFF_28_CE_8C;

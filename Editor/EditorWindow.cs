@@ -127,6 +127,7 @@ public partial class EditorWindow : GameWindow
 
     public void Hide()
     {
+        Manager.IsFullscreen = false;
         IsVisible = false;
         IsEventDriven = true;
     }

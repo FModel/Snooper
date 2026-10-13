@@ -289,7 +289,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
                         !animation.TryGetSegment(skeletonIndex, time, out var segment))
                         continue;
 
-                    pose.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, pose.Skeleton.BoneDescriptors[boneIndex]._transform);
+                    pose.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, pose.Skeleton.BoneDescriptors[boneIndex]);
                 }
             }
             else

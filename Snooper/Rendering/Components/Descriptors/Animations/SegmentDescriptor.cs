@@ -1,6 +1,5 @@
 using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Animation;
-using CUE4Parse.UE4.Objects.Core.Math;
 
 namespace Snooper.Rendering.Components.Descriptors.Animations;
 
@@ -49,5 +48,5 @@ public sealed class SegmentDescriptor
     }
     public float FromLocalTime(float localTime) => PlayRate > 0f ? StartPos + (localTime - SourceStart) / PlayRate : StartPos;
 
-    public Matrix4x4 GetBoneMatrix(uint skeletonIndex, float time, FTransform bindBonePose) => Sequence.GetBoneMatrix(skeletonIndex, ToLocalTime(time), bindBonePose);
+    public Matrix4x4 GetBoneMatrix(uint skeletonIndex, float time, BoneDescriptor bone) => Sequence.GetBoneMatrix(skeletonIndex, ToLocalTime(time), bone);
 }

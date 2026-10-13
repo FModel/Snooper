@@ -30,6 +30,8 @@ layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMate
     PerMaterialData uMaterialDataBuffer[];
 };
 
+uniform bool uUseDiffuseColor;
+
 // every function takes the material's index and reads the fields it needs from the buffer: passing the struct
 // by value copies twelve texture handles and twenty floats into registers per fragment, which costs occupancy
 
@@ -132,7 +134,7 @@ LayerData SampleLayer(uint material, uint layer, vec2 uv)
 
     // Sample diffuse
     result.diffuse = SampleLayerDiffuse(material, layer, uv);
-    result.diffuse.rgb *= GetLayerDiffuseColor(material, layer);
+    if (uUseDiffuseColor) result.diffuse.rgb *= GetLayerDiffuseColor(material, layer);
 
     // Sample normal
     result.normal = SampleLayerNormal(material, layer, uv);
