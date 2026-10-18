@@ -49,6 +49,9 @@ public sealed partial class MaterialNode
     private readonly float? _opacityMaskClipValue;
     public float OpacityMaskClipValue => _opacityMaskClipValue ?? Parent?.OpacityMaskClipValue ?? DefaultOpacityMaskClipValue;
 
+    private ulong? _propertyConnectedMask;
+    public ulong? PropertyConnectedMask => _propertyConnectedMask ?? Parent?.PropertyConnectedMask;
+
     private readonly Dictionary<string, TextureParameter> _textures = [];
     private readonly List<TextureParameter> _referencedTextures = [];
     private readonly Dictionary<string, float> _scalars = [];
@@ -180,6 +183,9 @@ public sealed partial class MaterialNode
             var data = legacy ? nested : cached;
             var infos = legacy ? "ParameterInfos" : "ParameterInfoSet";
 
+            if (data.TryGetValue(out ulong propertyConnectedMask, "PropertyConnectedMask")) _propertyConnectedMask = propertyConnectedMask;
+            else if (data.TryGetValue(out uint propertyConnectedBitmask, "PropertyConnectedBitmask")) _propertyConnectedMask = propertyConnectedBitmask;
+
             if (!data.TryGetAllValues(out FStructFallback[] entries, "RuntimeEntries")) return;
 
             if (entries.Length > 0 && data.TryGetValue(out float[] scalars, "ScalarValues") &&
@@ -235,6 +241,8 @@ public sealed partial class MaterialNode
             }
         }
     }
+
+    public bool IsPropertyConnected(EMaterialProperty property) => PropertyConnectedMask is not { } mask || mask == 0 || ((mask >> (int)property) & 0x1) != 0;
 
     public bool TryGetTexture([MaybeNullWhen(false)] out UTexture texture, params string[] names)
     {
@@ -408,7 +416,7 @@ public sealed partial class MaterialNode
         {
             if (rows.Count == 0) continue;
 
-            if (!ImGui.TreeNodeEx($"{title} ({rows.Count})##{title}", (open ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None) | ImGuiTreeNodeFlags.SpanAvailWidth)) continue;
+            if (!ImGui.TreeNodeEx($"{title} ({rows.Count})###{title}", (open ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None) | ImGuiTreeNodeFlags.SpanAvailWidth)) continue;
             if (!ImGui.BeginTable($"##{title}", 2))
             {
                 ImGui.TreePop();
@@ -447,6 +455,7 @@ public sealed partial class MaterialNode
                 ("Switches", true, node => node._switches.Select(x => new Entry(x.Key, x.Value.ToString()))),
                 ("Vectors", true, node => node._vectors.Select(x => new Entry(x.Key, $"{x.Value.R:0.###}, {x.Value.G:0.###}, {x.Value.B:0.###}, {x.Value.A:0.###}", Color: x.Value))),
                 ("Textures", true, node => node._textures.Select(x => new Entry(x.Key, x.Value.Name, x.Value.Path))),
+                ("Connected", false, Connected),
                 ("Referenced", false, node => node._referencedTextures.Select(x => new Entry(x.Name, string.Empty, x.Path))),
             };
 
@@ -528,6 +537,24 @@ public sealed partial class MaterialNode
             if (node._blendMode is { } blendMode) yield return new Entry("BlendMode", blendMode.ToString());
             if (node._shadingModel is { } shadingModel) yield return new Entry("ShadingModel", shadingModel.ToString());
             if (node._twoSided is { } twoSided) yield return new Entry("TwoSided", twoSided.ToString());
+        }
+
+        static IEnumerable<Entry> Connected(MaterialNode node)
+        {
+            if (node._propertyConnectedMask is null or 0) yield break;
+
+            var names = Enum.GetNames<EMaterialProperty>();
+            var values = Enum.GetValues<EMaterialProperty>();
+            for (var i = 0; i < names.Length; i++)
+            {
+                if (values[i] >= EMaterialProperty.MP_MAX ||
+                    names[i] is nameof(EMaterialProperty.MP_LastCustomizedUVs) or nameof(EMaterialProperty.MP_NumCustomizedUVs)) continue;
+
+                var connected = node.IsPropertyConnected(values[i]);
+                if (!connected) continue;
+
+                yield return new Entry(names[i][3..], connected.ToString());
+            }
         }
     }
 

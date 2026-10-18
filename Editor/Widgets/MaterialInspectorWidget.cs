@@ -85,7 +85,7 @@ public class MaterialInspectorWidget : PanelWidget
         if (selectionChanged && isSelected) ImGui.SetScrollHereY(0.5f);
         if (!open) return;
 
-        ImGui.PushID(section.SectionId);
+        ImGui.PushID(slot);
         ImGui.Indent();
         var container = section.MaterialDataContainer;
         if (container is null && parsed is null)

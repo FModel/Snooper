@@ -1,3 +1,4 @@
+using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Engine;
@@ -310,6 +311,24 @@ public class BlueprintActor : UnrealActor
         {
             childRoot.Relation = component;
             childRoot.SetLocalTransform(Transform.Identity);
+        }
+    }
+
+    public override void Export(ExportSession session, CancellationToken ct = default)
+    {
+        if (ActorManager is not { } manager || string.IsNullOrEmpty(Path) || string.IsNullOrEmpty(Name))
+        {
+            base.Export(session, ct);
+            return;
+        }
+
+        try
+        {
+            session.Add(manager.FileProvider.LoadPackageObject(Path, Name));
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "Failed to export blueprint actor {Actor}", Name);
         }
     }
 }

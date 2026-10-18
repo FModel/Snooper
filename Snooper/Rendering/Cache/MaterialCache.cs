@@ -127,6 +127,11 @@ public static class MaterialCache
             break;
         }
 
+        var normalWired = node.IsPropertyConnected(EMaterialProperty.MP_Normal);
+        var specularWired = node.IsPropertyConnected(EMaterialProperty.MP_Specular);
+        var metallicWired = node.IsPropertyConnected(EMaterialProperty.MP_Metallic);
+        var roughnessWired = node.IsPropertyConnected(EMaterialProperty.MP_Roughness);
+
         var layers = new List<MaterialLayer>();
         for (var layerIndex = 0; layerIndex < maxLayers && layerIndex < CMaterialParams2.Diffuse.Length; layerIndex++)
         {
@@ -137,11 +142,11 @@ public static class MaterialCache
                 node.TryGetTexture(out diffuse, EMaterialTextureKind.Diffuse);
 
             var normal = layerTextureData?.Normal.Load<UTexture>();
-            if (normal == null && !node.TryGetTexture(out normal, CMaterialParams2.Normals[layerIndex]) && layerIndex == 0)
+            if (normal == null && normalWired && !node.TryGetTexture(out normal, CMaterialParams2.Normals[layerIndex]) && layerIndex == 0)
                 node.TryGetTexture(out normal, EMaterialTextureKind.Normal);
 
             var specular = layerTextureData?.Specular.Load<UTexture>();
-            if (specular == null && !node.TryGetTexture(out specular, CMaterialParams2.SpecularMasks[layerIndex]) && layerIndex == 0)
+            if (specular == null && (specularWired || metallicWired || roughnessWired) && !node.TryGetTexture(out specular, CMaterialParams2.SpecularMasks[layerIndex]) && layerIndex == 0)
                 node.TryGetTexture(out specular, EMaterialTextureKind.SpecularMasks);
 
             var hasColor = false;
@@ -165,12 +170,6 @@ public static class MaterialCache
             }
             else diffuseColor = diffuseColor.AsTint(); // so it never darkens what the texture shows
 
-            var roughness = Vector2.UnitY;
-            if (node.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin"))
-                roughness.X = roughnessMin;
-            if (node.TryGetScalar(out var roughnessMax, "RoughnessMax", "SpecRoughnessMax"))
-                roughness.Y = roughnessMax;
-
             Texture2D? specularTex = null;
             var missing = EMaskChannels.None;
             if (specular != null)
@@ -189,11 +188,21 @@ public static class MaterialCache
                 {
                     specularTex.SwizzlePerName(specular.Name, node.ProjectName.ToUpperInvariant(), out missing);
                 }
+
+                if (!specularWired) missing |= EMaskChannels.Specular;
+                if (!metallicWired) missing |= EMaskChannels.Metallic;
             }
 
-            if ((specular == null || missing.HasFlag(EMaskChannels.Roughness)) && node.TryGetScalar(out var flatRoughness, "Roughness", "SpecRoughness", "SpecularRoughness", "Rough"))
+            var roughness = new Vector2(0.5f);
+            if (roughnessWired)
             {
-                roughness.Y = flatRoughness;
+                roughness = Vector2.UnitY;
+                if (node.TryGetScalar(out var roughnessMin, "RoughnessMin", "SpecRoughnessMin", "Min Roughness"))
+                    roughness.X = roughnessMin;
+                if (node.TryGetScalar(out var roughnessMax, "RoughnessMax", "SpecRoughnessMax", "Max Roughness"))
+                    roughness.Y = roughnessMax;
+                if ((specular == null || missing.HasFlag(EMaskChannels.Roughness)) && node.TryGetScalar(out var flatRoughness, "Roughness", "SpecRoughness", "SpecularRoughness", "Rough"))
+                    roughness.Y = flatRoughness;
             }
 
             layers.Add(new MaterialLayer(diffuse != null ? new Texture2D(diffuse) : null, normal != null ? new Texture2D(normal) : null, specularTex, roughness, diffuseColor, missing));
@@ -205,12 +214,14 @@ public static class MaterialCache
             : new MaterialDataContainer(materialName, layers.ToArray(), node.BlendMode, node.ShadingModel,
                 node.BlendMode switch
                 {
+                    EBlendMode.BLEND_Masked when !node.IsPropertyConnected(EMaterialProperty.MP_OpacityMask) => 0,
                     EBlendMode.BLEND_Masked => node.OpacityMaskClipValue,
+                    EBlendMode.BLEND_Translucent when !node.IsPropertyConnected(EMaterialProperty.MP_Opacity) => 1,
                     EBlendMode.BLEND_Translucent when node.TryGetScalar(out var opacityValue, "Opacity") => opacityValue,
                     _ => -1
                 },
-                node.TryGetScalar(out var specularValue, "Specular", "Spec") ? specularValue : 0.5f,
-                node.TryGetScalar(out var metallic, "Metallic", "Metal") ? metallic : 0f);
+                specularWired && node.TryGetScalar(out var specularValue, "Specular", "Spec", "Base Specular") ? specularValue : 0.5f,
+                metallicWired && node.TryGetScalar(out var metallic, "Metallic", "Metal") ? metallic : 0f);
     }
 
     private static bool TryGetPath([NotNullWhen(true)] FPackageIndex? index, [MaybeNullWhen(false)] out string path)
