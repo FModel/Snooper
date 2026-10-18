@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports.Component;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers;
+using Snooper.Core.Managers;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
@@ -186,6 +187,13 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
         ProjectionMatrix = projection * reverse;
 
         MarkClean(DirtyFlags.Projection);
+    }
+
+    protected override void BeginPlay(ActorManager scene)
+    {
+        base.BeginPlay(scene);
+
+        SetDebugVisualizationVisibility(true);
     }
 
     protected override DebugComponent CreateDebugVisualization() => new CameraComponentVisualization(this);

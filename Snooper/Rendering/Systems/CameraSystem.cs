@@ -14,13 +14,6 @@ public sealed class CameraSystem : ActiveComponentSystem<CameraComponent>
         return false;
     }
 
-    protected override void OnActorComponentAdded(CameraComponent component)
-    {
-        base.OnActorComponentAdded(component);
-
-        component.SetDebugVisualizationVisibility(true);
-    }
-
     protected override void OnComponentUpdate(CameraComponent component, float delta)
     {
         if (component.IsDirty(DirtyFlags.Projection))
