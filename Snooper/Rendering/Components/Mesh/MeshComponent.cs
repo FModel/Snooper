@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Dto;
@@ -77,7 +77,7 @@ public struct PerMaterialMeshData : IPerMaterialData
 
 public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData, PerMaterialMeshData>
 {
-    private readonly FPackageIndex?[] _materials = [];
+    private readonly FSoftObjectPath[] _materials = [];
     private readonly List<UBuildingTextureData?> _textureData = [];
 
     public sealed override MaterialSection[] Materials { get; }
@@ -86,19 +86,20 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     protected MeshComponent(MeshComponent other) : base(other)
     {
+        _materials = other._materials;
         Materials = [..other.Materials];
     }
 
     protected MeshComponent(FPackageIndex?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        _materials = [..materials];
+        _materials = materials.Select(GetMaterialPath).ToArray();
 
         Materials = new MaterialSection[_materials.Length];
     }
 
     protected MeshComponent(FPackageIndex?[] materials, UMeshComponent component) : base(component)
     {
-        _materials = [..materials];
+        _materials = materials.Select(GetMaterialPath).ToArray();
 
         var overrideMaterials = component.OverrideMaterials;
         for (var i = 0; i < overrideMaterials.Length; i++)
@@ -106,16 +107,24 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             if (i >= _materials.Length) break;
             if (overrideMaterials[i] is { IsNull: false } overrideMaterial)
             {
-                _materials[i] = overrideMaterial;
+                _materials[i] = GetMaterialPath(overrideMaterial);
             }
         }
 
         if (_materials.Length == 0)
         {
-            _materials = [new FPackageIndex()];
+            _materials = [default];
         }
 
         Materials = new MaterialSection[_materials.Length];
+    }
+
+    // So we don't keep decoded vertex buffers
+    private static FSoftObjectPath GetMaterialPath(FPackageIndex? material)
+    {
+        var path = material?.ResolvedObject?.GetPathName() ?? "None";
+        var subObject = path.IndexOf(':');
+        return subObject < 0 ? new FSoftObjectPath(path, string.Empty) : new FSoftObjectPath(path[..subObject], path[(subObject + 1)..]);
     }
 
     protected ISocketDescriptor? FindSocket(string name) => Descriptor.Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
@@ -157,8 +166,8 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             ThreadManager.Enqueue(() =>
             {
                 section.CacheKey = index == 0 && textureData.Length > 0
-                    ? MaterialCache.GetOrCreateKeyFromTextureData(textureData, _materials[index], layerCount)
-                    : MaterialCache.GetOrCreateKey(_materials[index], layerCount);
+                    ? MaterialCache.GetOrCreateKeyFromTextureData(textureData, _materials[index], scene.FileProvider, layerCount)
+                    : MaterialCache.GetOrCreateKey(_materials[index], scene.FileProvider, layerCount);
             });
         }
     }

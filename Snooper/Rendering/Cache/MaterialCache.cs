@@ -1,3 +1,4 @@
+using CUE4Parse.FileProvider;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
@@ -31,14 +32,15 @@ public static class MaterialCache
         return end < 0 ? key[TextureDataPrefix.Length..] : key[TextureDataPrefix.Length..end];
     }
 
-    public static string GetOrCreateKey(FPackageIndex? materialObject, uint layerCount)
+    public static string GetOrCreateKey(FSoftObjectPath materialObject, IFileProvider provider, uint layerCount)
     {
-        if (!TryGetPath(materialObject, out var path)) return string.Empty;
+        if (materialObject.AssetPathName.IsNone) return string.Empty;
+        var path = materialObject.ToString();
 
         var newLazy = new Lazy<(MaterialNode?, MaterialDataContainer?)>(() =>
         {
             Log.Debug("Cache miss for material {Path}, creating data container", path);
-            if (GetNode(materialObject) is not { } node)
+            if (GetNode(materialObject, provider) is not { } node)
             {
                 Log.Warning("Material {Path} could not be loaded or is not valid.", path);
                 return (null, null);
@@ -50,9 +52,10 @@ public static class MaterialCache
         return path;
     }
 
-    public static string GetOrCreateKeyFromTextureData(UBuildingTextureData?[] textureDataLayers, FPackageIndex? materialObject, uint layerCount)
+    public static string GetOrCreateKeyFromTextureData(UBuildingTextureData?[] textureDataLayers, FSoftObjectPath materialObject, IFileProvider provider, uint layerCount)
     {
-        if (!TryGetPath(materialObject, out var path)) return string.Empty;
+        if (materialObject.AssetPathName.IsNone) return string.Empty;
+        var path = materialObject.ToString();
 
         var dataHash = string.Join("|", textureDataLayers.Select(t => t?.GetPathName() ?? "null"));
         var key = $"{TextureDataPrefix}{path}{TextureDataSeparator}{dataHash}";
@@ -71,7 +74,7 @@ public static class MaterialCache
                 }
             }
 
-            node ??= GetNode(materialObject);
+            node ??= GetNode(materialObject, provider);
             if (node == null)
             {
                 Log.Warning("Building texture data has no override material and no base material");
@@ -86,10 +89,9 @@ public static class MaterialCache
     }
 
     public static MaterialNode? GetNode(FPackageIndex index)
-    {
-        return TryGetPath(index, out var path) ? GetNode(path, () => index.TryLoad<UUnrealMaterial>(out var material) ? material : null) : null;
-    }
-
+        => TryGetPath(index, out var path) ? GetNode(path, () => index.TryLoad<UUnrealMaterial>(out var material) ? material : null) : null;
+    private static MaterialNode? GetNode(FSoftObjectPath path, IFileProvider provider)
+        => GetNode(path.ToString(), () => path.TryLoad<UUnrealMaterial>(provider, out var material) ? material : null);
     public static MaterialNode? GetNode(string path, Func<UUnrealMaterial?> load)
     {
         var newLazy = new Lazy<MaterialNode?>(() => load() is { } material ? new MaterialNode(material) : null, LazyThreadSafetyMode.ExecutionAndPublication);
