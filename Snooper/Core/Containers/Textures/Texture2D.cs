@@ -70,10 +70,6 @@ public class Texture2D(int width, int height,
         if (owner is null)
             throw new InvalidOperationException($"{Name} has no asset to read from.");
 
-        var mipIndex = owner.GetMipIndexByMaxSize(Bridge.Options.MaxTextureMipSize);
-        if (mipIndex < 0)
-            throw new InvalidOperationException("No suitable mip found for the given max texture size.");
-
         _terrain = owner.LODGroup is TextureGroup.TEXTUREGROUP_Terrain_Heightmap or TextureGroup.TEXTUREGROUP_Terrain_Weightmap;
 
         (_sampling.Min, _sampling.Mag) = _terrain ? (TextureMinFilter.Linear, TextureMagFilter.Linear)
@@ -89,8 +85,13 @@ public class Texture2D(int width, int height,
             _ => TextureWrapMode.Repeat
         };
 
+        var maxSize = Bridge.Options.MaxTextureMipSize;
         if (owner.PlatformData is { FirstMipToSerialize: >= 0, VTData: { } vt } && vt.IsInitialized())
         {
+            var mipIndex = owner.GetMipIndexByMaxSize(maxSize);
+            if (mipIndex < 0)
+                throw new InvalidOperationException("No suitable mip found for the given max texture size.");
+
             var textureData = owner.DecodeMip(mipIndex, Bridge.Options.TexturePlatform);
             if (textureData is null)
                 throw new InvalidOperationException("Virtual texture could not be decoded.");
@@ -102,35 +103,39 @@ public class Texture2D(int width, int height,
         }
         else
         {
+            // don't use GetMipIndexByMaxSize, it tests the mips through .Data, which keeps their bytes on the asset
             var mips = owner.PlatformData.Mips;
-            var first = mips[mipIndex];
-
-            Width = first.SizeX;
-            Height = first.SizeY;
-            FormatInfo = owner.Format.GetTextureFormat(owner.SRGB);
-
             var levels = new List<byte[]>();
-            var expectedWidth = Width;
-            var expectedHeight = Height;
-            for (var i = mipIndex; i < mips.Length; i++)
+            var first = 0;
+            for (; first < mips.Length; first++)
             {
-                var mip = mips[i];
-                if (mip.SizeX != expectedWidth || mip.SizeY != expectedHeight) break;
-
-                var data = mip.BulkData?.Data;
-                if (data is not { Length: > 0 }) break;
+                if (mips[first].SizeX > maxSize && mips[first].SizeY > maxSize) continue;
+                if (Read(first) is not { } data) continue;
 
                 levels.Add(data);
-                if (_terrain) break;
-
-                expectedWidth = Math.Max(1, expectedWidth >> 1);
-                expectedHeight = Math.Max(1, expectedHeight >> 1);
+                break;
             }
 
             if (levels.Count == 0)
-                throw new InvalidOperationException("Mip data is null.");
+                throw new InvalidOperationException("No suitable mip found for the given max texture size.");
+
+            Width = mips[first].SizeX;
+            Height = mips[first].SizeY;
+            FormatInfo = owner.Format.GetTextureFormat(owner.SRGB);
+
+            for (var i = first + 1; i < mips.Length && !_terrain; i++)
+            {
+                if (mips[i].SizeX != Math.Max(1, Width >> levels.Count) || mips[i].SizeY != Math.Max(1, Height >> levels.Count)) break; // stops before GL complains about non-power-of-two mip sizes
+                if (Read(i) is not { } data) break;
+
+                levels.Add(data);
+            }
 
             _levels = [.. levels];
+
+            byte[]? Read(int index) => mips[index].BulkData?.ReadDataOnce() is { Length: > 0 } data ? data
+                : owner.GetMip(index)?.BulkData?.Data is { Length: > 0 } provided ? provided // a mip data provider (landscape, oodle) sets the bulk data there
+                : null;
         }
 
         _owner = null;

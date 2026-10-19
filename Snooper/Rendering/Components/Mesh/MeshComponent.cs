@@ -8,11 +8,10 @@ using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
 using Serilog;
-using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Managers;
 using Snooper.Core.Containers.Resources;
-using Snooper.Core.Systems;
+using Snooper.Extensions;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
@@ -92,14 +91,14 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     protected MeshComponent(FPackageIndex?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        _materials = materials.Select(GetMaterialPath).ToArray();
+        _materials = [.. materials.Select(x => x.ToSoftObjectPath())];
 
         Materials = new MaterialSection[_materials.Length];
     }
 
     protected MeshComponent(FPackageIndex?[] materials, UMeshComponent component) : base(component)
     {
-        _materials = materials.Select(GetMaterialPath).ToArray();
+        _materials = [.. materials.Select(x => x.ToSoftObjectPath())];
 
         var overrideMaterials = component.OverrideMaterials;
         for (var i = 0; i < overrideMaterials.Length; i++)
@@ -107,7 +106,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             if (i >= _materials.Length) break;
             if (overrideMaterials[i] is { IsNull: false } overrideMaterial)
             {
-                _materials[i] = GetMaterialPath(overrideMaterial);
+                _materials[i] = overrideMaterial.ToSoftObjectPath();
             }
         }
 
@@ -117,14 +116,6 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
 
         Materials = new MaterialSection[_materials.Length];
-    }
-
-    // So we don't keep decoded vertex buffers
-    private static FSoftObjectPath GetMaterialPath(FPackageIndex? material)
-    {
-        var path = material?.ResolvedObject?.GetPathName() ?? "None";
-        var subObject = path.IndexOf(':');
-        return subObject < 0 ? new FSoftObjectPath(path, string.Empty) : new FSoftObjectPath(path[..subObject], path[(subObject + 1)..]);
     }
 
     protected ISocketDescriptor? FindSocket(string name) => Descriptor.Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));

@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using CUE4Parse.FileProvider;
 using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Assets.Objects;
@@ -11,6 +12,7 @@ using CUE4Parse.UE4.Versions;
 using CUE4Parse.Utils;
 using ImGuiNET;
 using Snooper.Core;
+using Snooper.Extensions;
 using Snooper.Hosting;
 using Snooper.UI;
 
@@ -60,15 +62,17 @@ public sealed partial class MaterialNode
 
     public MaterialNode(UUnrealMaterial material)
     {
+        var provider = material.Owner?.Provider;
+
         Name = material.Name;
-        ProjectName = material.Owner?.Provider?.ProjectName ?? string.Empty;
+        ProjectName = provider?.ProjectName ?? string.Empty;
 
         switch (material)
         {
             case UMaterialInstance instance:
             {
-                if (instance.Parent is { IsNull: false })
-                    _parent = new Lazy<MaterialNode?>(() => MaterialCache.GetNode(instance.Parent), LazyThreadSafetyMode.ExecutionAndPublication);
+                if (instance.Parent is { IsNull: false } && provider is not null)
+                    _parent = Parent(instance.Parent.ToSoftObjectPath(), provider);
 
                 if (instance.GetOrDefault<FStructFallback?>("BasePropertyOverrides") is { } overrides)
                 {
@@ -101,7 +105,7 @@ public sealed partial class MaterialNode
                 for (var i = root.ReferencedTextures.Count - 1; i >= 0; i--)
                 {
                     if (root.ReferencedTextures[i] is not { IsNull: false } texture) continue;
-                    _referencedTextures.Add(new TextureParameter(texture));
+                    _referencedTextures.Add(new TextureParameter(texture, provider));
                 }
 
                 ReadExpressions(root);
@@ -115,7 +119,7 @@ public sealed partial class MaterialNode
             foreach (var parameter in constant.TextureParameterValues)
             {
                 if (parameter.ParameterValue is { } value)
-                    _textures[parameter.Name] = new TextureParameter(value);
+                    _textures[parameter.Name] = new TextureParameter(value, provider);
             }
 
             foreach (var parameter in constant.ScalarParameterValues)
@@ -139,11 +143,11 @@ public sealed partial class MaterialNode
                 switch (expression)
                 {
                     case UMaterialExpressionTextureSampleParameter { Texture: { IsNull: false } texture } sample:
-                        _textures.TryAdd(sample.ParameterName.Text, new TextureParameter(texture));
+                        _textures.TryAdd(sample.ParameterName.Text, new TextureParameter(texture, provider));
                         break;
                     case UMaterialExpressionTextureBase { Texture: { IsNull: false } texture }:
                         if (!_referencedTextures.Exists(x => x.Name == texture.Name))
-                            _referencedTextures.Add(new TextureParameter(texture));
+                            _referencedTextures.Add(new TextureParameter(texture, provider));
                         break;
                     case UMaterialExpressionVectorParameter vector:
                         _vectors.TryAdd(vector.ParameterName.Text, vector.DefaultValue);
@@ -165,7 +169,7 @@ public sealed partial class MaterialNode
             foreach (var index in cooked.GetOrDefault<FPackageIndex?[]>("CachedReferencedTextures", []))
             {
                 if (index is { IsNull: false } && !_referencedTextures.Exists(x => x.Name == index.Name))
-                    _referencedTextures.Add(new TextureParameter(index));
+                    _referencedTextures.Add(new TextureParameter(index, provider));
             }
 
             if (cooked.TextureStreamingData.Length > 0)
@@ -228,7 +232,7 @@ public sealed partial class MaterialNode
                 if (!data.TryGetValue(out FPackageIndex[] indices, "TextureValues")) return;
                 for (var i = 0; i < textureInfos.Length && i < indices.Length; i++)
                 {
-                    if (indices[i] is { } index) _textures.TryAdd(textureInfos[i].Name.Text, new TextureParameter(index));
+                    if (indices[i] is { } index) _textures.TryAdd(textureInfos[i].Name.Text, new TextureParameter(index, provider));
                 }
             }
             else
@@ -236,10 +240,13 @@ public sealed partial class MaterialNode
                 if (!data.TryGetValue(out FSoftObjectPath[] paths, "TextureValues")) return;
                 for (var i = 0; i < textureInfos.Length && i < paths.Length; i++)
                 {
-                    _textures.TryAdd(textureInfos[i].Name.Text, new TextureParameter(paths[i]));
+                    _textures.TryAdd(textureInfos[i].Name.Text, new TextureParameter(paths[i], provider));
                 }
             }
         }
+
+        // static so the closure holds the path and the provider only, not the constructor's captures (material)
+        static Lazy<MaterialNode?> Parent(FSoftObjectPath path, IFileProvider provider) => new(() => MaterialCache.GetNode(path, provider), LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     public bool IsPropertyConnected(EMaterialProperty property) => PropertyConnectedMask is not { } mask || mask == 0 || ((mask >> (int)property) & 0x1) != 0;
@@ -375,19 +382,19 @@ public sealed partial class MaterialNode
         public readonly string Path;
         public readonly Lazy<UTexture?> Texture;
 
-        private TextureParameter(string name, string path, Func<UTexture?> load)
+        private TextureParameter(string name, FSoftObjectPath path, IFileProvider? provider)
         {
             Name = name;
-            Path = path;
-            Texture = new Lazy<UTexture?>(load, LazyThreadSafetyMode.ExecutionAndPublication);
+            Path = path.ToString();
+            Texture = new Lazy<UTexture?>(() => provider is not null && path.TryLoad<UTexture>(provider, out var texture) ? texture : null, LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
-        public TextureParameter(FSoftObjectPath path) : this(path.AssetPathName.Text.SubstringAfterLast('.'), path.ToString(), () => path.TryLoad<UTexture>(out var texture) ? texture : null)
+        public TextureParameter(FSoftObjectPath path, IFileProvider? provider) : this(path.AssetPathName.Text.SubstringAfterLast('.'), path.WithoutOwner(), provider)
         {
 
         }
 
-        public TextureParameter(FPackageIndex index) : this(index.Name, index.ResolvedObject?.GetPathName() ?? index.Name, () => index.TryLoad<UTexture>(out var texture) ? texture : null)
+        public TextureParameter(FPackageIndex index, IFileProvider? provider) : this(index.Name, index.ToSoftObjectPath(), provider)
         {
 
         }

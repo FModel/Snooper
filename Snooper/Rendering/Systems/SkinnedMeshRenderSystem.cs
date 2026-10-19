@@ -162,7 +162,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
         if (_counts.UniqueBones > 0) _inverseBind.Allocate(_counts.UniqueBones);
         if (_counts.SkinnedVertices > 0)
         {
-            _boneInfluences.Allocate(_counts.SkinnedVertices * 2);
+            _boneInfluences.Allocate(_counts.SkinnedVertices * 3);
             _boneInfluenceOffsets.Allocate(_counts.SkinnedVertices);
         }
         if (_counts.UniqueComponents > 0) _skinMeshData.Allocate(_counts.UniqueComponents);

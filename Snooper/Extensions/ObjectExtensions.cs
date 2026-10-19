@@ -4,6 +4,7 @@ using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Misc;
+using CUE4Parse.UE4.Objects.UObject;
 
 namespace Snooper.Extensions;
 
@@ -16,6 +17,15 @@ public static class ObjectExtensions
 
         public FGuid ToGuid(uint index = 0) => new FGuid((uint) (owner.GetCleanPath() ?? owner.Name).GetHashCode() ^ index).WithArchive(owner);
     }
+
+    // kills the owner reference, so it's not kept alive by whoever is holding the FPackageIndex
+    public static FSoftObjectPath ToSoftObjectPath(this FPackageIndex? index)
+    {
+        var path = index?.ResolvedObject?.GetPathName() ?? "None";
+        var subObject = path.IndexOf(':');
+        return subObject < 0 ? new FSoftObjectPath(path, string.Empty) : new FSoftObjectPath(path[..subObject], path[(subObject + 1)..]);
+    }
+    public static FSoftObjectPath WithoutOwner(this FSoftObjectPath path) => new(path.AssetPathName, path.SubPathString);
 
     public static FGuid ToGuid(this UStaticMesh owner, uint index = 0) => new FGuid(owner.LightingGuid.A ^ index, owner.LightingGuid.B, owner.LightingGuid.C, owner.LightingGuid.D).WithArchive(owner);
     public static FGuid ToGuid(this USkeleton owner) => owner.Guid.WithArchive(owner);

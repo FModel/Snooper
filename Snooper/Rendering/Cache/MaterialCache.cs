@@ -67,7 +67,7 @@ public static class MaterialCache
             MaterialNode? node = null;
             foreach (var textureData in textureDataLayers)
             {
-                if (textureData is { OverrideMaterial.IsNull: false } && GetNode(textureData.OverrideMaterial) is { } overridden)
+                if (textureData is { OverrideMaterial.IsNull: false } && GetNode(textureData.OverrideMaterial.ToSoftObjectPath(), provider) is { } overridden)
                 {
                     node = overridden;
                     break;
@@ -88,10 +88,7 @@ public static class MaterialCache
         return key;
     }
 
-    public static MaterialNode? GetNode(FPackageIndex index)
-        => TryGetPath(index, out var path) ? GetNode(path, () => index.TryLoad<UUnrealMaterial>(out var material) ? material : null) : null;
-    private static MaterialNode? GetNode(FSoftObjectPath path, IFileProvider provider)
-        => GetNode(path.ToString(), () => path.TryLoad<UUnrealMaterial>(provider, out var material) ? material : null);
+    internal static MaterialNode? GetNode(FSoftObjectPath path, IFileProvider provider) => GetNode(path.ToString(), () => path.TryLoad<UUnrealMaterial>(provider, out var material) ? material : null);
     public static MaterialNode? GetNode(string path, Func<UUnrealMaterial?> load)
     {
         var newLazy = new Lazy<MaterialNode?>(() => load() is { } material ? new MaterialNode(material) : null, LazyThreadSafetyMode.ExecutionAndPublication);
@@ -224,12 +221,6 @@ public static class MaterialCache
                 },
                 specularWired && node.TryGetScalar(out var specularValue, "Specular", "Spec", "Base Specular") ? specularValue : 0.5f,
                 metallicWired && node.TryGetScalar(out var metallic, "Metallic", "Metal") ? metallic : 0f);
-    }
-
-    private static bool TryGetPath([NotNullWhen(true)] FPackageIndex? index, [MaybeNullWhen(false)] out string path)
-    {
-        path = index?.ResolvedObject?.GetPathName();
-        return !string.IsNullOrEmpty(path);
     }
 
     public static void ClearAndDispose()
