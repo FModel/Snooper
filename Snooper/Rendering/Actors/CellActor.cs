@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
@@ -73,7 +74,7 @@ public class CellActor : StreamableActor
             streaming.LevelStreaming?.TryLoad<ULevelStreaming>(out var level) == true &&
             level.WorldAsset is { } world)
         {
-            _world = world;
+            _world = world.WithoutOwner();
         }
     }
 
@@ -81,7 +82,7 @@ public class CellActor : StreamableActor
     {
         Components.Add(new SpatialComponent(null, "CellRoot"));
         DataLayers = [];
-        _world = worldAsset;
+        _world = worldAsset.WithoutOwner();
     }
 
     protected override CullingBounds? LoadingBounds
@@ -104,10 +105,10 @@ public class CellActor : StreamableActor
 
     protected internal override Actor Build()
     {
-        if (_world is not { } world)
+        if (_world is not { } world || ActorManager?.FileProvider is not { } provider)
             throw new InvalidOperationException($"{Name} has no world to build.");
 
-        var actor = new WorldActor(world.Load<UWorld>() ?? throw new InvalidOperationException($"{Name} world asset could not be loaded."));
+        var actor = new WorldActor(world.TryLoad<UWorld>(provider, out var loaded) ? loaded : throw new InvalidOperationException($"{Name} world asset could not be loaded."));
         if (actor.RootComponent != null && RootComponent != null)
         {
             actor.RootComponent.SetLocalTransform(RootComponent.GetLocalTransform().Inverse());

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using CUE4Parse.FileProvider;
 using ImGuiNET;
 using Snooper.UI;
 
@@ -14,7 +15,7 @@ public class JsonViewerWidget
         _openWindows.TryAdd(node.Id, node);
     }
 
-    public void DrawAll()
+    public void DrawAll(IFileProvider provider)
     {
         if (_openWindows.Count == 0) return;
 
@@ -31,18 +32,23 @@ public class JsonViewerWidget
                 continue;
             }
 
-            if (node.JsonProperties == null || node.JsonProperties.Length == 0)
+            var json = node.GetJsonProperties(provider);
+            if (json is { IsCompleted: false })
+            {
+                ImGui.TextDisabled("Reading the object...");
+            }
+            else if (json is not { IsCompletedSuccessfully: true, Result: { Length: > 0 } properties })
             {
                 ImGui.TextDisabled("No JSON data.");
             }
             else if (ImGui.BeginTabBar($"##layers{id}"))
             {
-                for (var i = 0; i < node.JsonProperties.Length; i++)
+                for (var i = 0; i < properties.Length; i++)
                 {
                     var label = i == 0 ? "\uf1c9  Object" : $"\uf0e8  Template {i}";
                     if (ImGui.BeginTabItem($"{label}##t{i}"))
                     {
-                        DrawTextArea(node.JsonProperties[i], id * 1000 + i);
+                        DrawTextArea(properties[i], id * 1000 + i);
                         ImGui.EndTabItem();
                     }
                 }

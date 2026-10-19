@@ -77,7 +77,7 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
             panel.Draw(this);
         }
 
-        _jsonViewer.DrawAll();
+        _jsonViewer.DrawAll(FileProvider);
         TexturePickerModal.Instance.Draw();
         MaterialPickerModal.Instance.Draw();
         AddComponentModal.Instance.Draw();

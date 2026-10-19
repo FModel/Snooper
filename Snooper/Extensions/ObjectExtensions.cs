@@ -16,16 +16,18 @@ public static class ObjectExtensions
         public string? GetCleanPath() => owner.Owner?.Provider?.FixPath(owner.Owner?.Name ?? owner.GetPathName());
 
         public FGuid ToGuid(uint index = 0) => new FGuid((uint) (owner.GetCleanPath() ?? owner.Name).GetHashCode() ^ index).WithArchive(owner);
+
+        public FSoftObjectPath ToSoftObjectPath() => ObjectExtensions.ToSoftObjectPath(owner.GetPathName());
     }
 
     // kills the owner reference, so it's not kept alive by whoever is holding the FPackageIndex
-    public static FSoftObjectPath ToSoftObjectPath(this FPackageIndex? index)
+    public static FSoftObjectPath ToSoftObjectPath(this FPackageIndex? index) => ToSoftObjectPath(index?.ResolvedObject?.GetPathName() ?? "None");
+    public static FSoftObjectPath WithoutOwner(this FSoftObjectPath path) => new(path.AssetPathName, path.SubPathString);
+    private static FSoftObjectPath ToSoftObjectPath(string path)
     {
-        var path = index?.ResolvedObject?.GetPathName() ?? "None";
         var subObject = path.IndexOf(':');
         return subObject < 0 ? new FSoftObjectPath(path, string.Empty) : new FSoftObjectPath(path[..subObject], path[(subObject + 1)..]);
     }
-    public static FSoftObjectPath WithoutOwner(this FSoftObjectPath path) => new(path.AssetPathName, path.SubPathString);
 
     public static FGuid ToGuid(this UStaticMesh owner, uint index = 0) => new FGuid(owner.LightingGuid.A ^ index, owner.LightingGuid.B, owner.LightingGuid.C, owner.LightingGuid.D).WithArchive(owner);
     public static FGuid ToGuid(this USkeleton owner) => owner.Guid.WithArchive(owner);

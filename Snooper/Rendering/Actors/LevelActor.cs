@@ -10,7 +10,7 @@ namespace Snooper.Rendering.Actors;
 
 public class LevelActor : UnrealActor
 {
-    private readonly FPackageIndex?[] _textureData;
+    private FPackageIndex?[] _textureData;
 
     public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components) : base(actor)
     {
@@ -67,8 +67,11 @@ public class LevelActor : UnrealActor
             CreateComponentRecursive(components, ptr);
         }
 
+        var parent = _parent;
+        _textureData = [];
+        _parent = null;
         _ptrs.Clear();
-        return _parent;
+        return parent;
     }
 
     private ComponentPair CreateComponentRecursive(Dictionary<FPackageIndex, SpatialComponent> components, FPackageIndex ptr)
@@ -108,7 +111,7 @@ public class LevelActor : UnrealActor
         return root ?? pair;
     }
 
-    private readonly FPackageIndex? _parent;
+    private FPackageIndex? _parent;
     private readonly HashSet<FPackageIndex> _ptrs = [];
     private void EnqueuePointers(params FPackageIndex?[] ptrs)
     {

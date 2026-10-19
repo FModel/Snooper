@@ -1,6 +1,8 @@
 ﻿using CUE4Parse_Conversion;
+using CUE4Parse.FileProvider;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
+using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Extensions;
 using Newtonsoft.Json;
 
@@ -12,7 +14,8 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
     public string Type { get; }
     public string? Class { get; }
     public string? Path { get; }
-    public string[]? JsonProperties { get; }
+
+    private readonly FSoftObjectPath? _object;
 
     public virtual string Icon { get; private set; } = "\uf550";
 
@@ -27,7 +30,8 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
         Type = other.Type;
         Class = other.Class;
         Path = other.Path;
-        JsonProperties = other.JsonProperties;
+
+        _object = other._object;
     }
 
     protected TreeNode(string name)
@@ -46,17 +50,31 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
         Class = owner.ExportType;
         Path = owner.GetCleanPath();
 
-        var jsonProperties = new List<string> { JsonConvert.SerializeObject(owner, Formatting.Indented) };
-        var templatePtr = owner.Template;
-        while (templatePtr?.TryLoad(out var template) == true)
-        {
-            jsonProperties.Add(JsonConvert.SerializeObject(template, Formatting.Indented));
-            templatePtr = template.Template;
-        }
-        JsonProperties = jsonProperties.ToArray();
+        _object = owner.ToSoftObjectPath();
     }
 
     public abstract void Export(ExportSession session, CancellationToken ct = default);
+
+    private Task<string[]>? _json;
+    public Task<string[]>? GetJsonProperties(IFileProvider provider)
+    {
+        if (_object is not { } path) return null;
+        return _json ??= Task.Run(Serialize);
+
+        string[] Serialize()
+        {
+            if (!path.TryLoad<UObject>(provider, out var owner)) return [];
+
+            var jsonProperties = new List<string> { JsonConvert.SerializeObject(owner, Formatting.Indented) };
+            var templatePtr = owner.Template;
+            while (templatePtr?.TryLoad(out var template) == true)
+            {
+                jsonProperties.Add(JsonConvert.SerializeObject(template, Formatting.Indented));
+                templatePtr = template.Template;
+            }
+            return [.. jsonProperties];
+        }
+    }
 
     protected void SetIcon(string icon) => Icon = icon;
 
