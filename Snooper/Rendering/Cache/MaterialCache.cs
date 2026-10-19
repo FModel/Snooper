@@ -32,7 +32,7 @@ public static class MaterialCache
         return end < 0 ? key[TextureDataPrefix.Length..] : key[TextureDataPrefix.Length..end];
     }
 
-    public static string GetOrCreateKey(FSoftObjectPath materialObject, IFileProvider provider, uint layerCount)
+    public static string GetOrCreateKey(FSoftObjectPath materialObject, IFileProvider provider, uint layerCount, FPackageIndex? embedded = null)
     {
         if (materialObject.AssetPathName.IsNone) return string.Empty;
         var path = materialObject.ToString();
@@ -40,7 +40,7 @@ public static class MaterialCache
         var newLazy = new Lazy<(MaterialNode?, MaterialDataContainer?)>(() =>
         {
             Log.Debug("Cache miss for material {Path}, creating data container", path);
-            if (GetNode(materialObject, provider) is not { } node)
+            if (GetNode(materialObject, provider, embedded) is not { } node)
             {
                 Log.Warning("Material {Path} could not be loaded or is not valid.", path);
                 return (null, null);
@@ -48,11 +48,11 @@ public static class MaterialCache
             return (node, ParseMaterialParameters(node, layerCount, null));
         }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-        _containers.GetOrAdd(path, newLazy);
+        _ = _containers.GetOrAdd(path, newLazy).Value;
         return path;
     }
 
-    public static string GetOrCreateKeyFromTextureData(UBuildingTextureData?[] textureDataLayers, FSoftObjectPath materialObject, IFileProvider provider, uint layerCount)
+    public static string GetOrCreateKeyFromTextureData(UBuildingTextureData?[] textureDataLayers, FSoftObjectPath materialObject, IFileProvider provider, uint layerCount, FPackageIndex? embedded = null)
     {
         if (materialObject.AssetPathName.IsNone) return string.Empty;
         var path = materialObject.ToString();
@@ -74,7 +74,7 @@ public static class MaterialCache
                 }
             }
 
-            node ??= GetNode(materialObject, provider);
+            node ??= GetNode(materialObject, provider, embedded);
             if (node == null)
             {
                 Log.Warning("Building texture data has no override material and no base material");
@@ -84,11 +84,13 @@ public static class MaterialCache
             return (node, ParseMaterialParameters(node, layerCount, textureDataLayers));
         }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-        _containers.GetOrAdd(key, newLazy);
+        _ = _containers.GetOrAdd(key, newLazy).Value;
         return key;
     }
 
-    internal static MaterialNode? GetNode(FSoftObjectPath path, IFileProvider provider) => GetNode(path.ToString(), () => path.TryLoad<UUnrealMaterial>(provider, out var material) ? material : null);
+    // an embedded material loads through the package that is already loaded, by path it would parse that package and everything it imports again
+    internal static MaterialNode? GetNode(FSoftObjectPath path, IFileProvider provider, FPackageIndex? embedded = null)
+        => GetNode(path.ToString(), () => embedded?.Load<UUnrealMaterial>() ?? path.Load<UUnrealMaterial>(provider));
     public static MaterialNode? GetNode(string path, Func<UUnrealMaterial?> load)
     {
         var newLazy = new Lazy<MaterialNode?>(() => load() is { } material ? new MaterialNode(material) : null, LazyThreadSafetyMode.ExecutionAndPublication);
