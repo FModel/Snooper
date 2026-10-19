@@ -109,7 +109,7 @@ public class Texture2D(int width, int height,
             var first = 0;
             for (; first < mips.Length; first++)
             {
-                if (mips[first].SizeX > maxSize && mips[first].SizeY > maxSize) continue;
+                if (mips[first].SizeX > maxSize && mips[first].SizeY > maxSize && first < mips.Length - 1) continue;
                 if (Read(first) is not { } data) continue;
 
                 levels.Add(data);
