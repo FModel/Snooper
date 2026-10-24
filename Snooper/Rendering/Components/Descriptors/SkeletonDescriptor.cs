@@ -38,6 +38,8 @@ public class SkeletonDescriptor : IControllable
     /// </summary>
     public Matrix4x4[] BindPoseMatrices { get; }
 
+    public Matrix4x4[] InverseBindPoseMatrices => field ??= [.. BindPoseMatrices.Select(m => Matrix4x4.Invert(m, out var inverse) ? inverse : Matrix4x4.Identity)];
+
     public IReadOnlyDictionary<string, uint> BoneNameToIndex => _boneNameToIndex;
     private readonly Dictionary<string, uint> _boneNameToIndex;
 

@@ -178,15 +178,9 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
 
         if (Meshes[descriptor.Guid].UploadedBy == component.Id)
         {
-            var inverseBoneMatrices = new Matrix4x4[skeleton.BindPoseMatrices.Length];
-            for (var i = 0; i < inverseBoneMatrices.Length; i++)
-            {
-                Matrix4x4.Invert(skeleton.BindPoseMatrices[i], out inverseBoneMatrices[i]);
-            }
-
             var data = new PerMeshSkinningData
             {
-                BaseBone = (uint)_inverseBind.AddRange(inverseBoneMatrices).StartIndex
+                BaseBone = (uint)_inverseBind.AddRange(skeleton.InverseBindPoseMatrices).StartIndex
             };
 
             var lods = descriptor.Lods;

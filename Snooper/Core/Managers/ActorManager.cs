@@ -248,16 +248,18 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
         for (var remaining = _systemsToLoad.Count; remaining > 0 && (count == 0 || budget?.Exhausted != true); remaining--)
         {
             var system = _systemsToLoad.Dequeue();
-            if (system.EnqueuedComponentsCount == 0)
-            {
-                system.Dispose();
-                continue;
-            }
-
-            if (system.SystemType is not (ActorSystemType.Scene or ActorSystemType.Environment) && entering)
+            var empty = system.EnqueuedComponentsCount == 0;
+            if (entering && (empty || system.SystemType is not (ActorSystemType.Scene or ActorSystemType.Environment)))
             {
                 // requeue systems that buffer allocates from what enters, so they can size their buffers correctly
                 _systemsToLoad.Enqueue(system);
+                continue;
+            }
+
+            if (empty)
+            {
+                _systemsPerComponentType.Remove(system.ComponentType); // TODO: does not work for AllowDerivation systems
+                system.Dispose();
                 continue;
             }
 

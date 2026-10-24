@@ -34,7 +34,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     public SkeletonDescriptor? Skeleton { get; }
     public ISocketDescriptor?[] Sockets { get; }
     public MorphDescriptor? Morphs { get; }
-    public float[]? BoneSphereRadii { get; }
+    public CullingBounds?[]? BoneBounds { get; }
 
     private PrimitiveDescriptor(PrimitiveDescriptor<TVertex> other)
     {
@@ -111,11 +111,15 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
             Morphs = MorphDescriptor.Create(morphTargets, Lods);
         }
 
-        BoneSphereRadii = GetBoneSphereRadii(dto.LODs[0].Vertices, Skeleton.BindPoseMatrices);
+        BoneBounds = GetBoneBounds(dto.LODs[0].Vertices, Skeleton.BoneCount);
 
-        float[] GetBoneSphereRadii(SkinnedMeshVertex[] vertices, Matrix4x4[] bindPose)
+        CullingBounds?[] GetBoneBounds(SkinnedMeshVertex[] vertices, int boneCount)
         {
-            var radii = new float[bindPose.Length];
+            var min = new Vector3[boneCount];
+            var max = new Vector3[boneCount];
+            Array.Fill(min, new Vector3(float.MaxValue));
+            Array.Fill(max, new Vector3(float.MinValue));
+
             foreach (var vertex in vertices)
             {
                 var position = new Vector3(vertex.Position.X, vertex.Position.Z, vertex.Position.Y) * Settings.GlobalScale;
@@ -125,11 +129,19 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
 
                 foreach (var influence in vertex.Influences)
                 {
-                    if (influence.RawWeight * 4 < total || influence.Bone >= radii.Length) continue;
-                    radii[influence.Bone] = MathF.Max(radii[influence.Bone], Vector3.Distance(position, bindPose[influence.Bone].Translation));
+                    if (influence.RawWeight * 4 < total || influence.Bone >= boneCount) continue;
+
+                    min[influence.Bone] = Vector3.Min(min[influence.Bone], position);
+                    max[influence.Bone] = Vector3.Max(max[influence.Bone], position);
                 }
             }
-            return radii;
+
+            var bounds = new CullingBounds?[boneCount];
+            for (var b = 0; b < bounds.Length; b++)
+            {
+                if (min[b].X <= max[b].X) bounds[b] = new CullingBounds((min[b] + max[b]) * 0.5f, (max[b] - min[b]) * 0.5f);
+            }
+            return bounds;
         }
     }
 

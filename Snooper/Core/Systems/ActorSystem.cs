@@ -154,11 +154,7 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
             return;
         }
 
-        if (!CanEnqueueActorComponent(actorComponent))
-        {
-            Log.Warning("Refused {Component} of {Actor}, full at {Capacity}", actorComponent.Name, actor.Name, Capacity);
-            return;
-        }
+        if (!CanEnqueueActorComponent(actorComponent)) return;
 
         _componentsToLoad.Enqueue(actorComponent);
 
@@ -178,7 +174,10 @@ public abstract class ActorSystem<TComponent>() : ActorSystem(typeof(TComponent)
 
     protected virtual bool CanEnqueueActorComponent(TComponent component)
     {
-        return Capacity < 0 || Capacity > (EnqueuedComponentsCount + ComponentsCount);
+        if (Capacity < 0 || Capacity > (EnqueuedComponentsCount + ComponentsCount)) return true;
+
+        Log.Warning("Refused {Component} of {Actor}, full at {Capacity}", component.Name, component.Actor?.Name, Capacity);
+        return false;
     }
 
     public IEnumerable<T> GetComponents<T>() where T : TComponent => Components.OfType<T>();

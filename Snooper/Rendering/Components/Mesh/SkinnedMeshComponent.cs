@@ -23,17 +23,25 @@ public class SkinnedMeshComponent : MeshComponent
     {
         get
         {
-            if (Descriptor.BoneSphereRadii is not { } radii) return base.Bounds;
+            if (Descriptor.BoneBounds is not { } boxes) return base.Bounds;
 
             var matrices = Pose.BoneMatrices;
+            var inverseBindPose = Pose.Skeleton.InverseBindPoseMatrices;
             var min = new Vector3(float.MaxValue);
             var max = new Vector3(float.MinValue);
-            for (var b = 0; b < radii.Length && b < matrices.Length; b++)
+            for (var b = 0; b < boxes.Length && b < matrices.Length; b++)
             {
-                if (radii[b] <= 0f) continue;
-                var radius = new Vector3(radii[b]);
-                min = Vector3.Min(min, matrices[b].Translation - radius);
-                max = Vector3.Max(max, matrices[b].Translation + radius);
+                if (boxes[b] is not { } box) continue;
+
+                var m = inverseBindPose[b] * matrices[b];
+                var e = box.Extents;
+                var center = Vector3.Transform(box.Center, m);
+                var extents = new Vector3(
+                    MathF.Abs(m.M11) * e.X + MathF.Abs(m.M21) * e.Y + MathF.Abs(m.M31) * e.Z,
+                    MathF.Abs(m.M12) * e.X + MathF.Abs(m.M22) * e.Y + MathF.Abs(m.M32) * e.Z,
+                    MathF.Abs(m.M13) * e.X + MathF.Abs(m.M23) * e.Y + MathF.Abs(m.M33) * e.Z);
+                min = Vector3.Min(min, center - extents);
+                max = Vector3.Max(max, center + extents);
             }
             return min.X <= max.X ? new CullingBounds((min + max) * 0.5f, (max - min) * 0.5f) : base.Bounds;
         }
