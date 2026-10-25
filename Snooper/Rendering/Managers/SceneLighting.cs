@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
@@ -63,8 +63,10 @@ public sealed class SceneLighting : IMemoryDetailsProvider, IDisposable
 
             var daylight = sun?.Daylight ?? 0.0f;
             var (upper, lower) = skyLight != null ? (skyLight.Color * skyLight.Intensity, skyLight.LowerHemisphereColor * skyLight.Intensity) : (Vector3.Zero, Vector3.Zero);
-            var fromSky = MathF.PI * Luminance(upper);
-            var fromSun = sun != null && daylight > 0.0f ? sun.Intensity / daylight * Luminance(sun.Color) : 0.0f;
+            var skyLuminance = Luminance(upper);
+            var sunLuminance = sun != null ? Luminance(sun.Color) : 0.0f;
+            var fromSky = MathF.PI * skyLuminance;
+            var fromSun = sun != null && daylight > 0.0f ? sun.Intensity / daylight * sunLuminance : 0.0f;
             var sunShare = fromSun + fromSky > 0.0f ? fromSun / (fromSun + fromSky) : 1.0f;
 
             const float budget = 1.25f; // because we don't auto exposure, so the sun and the sky share a budget whatever the values the lights came with
@@ -73,7 +75,8 @@ public sealed class SceneLighting : IMemoryDetailsProvider, IDisposable
             {
                 SunDirection = sun.GetDirection();
                 SunColor = sun.Color;
-                SunIntensity = MathF.PI * budget * sunShare * daylight; // the diffuse term divides by pi
+                // Keep the allocated brightness when the light colour is tinted or dark
+                SunIntensity = sunLuminance > 0.0f ? MathF.PI * budget * sunShare * daylight / sunLuminance : 0.0f; // the diffuse term divides by pi
                 UseSunLight = 1;
                 UseShadows = castsShadows ? 1 : 0;
             }
@@ -83,10 +86,11 @@ public sealed class SceneLighting : IMemoryDetailsProvider, IDisposable
             var nightLowerColor = new Vector3(0.026f, 0.030f, 0.038f);
             const float nightFog = 0.02f;
 
-            var brightest = MathF.Max(upper.X, MathF.Max(upper.Y, upper.Z));
-            var skyScale = brightest > 0.0f ? budget * (1.0f - sunShare) / brightest : 0.0f;
-            SkyLightColor = Vector3.Lerp(nightColor, upper * skyScale, daylight);
-            SkyLightLowerColor = Vector3.Lerp(nightLowerColor, lower * skyScale, daylight);
+            var skyScale = skyLuminance > 0.0f ? budget * (1.0f - sunShare) / skyLuminance : 0.0f;
+            // Map can be lit by its skylight without an active directional sun
+            var environmentBlend = sun != null ? daylight : skyLight != null ? 1.0f : 0.0f;
+            SkyLightColor = Vector3.Lerp(nightColor, upper * skyScale, environmentBlend);
+            SkyLightLowerColor = Vector3.Lerp(nightLowerColor, lower * skyScale, environmentBlend);
 
             if (lightSystem is { UseSceneLights: true, HasClusters: true })
             {
@@ -103,7 +107,7 @@ public sealed class SceneLighting : IMemoryDetailsProvider, IDisposable
                 FogHeight = fog.Height;
                 FogMaxOpacity = fog.MaxOpacity;
                 FogStartDistance = fog.StartDistance;
-                FogColor = fog.InscatteringColor * float.Lerp(nightFog, 1.0f, daylight);
+                FogColor = fog.InscatteringColor * float.Lerp(nightFog, 1.0f, environmentBlend);
                 FogDirectionalColor = fog.DirectionalInscatteringColor;
                 FogDirectionalExponent = fog.DirectionalInscatteringExponent;
                 FogDirectionalStart = fog.DirectionalInscatteringStartDistance;

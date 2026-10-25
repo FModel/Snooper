@@ -20,6 +20,7 @@ public abstract class LightComponentBase : BillboardComponent
         Intensity = component.Intensity;
         Color = component.GetLightColor();
         CastShadows = component.CastShadows;
+        if (!component.bAffectsWorld) IsVisible = false;
 
         _step = MathF.Max(Intensity * 0.01f, 0.01f);
     }
