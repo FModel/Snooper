@@ -1,8 +1,10 @@
-﻿using System.Numerics;
+using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Snooper.Core;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
@@ -36,6 +38,18 @@ public class ExponentialHeightFogComponent : BillboardComponent
         DirectionalInscatteringColor = component.DirectionalInscatteringLuminance;
         DirectionalInscatteringExponent = component.DirectionalInscatteringExponent;
         DirectionalInscatteringStartDistance = component.DirectionalInscatteringStartDistance * Settings.GlobalScale;
+
+        if (component.InscatteringColorCubemap?.TryLoad<UTextureCube>(out var cubemap) == true)
+        {
+            Span<Vector3> faces = stackalloc Vector3[6];
+            if (cubemap.TryGetFaceAverages(faces))
+            {
+                InscatteringColor = Vector3.Zero;
+                foreach (var face in faces) InscatteringColor += face / faces.Length;
+                InscatteringColor *= (Vector3) component.InscatteringTextureTint;
+            }
+            DirectionalInscatteringColor = Vector3.Zero;
+        }
     }
 
     public ExponentialHeightFogComponent(Vector3 color, float density = 0.002f, float heightFalloff = 0.02f, Transform? transform = null, string? name = null) : base("S_ExpoHeightFog", transform, name)

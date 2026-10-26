@@ -1,3 +1,4 @@
+using CUE4Parse.GameTypes.DBD.Objects.ProceduralMaps.Blueprints;
 using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Component;
@@ -239,9 +240,15 @@ public class BlueprintActor : UnrealActor
             _scsByVariable[(owner.Name, variableName)] = component;
             _scsByName.TryAdd(variableName, component);
 
-            if (template.ResolvedObject?.Object?.Value is UChildActorComponent childActorComponent)
+            var componentTemplate = template.ResolvedObject?.Object?.Value;
+            if (componentTemplate is UChildActorComponent childActorComponent)
             {
-                TryCreateChildActor(childActorComponent, component);
+                if (childActorComponent.GetOrDefault<FPackageIndex?>("ChildActorClass") is { IsNull: false } classPtr && classPtr.TryLoad<UBlueprintGeneratedClass>(out var childClass))
+                    TryCreateChildActor(childClass, component);
+            }
+            else if (componentTemplate != null && FActorSpawnerVisualization.GetBlueprint(componentTemplate) is { } visualizationClass)
+            {
+                TryCreateChildActor(visualizationClass, component);
             }
         }
 
@@ -283,17 +290,13 @@ public class BlueprintActor : UnrealActor
         return null;
     }
 
-    private void TryCreateChildActor(UChildActorComponent childActorComponent, SpatialComponent component)
+    internal void TryCreateChildActor(UBlueprintGeneratedClass childClass, SpatialComponent component)
     {
         if (_depth >= MaxChildActorDepth)
         {
             Log.Warning("Child actor depth limit reached at {Component}", component.Name);
             return;
         }
-
-        if (childActorComponent.GetOrDefault<FPackageIndex?>("ChildActorClass") is not { IsNull: false } classPtr ||
-            !classPtr.TryLoad<UBlueprintGeneratedClass>(out var childClass))
-            return;
 
         var childKey = childClass.GetPathName();
         if (childKey == _classKey || _ancestry.Contains(childKey))

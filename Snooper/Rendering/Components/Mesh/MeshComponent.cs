@@ -157,6 +157,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             var index = i;
             var section = new MaterialSection(index, IsVisible);
             section.OnContainerReady += _ => IsOpaque &= !section.IsTranslucent;
+            section.OnMaterialChanged += _ => MarkDirty(DirtyFlags.Visibility);
             Materials[index] = section;
 
             ThreadManager.Enqueue(() =>

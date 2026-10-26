@@ -31,6 +31,7 @@ public sealed partial class MaterialNode
 {
     public string Name { get; }
     public string ProjectName { get; }
+    public EGame? Game { get; }
 
     private readonly Lazy<MaterialNode?>? _parent;
     public MaterialNode? Parent => Bridge.Options.MaterialDepth is not EMaterialDepth.TopLayerOnly && _parent?.Value is { } parent && parent != this ? parent : null;
@@ -42,6 +43,10 @@ public sealed partial class MaterialNode
     private const EMaterialShadingModel DefaultShadingModel = EMaterialShadingModel.MSM_DefaultLit;
     private readonly EMaterialShadingModel? _shadingModel;
     public EMaterialShadingModel ShadingModel => _shadingModel ?? Parent?.ShadingModel ?? DefaultShadingModel;
+
+    private const EMaterialDomain DefaultMaterialDomain = EMaterialDomain.MD_Surface;
+    private readonly EMaterialDomain? _materialDomain;
+    public EMaterialDomain MaterialDomain => _materialDomain ?? Parent?.MaterialDomain ?? DefaultMaterialDomain;
 
     private const bool DefaultTwoSided = false;
     private readonly bool? _twoSided;
@@ -66,6 +71,7 @@ public sealed partial class MaterialNode
 
         Name = material.Name;
         ProjectName = provider?.ProjectName ?? string.Empty;
+        Game = material.Game;
 
         switch (material)
         {
@@ -99,6 +105,7 @@ public sealed partial class MaterialNode
             {
                 _blendMode = root.GetOrDefault(nameof(BlendMode), DefaultBlendMode);
                 _shadingModel = root.GetOrDefault(nameof(ShadingModel), DefaultShadingModel);
+                _materialDomain = root.GetOrDefault(nameof(MaterialDomain), DefaultMaterialDomain);
                 _twoSided = root.GetOrDefault(nameof(TwoSided), DefaultTwoSided);
                 _opacityMaskClipValue = root.GetOrDefault(nameof(OpacityMaskClipValue), DefaultOpacityMaskClipValue);
 

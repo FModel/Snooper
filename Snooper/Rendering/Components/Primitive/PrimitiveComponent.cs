@@ -1,7 +1,9 @@
-﻿using System.Numerics;
+using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.FastGeoStreaming;
+using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Versions;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
@@ -93,6 +95,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     protected PrimitiveComponent(UPrimitiveComponent component) : base(component)
     {
+        IsVisible = IsVisible && component.bRenderInMainPass;
         CastShadow = component.CastShadow && component.bCastDynamicShadow;
 
         if (component.TryGetValue(out float minDrawDistance, "MinDrawDistance"))
@@ -201,7 +204,17 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         return true;
     }
 
-    public bool IsMaterialVisible(uint materialIndex) => IsActorVisibleRecursive && (materialIndex >= Materials.Length || Materials[materialIndex] is not { IsVisible: false });
+    public bool IsMaterialVisible(uint materialIndex)
+    {
+        if (!IsActorVisibleRecursive) return false;
+        if (materialIndex >= Materials.Length || Materials[materialIndex] is not { } material) return true;
+        if (!material.IsVisible) return false;
+        if (!MaterialCache.TryGetNode(material.CacheKey, out var node)) return true;
+        if (node.MaterialDomain is EMaterialDomain.MD_DeferredDecal) return false;
+
+        // DBD's additive effects need shader logic that we currently can't reproduce
+        return node.Game is not EGame.GAME_DeadByDaylight || node.BlendMode is not EBlendMode.BLEND_Additive || material.MaterialDataContainer != null;
+    }
     public void SetMaterialVisibility(uint materialIndex, bool visible)
     {
         if (materialIndex >= Materials.Length || Materials[materialIndex] is not { } material) return;

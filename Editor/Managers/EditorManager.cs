@@ -1,15 +1,17 @@
-﻿using System.Numerics;
+using System.Numerics;
 using CUE4Parse.FileProvider;
 using Editor.Modals;
 using ImGuiNET;
 using OpenTK.Windowing.Desktop;
 using Snooper.Rendering.Actors;
+using Snooper.Rendering.Actors.Custom;
 using Snooper.Rendering.Components;
 using Editor.Widgets;
 using Editor.Widgets.Cache;
 using Editor.Widgets.Timeline;
 using Snooper;
 using Snooper.UI;
+using Editor.Widgets.Custom;
 
 namespace Editor.Managers;
 
@@ -43,7 +45,19 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     internal readonly SkeletonEditorWidget _skeletonEditor = new();
     internal readonly SunOverlayWidget _sunOverlay = new();
 
-    internal IReadOnlyList<IViewportCard> Cards => field ??= [_profilerOverlay, _hardwareOverlay];
+    // Custom for GAME_DeadByDaylight
+    internal readonly DeadByDaylightMapCard _dbdMapCard = new();
+    public DeadByDaylightMapActor? DeadByDaylightMap { get; set; }
+
+    internal IEnumerable<IViewportCard> Cards
+    {
+        get
+        {
+            yield return _profilerOverlay;
+            yield return _hardwareOverlay;
+            if (DeadByDaylightMap != null) yield return _dbdMapCard;
+        }
+    }
     internal bool IsSkeletonTreeOpen => _skeletonTree.IsOpen;
     internal bool _resetLayout;
 
@@ -132,5 +146,11 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         _skeletonEditor.Reset();
         _sunOverlay.Reset();
         _materialInspector.Reset();
+    }
+
+    protected override void Teardown()
+    {
+        DeadByDaylightMap = null;
+        base.Teardown();
     }
 }

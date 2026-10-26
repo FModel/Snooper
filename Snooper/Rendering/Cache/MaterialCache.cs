@@ -120,6 +120,8 @@ public static class MaterialCache
 
     private static MaterialDataContainer? ParseMaterialParameters(MaterialNode node, uint layerCount, UBuildingTextureData?[]? textureDataLayers)
     {
+        if (node.MaterialDomain is EMaterialDomain.MD_DeferredDecal) return null;
+
         var maxLayers = Math.Min(4, layerCount);
         for (var count = 4u; count >= 2; count--)
         {

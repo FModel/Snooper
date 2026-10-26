@@ -1,4 +1,5 @@
-﻿using Snooper.Core.Containers.Buffers;
+using Snooper.Core.Containers.Buffers;
+using CUE4Parse.UE4.Assets.Exports.Material;
 using Snooper.Core.Containers.Resources;
 using Snooper.Rendering.Cache;
 
@@ -124,10 +125,13 @@ public class MaterialSection(uint index, bool isVisible = true)
         remove => _onMaterialDataContainerSet -= value;
     }
 
-    public bool IsTranslucent => MaterialDataContainer?.IsTranslucent ?? false;
+    public bool IsTranslucent => MaterialDataContainer?.IsTranslucent ?? (MaterialCache.TryGetNode(CacheKey, out var node) && node.BlendMode is not (EBlendMode.BLEND_Opaque or EBlendMode.BLEND_Masked));
 
     public event Action<MaterialSection>? OnContainerReady;
     internal void ContainerReady() => OnContainerReady?.Invoke(this);
+
+    public event Action<MaterialSection>? OnMaterialChanged;
+    internal void MaterialChanged() => OnMaterialChanged?.Invoke(this);
 
     public override bool Equals(object? obj) => obj is MaterialSection s && s.SectionId.Equals(SectionId);
     public override int GetHashCode() => SectionId.GetHashCode();

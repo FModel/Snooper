@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using Editor.Managers;
 using ImGuiNET;
 using ImGuizmoNET;
@@ -131,16 +131,22 @@ public class ViewportWidget : PanelWidget
         if (Button(Settings.DrawPolygonIcon, editor.Wireframe.Enabled, "Wireframe", DeviceInfo.HasFragmentBarycentric)) editor.Wireframe.Enabled = !editor.Wireframe.Enabled;
 
         Separator();
-        SystemButton<BillboardSystem>(Settings.ChalkboardIcon,"Billboards");
+        SystemButton<BillboardSystem>(Settings.ChalkboardIcon, "Billboards");
         ImGui.SameLine();
-        SystemButton<TextRenderSystem>(Settings.FontIcon,"Text");
+        SystemButton<TextRenderSystem>(Settings.FontIcon, "Text");
         ImGui.SameLine();
-        SystemButton<DebugSystem>(Settings.BugIcon,"Debug Shapes");
+        SystemButton<DebugSystem>(Settings.BugIcon, "Debug Shapes");
 
         Separator();
         CardButton(Settings.ChartLineIcon, editor._profilerOverlay);
         ImGui.SameLine();
         CardButton(Settings.MicrochipIcon, editor._hardwareOverlay);
+
+        if (editor.DeadByDaylightMap != null)
+        {
+            ImGui.SameLine();
+            CardButton(Settings.SeedIcon, editor._dbdMapCard);
+        }
 
         if (gizmo)
         {
@@ -247,7 +253,10 @@ public class ViewportWidget : PanelWidget
         text = "\uf06a Previewed content may differ from final version saved or used in-game.";
         size = ImGui.CalcTextSize(text);
         ImGui.SetCursorScreenPos(contentPos + new Vector2(contentSize.X - Padding - size.X, contentSize.Y - Padding - size.Y));
+
+        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.75f);
         ImGui.TextUnformatted(text);
+        ImGui.PopStyleVar();
 
         ImGui.PopFont();
     }

@@ -50,6 +50,7 @@ public static class Settings
     public const string SpeedIcon = "\uf3fd";
     public const string FovIcon = "\uf065";
     public const string LoopIcon = "\uf021";
+    public const string SeedIcon = "\uf4d8";
     public const string InfinityIcon = "\uf534";
     public const string BoxArchiveIcon = "\uf187";
     public const string TerminalIcon = "\uf120";
