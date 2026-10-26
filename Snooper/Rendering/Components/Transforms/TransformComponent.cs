@@ -1,8 +1,7 @@
-using System.Numerics;
+﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.FastGeoStreaming;
 using CUE4Parse.UE4.Objects.UObject;
-using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Serilog;
 using Snooper.Core;
@@ -184,21 +183,15 @@ public class SpatialComponent : ActorComponent
 
     public Matrix4x4 GetRelationMatrix()
     {
-        return new Transform(GetRelationTransform()).ToMatrix();
-    }
+        if (Relation is null) return Matrix4x4.Identity;
 
-    private FTransform GetRelationTransform()
-    {
-        if (Relation is null) return FTransform.Identity;
-
-        var relationTransform = Relation._worldTransform;
+        var relationMatrix = Relation.WorldMatrix;
         if (!string.IsNullOrEmpty(AttachSocketName) && Relation is MeshComponent mesh)
         {
-            var socketTransform = (FTransform) new Transform(mesh.GetSocketModelMatrix(AttachSocketName));
-            relationTransform = socketTransform * relationTransform;
+            relationMatrix = new Transform(mesh.GetSocketModelMatrix(AttachSocketName)).ToMatrix(relationMatrix);
         }
 
-        return relationTransform;
+        return relationMatrix;
     }
 
     public bool AttachTo(SpatialComponent? newRelation, string? socket = null)
@@ -325,27 +318,33 @@ public class SpatialComponent : ActorComponent
         camera.TeleportTo(center, distance);
     }
 
-    private FTransform _worldTransform = FTransform.Identity;
-
     public void UpdateWorldMatrix(bool recursive = true)
     {
-        var localTransform = (FTransform) LocalTransform;
         if (Relation is null)
         {
-            _worldTransform = localTransform;
+            WorldMatrix = LocalTransform.ToMatrix();
         }
         else
         {
             if (recursive) Relation.UpdateWorldMatrix();
 
-            // UE composes scale and rotation separately
-            _worldTransform = localTransform * GetRelationTransform();
-            if (_absPosition) _worldTransform.Translation = localTransform.Translation;
-            if (_absRotation) _worldTransform.Rotation = localTransform.Rotation;
-            if (_absScale) _worldTransform.Scale3D = localTransform.Scale3D;
-        }
+            var relationMatrix = GetRelationMatrix();
+            if (!_absPosition && !_absRotation && !_absScale)
+            {
+                WorldMatrix = LocalTransform.ToMatrix(relationMatrix);
+            }
+            else
+            {
+                var world = LocalTransform.Compose(relationMatrix);
 
-        WorldMatrix = new Transform(_worldTransform).ToMatrix();
+                WorldMatrix = new Transform
+                {
+                    Position = _absPosition ? LocalTransform.Position : world.Position,
+                    Rotation = _absRotation ? LocalTransform.Rotation : world.Rotation,
+                    Scale = _absScale ? LocalTransform.Scale : world.Scale
+                }.ToMatrix();
+            }
+        }
 
         // this component's WorldMatrix is now clean and needs to be updated on GPU
         MarkClean(DirtyFlags.Transform);

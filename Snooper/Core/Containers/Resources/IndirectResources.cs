@@ -90,7 +90,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         var chunks = component is HierarchicalInstancedStaticMeshComponent { InstanceChunks: { } ranges } ? ranges : [(0, instanceAllocation.Length)];
         var drawAllocations = new DrawBufferAllocation[sections.Length * chunks.Length];
 
-        var bufferType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
+        var bufferType = component.SupportsOpaquePass ? CommandBufferType.Opaque : CommandBufferType.Transparent;
         var buffer = _commands.GetBuffer(bufferType);
         var d = 0;
         foreach (var (start, count) in chunks)

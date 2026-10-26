@@ -78,7 +78,7 @@ public class MaterialInspectorWidget : PanelWidget
     private void DrawMaterial(IPrimitiveComponent primitive, MaterialSection section, int slot, bool selectionChanged, bool isSelected)
     {
         if (selectionChanged) ImGui.SetNextItemOpen(isSelected, ImGuiCond.Always);
-        MaterialCache.TryGetNode(section.CacheKey, out var parsed);
+        var parsed = section.Node;
         var open = ImGui.CollapsingHeader($"{slot}: {section.MaterialDataContainer?.Name ?? parsed?.Name ?? Settings.NoName}###Material{slot}", ImGuiTreeNodeFlags.AllowOverlap);
         GetHeaderButtons(primitive, section, slot).Draw(ImGui.GetItemRectMin(), ImGui.GetItemRectSize());
 
@@ -298,11 +298,11 @@ public class MaterialInspectorWidget : PanelWidget
         var wasTranslucent = section.IsTranslucent;
         section.SwapMaterial(cacheKey);
 
-        if (section.IsTranslucent == wasTranslucent) return;
+        if (!wasTranslucent || section.IsTranslucent) return;
 
         Notifications.Push("material.opacity",
             Settings.PaletteIcon,
-            "Opacity changed - the draw stays in its original pass until the mesh is reloaded");
+            "Now opaque - the draw stays in the transparent pass until the mesh is reloaded");
     }
 
     private void Edit(MaterialSection section, Action<MaterialDataContainer> mutate)

@@ -43,7 +43,7 @@ public sealed partial class DeadByDaylightMapActor : Actor
 
     public void Regenerate(int seed)
     {
-        if (IsRegenerating || seed == Seed || ActorManager is not SceneManager scene)
+        if (IsRegenerating || seed == Seed || ActorManager is not SceneManager { Window: IGameWindow window } scene)
             return;
 
         var cancellation = _regeneration = new CancellationTokenSource();
@@ -78,7 +78,7 @@ public sealed partial class DeadByDaylightMapActor : Actor
             if (token.IsCancellationRequested || ActorManager != scene)
                 return;
 
-            scene.Invoke(() =>
+            window.Invoke(() =>
             {
                 try
                 {

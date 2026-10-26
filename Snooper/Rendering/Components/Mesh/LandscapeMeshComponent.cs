@@ -45,7 +45,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
     public readonly uint SizeQuads;
     public readonly Dictionary<string, LayerMapping> Layers;
 
-    protected override bool SupportsOpaquePass => true;
+    protected internal override bool SupportsOpaquePass => true;
 
     public LandscapeMeshComponent(ULandscapeComponent component) : base(component)
     {

@@ -31,7 +31,6 @@ public sealed partial class MaterialNode
 {
     public string Name { get; }
     public string ProjectName { get; }
-    public EGame? Game { get; }
 
     private readonly Lazy<MaterialNode?>? _parent;
     public MaterialNode? Parent => Bridge.Options.MaterialDepth is not EMaterialDepth.TopLayerOnly && _parent?.Value is { } parent && parent != this ? parent : null;
@@ -71,7 +70,6 @@ public sealed partial class MaterialNode
 
         Name = material.Name;
         ProjectName = provider?.ProjectName ?? string.Empty;
-        Game = material.Game;
 
         switch (material)
         {
@@ -550,6 +548,7 @@ public sealed partial class MaterialNode
         {
             if (node._blendMode is { } blendMode) yield return new Entry("BlendMode", blendMode.ToString());
             if (node._shadingModel is { } shadingModel) yield return new Entry("ShadingModel", shadingModel.ToString());
+            if (node._materialDomain is { } materialDomain) yield return new Entry("MaterialDomain", materialDomain.ToString());
             if (node._twoSided is { } twoSided) yield return new Entry("TwoSided", twoSided.ToString());
         }
 

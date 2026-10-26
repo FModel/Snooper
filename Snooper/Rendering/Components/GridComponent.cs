@@ -115,7 +115,7 @@ public class GridComponent() : PrimitiveComponent(new Geometry())
 
 public class OpaqueGridComponent : GridComponent
 {
-    protected override bool SupportsOpaquePass => true;
+    protected internal override bool SupportsOpaquePass => true;
 
     public override Settings GridSettings { get; } = new OpaqueSettings();
 

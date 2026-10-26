@@ -1,8 +1,6 @@
 ﻿using System.Numerics;
-using System.Collections.Concurrent;
 using CUE4Parse.FileProvider;
 using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
 using Snooper.Core.Containers;
 using Snooper.Hosting;
 using Snooper.Rendering.Actors;
@@ -16,14 +14,6 @@ namespace Snooper.Core.Managers;
 public class SceneManager : ActorManager
 {
     public GameWindow Window { get; }
-    private readonly ConcurrentQueue<Action> _commands = new();
-
-    internal void Invoke(Action command)
-    {
-        if (IsDisposed) return;
-        _commands.Enqueue(command);
-        GLFW.PostEmptyEvent();
-    }
 
     public Actor? RootActor
     {
@@ -48,6 +38,7 @@ public class SceneManager : ActorManager
             return;
         }
 
+        scene.IsVisible = true;
         if (RootActor is { } root)
         {
             root.Children.Add(scene);
@@ -79,7 +70,6 @@ public class SceneManager : ActorManager
 
     public override void Update(float delta)
     {
-        while (_commands.TryDequeue(out var command)) command();
         Bridge.Drain();
 
         base.Update(delta);
@@ -162,7 +152,6 @@ public class SceneManager : ActorManager
 
     protected override void Teardown()
     {
-        _commands.Clear();
         _endPlayReason = TeardownReason;
         RootActor = null; // will carry the _endPlayReason down to components and their systems
 

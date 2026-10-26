@@ -13,7 +13,7 @@ using Snooper.Core;
 
 namespace Editor;
 
-public partial class EditorWindow : GameWindow
+public partial class EditorWindow : GameWindow, IGameWindow
 {
     public readonly ImGuiManager Manager;
     public readonly bool CloseHides;
@@ -106,7 +106,7 @@ public partial class EditorWindow : GameWindow
     public void Invoke(Action command)
     {
         _commands.Enqueue(command);
-        GLFW.PostEmptyEvent();
+        if (IsEventDriven) GLFW.PostEmptyEvent();
     }
 
     private bool _exiting;

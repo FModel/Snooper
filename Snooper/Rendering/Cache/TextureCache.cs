@@ -91,6 +91,8 @@ public static class TextureCache
         var inline = string.IsNullOrEmpty(cacheKey);
 
         var container = inline ? section.InlineContainer : MaterialCache.Resolve(cacheKey!);
+        if (container is null) return;
+
         _requests.Enqueue(new Request(section, inline ? $"__inline_{section.SectionId}" : cacheKey, container));
     }
 
@@ -102,7 +104,6 @@ public static class TextureCache
         {
             if (request.Container is null) Drop(request.Section);
             else Take(request.Section, request.Key!, request.Container);
-            if (request.Key != null) request.Section.MaterialChanged();
         }
 
         Notify(budget);
@@ -169,12 +170,7 @@ public static class TextureCache
         var entry = new ContainerEntry(key, container);
         _containers.Add(key, entry);
 
-        if (!container.HasTextures)
-        {
-            // Reattaching a component keeps its textureless material data intact
-            entry.Completed = container.Raw is { IsReady: true };
-            return entry;
-        }
+        if (!container.HasTextures) return entry;
 
         foreach (var (slot, texture) in container.GetTextures())
         {

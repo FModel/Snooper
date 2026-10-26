@@ -1,13 +1,16 @@
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using CUE4Parse_Conversion;
 using CUE4Parse_Conversion.Dto;
 using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Material;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Meshes;
 using CUE4Parse.UE4.Objects.UObject;
 using Serilog;
+using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Managers;
 using Snooper.Core.Containers.Resources;
@@ -81,7 +84,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     public sealed override MaterialSection[] Materials { get; }
 
-    protected override bool SupportsOpaquePass => true;
+    protected internal override bool SupportsOpaquePass => true;
 
     protected MeshComponent(MeshComponent other) : base(other)
     {
@@ -149,6 +152,9 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             });
         }
 
+        if (scene is not SceneManager { Window: IGameWindow window })
+            throw new UnreachableException("SceneManager is not a game window, cannot load materials.");
+
         var textureData = _textureData.ToArray();
         var layerCount = Descriptor.Lods[0].LayerCount;
 
@@ -156,16 +162,23 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         {
             var index = i;
             var section = new MaterialSection(index, IsVisible);
-            section.OnContainerReady += _ => IsOpaque &= !section.IsTranslucent;
-            section.OnMaterialChanged += _ => MarkDirty(DirtyFlags.Visibility);
+            section.OnContainerReady += _ => { if (section.IsTranslucent) MarkDirty(DirtyFlags.Opacity); };
             Materials[index] = section;
 
             ThreadManager.Enqueue(() =>
             {
-                section.CacheKey = index == 0 && textureData.Length > 0
+                var key = index == 0 && textureData.Length > 0
                     ? MaterialCache.GetOrCreateKeyFromTextureData(textureData, _materials[index], scene.FileProvider, layerCount, _embedded[index])
                     : MaterialCache.GetOrCreateKey(_materials[index], scene.FileProvider, layerCount, _embedded[index]);
                 _embedded[index] = null;
+
+                var hidden = MaterialCache.TryGetNode(key, out var node) && (node.MaterialDomain is not EMaterialDomain.MD_Surface || node.BlendMode is EBlendMode.BLEND_Additive && MaterialCache.Resolve(key) is null);
+
+                window.Invoke(() =>
+                {
+                    section.CacheKey = key;
+                    if (hidden) SetMaterialVisibility(index, false);
+                });
             });
         }
 

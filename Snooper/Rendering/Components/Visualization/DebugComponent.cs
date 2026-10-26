@@ -65,8 +65,8 @@ public abstract class DebugComponent : PrimitiveComponent<PerMaterialDebugData>
 
         public void FinalizeGpuData()
         {
-            if (Raw is not null)
-                throw new InvalidOperationException("GPU data has already been finalized and sent.");
+            // if (Raw is not null)
+            //     throw new InvalidOperationException("GPU data has already been finalized and sent.");
 
             Raw = new PerMaterialDebugData
             {

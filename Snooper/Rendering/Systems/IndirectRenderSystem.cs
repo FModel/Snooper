@@ -136,7 +136,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             var sections = (uint)component.Descriptor.Lods[0].Sections.Length;
             var chunks = component is HierarchicalInstancedStaticMeshComponent { InstanceChunks: { } ranges } ? ranges : [(0, component.InstanceCount)];
             var draws = sections * (uint)chunks.Length;
-            if (component.IsOpaque) Counts.OpaqueDraws += draws;
+            if (component.SupportsOpaquePass) Counts.OpaqueDraws += draws;
             else Counts.TransparentDraws += draws;
             Counts.ChunkedDraws += sections * (uint)chunks.Count(chunk => chunk.Count > Settings.MaxInstancesPerCullThread);
         }

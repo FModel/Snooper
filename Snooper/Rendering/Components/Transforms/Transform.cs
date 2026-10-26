@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using CUE4Parse.UE4.Objects.Core.Math;
 
 namespace Snooper.Rendering.Components.Transforms;
@@ -53,9 +53,34 @@ public class Transform() : ICloneable
 
     }
 
-    public Transform(Matrix4x4 matrix) : this() => Matrix4x4.Decompose(matrix, out Scale, out Rotation, out Position);
-    
-    public Matrix4x4 ToMatrix() => Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(Rotation)) * Matrix4x4.CreateTranslation(Position);
+    public Transform(Matrix4x4 matrix) : this()
+    {
+        Matrix4x4.Decompose(matrix, out Scale, out Rotation, out Position);
+    }
+
+    public Matrix4x4 ToMatrix()
+    {
+        return Matrix4x4.CreateScale(Scale) *
+               Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(Rotation)) *
+               Matrix4x4.CreateTranslation(Position);
+    }
+
+    public Matrix4x4 ToMatrix(Matrix4x4 parent)
+    {
+        if (parent.GetDeterminant() < 0) return ToMatrix() * parent;
+        return Compose(parent).ToMatrix();
+    }
+
+    public Transform Compose(Matrix4x4 parent)
+    {
+        Matrix4x4.Decompose(parent, out var scale, out var rotation, out _);
+        return new Transform
+        {
+            Position = Vector3.Transform(Position, parent),
+            Rotation = rotation * Rotation,
+            Scale = Scale * scale
+        };
+    }
 
     public Transform Inverse()
     {
@@ -65,14 +90,6 @@ public class Transform() : ICloneable
     }
 
     public static implicit operator Transform(FTransform transform) => new(transform);
-    public static explicit operator FTransform(Transform transform)
-    {
-        var rotation = transform.Rotation.LengthSquared() > 0 ? Quaternion.Normalize(transform.Rotation) : Quaternion.Identity;
-        return new FTransform(
-            new FQuat(rotation.X, rotation.Z, rotation.Y, -rotation.W),
-            new FVector(transform.Position.X, transform.Position.Z, transform.Position.Y) / Settings.GlobalScale,
-            new FVector(transform.Scale.X, transform.Scale.Z, transform.Scale.Y));
-    }
     public static implicit operator Transform(Vector3 position) => new(position);
     public static implicit operator Transform(Quaternion rotation) => new(rotation);
     public object Clone() => new Transform(this);
