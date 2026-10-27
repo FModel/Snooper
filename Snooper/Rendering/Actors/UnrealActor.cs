@@ -87,6 +87,10 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                     UExponentialHeightFogComponent fog => new ExponentialHeightFogComponent(fog),
                     _ => new SpatialComponent(scene)
                 };
+
+                if (component is MeshComponent { Descriptor.Lods.Length: 0 })
+                    component = new SpatialComponent(scene);
+
                 break;
             }
             case UActorComponent actor:

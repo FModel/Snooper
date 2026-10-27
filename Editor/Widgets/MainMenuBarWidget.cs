@@ -76,6 +76,14 @@ public class MainMenuBarWidget
             ImGui.EndMenu();
         }
 
+#if DEBUG
+        if (ImGui.BeginMenu("Debug"))
+        {
+            DrawDebugMenu(editor);
+            ImGui.EndMenu();
+        }
+#endif
+
         DrawPendingRequest();
 
         ImGui.EndMainMenuBar();
@@ -193,6 +201,21 @@ public class MainMenuBarWidget
         }
         ImGui.End();
     }
+
+#if DEBUG
+    private static void DrawDebugMenu(EditorManager editor)
+    {
+        var suppressLogs = Bridge.Host.SuppressViewerLogs;
+        if (ImGui.MenuItem("Suppress Logs", string.Empty, ref suppressLogs))
+            Bridge.Host.SuppressViewerLogs = suppressLogs;
+
+        ImGui.Separator();
+        if (ImGui.MenuItem("Clear Viewer Cache", enabled: EditorManager.CanClearCache) && editor.Window is EditorWindow window)
+        {
+            window.Invoke(editor.ClearCache);
+        }
+    }
+#endif
 
     private static void OpenUrl(string url)
     {

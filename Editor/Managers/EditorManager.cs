@@ -12,6 +12,10 @@ using Editor.Widgets.Timeline;
 using Snooper;
 using Snooper.UI;
 using Editor.Widgets.Custom;
+#if DEBUG
+using Snooper.Core.Managers;
+using Snooper.Rendering.Cache;
+#endif
 
 namespace Editor.Managers;
 
@@ -60,6 +64,22 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     }
     internal bool IsSkeletonTreeOpen => _skeletonTree.IsOpen;
     internal bool _resetLayout;
+
+#if DEBUG
+    internal static bool CanClearCache => ThreadManager.BusyWorkers == 0 && ThreadManager.CurrentQueuedJobs == 0;
+
+    internal void ClearCache()
+    {
+        if (!CanClearCache) return;
+
+        UnloadScene();
+        ThreadManager.ClearAndDispose();
+        MeshCache.ClearAndDispose();
+        AnimationCache.Clear();
+        MaterialCache.ClearAndDispose();
+        TextureCache.ClearAndDispose();
+    }
+#endif
 
     public override void Update(float delta)
     {

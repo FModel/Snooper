@@ -69,11 +69,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
         Bounds = new CullingBounds(dto.Bounds);
-        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
-        for (var i = 0; i < Lods.Length; i++)
-        {
-            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
-        }
+        Lods = [.. dto.LODs.Where(lod => lod.Sections.Length > 0).Select(lod => LodDescriptor<TVertex>.FromLod(lod, factory, colorRemap))];
 
         Sockets = ReadSockets(dto.Sockets);
     }
@@ -91,11 +87,8 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
         Bounds = new CullingBounds(dto.Bounds);
-        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
-        for (var i = 0; i < Lods.Length; i++)
-        {
-            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
-        }
+        var lods = dto.LODs.Where(lod => lod.Sections.Length > 0).ToArray();
+        Lods = [.. lods.Select(lod => LodDescriptor<TVertex>.FromLod(lod, factory, colorRemap))];
 
         Skeleton = new SkeletonDescriptor(dto.Bones);
         if (owner.Skeleton.TryLoad<USkeleton>(out var skeleton))
@@ -105,13 +98,15 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
 
         Sockets = ReadSockets(dto.Sockets);
 
+        if (Lods.Length == 0) return;
+
         if (dto.MorphTargets is { Length: > 0 } morphTargets)
         {
             owner.PopulateMorphTargetVerticesData();
             Morphs = MorphDescriptor.Create(morphTargets, Lods);
         }
 
-        BoneBounds = GetBoneBounds(dto.LODs[0].Vertices, Skeleton.BoneCount);
+        BoneBounds = GetBoneBounds(lods[0].Vertices, Skeleton.BoneCount);
 
         CullingBounds?[] GetBoneBounds(SkinnedMeshVertex[] vertices, int boneCount)
         {

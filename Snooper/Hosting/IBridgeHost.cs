@@ -11,6 +11,10 @@ public interface IBridgeHost
 
     public bool CanBrowseAssets => false;
 
+#if DEBUG
+    public bool SuppressViewerLogs { get; set; }
+#endif
+
     public ExportSession Session { get; }
     public void ShowExportSession();
 }
@@ -19,6 +23,10 @@ internal sealed class StandaloneHost : IBridgeHost
 {
     public string Name => "Snooper";
     public string ImGuiIniPath => "./snooper.ini";
+
+#if DEBUG
+    public bool SuppressViewerLogs { get; set; }
+#endif
 
     public ExportSession Session { get; } = new();
     public void ShowExportSession() => throw new NotImplementedException();
