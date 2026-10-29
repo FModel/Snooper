@@ -10,12 +10,10 @@ using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Versions;
 using CUE4Parse.Utils;
-using CUE4Parse_Conversion.Materials;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Extensions;
 using Snooper.Hosting;
-using Snooper.UI;
 
 namespace Snooper.Rendering.Cache;
 
@@ -59,8 +57,10 @@ public sealed partial class MaterialNode
     private ulong? _propertyConnectedMask;
     public ulong? PropertyConnectedMask => _propertyConnectedMask ?? Parent?.PropertyConnectedMask;
 
+    private ShaderParameters? _shaderParameters;
+    private ShaderParameters? ActiveParameters => _shaderParameters ?? Parent?.ActiveParameters;
+
     private readonly Dictionary<string, TextureParameter> _textures = [];
-    private readonly HashSet<string>? _activeTextureParameters;
     private readonly List<TextureParameter> _referencedTextures = [];
     private readonly Dictionary<string, float> _scalars = [];
     private readonly Dictionary<string, FLinearColor> _vectors = [];
@@ -99,7 +99,7 @@ public sealed partial class MaterialNode
 
                 if (instance is UMaterialInstanceConstant constant) ReadParameterValues(constant);
                 ReadCachedData(instance);
-                _activeTextureParameters = MaterialParameters.GetActiveTextureParameters(instance, Bridge.Options.MaterialDepth);
+                ReadShaderMaps(instance);
                 break;
             }
             case UMaterial root:
@@ -118,7 +118,7 @@ public sealed partial class MaterialNode
 
                 ReadExpressions(root);
                 ReadCachedData(root);
-                _activeTextureParameters = MaterialParameters.GetActiveTextureParameters(root, Bridge.Options.MaterialDepth);
+                ReadShaderMaps(root);
                 break;
             }
         }
@@ -187,6 +187,58 @@ public sealed partial class MaterialNode
                 var ordered = _referencedTextures.OrderByDescending(x => sampled.Contains(x.Name)).ToList();
                 _referencedTextures.Clear();
                 _referencedTextures.AddRange(ordered);
+            }
+        }
+
+        void ReadShaderMaps(UMaterialInterface cooked)
+        {
+            if (cooked.LoadedMaterialResources is not { Count: > 0 } resources) return;
+
+            var textures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var scalars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var vectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var resource in resources)
+            {
+                if (resource.LoadedShaderMap?.Content is not FMaterialShaderMapContent { MaterialCompilationOutput.UniformExpressionSet: { } uniforms }) continue;
+
+                foreach (var parameters in uniforms.UniformTextureParameters)
+                foreach (var parameter in parameters)
+                    Add(textures, parameter);
+
+                foreach (var parameter in uniforms.UniformScalarParameters)
+                    Add(scalars, parameter);
+
+                foreach (var parameter in uniforms.UniformVectorParameters)
+                    Add(vectors, parameter);
+
+                foreach (var parameter in uniforms.UniformNumericParameters)
+                {
+                    switch (parameter.ParameterType)
+                    {
+                        case EMaterialParameterType.Scalar:
+                            Add(scalars, parameter);
+                            break;
+                        case EMaterialParameterType.Vector or EMaterialParameterType.DoubleVector:
+                            Add(vectors, parameter);
+                            break;
+                    }
+                }
+            }
+
+            _shaderParameters = new ShaderParameters(textures, scalars, vectors);
+
+            void Add(HashSet<string> names, object parameter)
+            {
+                var name = parameter switch
+                {
+                    FMaterialBaseParameterInfo { ParameterInfo: { } info } => info.Name.Text,
+                    FMaterialBaseParameterInfo { ParameterName: { } old } => old,
+                    FMaterialNumericParameterInfo { ParameterInfo: { } info } => info.Name.Text,
+                    _ => null
+                };
+
+                if (name != null) names.Add(name);
             }
         }
 
@@ -262,12 +314,13 @@ public sealed partial class MaterialNode
 
     public bool TryGetTexture([MaybeNullWhen(false)] out UTexture texture, params string[] names)
     {
+        var active = Active(x => x.Textures);
         for (var node = this; node != null; node = node.Parent)
         {
             if (node._textures.Count == 0) continue;
             foreach (var name in names)
             {
-                if (_activeTextureParameters != null && !_activeTextureParameters.Contains(name)) continue;
+                if (active != null && !active.Contains(name)) continue;
                 if (node._textures.TryGetValue(name, out var parameter) && parameter.Texture.Value is { } found)
                 {
                     texture = found;
@@ -281,11 +334,12 @@ public sealed partial class MaterialNode
     }
     public bool TryGetTexture([MaybeNullWhen(false)] out UTexture texture, EMaterialTextureKind kind)
     {
+        var active = Active(x => x.Textures);
         for (var node = this; node != null; node = node.Parent)
         {
             foreach (var (name, parameter) in node._textures)
             {
-                if (_activeTextureParameters != null && !_activeTextureParameters.Contains(name)) continue;
+                if (active != null && !active.Contains(name)) continue;
                 if (parameter.Texture.Value is UTexture2D found && Classify(name, found) == kind)
                 {
                     texture = found;
@@ -310,7 +364,7 @@ public sealed partial class MaterialNode
     }
     public bool HasTexture(string name)
     {
-        if (_activeTextureParameters != null && !_activeTextureParameters.Contains(name)) return false;
+        if (Active(x => x.Textures) is { } active && !active.Contains(name)) return false;
 
         for (var node = this; node != null; node = node.Parent)
         {
@@ -320,11 +374,16 @@ public sealed partial class MaterialNode
         return false;
     }
 
-    public bool TryGetScalar(out float scalar, params string[] names) => TryGet(x => x._scalars, out scalar, names);
-    public bool TryGetVector(out FLinearColor vector, params string[] names) => TryGet(x => x._vectors, out vector, names);
-    public bool TryGetSwitch(out bool value, params string[] names) => TryGet(x => x._switches, out value, names);
+    public bool TryGetScalar(out float scalar, params string[] names) => TryGet(x => x._scalars, Active(x => x.Scalars), out scalar, names);
+    public bool TryGetVector(out FLinearColor vector, params string[] names) => TryGet(x => x._vectors, Active(x => x.Vectors), out vector, names);
+    public bool TryGetSwitch(out bool value, params string[] names) => TryGet(x => x._switches, null, out value, names); // static switches pick the shader map, they are never uniforms
 
-    private bool TryGet<T>(Func<MaterialNode, Dictionary<string, T>> values, out T value, string[] names) where T : struct
+    private IReadOnlySet<string>? Active(Func<ShaderParameters, HashSet<string>> kind)
+    {
+        return ActiveParameters is { } parameters && kind(parameters) is { Count: > 0 } active ? active : null;
+    }
+
+    private bool TryGet<T>(Func<MaterialNode, Dictionary<string, T>> values, IReadOnlySet<string>? active, out T value, string[] names) where T : struct
     {
         for (var node = this; node != null; node = node.Parent)
         {
@@ -333,6 +392,7 @@ public sealed partial class MaterialNode
 
             foreach (var name in names)
             {
+                if (active != null && !active.Contains(name)) continue;
                 if (own.TryGetValue(name, out value)) return true;
             }
         }
@@ -468,21 +528,22 @@ public sealed partial class MaterialNode
 
         ParameterView Build()
         {
-            var kinds = new (string Title, bool Open, Func<MaterialNode, IEnumerable<Entry>> Read)[]
+            var parameters = chain.Find(node => node._shaderParameters != null)?._shaderParameters;
+            var kinds = new (string Title, bool Open, Func<MaterialNode, IEnumerable<Entry>> Read, IReadOnlySet<string>? Active)[]
             {
-                ("Base", true, Base),
-                ("Scalars", true, node => node._scalars.Select(x => new Entry(x.Key, x.Value.ToString("0.####")))),
-                ("Switches", true, node => node._switches.Select(x => new Entry(x.Key, x.Value.ToString()))),
-                ("Vectors", true, node => node._vectors.Select(x => new Entry(x.Key, $"{x.Value.R:0.###}, {x.Value.G:0.###}, {x.Value.B:0.###}, {x.Value.A:0.###}", Color: x.Value))),
-                ("Textures", true, node => node._textures.Select(x => new Entry(x.Key, x.Value.Name, x.Value.Path))),
-                ("Connected", false, Connected),
-                ("Referenced", false, node => node._referencedTextures.Select(x => new Entry(x.Name, string.Empty, x.Path))),
+                ("Base", true, Base, null),
+                ("Scalars", true, node => node._scalars.Select(x => new Entry(x.Key, x.Value.ToString("0.####"))), parameters?.Scalars),
+                ("Switches", true, node => node._switches.Select(x => new Entry(x.Key, x.Value.ToString())), null),
+                ("Vectors", true, node => node._vectors.Select(x => new Entry(x.Key, $"{x.Value.R:0.###}, {x.Value.G:0.###}, {x.Value.B:0.###}, {x.Value.A:0.###}", Color: x.Value)), parameters?.Vectors),
+                ("Textures", true, node => node._textures.Select(x => new Entry(x.Key, x.Value.Name, x.Value.Path)), parameters?.Textures),
+                ("Connected", false, Connected, null),
+                ("Referenced", false, node => node._referencedTextures.Select(x => new Entry(x.Name, string.Empty, x.Path)), null),
             };
 
             var built = new (string Title, bool Open, List<Row> Rows)[kinds.Length];
             for (var k = 0; k < kinds.Length; k++)
             {
-                var (title, open, read) = kinds[k];
+                var (title, open, read, active) = kinds[k];
                 var rows = new List<Row>();
                 var index = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 foreach (var node in chain)
@@ -492,7 +553,7 @@ public sealed partial class MaterialNode
                         if (!index.TryGetValue(entry.Name, out var i))
                         {
                             index[entry.Name] = i = rows.Count;
-                            rows.Add(new Row(entry.Name, []));
+                            rows.Add(new Row(entry.Name, [], active is { Count: > 0 } && !active.Contains(entry.Name)));
                         }
                         rows[i].Writers.Add((node, entry));
                     }
@@ -507,11 +568,12 @@ public sealed partial class MaterialNode
 
         void DrawRow(string title, Row row)
         {
-            var (name, writers) = row;
+            var (name, writers, inactive) = row;
             var entry = writers[0].Entry;
 
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
+            if (inactive) ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled));
             if (ImGui.Selectable($"{name}##{title}", false, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
             {
                 var onName = ImGui.TableGetHoveredColumn() == 0;
@@ -520,9 +582,10 @@ public sealed partial class MaterialNode
             }
 
             var replaced = writers.Skip(1).Where(x => x.Entry.Display != entry.Display).DistinctBy(x => x.Entry.Display).ToList();
-            if (ImGui.IsItemHovered() && replaced.Count > 0)
+            if (ImGui.IsItemHovered() && (replaced.Count > 0 || inactive))
             {
                 ImGui.BeginTooltip();
+                if (inactive) ImGui.TextUnformatted("Not sampled by the shader");
                 foreach (var (node, value) in replaced)
                 {
                     ImGui.TextDisabled($"Parent {chain.IndexOf(node)}");
@@ -550,6 +613,7 @@ public sealed partial class MaterialNode
                 ImGui.SameLine();
             }
             ImGui.TextUnformatted(entry.Value);
+            if (inactive) ImGui.PopStyleColor();
         }
 
         static IEnumerable<Entry> Base(MaterialNode node)
@@ -583,7 +647,7 @@ public sealed partial class MaterialNode
     {
         public string Display => Value.Length > 0 ? Value : Path ?? string.Empty;
     }
-
-    private readonly record struct Row(string Name, List<(MaterialNode Node, Entry Entry)> Writers);
+    private readonly record struct Row(string Name, List<(MaterialNode Node, Entry Entry)> Writers, bool Inactive);
+    private sealed record ShaderParameters(HashSet<string> Textures, HashSet<string> Scalars, HashSet<string> Vectors);
     private sealed record ParameterView(string Filter, int ChainLength, (string Title, bool Open, List<Row> Rows)[] Kinds);
 }

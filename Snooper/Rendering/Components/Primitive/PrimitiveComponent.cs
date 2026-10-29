@@ -267,7 +267,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
     public override void DrawControls()
     {
         base.DrawControls();
-        if (string.IsNullOrEmpty(Descriptor.Name))
+        if (string.IsNullOrEmpty(Descriptor.Name) || Descriptor.Lods.Length == 0)
             return;
 
         var open = ImGui.CollapsingHeader(HeaderLabel, ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap);

@@ -1,7 +1,6 @@
 using CUE4Parse.GameTypes.Nascar.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.GameTypes.DBD.Assets.Exports.Components;
-using Snooper.Rendering.Components.Custom;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.Component.Atmosphere;
@@ -15,6 +14,7 @@ using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.UObject;
+using Serilog;
 using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Audio;
 using Snooper.Rendering.Components.Camera;
@@ -42,62 +42,67 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                 parent = scene.GetOrDefault<FPackageIndex?>("AttachParent");
                 leader = (scene as USkinnedMeshComponent)?.LeaderPoseComponent;
 
-                component = scene switch
+                try
                 {
-                    // Get.*Mesh() is not being used because it ignores null fields, null meaning discard the mesh for this component (ig?)
-                    UStaticMeshComponent sm when sm.TryGetValue<UStaticMesh>(out var mesh, "StaticMesh") => sm switch
+                    component = scene switch
                     {
-                        UHierarchicalInstancedStaticMeshComponent hism => new HierarchicalInstancedStaticMeshComponent(mesh, hism),
-                        UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(mesh, ism),
-                        USplineMeshComponent spline => new SplineMeshComponent(mesh, spline),
-                        _ => new StaticMeshComponent(mesh, sm)
-                    },
-                    UIRMeshComponent ir when ir.Mesh.TryLoad<UIRMesh>(out var mesh) => new ContainerComponent(mesh, ir), // Custom
-                    USkinnedMeshComponent skm when skm.TryGetValue<USkeletalMesh>(out var mesh, "SkeletalMesh", "SkinnedAsset") => skm switch
-                    {
-                        UInstancedSkinnedMeshComponent isk => new InstancedSkinnedMeshComponent(mesh, isk),
-                        USkeletalMeshComponent sk => new SkeletalMeshComponent(mesh, sk),
-                        _ => new SkinnedMeshComponent(mesh, skm)
-                    },
-                    UGeometryCollectionComponent gc when gc.RestCollection?.TryLoad<UGeometryCollection>(out var collection) == true => new GeometryCollectionComponent(gc, collection),
-                    ULandscapeComponent landscape => new LandscapeMeshComponent(landscape),
-                    ULandscapeSplinesComponent splines => new LandscapeSplinesComponent(splines),
-                    UDecalComponent decal => new DecalComponent(decal),
-                    UBillboardComponent billboard => new BillboardComponent(billboard),
-                    UArrowComponent arrow => new ArrowComponent(arrow),
-                    UBrushComponent brushComponent when brushComponent.GetBrush() is { } brush => new BrushComponent(brushComponent, brush),
-                    UShapeComponent shape when shape.Outer?.Object?.Value is not ALevelBounds => shape switch // exclude level bounds because their scale looks weird and overall they provide little value
-                    {
-                        UBoxComponent box => new BoxComponent(box),
-                        USphereComponent sphere => new SphereComponent(sphere),
-                        UCapsuleComponent capsule => new CapsuleComponent(capsule),
-                        _ => new SpatialComponent(shape)
-                    },
-                    ULightComponentBase light => light switch
-                    {
-                        USpotLightComponent spotLight => new SpotLightComponent(spotLight),
-                        UPointLightComponent pointLight => new PointLightComponent(pointLight),
-                        URectLightComponent rectLight => new RectLightComponent(rectLight),
-                        UDirectionalLightComponent directionalLight => new DirectionalLightComponent(directionalLight),
-                        USkyLightComponent skyLight => new SkyLightComponent(skyLight),
-                        _ => new SpatialComponent(light)
-                    },
-                    UAudioComponent audio => new AudioComponent(audio),
-                    UTextRenderComponent text => new TextRenderComponent(text),
-                    UCameraComponent camera => new CameraComponent(camera),
-                    USkyAtmosphereComponent sky => new SkyAtmosphereComponent(sky),
-                    UExponentialHeightFogComponent fog => new ExponentialHeightFogComponent(fog),
-                    _ => new SpatialComponent(scene)
-                };
-
-                if (component is MeshComponent { Descriptor.Lods.Length: 0 })
+                        // Get.*Mesh() is not being used because it ignores null fields, null meaning discard the mesh for this component (ig?)
+                        UStaticMeshComponent sm when sm.TryGetValue<UStaticMesh>(out var mesh, "StaticMesh") => sm switch
+                        {
+                            UHierarchicalInstancedStaticMeshComponent hism => new HierarchicalInstancedStaticMeshComponent(mesh, hism),
+                            UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(mesh, ism),
+                            USplineMeshComponent spline => new SplineMeshComponent(mesh, spline),
+                            _ => new StaticMeshComponent(mesh, sm)
+                        },
+                        UIRMeshComponent ir when ir.Mesh.TryLoad<UIRMesh>(out var mesh) => new ContainerComponent(mesh, ir), // Custom
+                        USkinnedMeshComponent skm when skm.TryGetValue<USkeletalMesh>(out var mesh, "SkeletalMesh", "SkinnedAsset") => skm switch
+                        {
+                            UInstancedSkinnedMeshComponent isk => new InstancedSkinnedMeshComponent(mesh, isk),
+                            USkeletalMeshComponent sk => new SkeletalMeshComponent(mesh, sk),
+                            _ => new SkinnedMeshComponent(mesh, skm)
+                        },
+                        UGeometryCollectionComponent gc when gc.RestCollection?.TryLoad<UGeometryCollection>(out var collection) == true => new GeometryCollectionComponent(gc, collection),
+                        ULandscapeComponent landscape => new LandscapeMeshComponent(landscape),
+                        ULandscapeSplinesComponent splines => new LandscapeSplinesComponent(splines),
+                        UDecalComponent decal => new DecalComponent(decal),
+                        UBillboardComponent billboard => new BillboardComponent(billboard),
+                        UArrowComponent arrow => new ArrowComponent(arrow),
+                        UBrushComponent brushComponent when brushComponent.GetBrush() is { } brush => new BrushComponent(brushComponent, brush),
+                        UShapeComponent shape when shape.Outer?.Object?.Value is not ALevelBounds => shape switch // exclude level bounds because their scale looks weird and overall they provide little value
+                        {
+                            UBoxComponent box => new BoxComponent(box),
+                            USphereComponent sphere => new SphereComponent(sphere),
+                            UCapsuleComponent capsule => new CapsuleComponent(capsule),
+                            _ => new SpatialComponent(shape)
+                        },
+                        ULightComponentBase light => light switch
+                        {
+                            USpotLightComponent spotLight => new SpotLightComponent(spotLight),
+                            UPointLightComponent pointLight => new PointLightComponent(pointLight),
+                            URectLightComponent rectLight => new RectLightComponent(rectLight),
+                            UDirectionalLightComponent directionalLight => new DirectionalLightComponent(directionalLight),
+                            USkyLightComponent skyLight => new SkyLightComponent(skyLight),
+                            _ => new SpatialComponent(light)
+                        },
+                        UAudioComponent audio => new AudioComponent(audio),
+                        UTextRenderComponent text => new TextRenderComponent(text),
+                        UCameraComponent camera => new CameraComponent(camera),
+                        USkyAtmosphereComponent sky => new SkyAtmosphereComponent(sky),
+                        UExponentialHeightFogComponent fog => new ExponentialHeightFogComponent(fog),
+                        _ => new SpatialComponent(scene)
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to create component for {Name} ({Type})", scene.Name, scene.GetType().Name);
                     component = new SpatialComponent(scene);
+                }
 
                 break;
             }
             case UDBDInstancedFoliageComponent foliage: // Custom
             {
-                component = new DBDInstancedFoliageComponent(foliage);
+                component = new ContainerComponent(foliage);
                 break;
             }
             case UActorComponent actor:

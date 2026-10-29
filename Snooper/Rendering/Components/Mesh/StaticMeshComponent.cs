@@ -19,17 +19,17 @@ public class StaticMeshComponent : MeshComponent
 
     }
 
-    public StaticMeshComponent(UStaticMesh staticMesh, Transform? transform = null, FPackageIndex?[]? materials = null) : base(materials ?? staticMesh.Materials, transform, staticMesh.Name)
+    public StaticMeshComponent(UStaticMesh staticMesh, Transform? transform = null, FPackageIndex?[]? overrideMaterials = null) : base(staticMesh.Materials, overrideMaterials, transform, staticMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 
-    public StaticMeshComponent(UIRMesh staticMesh, uint meshIndex, FPackageIndex?[]? materials = null, Transform? transform = null) : base(materials ?? staticMesh.Materials, transform, meshIndex > 0 ? $"{staticMesh.Name}_{meshIndex}" : staticMesh.Name)
+    public StaticMeshComponent(UIRMesh staticMesh, uint meshIndex, FPackageIndex?[]? overrideMaterials = null, Transform? transform = null) : base(staticMesh.Materials, overrideMaterials, transform, meshIndex > 0 ? $"{staticMesh.Name}_{meshIndex}" : staticMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, meshIndex, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
 
-    public StaticMeshComponent(UHoudiniStaticMesh staticMesh, Transform? transform = null) : base(staticMesh.Materials, transform, staticMesh.Name)
+    public StaticMeshComponent(UHoudiniStaticMesh staticMesh, Transform? transform = null) : base(staticMesh.Materials, null, transform, staticMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
     }
@@ -46,7 +46,7 @@ public class StaticMeshComponent : MeshComponent
 
     }
 
-    protected StaticMeshComponent(FPackageIndex?[] materials, Transform? transform = null, string? name = null) : base(materials, transform, name)
+    protected StaticMeshComponent(FPackageIndex?[] materials, Transform? transform = null, string? name = null) : base(materials, null, transform, name)
     {
 
     }

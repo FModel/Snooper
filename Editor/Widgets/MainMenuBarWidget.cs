@@ -4,6 +4,9 @@ using Editor.Managers;
 using ImGuiNET;
 using Serilog;
 using Snooper;
+#if DEBUG
+using Snooper.Core.Managers;
+#endif
 using Snooper.Hosting;
 using Snooper.UI;
 
@@ -210,9 +213,10 @@ public class MainMenuBarWidget
             Bridge.Host.SuppressViewerLogs = suppressLogs;
 
         ImGui.Separator();
-        if (ImGui.MenuItem("Clear Viewer Cache", enabled: EditorManager.CanClearCache) && editor.Window is EditorWindow window)
+        if (ImGui.MenuItem("Factory Reset", enabled: ThreadManager.BusyWorkers == 0 && ThreadManager.CurrentQueuedJobs == 0))
         {
-            window.Invoke(editor.ClearCache);
+            editor.UnloadScene();
+            editor.ClearCache();
         }
     }
 #endif

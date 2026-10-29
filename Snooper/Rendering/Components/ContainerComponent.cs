@@ -1,6 +1,7 @@
-﻿using CUE4Parse.GameTypes.Nascar.Assets.Exports;
+﻿using CUE4Parse.GameTypes.DBD.Assets.Exports.Components;
+using CUE4Parse.GameTypes.Nascar.Assets.Exports;
 using Snooper.Core.Managers;
-using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
@@ -10,22 +11,32 @@ public class ContainerComponent : SpatialComponent
 {
     private StaticMeshComponent[]? _children;
 
-    public ContainerComponent(UActorComponent component, StaticMeshComponent[] children) : base(component)
-    {
-        _children = children;
-    }
-
     public ContainerComponent(UIRMesh staticMesh, UIRMeshComponent component) : base(component)
     {
-        var materials = component.OverrideMaterials.Length == staticMesh.Info.MaterialCount
-            ? component.OverrideMaterials
-            : staticMesh.Materials;
-
         _children = new StaticMeshComponent[staticMesh.Info.PartCount];
         for (var i = 0u; i < staticMesh.Info.PartCount; i++)
         {
-            _children[i] = new StaticMeshComponent(staticMesh, i, materials);
+            _children[i] = new StaticMeshComponent(staticMesh, i, component.OverrideMaterials);
         }
+    }
+
+    public ContainerComponent(UDBDInstancedFoliageComponent foliage) : base(foliage)
+    {
+        var children = new List<StaticMeshComponent>();
+        foreach (var (mesh, overrides, transforms) in foliage.GetMeshes())
+        {
+            if (!mesh.TryLoad<UStaticMesh>(out var staticMesh)) continue;
+
+            var instances = new List<Transform>(transforms.Length);
+            foreach (var transform in transforms)
+            {
+                instances.Add(transform);
+            }
+
+            children.Add(new InstancedStaticMeshComponent(staticMesh, instances, overrides));
+        }
+
+        _children = [.. children];
     }
 
     protected override void BeginPlay(ActorManager scene)

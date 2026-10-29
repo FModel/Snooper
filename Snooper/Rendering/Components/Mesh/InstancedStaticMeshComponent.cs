@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
+using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Components.Transforms;
 
 namespace Snooper.Rendering.Components.Mesh;
@@ -34,7 +35,7 @@ public class InstancedStaticMeshComponent : StaticMeshComponent
         IsVisible = IsVisible && instances.Length > 0;
     }
 
-    public InstancedStaticMeshComponent(UStaticMesh staticMesh, List<Transform> transforms) : base(staticMesh)
+    public InstancedStaticMeshComponent(UStaticMesh staticMesh, List<Transform> transforms, FPackageIndex?[]? overrideMaterials = null) : base(staticMesh, null, overrideMaterials)
     {
         Instances = new InstancedTransforms([.. transforms]);
         IsVisible = IsVisible && transforms.Count > 0;

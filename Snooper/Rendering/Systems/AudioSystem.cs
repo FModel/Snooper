@@ -2,7 +2,6 @@
 using OpenTK.Audio.OpenAL;
 using Serilog;
 using Snooper.Core;
-using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Systems;
 using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components;

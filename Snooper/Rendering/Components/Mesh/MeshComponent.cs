@@ -93,41 +93,36 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         Materials = [..other.Materials];
     }
 
-    protected MeshComponent(FPackageIndex?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
+    protected MeshComponent(FPackageIndex?[] materials, FPackageIndex?[]? overrideMaterials = null, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        _materials = new FSoftObjectPath[materials.Length];
-        _embedded = new FPackageIndex?[materials.Length];
-        for (var i = 0; i < materials.Length; i++)
-        {
-            SetMaterial(i, materials[i]);
-        }
-
+        (_materials, _embedded) = ReadMaterials(materials, overrideMaterials);
         Materials = new MaterialSection[_materials.Length];
     }
 
     protected MeshComponent(FPackageIndex?[] materials, UMeshComponent component) : base(component)
     {
-        _materials = new FSoftObjectPath[Math.Max(materials.Length, 1)];
-        _embedded = new FPackageIndex?[_materials.Length];
+        (_materials, _embedded) = ReadMaterials(materials, component.OverrideMaterials);
+        Materials = new MaterialSection[_materials.Length];
+    }
 
-        var overrideMaterials = component.OverrideMaterials;
+    private static (FSoftObjectPath[] Materials, FPackageIndex?[] Embedded) ReadMaterials(FPackageIndex?[] materials, FPackageIndex?[]? overrideMaterials)
+    {
+        var paths = new FSoftObjectPath[Math.Max(materials.Length, 1)];
+        var embedded = new FPackageIndex?[paths.Length];
+
         for (var i = 0; i < materials.Length; i++)
         {
-            SetMaterial(i, i < overrideMaterials.Length && overrideMaterials[i] is { IsNull: false } overrideMaterial ? overrideMaterial : materials[i]);
+            var material = i < overrideMaterials?.Length && overrideMaterials[i] is { IsNull: false } overrideMaterial ? overrideMaterial : materials[i];
+            paths[i] = material.ToSoftObjectPath();
+            embedded[i] = material is { IsExport: true } ? material : null;
         }
 
-        Materials = new MaterialSection[_materials.Length];
+        return (paths, embedded);
     }
 
     protected ISocketDescriptor? FindSocket(string name) => Descriptor.Sockets.FirstOrDefault(x => x != null && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     public virtual bool HasSocket(string name) => FindSocket(name) != null;
     public virtual Matrix4x4 GetSocketModelMatrix(string name) => FindSocket(name)?.LocalMatrix ?? Matrix4x4.Identity;
-
-    internal void SetMaterial(int index, FPackageIndex? material)
-    {
-        _materials[index] = material.ToSoftObjectPath();
-        _embedded[index] = material is { IsExport: true } ? material : null;
-    }
 
     private readonly List<UBuildingTextureData?> _textureData = [];
     public void RegisterTextureData(UBuildingTextureData textureData, int layerIndex)
@@ -142,6 +137,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
     protected override void BeginPlay(ActorManager scene)
     {
         base.BeginPlay(scene);
+        if (Descriptor.Lods.Length == 0) return;
 
         if (Descriptor.Lods.Any(lod => !lod.IsPrimitiveReady))
         {

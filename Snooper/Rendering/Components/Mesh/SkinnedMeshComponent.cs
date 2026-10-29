@@ -104,13 +104,13 @@ public class SkinnedMeshComponent : MeshComponent
         _morphWeights = (float[]?) other._morphWeights?.Clone();
     }
 
-    protected SkinnedMeshComponent(USkinnedAsset skinnedAsset, Transform? transform = null) : base(skinnedAsset.Materials, transform, skinnedAsset.Name)
+    protected SkinnedMeshComponent(USkinnedAsset skinnedAsset, Transform? transform = null) : base(skinnedAsset.Materials, null, transform, skinnedAsset.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skinnedAsset, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
         if (Descriptor.Skeleton is { } skeleton) Pose = new SkeletonPose(skeleton);
     }
 
-    protected SkinnedMeshComponent(USkeleton skeleton, Transform? transform = null) : base([], transform, skeleton.Name)
+    protected SkinnedMeshComponent(USkeleton skeleton, Transform? transform = null) : base([], null, transform, skeleton.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skeleton, descriptor => new SkeletonGeometry(descriptor, ESkeletonShape.Adaptive));
         if (Descriptor.Skeleton is { } skeletonDescriptor) Pose = new SkeletonPose(skeletonDescriptor);

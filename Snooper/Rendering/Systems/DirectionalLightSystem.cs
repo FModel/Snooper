@@ -14,7 +14,7 @@ public sealed class DirectionalLightSystem : ActiveComponentSystem<DirectionalLi
         const float maxIntensity = 30.0f;
         const float minLuminance = 0.1f;
 
-        if (!component.CastShadows || component.Intensity > maxIntensity) return false;
+        if (!component.CastShadows || component.Intensity <= 0.0 || component.Intensity > maxIntensity) return false;
         if (Vector3.Dot(component.Color, new Vector3(0.2126f, 0.7152f, 0.0722f)) < minLuminance) return false;
 
         return component.GetDirection().Y > 0.0f;

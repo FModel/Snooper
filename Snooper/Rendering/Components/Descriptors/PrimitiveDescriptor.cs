@@ -63,13 +63,15 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.GetCleanPath();
         Guid = guid;
 
-        if (dto.LODs.Count == 0) throw new InvalidOperationException($"Mesh {Path} has no LODs");
-
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
         Bounds = new CullingBounds(dto.Bounds);
-        Lods = [.. dto.LODs.Where(lod => lod.Sections.Length > 0).Select(lod => LodDescriptor<TVertex>.FromLod(lod, factory, colorRemap))];
+        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
+        for (var i = 0; i < Lods.Length; i++)
+        {
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
+        }
 
         Sockets = ReadSockets(dto.Sockets);
     }
@@ -81,14 +83,16 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Guid = guid;
 
         using var dto = new SkeletalMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat, Bridge.Options.LoadMorphTargets);
-        if (dto.LODs.Count == 0) throw new InvalidOperationException($"Mesh {Path} has no LODs");
 
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
 
         Bounds = new CullingBounds(dto.Bounds);
-        var lods = dto.LODs.Where(lod => lod.Sections.Length > 0).ToArray();
-        Lods = [.. lods.Select(lod => LodDescriptor<TVertex>.FromLod(lod, factory, colorRemap))];
+        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
+        for (var i = 0; i < Lods.Length; i++)
+        {
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
+        }
 
         Skeleton = new SkeletonDescriptor(dto.Bones);
         if (owner.Skeleton.TryLoad<USkeleton>(out var skeleton))
@@ -106,7 +110,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
             Morphs = MorphDescriptor.Create(morphTargets, Lods);
         }
 
-        BoneBounds = GetBoneBounds(lods[0].Vertices, Skeleton.BoneCount);
+        BoneBounds = GetBoneBounds(dto.LODs[0].Vertices, Skeleton.BoneCount);
 
         CullingBounds?[] GetBoneBounds(SkinnedMeshVertex[] vertices, int boneCount)
         {

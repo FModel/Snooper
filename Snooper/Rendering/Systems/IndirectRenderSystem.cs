@@ -50,6 +50,11 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
         Resources.Flush();
     }
 
+    protected override bool CanEnqueueActorComponent(TComponent component)
+    {
+        return component.Descriptor.Lods.Length > 0 && base.CanEnqueueActorComponent(component);
+    }
+
     protected override void OnComponentUpdate(TComponent component, float delta)
     {
         if (component.Metadata is null)

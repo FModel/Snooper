@@ -158,16 +158,20 @@ public class SceneManager : ActorManager
         base.Teardown();
     }
 
-    public override void Dispose()
+    protected internal void ClearCache()
     {
-        base.Dispose();
-
         ThreadManager.ClearAndDispose();
         MeshCache.ClearAndDispose();
         AnimationCache.Clear();
         MaterialCache.ClearAndDispose();
         TextureCache.ClearAndDispose();
+    }
 
+    public override void Dispose()
+    {
+        base.Dispose();
+
+        ClearCache();
         Pipeline.Dispose();
     }
 }
