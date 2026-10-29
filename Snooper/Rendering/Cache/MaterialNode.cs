@@ -10,6 +10,7 @@ using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Versions;
 using CUE4Parse.Utils;
+using CUE4Parse_Conversion.Materials;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Extensions;
@@ -59,6 +60,7 @@ public sealed partial class MaterialNode
     public ulong? PropertyConnectedMask => _propertyConnectedMask ?? Parent?.PropertyConnectedMask;
 
     private readonly Dictionary<string, TextureParameter> _textures = [];
+    private readonly HashSet<string>? _activeTextureParameters;
     private readonly List<TextureParameter> _referencedTextures = [];
     private readonly Dictionary<string, float> _scalars = [];
     private readonly Dictionary<string, FLinearColor> _vectors = [];
@@ -97,6 +99,7 @@ public sealed partial class MaterialNode
 
                 if (instance is UMaterialInstanceConstant constant) ReadParameterValues(constant);
                 ReadCachedData(instance);
+                _activeTextureParameters = MaterialParameters.GetActiveTextureParameters(instance, Bridge.Options.MaterialDepth);
                 break;
             }
             case UMaterial root:
@@ -115,6 +118,7 @@ public sealed partial class MaterialNode
 
                 ReadExpressions(root);
                 ReadCachedData(root);
+                _activeTextureParameters = MaterialParameters.GetActiveTextureParameters(root, Bridge.Options.MaterialDepth);
                 break;
             }
         }
@@ -263,6 +267,7 @@ public sealed partial class MaterialNode
             if (node._textures.Count == 0) continue;
             foreach (var name in names)
             {
+                if (_activeTextureParameters != null && !_activeTextureParameters.Contains(name)) continue;
                 if (node._textures.TryGetValue(name, out var parameter) && parameter.Texture.Value is { } found)
                 {
                     texture = found;
@@ -280,6 +285,7 @@ public sealed partial class MaterialNode
         {
             foreach (var (name, parameter) in node._textures)
             {
+                if (_activeTextureParameters != null && !_activeTextureParameters.Contains(name)) continue;
                 if (parameter.Texture.Value is UTexture2D found && Classify(name, found) == kind)
                 {
                     texture = found;
@@ -304,6 +310,8 @@ public sealed partial class MaterialNode
     }
     public bool HasTexture(string name)
     {
+        if (_activeTextureParameters != null && !_activeTextureParameters.Contains(name)) return false;
+
         for (var node = this; node != null; node = node.Parent)
         {
             if (node._textures.ContainsKey(name)) return true;
