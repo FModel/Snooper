@@ -123,7 +123,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
     public virtual bool HasSocket(string name) => FindSocket(name) != null;
     public virtual Matrix4x4 GetSocketModelMatrix(string name) => FindSocket(name)?.LocalMatrix ?? Matrix4x4.Identity;
 
-    private void SetMaterial(int index, FPackageIndex? material)
+    internal void SetMaterial(int index, FPackageIndex? material)
     {
         _materials[index] = material.ToSoftObjectPath();
         _embedded[index] = material is { IsExport: true } ? material : null;

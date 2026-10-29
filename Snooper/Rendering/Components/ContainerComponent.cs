@@ -1,5 +1,6 @@
 ﻿using CUE4Parse.GameTypes.Nascar.Assets.Exports;
 using Snooper.Core.Managers;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
 
@@ -8,6 +9,11 @@ namespace Snooper.Rendering.Components;
 public class ContainerComponent : SpatialComponent
 {
     private StaticMeshComponent[]? _children;
+
+    public ContainerComponent(UActorComponent component, StaticMeshComponent[] children) : base(component)
+    {
+        _children = children;
+    }
 
     public ContainerComponent(UIRMesh staticMesh, UIRMeshComponent component) : base(component)
     {
