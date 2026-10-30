@@ -232,9 +232,9 @@ public sealed partial class MaterialNode
             {
                 var name = parameter switch
                 {
-                    FMaterialBaseParameterInfo { ParameterInfo: { } info } => info.Name.Text,
-                    FMaterialBaseParameterInfo { ParameterName: { } old } => old,
-                    FMaterialNumericParameterInfo { ParameterInfo: { } info } => info.Name.Text,
+                    FMaterialBaseParameterInfo { ParameterInfo.Name: { IsNone: false } value } => value.Text,
+                    FMaterialBaseParameterInfo { ParameterName: not (null or "None") and var value } => value,
+                    FMaterialNumericParameterInfo { ParameterInfo.Name: { IsNone: false } value } => value.Text,
                     _ => null
                 };
 
