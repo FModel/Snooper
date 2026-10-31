@@ -160,7 +160,6 @@ public static class MaterialCache
             else if (node.TryGetVector(out var color, CMaterialParams2.DiffuseColors[layerIndex]))
             {
                 hasColor = true;
-                color = color.ToSRGB();
                 diffuseColor = new Vector3(color.R, color.G, color.B);
             }
 
