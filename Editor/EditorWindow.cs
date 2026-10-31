@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using CUE4Parse.FileProvider;
 using CUE4Parse.UE4.Assets.Exports;
 using Editor.Managers;
@@ -65,6 +66,18 @@ public partial class EditorWindow : GameWindow, IGameWindow
         };
     }
 
+    private unsafe void ApplyTitleBarTheme()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        const int DwmUseImmersiveDarkMode = 20;
+        var darkMode = 1;
+        _ = DwmSetWindowAttribute(GLFW.GetWin32Window(WindowPtr), DwmUseImmersiveDarkMode, in darkMode, sizeof(int));
+    }
+
+    [LibraryImport("dwmapi.dll")]
+    private static partial int DwmSetWindowAttribute(nint window, int attribute, in int value, int size);
+
     private static OpenTK.Windowing.Common.Input.WindowIcon LoadIcon()
     {
         var assembly = typeof(EditorWindow).Assembly;
@@ -95,6 +108,7 @@ public partial class EditorWindow : GameWindow, IGameWindow
 #endif
 
         Manager.Load();
+        ApplyTitleBarTheme();
 
         CenterWindow();
         IsVisible = true;
