@@ -89,7 +89,7 @@ public class ViewportWidget : PanelWidget
         using (Profiler.Cpu("Toolbar")) DrawToolbar(editor, contentPos, component is SpatialComponent { IsEditable: true } || editor.IsSkeletonTreeOpen);
         using (Profiler.Cpu("Cards")) DrawCards(editor, contentPos, contentSize);
 
-        DrawFooterOverlay(contentPos, contentSize);
+        DrawFooterOverlay(contentPos, contentSize, camera.GetLocalTransform().Position);
         if (camera is not InteractiveCameraComponent)
             DrawFixedCameraOverlay(drawList, imagePos, imageSize);
 
@@ -240,7 +240,7 @@ public class ViewportWidget : PanelWidget
         ImGui.TextColored(Settings.OrangeColor, text);
     }
 
-    private void DrawFooterOverlay(Vector2 contentPos, Vector2 contentSize)
+    private void DrawFooterOverlay(Vector2 contentPos, Vector2 contentSize, Vector3 cameraPosition)
     {
         ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[(int) EFondIndex.SegoeuiSemiBold]);
 
@@ -248,6 +248,11 @@ public class ViewportWidget : PanelWidget
         var text = $"FPS: {io.Framerate:F1} ({io.DeltaTime * 1000f:F2} ms)";
         var size = ImGui.CalcTextSize(text);
         ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, contentSize.Y - Padding - size.Y));
+        ImGui.TextUnformatted(text);
+
+        text = $"X={cameraPosition.X:F2} Y={cameraPosition.Y:F2} Z={cameraPosition.Z:F2}";
+        size = ImGui.CalcTextSize(text);
+        ImGui.SetCursorScreenPos(contentPos + new Vector2(Padding, contentSize.Y - Padding - size.Y * 2f));
         ImGui.TextUnformatted(text);
 
         text = "\uf06a Previewed content may differ from final version saved or used in-game.";
