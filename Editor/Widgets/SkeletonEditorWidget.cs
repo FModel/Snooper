@@ -129,7 +129,7 @@ public class SkeletonEditorWidget : IViewportTool<SkinnedMeshComponent>
         {
             ImGui.BeginTooltip();
             ImGui.TextUnformatted(Name(target));
-            if (_stack.Count > 1) ImGui.TextDisabled($"{_stack.Count} here, click again for the next one");
+            if (_stack.Count > 1) ImGui.TextDisabled($"{_stack.Count} here");
             ImGui.EndTooltip();
 
             if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))

@@ -193,7 +193,7 @@ public class InspectorWidget : PanelWidget
                 if (component.Actor?.ActorManager is EditorManager manager)
                     manager._jsonViewer.Open(component);
             }
-            if (ImGui.MenuItem("\uf24d  Clone")) component.Actor?.Components.Add((ActorComponent) component.Clone());
+            // if (ImGui.MenuItem("\uf24d  Clone")) component.Actor?.Components.Add((ActorComponent) component.Clone());
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
                 if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(component.Path);

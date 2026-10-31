@@ -74,13 +74,14 @@ public class CellActor : StreamableActor
             streaming.LevelStreaming?.TryLoad<ULevelStreaming>(out var level) == true &&
             level.WorldAsset is { } world)
         {
+            // TODO: use ULevelStreaming.LevelTransform, but no data to test, has never been an issue yet anyway
             _world = world.WithoutOwner();
         }
     }
 
-    public CellActor(FSoftObjectPath worldAsset, UWorld world, bool isPersistent = false) : base(world, isPersistent)
+    public CellActor(FSoftObjectPath worldAsset, UWorld world, bool isPersistent = false, Transform? transform = null) : base(world, isPersistent)
     {
-        Components.Add(new SpatialComponent(null, "CellRoot"));
+        Components.Add(new SpatialComponent(transform, "CellRoot"));
         DataLayers = [];
         _world = worldAsset.WithoutOwner();
     }
@@ -109,8 +110,9 @@ public class CellActor : StreamableActor
             throw new InvalidOperationException($"{Name} has no world to build.");
 
         var actor = new WorldActor(world.TryLoad<UWorld>(provider, out var loaded) ? loaded : throw new InvalidOperationException($"{Name} world asset could not be loaded."));
-        if (actor.RootComponent != null && RootComponent != null)
+        if (RootComponent is CellRootComponent && actor.RootComponent != null)
         {
+            // this root is the center of the cell, not its origin, so cancel it on the world below
             actor.RootComponent.SetLocalTransform(RootComponent.GetLocalTransform().Inverse());
         }
 

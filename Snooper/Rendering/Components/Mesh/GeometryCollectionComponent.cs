@@ -33,6 +33,7 @@ public class GeometryCollectionComponent : StaticMeshComponent
         try
         {
             descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(geometryCollection, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
+            ArgumentOutOfRangeException.ThrowIfZero(descriptor.Lods.Length);
         }
         catch (Exception e)
         {

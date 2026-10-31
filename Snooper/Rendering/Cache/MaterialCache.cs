@@ -123,7 +123,7 @@ public static class MaterialCache
         var maxLayers = Math.Min(4, layerCount);
         for (var count = 4u; count >= 2; count--)
         {
-            if (!node.TryGetSwitch(out var enabled, $"Use {count} Materials") || !enabled) continue;
+            if (!node.TryGetSwitch(out var enabled, $"Use {count} Materials", $"Use {count} Layers") || !enabled) continue;
             maxLayers = count;
             break;
         }

@@ -145,7 +145,7 @@ public class WorldActor : Actor
             }
             case ULevelStreaming { WorldAsset: { } worldAsset } streaming when worldAsset.TryLoad<UWorld>(out var world):
             {
-                Children.Add(new CellActor(worldAsset, world, streaming is ULevelStreamingAlwaysLoaded or ULevelStreamingPersistent));
+                Children.Add(new CellActor(worldAsset, world, streaming is ULevelStreamingAlwaysLoaded or ULevelStreamingPersistent, streaming.LevelTransform));
                 break;
             }
         }

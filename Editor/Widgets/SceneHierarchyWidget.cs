@@ -253,7 +253,7 @@ public class SceneHierarchyWidget : PanelWidget
                 if (actor.ActorManager is EditorManager manager)
                     manager._jsonViewer.Open(actor);
             }
-            if (ImGui.MenuItem("\uf24d  Clone")) actor.Parent?.Children.Add((Actor) actor.Clone());
+            // if (ImGui.MenuItem("\uf24d  Clone")) actor.Parent?.Children.Add((Actor) actor.Clone());
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
                 if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(actor.Path);
