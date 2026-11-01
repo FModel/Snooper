@@ -257,6 +257,7 @@ public class SceneHierarchyWidget : PanelWidget
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
                 if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(actor.Path);
+                if (ImGui.MenuItem("Object Path")) ImGui.SetClipboardText(actor.ObjectPath);
                 if (ImGui.MenuItem("Object Name")) ImGui.SetClipboardText(actor.Name);
                 ImGui.EndMenu();
             }

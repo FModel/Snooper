@@ -236,8 +236,8 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
     public void Update(int count, nint data)
     {
         Count = count;
-        ResizeIfNeeded(Count);
-        GL.NamedBufferSubData(Handle, 0, Count * Stride, data);
+        Capacity = Math.Max(Capacity, count);
+        GL.NamedBufferData(Handle, count * Stride, data, usageHint);
     }
 
     public void Remove(BufferAllocation allocation) => RemoveInternal(allocation.AllocationId);

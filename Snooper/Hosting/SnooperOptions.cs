@@ -12,4 +12,14 @@ public sealed class SnooperOptions
     public bool LoadMorphTargets { get; set; } = true;
     public bool IncludeDisabledMeshSections { get; set; }
     public int MaxTextureMipSize { get; set; } = 1024;
+
+    // more like ToMeshOptions
+    public ExportOptions ToExportOptions() => new(
+        meshQuality: EMeshQuality.All,
+        naniteMeshFormat: NaniteMeshFormat,
+        // materialDepth: MaterialDepth,
+        // texturePlatform: TexturePlatform,
+        exportMorphTargets: LoadMorphTargets,
+        includeDisabledMeshSections: IncludeDisabledMeshSections
+    );
 }

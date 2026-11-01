@@ -14,6 +14,7 @@ public abstract class TreeNode : IControllable, ICloneable, IEquatable<TreeNode>
     public string Type { get; }
     public string? Class { get; }
     public string? Path { get; }
+    public string? ObjectPath => field ??= _object?.ToString();
 
     private readonly FSoftObjectPath? _object;
 

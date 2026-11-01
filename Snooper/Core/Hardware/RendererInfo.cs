@@ -1,4 +1,5 @@
 using OpenTK.Graphics.OpenGL4;
+using Serilog;
 
 namespace Snooper.Core.Hardware;
 
@@ -19,6 +20,8 @@ public class RendererInfo
         Version = Convert.ToInt32($"{GL.GetInteger(GetPName.MajorVersion)}{GL.GetInteger(GetPName.MinorVersion)}") / 10.0;
         DeviceInfo.Load();
         SystemMemory.Update();
+
+        Log.Information("GPU={GPU} GL={OpenGL}", DeviceInfo.Name, Name);
     }
 
     private float _sinceLastPoll;

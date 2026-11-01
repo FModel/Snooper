@@ -23,8 +23,8 @@ public class ImGuiController : IResizable, IDisposable
 
     private readonly ImGuiFontTexture _fontTexture = new();
     private readonly VertexArray _vao = new();
-    private readonly ElementArrayBuffer<ushort> _ebo = new();
-    private readonly ArrayBuffer<ImDrawVert> _vbo = new();
+    private readonly ElementArrayBuffer<ushort> _ebo = new(BufferUsageHint.StreamDraw);
+    private readonly ArrayBuffer<ImDrawVert> _vbo = new(BufferUsageHint.StreamDraw);
     private readonly ShaderProgram _shader = new EmbeddedShader("imgui", Assembly.GetExecutingAssembly());
 
     public void Load()

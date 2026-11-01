@@ -197,15 +197,11 @@ public class InspectorWidget : PanelWidget
             if (ImGui.BeginMenu("\uf0c5  Copy"))
             {
                 if (ImGui.MenuItem("Package Path")) ImGui.SetClipboardText(component.Path);
+                if (ImGui.MenuItem("Object Path")) ImGui.SetClipboardText(component.ObjectPath);
                 if (ImGui.MenuItem("Object Name")) ImGui.SetClipboardText(component.Name);
                 ImGui.EndMenu();
             }
 
-            ImGui.Separator();
-            if (ImGui.MenuItem($"{Settings.AddIcon}  Add Child"))
-            {
-
-            }
             ImGui.Separator();
 
             if (ImGui.MenuItem("\uf56e  Export"))
