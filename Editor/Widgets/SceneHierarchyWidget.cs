@@ -59,11 +59,32 @@ public class SceneHierarchyWidget : PanelWidget
     private void DrawSearchBar()
     {
         var style = ImGui.GetStyle();
+        var hasResults = !string.IsNullOrWhiteSpace(_search) && _flatNodes.Count > 0;
 
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - (ImGui.GetFrameHeight() + style.ItemInnerSpacing.X) * 2f);
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - (ImGui.GetFrameHeight() + style.ItemInnerSpacing.X) * (hasResults ? 3f : 2f));
         if (ImGui.InputTextWithHint("##ActorFilter", $"{Settings.MagnifyingGlassIcon}  Filter Actors", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll | ImGuiInputTextFlags.EscapeClearsAll))
         {
             _dirty = true;
+        }
+
+        if (hasResults)
+        {
+            var isVisible = false;
+            foreach (var a in _flatNodes)
+            {
+                if (!a.IsVisible) continue;
+
+                isVisible = true;
+                break;
+            }
+
+            if (Button(isVisible ? Settings.EyeIcon : Settings.EyeSlashIcon, $"{(isVisible ? "Hide" : "Show")} Results ({_flatNodes.Count})", !isVisible))
+            {
+                foreach (var a in _flatNodes)
+                {
+                    a.IsVisible = !isVisible;
+                }
+            }
         }
 
         if (Button(Settings.PlusIcon, "Add Actor"))
@@ -81,10 +102,12 @@ public class SceneHierarchyWidget : PanelWidget
             _dirty = true;
         }
 
-        bool Button(string icon, string tooltip)
+        bool Button(string icon, string tooltip, bool isHidden = false)
         {
             ImGui.SameLine(0, style.ItemInnerSpacing.X);
+            if (isHidden) ImGui.PushStyleColor(ImGuiCol.Text, Settings.RedColor);
             var clicked = ImGui.Button(icon, new Vector2(ImGui.GetFrameHeight()));
+            if (isHidden) ImGui.PopStyleColor();
             if (ImGui.IsItemHovered()) EditorUI.Tooltip(tooltip);
 
             return clicked;
