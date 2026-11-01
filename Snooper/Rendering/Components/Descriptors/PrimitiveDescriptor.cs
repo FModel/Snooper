@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.FileProvider;
 using CUE4Parse_Conversion.Dto;
-using CUE4Parse_Conversion.Options;
 using CUE4Parse.GameTypes.Nascar.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Animation;
@@ -106,7 +105,6 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
 
         if (dto.MorphTargets is { Length: > 0 } morphTargets)
         {
-            owner.PopulateMorphTargetVerticesData();
             Morphs = MorphDescriptor.Create(morphTargets, Lods);
         }
 
@@ -150,7 +148,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.GetCleanPath();
         Guid = guid;
 
-        using var dto = new SkeletonDto(owner);
+        using var dto = new SkeletonDto(owner, Bridge.Options.ToExportOptions());
         Bounds = new CullingBounds(dto.Bounds);
 
         Skeleton = new SkeletonDescriptor(dto.Bones);

@@ -10,16 +10,19 @@ public sealed class SnooperOptions
     public EMaterialDepth MaterialDepth { get; set; } = EMaterialDepth.TopLayerOnly;
     public ETexturePlatform TexturePlatform { get; set; } = ETexturePlatform.DesktopMobile;
     public bool LoadMorphTargets { get; set; } = true;
+    public ESocketFormat SocketFormat { get; set; } = ESocketFormat.Bone;
     public bool IncludeDisabledMeshSections { get; set; }
     public int MaxTextureMipSize { get; set; } = 1024;
 
     // more like ToMeshOptions
     public ExportOptions ToExportOptions() => new(
-        meshQuality: EMeshQuality.All,
         naniteMeshFormat: NaniteMeshFormat,
-        // materialDepth: MaterialDepth,
+        meshQuality: EMeshQuality.All,
         // texturePlatform: TexturePlatform,
+        // materialDepth: MaterialDepth,
+        exportMaterials: true,
         exportMorphTargets: LoadMorphTargets,
+        socketFormat: SocketFormat,
         includeDisabledMeshSections: IncludeDisabledMeshSections
     );
 }
