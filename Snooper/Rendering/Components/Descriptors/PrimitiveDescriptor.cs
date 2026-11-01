@@ -82,7 +82,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Path = owner.GetCleanPath();
         Guid = guid;
 
-        using var dto = new SkeletalMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat, Bridge.Options.LoadMorphTargets);
+        using var dto = new SkeletalMeshDto(owner, new ExportOptions(meshQuality: EMeshQuality.All, naniteMeshFormat: Bridge.Options.NaniteMeshFormat, exportMorphTargets: Bridge.Options.LoadMorphTargets, includeDisabledMeshSections: Bridge.Options.IncludeDisabledMeshSections));
 
         var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
         if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
@@ -196,28 +196,28 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.ToGuid((uint) Bridge.Options.NaniteMeshFormat), guid =>
         {
-            using var dto = new StaticMeshDto(owner, EMeshQuality.All, Bridge.Options.NaniteMeshFormat);
+            using var dto = new StaticMeshDto(owner, new ExportOptions(meshQuality: EMeshQuality.All, naniteMeshFormat: Bridge.Options.NaniteMeshFormat, includeDisabledMeshSections: Bridge.Options.IncludeDisabledMeshSections));
             return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
         });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UIRMesh owner, uint meshIndex, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.ToGuid(meshIndex), guid =>
         {
-            using var dto = new StaticMeshDto(owner, (int) meshIndex);
+            using var dto = new StaticMeshDto(owner, (int) meshIndex, new ExportOptions(includeDisabledMeshSections: Bridge.Options.IncludeDisabledMeshSections));
             return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
         });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UHoudiniStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.ToGuid(), guid =>
         {
-            using var dto = new StaticMeshDto(owner);
+            using var dto = new StaticMeshDto(owner, new ExportOptions(includeDisabledMeshSections: Bridge.Options.IncludeDisabledMeshSections));
             return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
         });
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UGeometryCollection owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.ToGuid((uint) Bridge.Options.NaniteMeshFormat), guid =>
         {
-            using var dto = new StaticMeshDto(owner, Bridge.Options.NaniteMeshFormat);
+            using var dto = new StaticMeshDto(owner, new ExportOptions(naniteMeshFormat: Bridge.Options.NaniteMeshFormat, includeDisabledMeshSections: Bridge.Options.IncludeDisabledMeshSections));
             return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);
         });
 

@@ -10,5 +10,6 @@ public sealed class SnooperOptions
     public EMaterialDepth MaterialDepth { get; set; } = EMaterialDepth.TopLayerOnly;
     public ETexturePlatform TexturePlatform { get; set; } = ETexturePlatform.DesktopMobile;
     public bool LoadMorphTargets { get; set; } = true;
+    public bool IncludeDisabledMeshSections { get; set; }
     public int MaxTextureMipSize { get; set; } = 1024;
 }
