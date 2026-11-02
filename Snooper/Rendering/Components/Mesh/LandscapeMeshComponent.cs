@@ -43,6 +43,7 @@ public struct PerMaterialLandscapeData : IPerMaterialData
 public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLandscapeData>
 {
     public readonly uint SizeQuads;
+    public readonly uint SubsectionSizeQuads;
     public readonly Dictionary<string, LayerMapping> Layers;
 
     protected internal override bool SupportsOpaquePass => true;
@@ -73,6 +74,7 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         Descriptor = new PrimitiveDescriptor<Vector2>(tessellatedBounds, () => new Geometry(sizeQuads));
 
         SizeQuads = sizeQuads + 1;
+        SubsectionSizeQuads = component.NumSubsections > 1 ? (uint) component.SubsectionSizeQuads : sizeQuads;
 
         var textures = component.GetWeightmapTextures();
         var weightmaps = new Texture[Math.Min(textures.Length, Settings.MaxWeightmaps)];

@@ -192,7 +192,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     }
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(owner.ToGuid((uint) Bridge.Options.NaniteMeshFormat), guid =>
+        => MeshCache.GetOrCreate(owner.ToGuid(), guid =>
         {
             using var dto = new StaticMeshDto(owner, Bridge.Options.ToExportOptions());
             return new PrimitiveDescriptor<TVertex>(guid, owner, dto, factory);

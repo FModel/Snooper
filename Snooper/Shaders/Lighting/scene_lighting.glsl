@@ -237,6 +237,37 @@ vec3 CalculateSpotLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
     return (diffuse + specular) * light.color * light.intensity * attenuation * coneFalloff;
 }
 
+float RectAttenuation(float cosEmission, float distance, float area)
+{
+    return cosEmission / (distance * distance + area);
+}
+
+vec3 RectLightSpecular(vec3 toCenter, vec3 forward, vec3 widthDir, vec3 heightDir, float halfWidth, float halfHeight, vec3 N, vec3 V, float NdotV, float roughness, vec3 F0)
+{
+    vec3 R = reflect(-V, N);
+    vec3 hit = R * (dot(toCenter, forward) / min(dot(R, forward), -1e-4)) - toCenter;
+    vec3 toLight = toCenter
+        + widthDir * clamp(dot(hit, widthDir), -halfWidth, halfWidth)
+        + heightDir * clamp(dot(hit, heightDir), -halfHeight, halfHeight);
+
+    float distance = length(toLight);
+    vec3 L = toLight / distance;
+    float NdotL = max(dot(N, L), 0.0);
+    vec3 H = normalize(V + L);
+
+    // the engine's energy normalization of a line, along each side
+    float alpha = roughness * roughness;
+    float width = alpha / clamp(alpha + 0.5 * clamp(halfWidth / distance, 0.0, 1.0), 0.0, 1.0);
+    float height = alpha / clamp(alpha + 0.5 * clamp(halfHeight / distance, 0.0, 1.0), 0.0, 1.0);
+
+    vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+    float D = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+
+    float attenuation = RectAttenuation(dot(forward, -L), distance, 4.0 * halfWidth * halfHeight);
+    return (D * G * F) / (4.0 * NdotV * NdotL + 0.001) * NdotL * width * height * attenuation;
+}
+
 // Calculate rectangular area light contribution
 vec3 CalculateRectLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec3 worldV, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
@@ -296,33 +327,20 @@ vec3 CalculateRectLight(PerLightData light, vec3 worldPos, vec3 worldNormal, vec
     if (lightNdotL <= 0.0)
         return vec3(0.0);
 
-    // the intensity is in candela like every local light, so the emitter's luminance times its area is already folded in
-    // only the emission cosine and the area-softened inverse square remain.
-    float area = light.sizeX * light.sizeY;
-    float solidAngle = lightNdotL / (distance * distance + area);
-    float attenuation = CalculateAttenuation(distance, light.range, 2.0);
-    float areaAttenuation = solidAngle * attenuation;
+    float rangeFade = CalculateAttenuation(distanceToCenter, light.range, 2.0);
+    float areaAttenuation = RectAttenuation(lightNdotL, distance, light.sizeX * light.sizeY);
 
-    if (areaAttenuation * NdotL * light.intensity < LIGHT_CULL_THRESHOLD)
+    if (areaAttenuation * rangeFade * NdotL * light.intensity < LIGHT_CULL_THRESHOLD)
         return vec3(0.0);
 
     vec3 H = normalize(worldV + L);
     float NdotV = max(dot(worldNormal, worldV), 0.001);
 
-    // PBR calculations
-    vec3 F = FresnelSchlick(max(dot(H, worldV), 0.0), F0);
-    float D = DistributionGGX(worldNormal, H, roughness);
-    float G = GeometrySmith(worldNormal, worldV, L, roughness);
+    vec3 kD = (vec3(1.0) - FresnelSchlick(max(dot(H, worldV), 0.0), F0)) * (1.0 - metallic);
+    vec3 diffuse = kD * albedo / PI * NdotL * areaAttenuation;
+    vec3 specular = RectLightSpecular(-centerToPoint, forward, widthDir, heightDir, halfWidth, halfHeight, worldNormal, worldV, NdotV, roughness, F0);
 
-    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
-
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;
-
-    vec3 diffuse = kD * albedo / PI;
-
-    return (diffuse + specular) * light.color * light.intensity * NdotL * areaAttenuation;
+    return (diffuse + specular) * light.color * light.intensity * rangeFade;
 }
 #endif
 

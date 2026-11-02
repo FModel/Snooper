@@ -51,6 +51,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
     private readonly List<string> _layers = [];
     private readonly Vector4[] _palette = new Vector4[MaxLayers]; // the color of each of _layers, same index
     private float _sizeQuads = 0.0f;
+    private float _subsectionSizeQuads = 0.0f;
     private ColorMode _colorMode = ColorMode.Slope;
     private float _steepestSlope = 45f; // degrees
     private int _isolatedLayer = AllLayers;
@@ -94,6 +95,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         base.OnResourcesAdded(component, metadata);
 
         _sizeQuads = Math.Max(_sizeQuads, component.SizeQuads);
+        _subsectionSizeQuads = Math.Max(_subsectionSizeQuads, component.SubsectionSizeQuads);
         _updateHeightRange = true;
 
         if (metadata.MaterialAllocation is not { } allocation) return;
@@ -210,6 +212,7 @@ public class LandscapeSystem() : PrimitiveSystem<Vector2, LandscapeMeshComponent
         shader.SetUniform("uHeightRange", _heightRange);
         shader.SetUniform("uContourInterval", _contours ? _contourInterval : 0f);
         shader.SetUniform("uSizeQuads", _sizeQuads);
+        shader.SetUniform("uSubsectionSizeQuads", _subsectionSizeQuads);
         shader.SetUniform("uQuadCount", (float)Settings.TessellationQuadCount);
         shader.SetUniform("uGlobalScale", Settings.GlobalScale);
     }

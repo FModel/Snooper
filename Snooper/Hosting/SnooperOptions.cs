@@ -4,24 +4,27 @@ using CUE4Parse.UE4.Assets.Exports.Texture;
 
 namespace Snooper.Hosting;
 
-public sealed class SnooperOptions
+public sealed class SnooperOptions(
+    ENaniteMeshFormat naniteMeshFormat = ENaniteMeshFormat.NoNanite,
+    EMaterialDepth materialDepth = EMaterialDepth.TopLayerOnly,
+    ETexturePlatform texturePlatform = ETexturePlatform.DesktopMobile,
+    bool loadMorphTargets = true,
+    ESocketFormat socketFormat = ESocketFormat.Bone,
+    bool includeDisabledMeshSections = false,
+    int maxTextureMipSize = 1024)
 {
-    public ENaniteMeshFormat NaniteMeshFormat { get; set; } = ENaniteMeshFormat.NoNanite;
-    public EMaterialDepth MaterialDepth { get; set; } = EMaterialDepth.TopLayerOnly;
-    public ETexturePlatform TexturePlatform { get; set; } = ETexturePlatform.DesktopMobile;
-    public bool LoadMorphTargets { get; set; } = true;
-    public ESocketFormat SocketFormat { get; set; } = ESocketFormat.Bone;
-    public bool IncludeDisabledMeshSections { get; set; }
-    public int MaxTextureMipSize { get; set; } = 1024;
+    public EMaterialDepth MaterialDepth { get; } = materialDepth;
+    public int MaxTextureMipSize { get; } = maxTextureMipSize;
 
-    public ExportOptions ToExportOptions() => new(
-        naniteMeshFormat: NaniteMeshFormat,
+    private ExportOptions? _exportOptions;
+    public ExportOptions ToExportOptions() => _exportOptions ??= new ExportOptions(
+        naniteMeshFormat: naniteMeshFormat,
         meshQuality: EMeshQuality.All,
-        texturePlatform: TexturePlatform,
-        // materialDepth: MaterialDepth,
+        texturePlatform: texturePlatform,
+        // materialDepth: materialDepth,
         exportMaterials: true,
-        exportMorphTargets: LoadMorphTargets,
-        socketFormat: SocketFormat,
-        includeDisabledMeshSections: IncludeDisabledMeshSections
+        exportMorphTargets: loadMorphTargets,
+        socketFormat: socketFormat,
+        includeDisabledMeshSections: includeDisabledMeshSections
     );
 }

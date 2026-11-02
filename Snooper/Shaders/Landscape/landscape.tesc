@@ -44,10 +44,10 @@ void main()
         vec4 eyeSpacePos10 = uViewMatrix * uInstanceDataBuffer[vInstanceID[2]].Matrix * gl_in[2].gl_Position;
         vec4 eyeSpacePos11 = uViewMatrix * uInstanceDataBuffer[vInstanceID[3]].Matrix * gl_in[3].gl_Position;
 
-        float tessLevel0 = getTessLevel(eyeSpacePos00);
-        float tessLevel1 = getTessLevel(eyeSpacePos01);
-        float tessLevel2 = getTessLevel(eyeSpacePos10);
-        float tessLevel3 = getTessLevel(eyeSpacePos11);
+        float tessLevel0 = getTessLevel((eyeSpacePos00 + eyeSpacePos10) * 0.5); // u = 0
+        float tessLevel1 = getTessLevel((eyeSpacePos00 + eyeSpacePos01) * 0.5); // v = 0
+        float tessLevel2 = getTessLevel((eyeSpacePos01 + eyeSpacePos11) * 0.5); // u = 1
+        float tessLevel3 = getTessLevel((eyeSpacePos10 + eyeSpacePos11) * 0.5); // v = 1
 
         gl_TessLevelOuter[0] = tessLevel0;
         gl_TessLevelOuter[1] = tessLevel1;

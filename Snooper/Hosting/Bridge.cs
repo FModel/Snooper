@@ -9,7 +9,7 @@ namespace Snooper.Hosting;
 public static class Bridge
 {
     public static IBridgeHost Host { get; set; } = new StandaloneHost();
-    public static SnooperOptions Options { get; } = new();
+    public static SnooperOptions Options { get; set; } = new();
 
     public static AssetRequest? PendingRequest
     {

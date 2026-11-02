@@ -61,6 +61,7 @@ in TE_OUT {
 #define COLOR_TILES 3u
 
 uniform float uSizeQuads;
+uniform float uSubsectionSizeQuads;
 uniform float uQuadCount;
 uniform uint uColorMode;
 uniform vec4 uLayerPalette[64]; // one color per layer name, shared by every tile
@@ -78,6 +79,10 @@ vec3 getColorFromLayers(uint material, TileLayers layers)
     float quadFraction = 1.0 / uQuadCount;
     vec2 subPatchOffset = uLandscapeScales[gl_PrimitiveID] * quadFraction;
 
+    // past the first subsection, skip the row and column it repeats
+    vec2 quad = (subPatchOffset + fs_in.vTessCoord * quadFraction) * (uSizeQuads - 1.0);
+    vec2 texel = quad + vec2(greaterThan(quad, vec2(uSubsectionSizeQuads)));
+
     int weightmapCount = int(uMaterialDataBuffer[material].WeightmapCount);
 
     vec3 blendColor = vec3(0.0);
@@ -87,12 +92,7 @@ vec3 getColorFromLayers(uint material, TileLayers layers)
     for (int i = 0; i < weightmapCount; i++)
     {
         sampler2D weightmap = TO_SAMPLER(uMaterialDataBuffer[material].Weightmaps[i]);
-        vec2 weightmapSize = textureSize(weightmap, 0);
-        vec2 texelSize = 1.0 / weightmapSize;
-        vec2 weightmapUvSize = vec2(uSizeQuads) / weightmapSize;
-
-        vec2 uv2 = uMaterialDataBuffer[material].WeightmapScaleBias + subPatchOffset * weightmapUvSize + fs_in.vTessCoord * (weightmapUvSize * quadFraction);
-        uv2 = uv2 * (1.0 - texelSize) + 0.5 * texelSize;
+        vec2 uv2 = uMaterialDataBuffer[material].WeightmapScaleBias + texel / vec2(textureSize(weightmap, 0)); // this bias has the half texel already
 
         vec4 weightmapColor = texture(weightmap, uv2);
         for (int c = 0; c < 4; c++)
