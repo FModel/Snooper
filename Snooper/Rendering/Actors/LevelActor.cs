@@ -1,4 +1,5 @@
 ﻿using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
+using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Objects.Engine;
@@ -10,9 +11,10 @@ namespace Snooper.Rendering.Actors;
 
 public class LevelActor : UnrealActor
 {
-    private FPackageIndex?[] _textureData;
+    private FPackageIndex?[]? _textureData;
+    private FSoftObjectPath[]? _additionalWorlds;
 
-    public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components) : base(actor)
+    public LevelActor(UObject actor) : base(actor)
     {
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
@@ -41,43 +43,39 @@ public class LevelActor : UnrealActor
         }
 
         actor.TryGetAllValues(out _textureData, "TextureData");
-
-        // ProcessRootComponent
-        foreach (var ptr in _ptrs)
-        {
-            _parent = CreateComponentRecursive(components, ptr).ParentPtr;
-            _ptrs.Remove(ptr);
-            break;
-        }
-
-        if (actor.TryGetValue(out FSoftObjectPath[] additionalWorlds, "AdditionalWorlds"))
-        {
-            foreach (var additionalWorld in additionalWorlds)
-            {
-                if (!additionalWorld.TryLoad<UWorld>(out var w)) continue;
-                Children.Add(new CellActor(additionalWorld, w, true));
-            }
-        }
+        actor.TryGetValue(out _additionalWorlds, "AdditionalWorlds");
     }
 
-    public FPackageIndex? ProcessEnqueuedComponents(Dictionary<FPackageIndex, SpatialComponent> components)
+    public void ProcessEnqueuedComponents(Dictionary<FPackageIndex, SpatialComponent> components, Dictionary<ResolvedObject, LevelActor> actors)
     {
         foreach (var ptr in _ptrs)
         {
-            CreateComponentRecursive(components, ptr);
+            CreateComponentRecursive(components, actors, ptr);
         }
-
-        var parent = _parent;
-        _textureData = [];
-        _parent = null;
+        _textureData = null;
         _ptrs.Clear();
-        return parent;
+
+        foreach (var additionalWorld in _additionalWorlds ?? [])
+        {
+            if (!additionalWorld.TryLoad<UWorld>(out var w)) continue;
+            Children.Add(new CellActor(additionalWorld, w, true)); // after the root, which it hangs off
+        }
+        _additionalWorlds = null;
     }
 
-    private ComponentPair CreateComponentRecursive(Dictionary<FPackageIndex, SpatialComponent> components, FPackageIndex ptr)
+    private void CreateComponentRecursive(Dictionary<FPackageIndex, SpatialComponent> components, Dictionary<ResolvedObject, LevelActor> actors, FPackageIndex ptr)
     {
+        if (components.ContainsKey(ptr)) return;
+
+        if (ptr.Load()?.Outer is { } outer && actors.TryGetValue(outer, out var owner) && owner != this)
+        {
+            // the actor that owns this component already exists, and is not this actor, so we need to create the component under that actor instead
+            owner.CreateComponentRecursive(components, actors, ptr);
+            return;
+        }
+
         var pair = CreateComponentPair(ptr);
-        if (pair.Component is StaticMeshComponent staticMeshComponent)
+        if (_textureData?.Length > 0 && pair.Component is StaticMeshComponent staticMeshComponent)
         {
             for (var i = 0; i < _textureData.Length; i++)
             {
@@ -89,29 +87,22 @@ public class LevelActor : UnrealActor
             }
         }
 
-        ComponentPair? root = null;
         if (pair.ParentPtr is { IsNull: false })
         {
-            if (!components.ContainsKey(pair.ParentPtr))
-                root = CreateComponentRecursive(components, pair.ParentPtr);
-
+            CreateComponentRecursive(components, actors, pair.ParentPtr);
             pair.Component.Relation = components[pair.ParentPtr];
         }
 
         if (pair is { LeaderPtr: { IsNull: false } leaderPtr, Component: SkinnedMeshComponent skinned })
         {
-            if (!components.ContainsKey(leaderPtr))
-                CreateComponentRecursive(components, leaderPtr);
-
+            CreateComponentRecursive(components, actors, leaderPtr);
             skinned.Leader = components[leaderPtr] as SkinnedMeshComponent;
         }
 
         components.TryAdd(ptr, pair.Component);
         Components.Add(pair.Component);
-        return root ?? pair;
     }
 
-    private FPackageIndex? _parent;
     private readonly HashSet<FPackageIndex> _ptrs = [];
     private void EnqueuePointers(params FPackageIndex?[] ptrs)
     {

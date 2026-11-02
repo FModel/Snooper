@@ -307,14 +307,12 @@ public class BlueprintActor : UnrealActor
 
         var ancestry = new HashSet<string>(_ancestry, StringComparer.Ordinal) { _classKey };
         var child = new BlueprintActor(childClass, ancestry, _depth + 1);
-        Children.Add(child);
-
-        // OnChildAdded parents the child to our root, re-target it to the spawning component
         if (child.RootComponent is { } childRoot)
         {
             childRoot.Relation = component;
             childRoot.SetLocalTransform(Transform.Identity);
         }
+        Children.Add(child);
     }
 
     public override void Export(ExportSession session, CancellationToken ct = default)

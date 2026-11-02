@@ -223,7 +223,7 @@ public class Actor : TreeNode
     internal void OnChildAdded(Actor actor)
     {
         actor.Parent = this;
-        actor.RootComponent?.Relation = RootComponent;
+        if (actor.RootComponent is { } root && root.Relation?.Actor != this) root.Relation = RootComponent;
         actor.OnHierarchyChanged();
 
         actor.SetScene(ActorManager, EEndPlayReason.Destroyed);

@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse_Conversion;
+using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
@@ -27,8 +28,7 @@ public class WorldActor : Actor
         ProcessDataLayers();
         ProcessWorldPartition();
 
-        var parents = new Dictionary<FPackageIndex, SpatialComponent>();
-        var created = new List<LevelActor>();
+        var actors = new Dictionary<ResolvedObject, LevelActor>();
         var length = level.Actors.Length;
         for (var i = 0; i < length; i++)
         {
@@ -39,40 +39,30 @@ public class WorldActor : Actor
             }
 
             progress?.Report($"{world.Name} ... Actors {i + 1}/{length}");
-            var a = new LevelActor(data, parents);
-            if (a.RootComponent is not null)
-            {
-                created.Add(a);
-            }
+            actors.TryAdd(ptr.ResolvedObject!, new LevelActor(data));
         }
+        length = actors.Count;
 
-        length = created.Count;
-        for (var i = 0; i < length; i++)
+        var processed = 0;
+        var components = new Dictionary<FPackageIndex, SpatialComponent>();
+        foreach (var actor in actors.Values)
         {
             ct.ThrowIfCancellationRequested();
-            var actor = created[i];
-            progress?.Report($"{world.Name} ... Actor Hierarchy {i + 1}/{length}");
+            progress?.Report($"{world.Name} ... Actor Components {++processed}/{length}");
 
-            var parent = actor.ProcessEnqueuedComponents(parents);
-            if (parent is { IsNull: false })
-            {
-                if (parents.TryGetValue(parent, out var root))
-                {
-                    root.Actor?.Children.Add(actor);
-                }
-                else
-                {
-                    throw new Exception("Parent actor not found");
-                }
-            }
-            else
-            {
-                Children.Add(actor);
-            }
+            actor.ProcessEnqueuedComponents(components, actors);
         }
+        components.Clear();
 
-        created.Clear();
-        parents.Clear();
+        progress?.Report($"{world.Name} ... Resolving Actor Hierarchy");
+        foreach (var actor in actors.Values)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (actor.RootComponent is not { } root) continue;
+
+            (root.Relation?.Actor ?? this).Children.Add(actor);
+        }
+        actors.Clear();
 
         length = world.StreamingLevels?.Length ?? 0;
         for (var i = 0; i < length; i++)
