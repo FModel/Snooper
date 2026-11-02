@@ -92,7 +92,7 @@ public class Texture2D(int width, int height,
             if (mipIndex < 0)
                 throw new InvalidOperationException("No suitable mip found for the given max texture size.");
 
-            var textureData = owner.DecodeMip(mipIndex, Bridge.Options.TexturePlatform);
+            var textureData = owner.DecodeMip(mipIndex, Bridge.Options.ToExportOptions());
             if (textureData is null)
                 throw new InvalidOperationException("Virtual texture could not be decoded.");
 

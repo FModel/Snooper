@@ -14,11 +14,10 @@ public sealed class SnooperOptions
     public bool IncludeDisabledMeshSections { get; set; }
     public int MaxTextureMipSize { get; set; } = 1024;
 
-    // more like ToMeshOptions
     public ExportOptions ToExportOptions() => new(
         naniteMeshFormat: NaniteMeshFormat,
         meshQuality: EMeshQuality.All,
-        // texturePlatform: TexturePlatform,
+        texturePlatform: TexturePlatform,
         // materialDepth: MaterialDepth,
         exportMaterials: true,
         exportMorphTargets: LoadMorphTargets,
