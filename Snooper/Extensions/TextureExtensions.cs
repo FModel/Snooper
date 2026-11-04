@@ -2,9 +2,11 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 using CUE4Parse.UE4.Assets.Exports.Texture;
+using CUE4Parse_Conversion.Textures.ASTC;
 using CUE4Parse_Conversion.Textures.BC;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Textures;
+using Snooper.Core.Hardware;
 using Snooper.Rendering.Cache;
 
 namespace Snooper.Extensions;
@@ -109,6 +111,23 @@ public static class TextureExtensions
 
             static int Source(Span<int> sources, int channel) => channel < 0 ? (int) All.Zero : sources[channel];
         }
+    }
+
+    /// <summary>
+    /// the gpu can't sample these blocks, they're decoded to rgba8 on the cpu before the upload
+    /// </summary>
+    public static bool IsDecodedOnCpu(this EPixelFormat format)
+        => format is EPixelFormat.PF_ASTC_4x4 or EPixelFormat.PF_ASTC_6x6 or EPixelFormat.PF_ASTC_8x8 or EPixelFormat.PF_ASTC_10x10 or EPixelFormat.PF_ASTC_12x12
+            ? !DeviceInfo.HasAstc
+            : format is EPixelFormat.PF_ASTC_8x5 or EPixelFormat.PF_ASTC_8x6 or EPixelFormat.PF_ASTC_10x8; // no gl format for these, see GetCompressedFormat
+
+    /// <summary>
+    /// rgba8 texels of a level whose format <see cref="IsDecodedOnCpu"/>
+    /// </summary>
+    public static byte[] DecodeOnCpu(this EPixelFormat format, byte[] blocks, int width, int height)
+    {
+        var info = PixelFormatUtils.PixelFormats[format];
+        return ASTCDecoder.RGBA8888(blocks, info.BlockSizeX, info.BlockSizeY, info.BlockSizeZ, width, height, 1);
     }
 
     public static ITextureFormatInfo GetTextureFormat(this EPixelFormat format, bool srgb)

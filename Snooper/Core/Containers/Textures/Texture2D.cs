@@ -121,7 +121,6 @@ public class Texture2D(int width, int height,
 
             Width = mips[first].SizeX;
             Height = mips[first].SizeY;
-            FormatInfo = owner.Format.GetTextureFormat(owner.SRGB);
 
             for (var i = first + 1; i < mips.Length && !_terrain; i++)
             {
@@ -130,6 +129,17 @@ public class Texture2D(int width, int height,
 
                 levels.Add(data);
             }
+
+            var format = owner.Format;
+            if (format.IsDecodedOnCpu())
+            {
+                for (var i = 0; i < levels.Count; i++)
+                {
+                    levels[i] = format.DecodeOnCpu(levels[i], Math.Max(1, Width >> i), Math.Max(1, Height >> i));
+                }
+                format = EPixelFormat.PF_R8G8B8A8;
+            }
+            FormatInfo = format.GetTextureFormat(owner.SRGB);
 
             _levels = [.. levels];
 
