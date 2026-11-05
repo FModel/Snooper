@@ -138,6 +138,7 @@ public static class TextureExtensions
             EPixelFormat.PF_BC4 => Blocks(SizedInternalFormat.CompressedRedRgtc1),
             EPixelFormat.PF_BC5 => Blocks(SizedInternalFormat.CompressedRgRgtc2),
             EPixelFormat.PF_BC6H => Blocks(SizedInternalFormat.CompressedRgbBptcUnsignedFloat),
+            EPixelFormat.PF_BC6H_Signed => Blocks(SizedInternalFormat.CompressedRgbBptcSignedFloat),
             EPixelFormat.PF_BC7 => Blocks(SizedInternalFormat.CompressedRgbaBptcUnorm, SizedInternalFormat.CompressedSrgbAlphaBptcUnorm),
 
             EPixelFormat.PF_ASTC_4x4 when DeviceInfo.HasAstc => Blocks(SizedInternalFormat.CompressedRgbaAstc4X4, SizedInternalFormat.CompressedSrgb8Alpha8Astc4X4),
@@ -152,6 +153,8 @@ public static class TextureExtensions
             EPixelFormat.PF_ETC1 => Blocks(SizedInternalFormat.CompressedRgb8Etc2, SizedInternalFormat.CompressedSrgb8Etc2),
             EPixelFormat.PF_ETC2_RGB => Blocks(SizedInternalFormat.CompressedRgb8Etc2, SizedInternalFormat.CompressedSrgb8Etc2),
             EPixelFormat.PF_ETC2_RGBA => Blocks(SizedInternalFormat.CompressedRgba8Etc2Eac, SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac),
+            EPixelFormat.PF_ETC2_R11 or EPixelFormat.PF_ETC2_R11_EAC => Blocks(SizedInternalFormat.CompressedR11Eac),
+            EPixelFormat.PF_ETC2_RG11_EAC => Blocks(SizedInternalFormat.CompressedRg11Eac),
 
             _ => null
         };
