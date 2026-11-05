@@ -25,7 +25,7 @@ public class ExtensionSupport
     public bool SupportFragmentBarycentric { get; private set; }
 
     /// <summary>
-    /// GL_KHR_texture_compression_astc_ldr, desktop nvidia and amd drivers don't have it
+    /// GL_KHR_texture_compression_astc_ldr
     /// </summary>
     public bool SupportAstcLdr { get; private set; }
 

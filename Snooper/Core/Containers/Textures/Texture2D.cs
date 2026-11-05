@@ -1,4 +1,5 @@
-﻿using CUE4Parse_Conversion.Textures;
+﻿using System.Collections.Concurrent;
+using CUE4Parse_Conversion.Textures;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
@@ -22,6 +23,8 @@ public class Texture2D(int width, int height,
     private bool _terrain;
     private (TextureMinFilter Min, TextureMagFilter Mag, TextureWrapMode WrapS, TextureWrapMode WrapT) _sampling;
     private byte[][]? _levels;
+
+    private static readonly ConcurrentDictionary<EPixelFormat, byte> _decodedFormats = new();
 
     public Texture2D(UTexture texture) : this(texture.PlatformData.SizeX, texture.PlatformData.SizeY, guid: texture.LightingGuid, name: texture.Name)
     {
@@ -98,7 +101,7 @@ public class Texture2D(int width, int height,
 
             Width = textureData.Width;
             Height = textureData.Height;
-            FormatInfo = textureData.PixelFormat.GetTextureFormat(owner.SRGB);
+            FormatInfo = textureData.PixelFormat.GetTextureFormat(owner.SRGB) ?? throw new NotSupportedException($"{textureData.PixelFormat} can't be uploaded.");
             _levels = [textureData.Data];
         }
         else
@@ -131,15 +134,22 @@ public class Texture2D(int width, int height,
             }
 
             var format = owner.Format;
-            if (format.IsDecodedOnCpu())
+            if (format.GetTextureFormat(owner.SRGB) is not { } info)
             {
+                var source = PixelFormatUtils.PixelFormats[format];
                 for (var i = 0; i < levels.Count; i++)
                 {
-                    levels[i] = format.DecodeOnCpu(levels[i], Math.Max(1, Width >> i), Math.Max(1, Height >> i));
+                    TextureDecoder.DecodeBytes(levels[i], Math.Max(1, Width >> i), Math.Max(1, Height >> i), 1, source, owner.IsNormalMap, out var data, out format);
+                    levels[i] = data;
                 }
-                format = EPixelFormat.PF_R8G8B8A8;
+                info = format.GetTextureFormat(owner.SRGB) ?? throw new NotSupportedException($"{owner.Format} can't be decoded.");
+
+                if (_decodedFormats.TryAdd(owner.Format, 0))
+                {
+                    Log.Information("{Format} can't be uploaded as is, decoding it to {Decoded} on the CPU", owner.Format, format);
+                }
             }
-            FormatInfo = format.GetTextureFormat(owner.SRGB);
+            FormatInfo = info;
 
             _levels = [.. levels];
 

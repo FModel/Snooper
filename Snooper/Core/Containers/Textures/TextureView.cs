@@ -1,5 +1,4 @@
 ﻿using OpenTK.Graphics.OpenGL4;
-using Snooper.Extensions;
 
 namespace Snooper.Core.Containers.Textures;
 
@@ -20,7 +19,7 @@ public class TextureView(Texture source, bool linear = false, int channel = -1) 
 
         uint original = source;
         GL.GetTextureLevelParameter(original, 0, GetTextureParameter.TextureInternalFormat, out int format);
-        if (linear) format = (int) ((SizedInternalFormat) format).ToLinear();
+        if (linear) format = (int) source.LinearFormat;
 
         var handle = GL.GenTexture();
         GL.TextureView(handle, source.Target, (int) original, (PixelInternalFormat) format, 0, source.MipCount, 0, 1);

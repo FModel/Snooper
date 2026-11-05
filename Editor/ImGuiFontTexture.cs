@@ -4,7 +4,7 @@ using Snooper.Core.Containers.Textures;
 
 namespace Editor;
 
-public class ImGuiFontTexture() : Texture2D(0, 0, SizedInternalFormat.Rgba32f, PixelFormat.Rgba, PixelType.UnsignedByte)
+public class ImGuiFontTexture() : Texture2D(0, 0, SizedInternalFormat.Rgba8, PixelFormat.Rgba, PixelType.UnsignedByte)
 {
     protected override bool CanBeViewed => false; // a preview is opaque, the glyphs need their alpha
 
