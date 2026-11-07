@@ -24,6 +24,11 @@ public class ExtensionSupport
     /// </summary>
     public bool SupportFragmentBarycentric { get; private set; }
 
+    /// <summary>
+    /// GL_KHR_texture_compression_astc_ldr
+    /// </summary>
+    public bool SupportAstcLdr { get; private set; }
+
     public string[] Extensions { get; private set; } = [];
 
     public void Load()
@@ -45,6 +50,9 @@ public class ExtensionSupport
                     break;
                 case "GL_NV_fragment_shader_barycentric":
                     SupportFragmentBarycentric = true;
+                    break;
+                case "GL_KHR_texture_compression_astc_ldr":
+                    SupportAstcLdr = true;
                     break;
             }
 

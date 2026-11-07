@@ -36,6 +36,7 @@ public abstract class Texture : HandledObject, IMemorySizeProvider, IControllabl
     }
 
     public bool IsSrgb => FormatInfo.IsSrgb;
+    public SizedInternalFormat LinearFormat => FormatInfo.LinearFormat;
 
     public string FormatName { get; private set; } = string.Empty;
 

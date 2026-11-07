@@ -1,30 +1,35 @@
-﻿using OpenTK.Graphics.OpenGL4;
-using Snooper.Extensions;
+﻿using CUE4Parse.UE4.Assets.Exports.Texture;
+using OpenTK.Graphics.OpenGL4;
 
 namespace Snooper.Core.Containers.Textures;
 
 public interface ITextureFormatInfo
 {
     public SizedInternalFormat InternalFormat { get; }
+    public SizedInternalFormat LinearFormat { get; }
 
     public long GetMemorySize(int width, int height, int depth = 1);
 
-    public bool IsSrgb => InternalFormat.IsSrgb();
+    public bool IsSrgb => InternalFormat != LinearFormat;
 }
 
 public readonly struct TextureFormatInfo : ITextureFormatInfo
 {
     public SizedInternalFormat InternalFormat { get; }
+    public SizedInternalFormat LinearFormat { get; }
     public readonly PixelFormat Format;
     public readonly PixelType Type;
 
     private readonly int _bytesPerPixel;
+    private readonly string? _name;
 
-    public TextureFormatInfo(SizedInternalFormat internalFormat, PixelFormat format, PixelType type)
+    public TextureFormatInfo(SizedInternalFormat internalFormat, PixelFormat format, PixelType type, SizedInternalFormat? linearFormat = null, string? name = null)
     {
         InternalFormat = internalFormat;
+        LinearFormat = linearFormat ?? internalFormat;
         Format = format;
         Type = type;
+        _name = name;
 
         _bytesPerPixel = GetBytesPerPixel();
     }
@@ -36,186 +41,47 @@ public readonly struct TextureFormatInfo : ITextureFormatInfo
 
     private int GetBytesPerPixel()
     {
-        return InternalFormat switch
+        return LinearFormat switch
         {
-            // 8-bit formats
             SizedInternalFormat.R8 => 1,
-            SizedInternalFormat.Rg8 => 2,
+            SizedInternalFormat.Rg8 or SizedInternalFormat.Rg8Snorm => 2,
             SizedInternalFormat.Rgb8 or SizedInternalFormat.Srgb8 => 3,
             SizedInternalFormat.Rgba8 or SizedInternalFormat.Srgb8Alpha8 => 4,
 
-            // 16-bit formats
-            SizedInternalFormat.R16 => 2,
-            SizedInternalFormat.R16f => 2,
-            SizedInternalFormat.Rg16 => 4,
-            SizedInternalFormat.Rg16f => 4,
+            SizedInternalFormat.R16 or SizedInternalFormat.R16f => 2,
+            SizedInternalFormat.Rg16 or SizedInternalFormat.Rg16f => 4,
             SizedInternalFormat.Rgb16 or SizedInternalFormat.Rgb16f => 6,
             SizedInternalFormat.Rgba16 or SizedInternalFormat.Rgba16f => 8,
 
-            // 32-bit formats
-            SizedInternalFormat.R32f => 4,
+            SizedInternalFormat.R32f or SizedInternalFormat.R32ui => 4,
             SizedInternalFormat.Rg32f => 8,
             SizedInternalFormat.Rgb32f => 12,
             SizedInternalFormat.Rgba32f => 16,
 
-            // Depth and stencil formats
             SizedInternalFormat.DepthComponent16 => 2,
             SizedInternalFormat.DepthComponent24 => 3,
-            SizedInternalFormat.DepthComponent32f => 4,
-            SizedInternalFormat.Depth24Stencil8 => 4,
+            SizedInternalFormat.DepthComponent32f or SizedInternalFormat.Depth24Stencil8 => 4,
             SizedInternalFormat.Depth32fStencil8 => 5,
 
-            _ => Type switch
-            {
-                PixelType.UnsignedByte => 4, // Default RGBA8
-                PixelType.Float => 16, // Default RGBA32F
-                PixelType.HalfFloat => 8, // Default RGBA16F
-                PixelType.UnsignedShort => 8, // Default RGBA16
-                _ => 4
-            }
+            _ => 0
         };
     }
 
-    public override string ToString()
-    {
-        var name = InternalFormat switch
-        {
-            SizedInternalFormat.R8 => "R8",
-            SizedInternalFormat.Rg8 => "RG8",
-            SizedInternalFormat.Rgb8 or SizedInternalFormat.Srgb8 => "RGB8",
-            SizedInternalFormat.Rgba8 or SizedInternalFormat.Srgb8Alpha8 => "RGBA8",
-
-            SizedInternalFormat.R16 => "R16",
-            SizedInternalFormat.R16f => "R16F",
-            SizedInternalFormat.Rg16 => "RG16",
-            SizedInternalFormat.Rg16f => "RG16F",
-            SizedInternalFormat.Rgb16 => "RGB16",
-            SizedInternalFormat.Rgb16f => "RGB16F",
-            SizedInternalFormat.Rgba16 => "RGBA16",
-            SizedInternalFormat.Rgba16f => "RGBA16F",
-
-            SizedInternalFormat.R32f => "R32F",
-            SizedInternalFormat.R32ui => "R32UI",
-            SizedInternalFormat.Rg32f => "RG32F",
-            SizedInternalFormat.Rgb32f => "RGB32F",
-            SizedInternalFormat.Rgba32f => "RGBA32F",
-
-            SizedInternalFormat.DepthComponent16 => "D16",
-            SizedInternalFormat.DepthComponent24 => "D24",
-            SizedInternalFormat.DepthComponent32f => "D32F",
-            SizedInternalFormat.Depth24Stencil8 => "D24S8",
-            SizedInternalFormat.Depth32fStencil8 => "D32FS8",
-
-            _ => InternalFormat.ToString()
-        };
-
-        return Format switch
-        {
-            PixelFormat.Bgra => $"BGRA -> {name}",
-            PixelFormat.Bgr => $"BGR -> {name}",
-            _ => name
-        };
-    }
+    public override string ToString() => _name ?? InternalFormat.ToString();
 }
 
-public readonly struct CompressedTextureFormatInfo : ITextureFormatInfo
+public readonly struct CompressedTextureFormatInfo(SizedInternalFormat internalFormat, SizedInternalFormat linearFormat, FPixelFormatInfo blocks) : ITextureFormatInfo
 {
-    public SizedInternalFormat InternalFormat { get; }
-
-    private readonly int _blockSize;
-    private readonly int _blockWidth;
-    private readonly int _blockHeight;
-
-    public CompressedTextureFormatInfo(SizedInternalFormat internalFormat)
-    {
-        InternalFormat = internalFormat;
-
-        _blockSize = GetBlockSize();
-        (_blockWidth, _blockHeight) = GetBlockDimensions();
-    }
+    public SizedInternalFormat InternalFormat { get; } = internalFormat;
+    public SizedInternalFormat LinearFormat { get; } = linearFormat;
 
     public long GetMemorySize(int width, int height, int depth = 1)
     {
-        var blocksWide = (width + _blockWidth - 1) / _blockWidth;
-        var blocksHigh = (height + _blockHeight - 1) / _blockHeight;
+        var blocksWide = (width + blocks.BlockSizeX - 1) / blocks.BlockSizeX;
+        var blocksHigh = (height + blocks.BlockSizeY - 1) / blocks.BlockSizeY;
 
-        return (long)blocksWide * blocksHigh * depth * _blockSize;
+        return (long)blocksWide * blocksHigh * depth * blocks.BlockBytes;
     }
 
-    private int GetBlockSize()
-    {
-        return InternalFormat switch
-        {
-            SizedInternalFormat.CompressedRgbaS3tcDxt1Ext or
-            SizedInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext or
-            SizedInternalFormat.CompressedRedRgtc1 => 8,
-
-            SizedInternalFormat.CompressedRgbaS3tcDxt3Ext or
-            SizedInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext or
-            SizedInternalFormat.CompressedRgbaS3tcDxt5Ext or
-            SizedInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext or
-            SizedInternalFormat.CompressedRgRgtc2 or
-            SizedInternalFormat.CompressedRgbBptcUnsignedFloat or
-            SizedInternalFormat.CompressedRgbaBptcUnorm => 16,
-
-            _ when IsAstcFormat() => 16,
-
-            _ when IsEtc2RgbFormat() => 8,
-            _ when IsEtc2RgbaFormat() => 16,
-
-            _ => 16
-        };
-    }
-
-    private (int width, int height) GetBlockDimensions()
-    {
-        return InternalFormat switch
-        {
-            SizedInternalFormat.CompressedRgbaAstc4X4 or SizedInternalFormat.CompressedSrgb8Alpha8Astc4X4 => (4, 4),
-            SizedInternalFormat.CompressedRgbaAstc6X6 or SizedInternalFormat.CompressedSrgb8Alpha8Astc6X6 => (6, 6),
-            SizedInternalFormat.CompressedRgbaAstc8X8 or SizedInternalFormat.CompressedSrgb8Alpha8Astc8X8 => (8, 8),
-            SizedInternalFormat.CompressedRgbaAstc10X10 or SizedInternalFormat.CompressedSrgb8Alpha8Astc10X10 => (10, 10),
-            SizedInternalFormat.CompressedRgbaAstc12X12 or SizedInternalFormat.CompressedSrgb8Alpha8Astc12X12 => (12, 12),
-
-            _ => (4, 4)
-        };
-    }
-
-    private bool IsAstcFormat()
-    {
-        return InternalFormat is
-            SizedInternalFormat.CompressedRgbaAstc4X4 or SizedInternalFormat.CompressedSrgb8Alpha8Astc4X4 or
-            SizedInternalFormat.CompressedRgbaAstc6X6 or SizedInternalFormat.CompressedSrgb8Alpha8Astc6X6 or
-            SizedInternalFormat.CompressedRgbaAstc8X8 or SizedInternalFormat.CompressedSrgb8Alpha8Astc8X8 or
-            SizedInternalFormat.CompressedRgbaAstc10X10 or SizedInternalFormat.CompressedSrgb8Alpha8Astc10X10 or
-            SizedInternalFormat.CompressedRgbaAstc12X12 or SizedInternalFormat.CompressedSrgb8Alpha8Astc12X12;
-    }
-
-    private bool IsEtc2RgbFormat()
-    {
-        return InternalFormat is SizedInternalFormat.CompressedRgb8Etc2 or SizedInternalFormat.CompressedSrgb8Etc2;
-    }
-
-    private bool IsEtc2RgbaFormat()
-    {
-        return InternalFormat is SizedInternalFormat.CompressedRgba8Etc2Eac or SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac;
-    }
-
-    public override string ToString() => InternalFormat switch
-    {
-        SizedInternalFormat.CompressedRgbaS3tcDxt1Ext or SizedInternalFormat.CompressedSrgbAlphaS3tcDxt1Ext => "BC1 RGB",
-        SizedInternalFormat.CompressedRgbaS3tcDxt3Ext or SizedInternalFormat.CompressedSrgbAlphaS3tcDxt3Ext => "BC2 RGBA",
-        SizedInternalFormat.CompressedRgbaS3tcDxt5Ext or SizedInternalFormat.CompressedSrgbAlphaS3tcDxt5Ext => "BC3 RGBA",
-        SizedInternalFormat.CompressedRedRgtc1 => "BC4 R",
-        SizedInternalFormat.CompressedRgRgtc2 => "BC5 RG",
-        SizedInternalFormat.CompressedRgbBptcUnsignedFloat => "BC6H RGB",
-        SizedInternalFormat.CompressedRgbaBptcUnorm => "BC7 RGBA",
-
-        SizedInternalFormat.CompressedRgb8Etc2 or SizedInternalFormat.CompressedSrgb8Etc2 => "ETC2 RGB",
-        SizedInternalFormat.CompressedRgba8Etc2Eac or SizedInternalFormat.CompressedSrgb8Alpha8Etc2Eac => "ETC2 RGBA",
-
-        _ when IsAstcFormat() => $"ASTC {_blockWidth}x{_blockHeight} RGBA",
-
-        _ => InternalFormat.ToString()
-    };
+    public override string ToString() => blocks.Name;
 }

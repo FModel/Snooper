@@ -12,6 +12,7 @@ using Snooper.Core;
 using Snooper.Core.Containers;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
+using Snooper.Core.Containers.Resources;
 using Snooper.UI;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
@@ -37,17 +38,11 @@ public class ImGuiController : IResizable, IDisposable
         _ebo.Allocate(45000);
         _vbo.Allocate(30000);
 
-        GL.VertexArrayVertexBuffer(_vao, 0, _vbo, 0, _vbo.Stride);
         GL.VertexArrayElementBuffer(_vao, _ebo);
-        GL.VertexArrayAttribFormat(_vao, 0, 2, VertexAttribType.Float, false, 0);
-        GL.VertexArrayAttribFormat(_vao, 1, 2, VertexAttribType.Float, false, 8);
-        GL.VertexArrayAttribFormat(_vao, 2, 4, VertexAttribType.UnsignedByte, true, 16);
-        GL.EnableVertexArrayAttrib(_vao, 0);
-        GL.EnableVertexArrayAttrib(_vao, 1);
-        GL.EnableVertexArrayAttrib(_vao, 2);
-        GL.VertexArrayAttribBinding(_vao, 0, 0);
-        GL.VertexArrayAttribBinding(_vao, 1, 0);
-        GL.VertexArrayAttribBinding(_vao, 2, 0);
+        new VertexArrayLayout(_vao, _vbo, _vbo.Stride)
+            .Float(0, 2)
+            .Float(1, 2, offset: 8)
+            .Float(2, 4, VertexAttribType.UnsignedByte, true, 16);
 
         _fontTexture.Generate();
 

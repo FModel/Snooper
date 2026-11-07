@@ -16,6 +16,7 @@ public class DeviceInfo
 
     public static bool IsIntel { get; private set; }
     public static bool HasFragmentBarycentric { get; private set; }
+    public static bool HasAstc { get; private set; }
     public static string GlslDefines { get; private set; } = string.Empty;
     public static string FragmentGlslDefines { get; private set; } = string.Empty;
 
@@ -33,6 +34,7 @@ public class DeviceInfo
 
         IsIntel = Vendor.Contains("Intel", StringComparison.OrdinalIgnoreCase);
         HasFragmentBarycentric = ExtensionSupport.SupportFragmentBarycentric;
+        HasAstc = ExtensionSupport.SupportAstcLdr;
         GlslDefines = IsIntel ? "#define BINDLESS_RAW_HANDLES\n" : string.Empty;
         FragmentGlslDefines = HasFragmentBarycentric ? "#extension GL_NV_fragment_shader_barycentric : require\n#define WIREFRAME\n" : string.Empty;
     }
