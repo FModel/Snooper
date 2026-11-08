@@ -1,8 +1,10 @@
 ﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
+using CUE4Parse.Utils;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Primitive;
@@ -86,6 +88,21 @@ public class CellActor : StreamableActor
         _world = worldAsset.WithoutOwner();
     }
 
+    public CellActor(FWorldCompositionTile tile, FIntVector position, Vector3 color) : base(tile.PackageName.Text.SubstringAfterLast('/'))
+    {
+        DataLayers = [];
+        Is2D = true;
+
+        var offset = new FVector(position.X, position.Y, position.Z);
+        var box = tile.Info.Bounds.ShiftBy(offset) * Settings.GlobalScale;
+        box.GetCenterAndExtents(out var center, out var extents);
+        offset *= Settings.GlobalScale;
+
+        _loadingExtents = new Vector3(extents.X, extents.Z, extents.Y);
+        Components.Add(new CellRootComponent(new Vector3(center.X, center.Z, center.Y), _loadingExtents.Value, color, new Vector3(offset.X, offset.Z, offset.Y)));
+        _world = new FSoftObjectPath($"{tile.PackageName.Text}.{Name}", string.Empty);
+    }
+
     protected override CullingBounds? LoadingBounds
     {
         get
@@ -110,10 +127,12 @@ public class CellActor : StreamableActor
             throw new InvalidOperationException($"{Name} has no world to build.");
 
         var actor = new WorldActor(world.TryLoad<UWorld>(provider, out var loaded) ? loaded : throw new InvalidOperationException($"{Name} world asset could not be loaded."));
-        if (RootComponent is CellRootComponent && actor.RootComponent != null)
+        if (RootComponent is CellRootComponent root && actor.RootComponent != null)
         {
             // this root is the center of the cell, not its origin, so cancel it on the world below
-            actor.RootComponent.SetLocalTransform(RootComponent.GetLocalTransform().Inverse());
+            var transform = root.GetLocalTransform().Inverse();
+            transform.Position += root.Origin;
+            actor.RootComponent.SetLocalTransform(transform);
         }
 
         return actor;
@@ -140,8 +159,10 @@ public class CellActor : StreamableActor
         _ => IsHLOD ? Settings.DiceD6Icon : Settings.CubeIcon
     };
 
-    private sealed class CellRootComponent(Vector3 center, Vector3 extents, Vector3 color) : SpatialComponent(new Transform(center), "CellRoot")
+    private sealed class CellRootComponent(Vector3 center, Vector3 extents, Vector3 color, Vector3? origin = null) : SpatialComponent(new Transform(center), "CellRoot")
     {
+        public readonly Vector3 Origin = origin ?? Vector3.Zero;
+
         protected override DebugComponent CreateDebugVisualization() => new BoxComponent(extents, color, 5.0f, name: "Cell (Bounds)");
     }
 }
