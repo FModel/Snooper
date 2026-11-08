@@ -1,4 +1,6 @@
-﻿using CUE4Parse.UE4.Assets.Exports.WorldPartition;
+﻿using CUE4Parse.UE4.Assets.Exports.Engine;
+using CUE4Parse.UE4.Assets.Exports.WorldPartition;
+using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Components.Transforms;
@@ -11,7 +13,7 @@ namespace Snooper.Rendering.Actors;
 
 public class HierarchicalActor : Actor
 {
-    public Vector2 Range { get; }
+    public Vector2? Range { get; }
 
     public HierarchicalActor(FRuntimePartitionStreamingData hlod, float minRange = 0f) : base(hlod.Name.ToString())
     {
@@ -19,11 +21,7 @@ public class HierarchicalActor : Actor
 
         Range = new Vector2(minRange, hlod.LoadingRange * Settings.GlobalScale);
 
-        var color = new Vector3(
-            (MathF.Sin(Range.Y * 0.1f + 0) + 1) * 0.5f,
-            (MathF.Sin(Range.Y * 0.1f + 2) + 1) * 0.5f,
-            (MathF.Sin(Range.Y * 0.1f + 4) + 1) * 0.5f
-        );
+        var color = GetRangeColor(hlod.LoadingRange * Settings.GlobalScale);
 
         ProcessStreamingCells(hlod.SpatiallyLoadedCells, color);
         ProcessStreamingCells(hlod.NonSpatiallyLoadedCells, color, true);
@@ -46,6 +44,31 @@ public class HierarchicalActor : Actor
         }
     }
 
+    public HierarchicalActor(FWorldTileLayer layer, List<(FWorldCompositionTile Tile, FIntVector Position)> tiles) : base(layer.Name)
+    {
+        Components.Add(new SpatialComponent(null, "LayerRoot"));
+
+        if (layer.DistanceStreamingEnabled)
+        {
+            Range = new Vector2(0f, layer.StreamingDistance * Settings.GlobalScale);
+        }
+
+        var color = GetRangeColor(layer.StreamingDistance * Settings.GlobalScale);
+        foreach (var (tile, position) in tiles)
+        {
+            Children.Add(new CellActor(tile, position, color));
+        }
+    }
+
+    private static Vector3 GetRangeColor(float range)
+    {
+        return new Vector3(
+            (MathF.Sin(range * 0.1f + 0) + 1) * 0.5f,
+            (MathF.Sin(range * 0.1f + 2) + 1) * 0.5f,
+            (MathF.Sin(range * 0.1f + 4) + 1) * 0.5f
+        );
+    }
+
     private void ProcessStreamingCells(FPackageIndex[] ptrs, Vector3? color = null, bool isPersistent = false)
     {
         foreach (var ptr in ptrs)
@@ -59,6 +82,8 @@ public class HierarchicalActor : Actor
 
     public void LoadAround(Vector3 position)
     {
+        if (Range is not { } range) return;
+
         var cells = Children.OfType<StreamableActor>()
             .Where(x => x is { IsPersistent: false, IsVisible: true })
             .Select(x => (Cell: x, Distance: x.DistanceTo(position)))
@@ -66,7 +91,7 @@ public class HierarchicalActor : Actor
 
         foreach (var (cell, distance) in cells)
         {
-            if (distance >= Range.X && distance <= Range.Y) cell.Load();
+            if (distance >= range.X && distance <= range.Y) cell.Load();
             else cell.Unload();
         }
     }
@@ -97,7 +122,7 @@ public class HierarchicalActor : Actor
 
         EditorUI.PropertyValueTable("Cells", () =>
         {
-            EditorUI.Text("Range", $"{Range.X:F0} to {Range.Y:F0}");
+            EditorUI.Text("Range", Range is { } range ? $"{range.X:F0} to {range.Y:F0}" : "None");
             EditorUI.Text("Loaded", $"{loaded:N0} / {total:N0}");
             EditorUI.Text("Loading", $"{loading:N0}");
         });

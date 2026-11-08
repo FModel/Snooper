@@ -3,6 +3,7 @@ using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
+using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition.DataLayer;
 using CUE4Parse.UE4.Objects.Engine;
@@ -27,6 +28,7 @@ public class WorldActor : Actor
 
         ProcessDataLayers();
         ProcessWorldPartition();
+        ProcessWorldComposition();
 
         var actors = new Dictionary<ResolvedObject, LevelActor>();
         var length = level.Actors.Length;
@@ -99,6 +101,15 @@ public class WorldActor : Actor
 
             progress?.Report($"{world.Name} ... Processing World Partition");
             Children.Add(new PartitionActor(worldPartition, _visibleDataLayers));
+        }
+        void ProcessWorldComposition()
+        {
+            if (world.WorldComposition is not { } ptr ||
+                !ptr.TryLoad<UWorldComposition>(out var composition) || composition.Tiles is not { Length: > 0 })
+                return;
+
+            progress?.Report($"{world.Name} ... Processing World Composition");
+            Children.Add(new PartitionActor(composition));
         }
     }
 

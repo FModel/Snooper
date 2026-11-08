@@ -1,4 +1,6 @@
-﻿using CUE4Parse.UE4.Assets.Exports.WorldPartition;
+﻿using CUE4Parse.UE4.Assets.Exports.Engine;
+using CUE4Parse.UE4.Assets.Exports.WorldPartition;
+using CUE4Parse.UE4.Objects.Core.Math;
 using Snooper.Rendering.Components.Transforms;
 using System.Numerics;
 
@@ -53,6 +55,49 @@ public class PartitionActor : Actor
         foreach (var layer in layers)
         {
             SetDataLayerEnabled(layer, true);
+        }
+    }
+
+    public PartitionActor(UWorldComposition composition) : base(composition)
+    {
+        Components.Add(new SpatialComponent(null, "PartitionRoot"));
+
+        var tiles = composition.Tiles ?? [];
+        var indices = new Dictionary<string, int>(tiles.Length, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < tiles.Length; i++)
+        {
+            indices.TryAdd(tiles[i].PackageName.Text, i);
+        }
+
+        var layers = new SortedDictionary<(bool, int, string), List<(FWorldCompositionTile Tile, FIntVector Position)>>();
+        foreach (var tile in tiles)
+        {
+            var layer = tile.Info.Layer;
+            var key = (!layer.DistanceStreamingEnabled, layer.StreamingDistance, layer.Name);
+            if (!layers.TryGetValue(key, out var layerTiles))
+            {
+                layers[key] = layerTiles = [];
+            }
+
+            layerTiles.Add((tile, GetAbsolutePosition(tile)));
+        }
+
+        foreach (var layerTiles in layers.Values)
+        {
+            Children.Add(new HierarchicalActor(layerTiles[0].Tile.Info.Layer, layerTiles));
+        }
+
+        FIntVector GetAbsolutePosition(FWorldCompositionTile tile)
+        {
+            var position = new FIntVector();
+            var info = tile.Info;
+            for (var depth = 0; info != null && depth < tiles.Length; depth++)
+            {
+                position += info.Position;
+                info = info.ParentTilePackageName is { } parent && indices.TryGetValue(parent, out var index) ? tiles[index].Info : null;
+            }
+
+            return position;
         }
     }
 

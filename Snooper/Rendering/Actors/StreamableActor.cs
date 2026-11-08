@@ -12,10 +12,20 @@ public enum EStreamingState
     Failed
 }
 
-public abstract class StreamableActor(UObject actor, bool isPersistent = false) : Actor(actor)
+public abstract class StreamableActor : Actor
 {
-    public readonly bool IsPersistent = isPersistent;
+    public readonly bool IsPersistent;
     public bool Is2D { get; init; }
+
+    protected StreamableActor(UObject actor, bool isPersistent = false) : base(actor)
+    {
+        IsPersistent = isPersistent;
+    }
+
+    protected StreamableActor(string name, bool isPersistent = false) : base(name)
+    {
+        IsPersistent = isPersistent;
+    }
 
     public EStreamingState State { get; internal set; }
     public bool IsLoaded => State is EStreamingState.Loaded;
