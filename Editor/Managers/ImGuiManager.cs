@@ -289,13 +289,15 @@ public abstract class ImGuiManager : SceneManager
     {
         base.Render();
 
+        var framebufferSize = Window.FramebufferSize;
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        GL.Viewport(0, 0, framebufferSize.X, framebufferSize.Y);
         GL.ClearColor(0, 0, 0, 1);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
         if (!_show)
         {
-            Pipeline.RenderToScreen(Window.ClientSize.X, Window.ClientSize.Y);
+            Pipeline.RenderToScreen(framebufferSize.X, framebufferSize.Y);
         }
         else using (Profiler.Sample("ImGui"))
         {

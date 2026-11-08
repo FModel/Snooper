@@ -141,6 +141,14 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
         WindowRequests.Request(Settings.SceneHierarchyWindow);
     }
 
+    protected override void OnActorRegistered(Actor actor)
+    {
+        if (actor is not MaterialActor { RootComponent: { } component }) return;
+
+        SelectComponent(component);
+        WindowRequests.Request(Settings.MaterialInspectorWindow);
+    }
+
     protected override void OnSelectionChanged(Actor? actor, ActorComponent? component)
     {
         _skeletonEditor.Reset();
@@ -151,6 +159,8 @@ public class EditorManager(GameWindow wnd, IFileProvider fileProvider) : Interfa
     protected override void Teardown()
     {
         DeadByDaylightMap = null;
+        foreach (var inspector in Panels.OfType<TextureInspectorWidget>())
+            inspector.Reset();
         base.Teardown();
     }
 }

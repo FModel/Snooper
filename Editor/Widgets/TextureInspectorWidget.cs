@@ -1,6 +1,8 @@
 using System.Numerics;
+using CUE4Parse_Conversion.Textures;
 using Editor.Managers;
 using ImGuiNET;
+using Serilog;
 using Snooper;
 using Snooper.Core.Containers.Textures;
 using Snooper.UI;
@@ -32,18 +34,58 @@ public class TextureInspectorWidget : PanelWidget
     private static readonly Vector4 _alphaChannel = new(0.8f, 0.8f, 0.8f, 1.0f);
 
     private Texture? _texture;
+    private bool _ownsTexture;
     private float _zoom = 1.0f;
     private Vector2 _pan;
     private bool _fitPending = true;
 
     private Vector2? _hoveredTexel;
 
+    public sealed record DecodedTextureRequest(CTexture Texture, string Name, bool NearestNeighbor);
+
+    private void Inspect(DecodedTextureRequest request)
+    {
+        var texture = request.Texture;
+        var preview = new Texture2D(texture.Width, texture.Height, name: request.Name);
+        try
+        {
+            preview.UploadDecoded(texture, request.NearestNeighbor);
+        }
+        catch (Exception e)
+        {
+            preview.Dispose();
+            Log.Error(e, "Could not upload {Name} to the Texture Inspector", request.Name);
+            return;
+        }
+
+        SetTexture(preview, ownsTexture: true);
+    }
+
+    private void SetTexture(Texture? texture, bool ownsTexture = false)
+    {
+        if (ReferenceEquals(_texture, texture))
+            return;
+
+        if (_ownsTexture)
+            _texture?.Dispose();
+
+        _texture = texture;
+        _ownsTexture = ownsTexture;
+        _fitPending = true;
+    }
+
+    public void Reset() => SetTexture(null);
+
     protected override void DrawContents(EditorManager editor)
     {
-        if (WindowRequests.GetPayload<Texture>(PanelTitle) is { } requested && requested.Guid != _texture?.Guid)
+        switch (WindowRequests.TakePayload(PanelTitle))
         {
-            _texture = requested;
-            _fitPending = true;
+            case Texture requested:
+                SetTexture(requested);
+                break;
+            case DecodedTextureRequest request:
+                Inspect(request);
+                break;
         }
 
         if (_texture is not { } texture)
@@ -53,7 +95,7 @@ public class TextureInspectorWidget : PanelWidget
         }
 
         DrawHeader(texture);
-        DrawToolbar();
+        DrawToolbar(texture);
 
         var footer = ImGui.GetFrameHeightWithSpacing();
         DrawCanvas(texture, ImGui.GetContentRegionAvail() - new Vector2(0, footer));
@@ -76,7 +118,7 @@ public class TextureInspectorWidget : PanelWidget
         ImGui.Separator();
     }
 
-    private void DrawToolbar()
+    private void DrawToolbar(Texture texture)
     {
         if (EditorUI.IconButton(Settings.FocusIcon, "Fit\nScale the image to the window")) _fitPending = true;
 
@@ -88,12 +130,12 @@ public class TextureInspectorWidget : PanelWidget
         }
 
         ImGui.SameLine();
-        if (EditorUI.IconButton(Settings.CopyIcon, "Copy Name") && _texture is { } texture)
+        if (EditorUI.IconButton(Settings.CopyIcon, "Copy Name"))
         {
             ImGui.SetClipboardText(texture.Name);
         }
 
-        if (_texture?.GetPreview() is { } view)
+        if (texture.GetPreview() is { } view)
         {
             ImGui.SameLine();
             EditorUI.VerticalSeparator();

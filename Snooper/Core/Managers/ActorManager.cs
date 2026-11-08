@@ -154,7 +154,10 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
             streamable.Load();
 
         Log.Verbose("{Actor} entered the scene", actor.Name);
+        OnActorRegistered(actor);
     }
+
+    protected virtual void OnActorRegistered(Actor actor) { }
 
     internal void UnregisterActor(Actor actor)
     {

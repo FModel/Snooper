@@ -4,7 +4,6 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Components.Mesh;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.UI;
 
 namespace Snooper.Rendering.Actors;
 
@@ -24,7 +23,6 @@ public class MaterialActor : Actor
             return;
 
         Components.Add(new StaticMeshComponent(sphere, transform, [new FPackageIndex(_material.Owner, exportIndex + 1)]));
-        WindowRequests.Request(Settings.MaterialInspectorWindow);
     }
 
     public override void Export(ExportSession session, CancellationToken ct = default)

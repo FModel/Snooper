@@ -1,9 +1,10 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using CUE4Parse_Conversion.Textures;
 using CUE4Parse.UE4.Assets.Exports.Texture;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using OpenTK.Graphics.OpenGL4;
 using Serilog;
+using SixLabors.ImageSharp.PixelFormats;
 using Snooper.Extensions;
 using Snooper.Hosting;
 
@@ -63,6 +64,17 @@ public class Texture2D(int width, int height,
         SetSampling(_sampling.Min, _sampling.Mag, _sampling.WrapS, _sampling.WrapT);
 
         IsReadyForBindless = true;
+    }
+
+    public void UploadDecoded(CTexture texture, bool nearestNeighbor)
+    {
+        using var image = texture.ToImage();
+        var pixels = new Rgba32[checked(image.Width * image.Height)];
+        image.CopyPixelDataTo(pixels);
+
+        Generate();
+        Reset(image.Width, image.Height, [pixels]);
+        SetSampling(nearestNeighbor ? TextureMinFilter.Nearest : TextureMinFilter.Linear, nearestNeighbor ? TextureMagFilter.Nearest : TextureMagFilter.Linear, TextureWrapMode.ClampToEdge);
     }
 
     public override void Prepare()

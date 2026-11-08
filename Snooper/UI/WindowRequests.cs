@@ -8,7 +8,10 @@ public static class WindowRequests
     public static void Request(string title, object? payload = null)
     {
         _pending = title;
-        if (payload is not null) _payloads[title] = payload;
+        if (payload is null)
+            _payloads.Remove(title);
+        else
+            _payloads[title] = payload;
     }
 
     public static bool TryTake(out string title)
@@ -18,7 +21,7 @@ public static class WindowRequests
         return title.Length > 0;
     }
 
-    public static T? GetPayload<T>(string title) where T : class => _payloads.TryGetValue(title, out var payload) ? payload as T : null;
+    public static object? TakePayload(string title) => _payloads.Remove(title, out var payload) ? payload : null;
 
     public static void Clear() => _payloads.Clear();
 }

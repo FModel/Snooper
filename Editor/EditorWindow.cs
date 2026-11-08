@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using CUE4Parse.FileProvider;
 using CUE4Parse.UE4.Assets.Exports;
+using CUE4Parse_Conversion.Textures;
 using Editor.Managers;
+using Editor.Widgets;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -11,6 +13,7 @@ using Serilog;
 using SixLabors.ImageSharp.PixelFormats;
 using Snooper;
 using Snooper.Core;
+using Snooper.UI;
 
 namespace Editor;
 
@@ -113,7 +116,7 @@ public partial class EditorWindow : GameWindow, IGameWindow
         CenterWindow();
         IsVisible = true;
 
-        OnFramebufferResize(new FramebufferResizeEventArgs(ClientSize)); // we initialize a bunch of stuff to 1x1 by default until we know the true size of the framebuffer
+        OnFramebufferResize(new FramebufferResizeEventArgs(FramebufferSize)); // we initialize a bunch of stuff to 1x1 by default until we know the true size of the framebuffer
     }
 
     private readonly ConcurrentQueue<Action> _commands = new();
@@ -122,6 +125,12 @@ public partial class EditorWindow : GameWindow, IGameWindow
         _commands.Enqueue(command);
         if (IsEventDriven) GLFW.PostEmptyEvent();
     }
+
+    public void InspectTexture(CTexture texture, string name, bool nearestNeighbor) => Invoke(() =>
+    {
+        WindowRequests.Request(Settings.TextureInspectorWindow, new TextureInspectorWidget.DecodedTextureRequest(texture, name, nearestNeighbor));
+        Show();
+    });
 
     private bool _exiting;
     public void Shutdown() => Invoke(() =>
@@ -134,6 +143,10 @@ public partial class EditorWindow : GameWindow, IGameWindow
     {
         IsEventDriven = false;
         IsVisible = true;
+
+        if (WindowState is WindowState.Minimized)
+            WindowState = WindowState.Normal;
+
         Focus();
 
         GLFW.PostEmptyEvent();
@@ -199,7 +212,7 @@ public partial class EditorWindow : GameWindow, IGameWindow
 
     private void DoResize(FramebufferResizeEventArgs e)
     {
-        if (!IsFocused) return;
+        if (e.Width <= 0 || e.Height <= 0) return;
 
         Log.Information("Framebuffer resized to {Width}x{Height}", e.Width, e.Height);
         Manager.Resize(e.Width, e.Height);
