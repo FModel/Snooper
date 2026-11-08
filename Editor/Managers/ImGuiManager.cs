@@ -257,7 +257,7 @@ public abstract class ImGuiManager : SceneManager
                     OnViewportLeftClick(mousePos, Vector2.Zero, viewportSize);
                 }
 
-                active?.Resize(Window.ClientSize.X, Window.ClientSize.Y);
+                active?.Resize(Window.FramebufferSize.X, Window.FramebufferSize.Y);
             }
 
             if (active is InteractiveCameraComponent camera)
