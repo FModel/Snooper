@@ -3,6 +3,7 @@ using CUE4Parse_Conversion;
 using CUE4Parse.UE4.Assets;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
+using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Assets.Exports.WorldPartition.DataLayer;
 using CUE4Parse.UE4.Objects.Engine;
@@ -43,8 +44,22 @@ public class WorldActor : Actor
         }
         length = actors.Count;
 
+        if (level.Owner is { } package)
+        {
+            // an actor owns every component outered to it
+            for (var i = 0; i < package.ExportMapLength; i++)
+            {
+                var export = new FPackageIndex(package, i + 1);
+                if (package.ResolvePackageIndex(export) is { Outer: { } outer } resolved && actors.TryGetValue(outer, out var owner) &&
+                    resolved.GetObjectType() is { } type && type.IsAssignableTo(typeof(UActorComponent)))
+                {
+                    owner.EnqueuePointers(export);
+                }
+            }
+        }
+
         var processed = 0;
-        var components = new Dictionary<FPackageIndex, SpatialComponent>();
+        var components = new Dictionary<ResolvedObject, SpatialComponent>();
         foreach (var actor in actors.Values)
         {
             ct.ThrowIfCancellationRequested();
