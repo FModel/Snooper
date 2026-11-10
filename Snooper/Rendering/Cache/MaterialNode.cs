@@ -188,6 +188,12 @@ public sealed partial class MaterialNode
                 _referencedTextures.Clear();
                 _referencedTextures.AddRange(ordered);
             }
+
+            if (cooked.FlattenedTexture is { IsNull: false }) _textures.TryAdd("Diffuse", new TextureParameter(cooked.FlattenedTexture, provider));
+            if (cooked.MobileBaseTexture is { IsNull: false }) _textures.TryAdd("Diffuse", new TextureParameter(cooked.MobileBaseTexture, provider));
+            if (cooked.MobileNormalTexture is { IsNull: false }) _textures.TryAdd("Normal", new TextureParameter(cooked.MobileNormalTexture, provider));
+            if (cooked.MobileMaskTexture is { IsNull: false }) _textures.TryAdd("SpecularMasks", new TextureParameter(cooked.MobileMaskTexture, provider));
+            if (cooked is { bUseMobileSpecular: true, MobileSpecularMask: EMobileSpecularMask.MSM_Constant }) _scalars.TryAdd("Specular", cooked.MobileSpecularPower);
         }
 
         void ReadShaderMaps(UMaterialInterface cooked)

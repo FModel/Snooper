@@ -17,11 +17,6 @@ public class LevelActor : UnrealActor
     public LevelActor(UObject actor) : base(actor)
     {
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("SplineComponent"));
-        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("CameraComponent"));
 
         if (actor is AInstancedFoliageActor { FoliageInfos: { } foliages })
         {
@@ -46,7 +41,7 @@ public class LevelActor : UnrealActor
         actor.TryGetValue(out _additionalWorlds, "AdditionalWorlds");
     }
 
-    public void ProcessEnqueuedComponents(Dictionary<FPackageIndex, SpatialComponent> components, Dictionary<ResolvedObject, LevelActor> actors)
+    public void ProcessEnqueuedComponents(Dictionary<ResolvedObject, SpatialComponent> components, Dictionary<ResolvedObject, LevelActor> actors)
     {
         foreach (var ptr in _ptrs)
         {
@@ -63,9 +58,9 @@ public class LevelActor : UnrealActor
         _additionalWorlds = null;
     }
 
-    private void CreateComponentRecursive(Dictionary<FPackageIndex, SpatialComponent> components, Dictionary<ResolvedObject, LevelActor> actors, FPackageIndex ptr)
+    private void CreateComponentRecursive(Dictionary<ResolvedObject, SpatialComponent> components, Dictionary<ResolvedObject, LevelActor> actors, FPackageIndex ptr)
     {
-        if (components.ContainsKey(ptr)) return;
+        if (ptr.ResolvedObject is not { } resolved || components.ContainsKey(resolved)) return;
 
         if (ptr.Load()?.Outer is { } outer && actors.TryGetValue(outer, out var owner) && owner != this)
         {
@@ -87,24 +82,24 @@ public class LevelActor : UnrealActor
             }
         }
 
-        if (pair.ParentPtr is { IsNull: false })
+        if (pair.ParentPtr is { ResolvedObject: { } parent })
         {
             CreateComponentRecursive(components, actors, pair.ParentPtr);
-            pair.Component.Relation = components[pair.ParentPtr];
+            pair.Component.Relation = components[parent];
         }
 
-        if (pair is { LeaderPtr: { IsNull: false } leaderPtr, Component: SkinnedMeshComponent skinned })
+        if (pair is { LeaderPtr: { ResolvedObject: { } leader } leaderPtr, Component: SkinnedMeshComponent skinned })
         {
             CreateComponentRecursive(components, actors, leaderPtr);
-            skinned.Leader = components[leaderPtr] as SkinnedMeshComponent;
+            skinned.Leader = components[leader] as SkinnedMeshComponent;
         }
 
-        components.TryAdd(ptr, pair.Component);
+        components.TryAdd(resolved, pair.Component);
         Components.Add(pair.Component);
     }
 
     private readonly HashSet<FPackageIndex> _ptrs = [];
-    private void EnqueuePointers(params FPackageIndex?[] ptrs)
+    internal void EnqueuePointers(params FPackageIndex?[] ptrs)
     {
         foreach (var ptr in ptrs)
         {
