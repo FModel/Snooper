@@ -11,6 +11,7 @@ using CUE4Parse.UE4.Assets.Exports.Component.SplineMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.Component.TextRender;
 using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
+using CUE4Parse.UE4.Assets.Exports.Landscape;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.UObject;
@@ -52,6 +53,7 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                             UHierarchicalInstancedStaticMeshComponent hism => new HierarchicalInstancedStaticMeshComponent(mesh, hism),
                             UInstancedStaticMeshComponent ism => new InstancedStaticMeshComponent(mesh, ism),
                             USplineMeshComponent spline => new SplineMeshComponent(mesh, spline),
+                            ULandscapeNaniteComponent landscape => new SpatialComponent(landscape), // we already render landscape via ULandscapeComponent
                             _ => new StaticMeshComponent(mesh, sm)
                         },
                         UIRMeshComponent ir when ir.Mesh.TryLoad<UIRMesh>(out var mesh) => new ContainerComponent(mesh, ir), // Custom
