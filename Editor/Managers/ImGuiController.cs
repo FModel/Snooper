@@ -24,8 +24,8 @@ public class ImGuiController : IResizable, IDisposable
 
     private readonly ImGuiFontTexture _fontTexture = new();
     private readonly VertexArray _vao = new();
-    private readonly ElementArrayBuffer<ushort> _ebo = new(BufferUsageHint.StreamDraw);
-    private readonly ArrayBuffer<ImDrawVert> _vbo = new(BufferUsageHint.StreamDraw);
+    private readonly ElementArrayBuffer<ushort> _ebo = new();
+    private readonly ArrayBuffer<ImDrawVert> _vbo = new();
     private readonly ShaderProgram _shader = new EmbeddedShader("imgui", Assembly.GetExecutingAssembly());
 
     public void Load()
@@ -153,15 +153,20 @@ public class ImGuiController : IResizable, IDisposable
             _ebo.Bind();
             _vbo.Bind();
 
+            _vbo.Reserve(drawData.TotalVtxCount);
+            _ebo.Reserve(drawData.TotalIdxCount);
+
             // Render command lists
+            var vtxOffset = 0;
+            var idxOffset = 0;
             for (var i = 0; i < drawData.CmdListsCount; i++)
             {
                 var cmd = drawData.CmdLists[i];
 
-                _vbo.Update(cmd.VtxBuffer.Size, cmd.VtxBuffer.Data);
+                _vbo.Update(vtxOffset, cmd.VtxBuffer.Size, cmd.VtxBuffer.Data);
                 CheckForErrors($"Data Vert {i}");
 
-                _ebo.Update(cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
+                _ebo.Update(idxOffset, cmd.IdxBuffer.Size, cmd.IdxBuffer.Data);
                 CheckForErrors($"Data Idx {i}");
 
                 for (var j = 0; j < cmd.CmdBuffer.Size; j++)
@@ -177,16 +182,12 @@ public class ImGuiController : IResizable, IDisposable
                     GL.Scissor((int)clip.X, (int)(io.DisplaySize.Y - clip.W), (int)(clip.Z - clip.X), (int)(clip.W - clip.Y));
                     CheckForErrors("Scissor");
 
-                    if (io.BackendFlags.HasFlag(ImGuiBackendFlags.RendererHasVtxOffset))
-                    {
-                        GL.DrawElementsBaseVertex(PrimitiveType.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (IntPtr)(pcmd.IdxOffset * sizeof(ushort)), unchecked((int)pcmd.VtxOffset));
-                    }
-                    else
-                    {
-                        GL.DrawElements(BeginMode.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (int)pcmd.IdxOffset * sizeof(ushort));
-                    }
+                    GL.DrawElementsBaseVertex(PrimitiveType.Triangles, (int)pcmd.ElemCount, DrawElementsType.UnsignedShort, (IntPtr)((idxOffset + pcmd.IdxOffset) * sizeof(ushort)), vtxOffset + unchecked((int)pcmd.VtxOffset));
                     CheckForErrors("Draw");
                 }
+
+                vtxOffset += cmd.VtxBuffer.Size;
+                idxOffset += cmd.IdxBuffer.Size;
             }
 
             _vbo.Unbind();

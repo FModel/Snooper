@@ -233,11 +233,15 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint, 
         _allocations[allocationId] = metadata with { LastModified = DateTime.UtcNow };
     }
 
-    public void Update(int count, nint data)
+    internal void Reserve(int count)
     {
         Count = count;
-        Capacity = Math.Max(Capacity, count);
-        GL.NamedBufferData(Handle, count * Stride, data, usageHint);
+        ResizeIfNeeded(count);
+    }
+
+    internal void Update(int offset, int count, nint data)
+    {
+        GL.NamedBufferSubData(Handle, offset * Stride, count * Stride, data);
     }
 
     public void Remove(BufferAllocation allocation) => RemoveInternal(allocation.AllocationId);
