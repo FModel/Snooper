@@ -61,7 +61,7 @@ public class SkyAtmosphereComponent : BillboardComponent
     /// <summary>
     /// earth
     /// </summary>
-    public SkyAtmosphereComponent(Transform? transform = null, string? name = null) : base("S_SkyAtmosphere", transform, name)
+    public SkyAtmosphereComponent(Transform? transform = null, string? name = null) : base("S_SkyAtmosphere", transform: transform, name: name)
     {
         PlanetRadius = 6360e3f;
         AtmosphereHeight = 60e3f;

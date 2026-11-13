@@ -15,7 +15,7 @@ public abstract class LightComponentBase : BillboardComponent
 
     private readonly float _step;
 
-    protected LightComponentBase(ULightComponentBase component, string sprite) : base(component, sprite)
+    protected LightComponentBase(ULightComponentBase component, string sprite) : base(component, sprite, component.GetLightColor())
     {
         Intensity = component.Intensity;
         Color = component.GetLightColor();
@@ -25,7 +25,7 @@ public abstract class LightComponentBase : BillboardComponent
         _step = MathF.Max(Intensity * 0.01f, 0.01f);
     }
 
-    protected LightComponentBase(float intensity, Vector3 color, bool castShadows, string sprite, Transform? transform = null, string? name = null) : base(sprite, transform, name)
+    protected LightComponentBase(float intensity, Vector3 color, bool castShadows, string sprite, Transform? transform = null, string? name = null) : base(sprite, color, transform, name)
     {
         Intensity = intensity;
         Color = color;

@@ -9,6 +9,7 @@ struct PerMaterialData
     bool IsReady;
     float OpacityMask;
     TEXTURE_HANDLE Sprite;
+    vec3 Color;
 };
 
 layout(std430, binding = BINDING_MATERIAL_DATA) restrict readonly buffer PerMaterialDataBuffer
@@ -37,6 +38,8 @@ void main()
         {
             discard;
         }
+
+        color *= vec4(uMaterialDataBuffer[material].Color, 1.0);
     }
 
     vec4 gamma = pow(color, vec4(1.0 / 2.2));

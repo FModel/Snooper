@@ -52,7 +52,7 @@ public class ExponentialHeightFogComponent : BillboardComponent
         }
     }
 
-    public ExponentialHeightFogComponent(Vector3 color, float density = 0.002f, float heightFalloff = 0.02f, Transform? transform = null, string? name = null) : base("S_ExpoHeightFog", transform, name)
+    public ExponentialHeightFogComponent(Vector3 color, float density = 0.002f, float heightFalloff = 0.02f, Transform? transform = null, string? name = null) : base("S_ExpoHeightFog", transform: transform, name: name)
     {
         Density = density;
         HeightFalloff = heightFalloff;

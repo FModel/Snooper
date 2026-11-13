@@ -17,6 +17,8 @@ public readonly struct PerMaterialBillboardData : IPerMaterialData
     public bool IsReady { get; init; }
     public float OpacityMask { get; init; }
     public ulong Sprite { get; init; }
+    public Vector3 Color { get; init; }
+    public float Padding { get; init; }
 }
 
 [DefaultActorSystem(typeof(BillboardSystem))]
@@ -32,16 +34,16 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
         }
     }
 
-    protected BillboardComponent(string sprite, Transform? transform = null, string? name = null) : base(transform, name)
+    protected BillboardComponent(string sprite, Vector3? color = null, Transform? transform = null, string? name = null) : base(transform, name)
     {
         Descriptor = new PrimitiveDescriptor<Vector2>(new CullingBounds(Vector3.Zero, Vector3.One / 4), () => new Geometry());
-        Materials[0].InlineContainer = new MaterialDataContainer(new EmbeddedTexture2D($"Rendering.Resources.{sprite}.png"));
+        Materials[0].InlineContainer = new MaterialDataContainer(new EmbeddedTexture2D($"Rendering.Resources.{sprite}.png"), color: color);
     }
 
-    protected BillboardComponent(USceneComponent component, string sprite) : base(component)
+    protected BillboardComponent(USceneComponent component, string sprite, Vector3? color = null) : base(component)
     {
         Descriptor = new PrimitiveDescriptor<Vector2>(new CullingBounds(Vector3.Zero, Vector3.One / 4), () => new Geometry());
-        Materials[0].InlineContainer = new MaterialDataContainer(new EmbeddedTexture2D($"Rendering.Resources.{sprite}.png"));
+        Materials[0].InlineContainer = new MaterialDataContainer(new EmbeddedTexture2D($"Rendering.Resources.{sprite}.png"), color: color);
     }
 
     private const string HeaderLabel = "Billboard";
@@ -68,7 +70,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
 
     public override string Icon => Settings.ChalkboardIcon;
 
-    private class MaterialDataContainer(Texture sprite, float opacityMask = 0.5f) : IMaterialDataContainer
+    private class MaterialDataContainer(Texture sprite, float opacityMask = 0.5f, Vector3? color = null) : IMaterialDataContainer
     {
         private BindlessTexture? _sprite;
 
@@ -100,6 +102,7 @@ public class BillboardComponent : PrimitiveComponent<Vector2, PerMaterialBillboa
                 IsReady = true,
                 OpacityMask = opacityMask,
                 Sprite = _sprite,
+                Color = color ?? Vector3.One,
             };
         }
 
