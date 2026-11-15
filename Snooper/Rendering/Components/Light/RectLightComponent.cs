@@ -32,8 +32,6 @@ public class RectLightComponent : LocalLightComponent
         BarnDoorLength = 0.2f;
     }
 
-    protected override DebugComponent CreateDebugVisualization() => new RectLightComponentVisualization(this);
-
     protected override bool DrawLightControls()
     {
         var edited = base.DrawLightControls();

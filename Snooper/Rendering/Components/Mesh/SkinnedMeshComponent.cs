@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
+using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Buffers;
@@ -99,6 +100,8 @@ public class SkinnedMeshComponent : MeshComponent
     public int SelectedBone { get; set { field = value; if (value >= 0) SelectedSocket = -1; } } = -1;
     public int SelectedSocket { get; set { field = value; if (value >= 0) SelectedBone = -1; } } = -1;
 
+    internal readonly FSoftObjectPath? _physicsAssetOverride;
+
     protected SkinnedMeshComponent(SkinnedMeshComponent other) : base(other)
     {
         _morphWeights = (float[]?) other._morphWeights?.Clone();
@@ -120,6 +123,8 @@ public class SkinnedMeshComponent : MeshComponent
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skinnedAsset, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
         if (Descriptor.Skeleton is { } skeleton) Pose = new SkeletonPose(skeleton);
+        if (component.PhysicsAssetOverride is { IsNull: false } physicsAsset)
+            _physicsAssetOverride = physicsAsset.ToSoftObjectPath();
     }
 
     public void MoveBone(int index, Matrix4x4 matrix)

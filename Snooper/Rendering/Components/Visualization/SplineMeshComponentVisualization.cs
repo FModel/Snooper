@@ -4,9 +4,11 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Components.Visualization;
 
-public class SplineMeshComponentVisualization : DebugComponent
+public class SplineMeshComponentVisualization : DebugComponent, IVisualization<SplineMeshComponentVisualization>
 {
-    public SplineMeshComponentVisualization(SplineMeshComponent spline) : base(new Vector3(0.0f, 1.0f, 1.0f), 5, name: $"{spline.Name} (Visualization)")
+    public static SplineMeshComponentVisualization[] Create(ActorComponent owner) => owner is SplineMeshComponent spline ? [new SplineMeshComponentVisualization(spline)] : [];
+
+    private SplineMeshComponentVisualization(SplineMeshComponent spline) : base(new Vector3(0.0f, 1.0f, 1.0f), 5, name: $"{spline.Name} (Visualization)")
     {
         Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(), () => new Geometry(spline.SplineParams));
     }

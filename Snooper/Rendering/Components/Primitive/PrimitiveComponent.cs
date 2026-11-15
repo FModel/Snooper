@@ -2,6 +2,7 @@ using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Assets.Exports.FastGeoStreaming;
 using CUE4Parse.UE4.Objects.Core.Math;
+using CUE4Parse.UE4.Objects.PhysicsEngine;
 using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Containers.Resources;
@@ -56,6 +57,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     public readonly bool CastShadow = true;
     public Vector2 DrawDistance { get; protected init; } = Vector2.Zero;
+    public ECollisionEnabled CollisionEnabled { get; } = ECollisionEnabled.QueryAndPhysics;
 
     /// <summary>
     /// opaque pass requires shader support for writing to multiple render targets, so by default it's disabled and primitives are rendered in the translucent pass
@@ -90,6 +92,8 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         {
             DrawDistance = DrawDistance with { Y = maxDrawDistance * Settings.GlobalScale };
         }
+
+        CollisionEnabled = component.BodyInstance?.CollisionEnabled ?? CollisionEnabled;
     }
 
     protected PrimitiveComponent(FFastGeoPrimitiveComponent component) : base(component)

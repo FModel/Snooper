@@ -7,9 +7,7 @@ using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using Snooper.Extensions;
 using Snooper.Rendering.Components.Descriptors;
-using Snooper.Rendering.Components.Primitive;
 using Snooper.Rendering.Components.Transforms;
-using Snooper.Rendering.Components.Visualization;
 using Snooper.UI;
 
 namespace Snooper.Rendering.Actors;
@@ -22,7 +20,7 @@ public class CellActor : StreamableActor
     private readonly FSoftObjectPath? _world;
     private readonly Vector3? _loadingExtents;
 
-    public CellActor(UWorldPartitionRuntimeCell cell, Vector3? color = null, bool isPersistent = false) : base(cell, isPersistent)
+    public CellActor(UWorldPartitionRuntimeCell cell, bool isPersistent = false) : base(cell, isPersistent)
     {
         IsHLOD = cell.GetOrDefault("bIsHLOD", false);
         DataLayers = cell.DataLayers?.DataLayers.Select(x => x.Text).ToArray() ?? [];
@@ -47,29 +45,7 @@ public class CellActor : StreamableActor
 
             _loadingExtents = new Vector3(extents.X, extents.Z, extents.Y);
 
-            // TODO: not clean
-            if (DataLayers.Length > 0)
-            {
-                var hue = DataLayers.Aggregate(0f, (current1, dl) => dl.Aggregate(current1, (current, c) => current + c));
-                hue = (hue * 0.618033988749895f) % 1f;
-                var h = hue * 6;
-                var x = 1 - MathF.Abs(h % 2 - 1);
-                color = h switch
-                {
-                    < 1 => new Vector3(1, x, 0),
-                    < 2 => new Vector3(x, 1, 0),
-                    < 3 => new Vector3(0, 1, x),
-                    < 4 => new Vector3(0, x, 1),
-                    < 5 => new Vector3(x, 0, 1),
-                    _ => new Vector3(1, 0, x)
-                } * 0.5f;
-            }
-            else
-            {
-                color ??= new Vector3(cell.CellDebugColor.R, cell.CellDebugColor.G, cell.CellDebugColor.B);
-            }
-
-            Components.Add(new CellRootComponent(new Vector3(center.X, center.Z, center.Y), _loadingExtents.Value, color.Value));
+            Components.Add(new CellRootComponent(new Vector3(center.X, center.Z, center.Y)));
         }
 
         if (cell is UWorldPartitionRuntimeLevelStreamingCell streaming &&
@@ -88,7 +64,7 @@ public class CellActor : StreamableActor
         _world = worldAsset.WithoutOwner();
     }
 
-    public CellActor(FWorldCompositionTile tile, FIntVector position, Vector3 color) : base(tile.PackageName.Text.SubstringAfterLast('/'))
+    public CellActor(FWorldCompositionTile tile, FIntVector position) : base(tile.PackageName.Text.SubstringAfterLast('/'))
     {
         DataLayers = [];
         Is2D = true;
@@ -99,7 +75,7 @@ public class CellActor : StreamableActor
         offset *= Settings.GlobalScale;
 
         _loadingExtents = new Vector3(extents.X, extents.Z, extents.Y);
-        Components.Add(new CellRootComponent(new Vector3(center.X, center.Z, center.Y), _loadingExtents.Value, color, new Vector3(offset.X, offset.Z, offset.Y)));
+        Components.Add(new CellRootComponent(new Vector3(center.X, center.Z, center.Y), new Vector3(offset.X, offset.Z, offset.Y)));
         _world = new FSoftObjectPath($"{tile.PackageName.Text}.{Name}", string.Empty);
     }
 
@@ -159,10 +135,8 @@ public class CellActor : StreamableActor
         _ => IsHLOD ? Settings.DiceD6Icon : Settings.CubeIcon
     };
 
-    private sealed class CellRootComponent(Vector3 center, Vector3 extents, Vector3 color, Vector3? origin = null) : SpatialComponent(new Transform(center), "CellRoot")
+    private sealed class CellRootComponent(Vector3 center, Vector3? origin = null) : SpatialComponent(new Transform(center), "CellRoot")
     {
         public readonly Vector3 Origin = origin ?? Vector3.Zero;
-
-        protected override DebugComponent CreateDebugVisualization() => new BoxComponent(extents, color, 5.0f, name: "Cell (Bounds)");
     }
 }

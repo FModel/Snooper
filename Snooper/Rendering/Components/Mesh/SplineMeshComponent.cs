@@ -78,7 +78,5 @@ public class SplineMeshComponent : StaticMeshComponent
         SplineParams = new SplineMeshParams(component, Descriptor.Bounds);
     }
 
-    protected override DebugComponent CreateDebugVisualization() => new SplineMeshComponentVisualization(this);
-
     public override string Icon => "\uf55b";
 }

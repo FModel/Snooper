@@ -4,13 +4,15 @@ using Snooper.Rendering.Components.Descriptors;
 
 namespace Snooper.Rendering.Components.Visualization;
 
-public class CameraComponentVisualization : DebugComponent
+public class CameraComponentVisualization : DebugComponent, IVisualization<CameraComponentVisualization>
 {
+    public static CameraComponentVisualization[] Create(ActorComponent owner) => owner is CameraComponent camera ? [new CameraComponentVisualization(camera)] : [];
+
     private const float Depth = 0.5f;
 
     private readonly CameraComponent _camera;
 
-    public CameraComponentVisualization(CameraComponent camera) : base(Settings.Camera, name: $"{camera.Name} (Frustum)")
+    private CameraComponentVisualization(CameraComponent camera) : base(Settings.Camera, name: $"{camera.Name} (Frustum)")
     {
         _camera = camera;
         Descriptor = new PrimitiveDescriptor<Vector3>(new CullingBounds(Vector3.One), () => new Geometry());

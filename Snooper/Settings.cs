@@ -102,6 +102,7 @@ public static class Settings
     public const string ChalkboardIcon = "\uf51b";
     public const string FontIcon = "\uf031";
     public const string BugIcon = "\uf188";
+    public const string ShapesIcon = "\uf61f";
     public const string ChartLineIcon = "\uf201";
     public const string MicrochipIcon = "\uf2db";
     public const string ToggleOnIcon = "\uf205";

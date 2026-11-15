@@ -35,8 +35,6 @@ public class PointLightComponent : LocalLightComponent
         UseInverseSquaredFalloff = true;
     }
 
-    protected override DebugComponent CreateDebugVisualization() => new PointLightComponentVisualization(this);
-
     protected override bool DrawLightControls()
     {
         var edited = base.DrawLightControls();

@@ -4,6 +4,7 @@ using CUE4Parse.UE4.Assets.Exports.Animation;
 using CUE4Parse.UE4.Assets.Exports.Component.StaticMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Misc;
+using CUE4Parse.UE4.Objects.PhysicsEngine;
 using CUE4Parse.UE4.Objects.UObject;
 
 namespace Snooper.Extensions;
@@ -31,6 +32,7 @@ public static class ObjectExtensions
 
     public static FGuid ToGuid(this UStaticMesh owner, uint index = 0) => new FGuid(owner.LightingGuid.A ^ index, owner.LightingGuid.B, owner.LightingGuid.C, owner.LightingGuid.D).WithArchive(owner);
     public static FGuid ToGuid(this USkeleton owner) => owner.Guid.WithArchive(owner);
+    public static FGuid ToGuid(this UBodySetup owner) => owner.BodySetupGuid.WithArchive(owner);
 
     private static FGuid WithArchive(this FGuid guid, UObject owner) => owner.Owner is { ArchiveName: { } archive }
         ? new FGuid(guid.A ^ (uint) archive.GetHashCode(), guid.B, guid.C, guid.D)

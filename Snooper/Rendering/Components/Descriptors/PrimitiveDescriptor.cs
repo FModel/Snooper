@@ -12,6 +12,7 @@ using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Meshes;
+using CUE4Parse.UE4.Objects.PhysicsEngine;
 using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Snooper.Extensions;
@@ -53,6 +54,28 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Guid = FGuid.Random();
         Bounds = bounds;
         Lods = [new LodDescriptor<TVertex>(factory())];
+        Sockets = [];
+    }
+
+    private PrimitiveDescriptor(FGuid guid, UBodySetup owner, Func<UBodySetup, TPrimitiveData<TVertex>> factory)
+    {
+        Path = owner.GetCleanPath();
+        Guid = guid;
+
+        var primitive = factory(owner);
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
+        if (primitive.Vertices is Vector3[] positions)
+        {
+            foreach (var position in positions)
+            {
+                min = Vector3.Min(min, position);
+                max = Vector3.Max(max, position);
+            }
+        }
+
+        Bounds = min.X <= max.X ? new CullingBounds((min + max) * 0.5f, (max - min) * 0.5f) : new CullingBounds(Vector3.Zero);
+        Lods = [new LodDescriptor<TVertex>(primitive)];
         Sockets = [];
     }
 
@@ -223,6 +246,9 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory)
+        => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
+
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(UBodySetup owner, Func<UBodySetup, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.ToGuid(), guid => new PrimitiveDescriptor<TVertex>(guid, owner, factory));
 
     private int _selectedLod;

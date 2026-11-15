@@ -40,28 +40,56 @@ public abstract class ActorComponent : TreeNode
         // the owning actor, or one above it, was shown or hidden
     }
 
-    private DebugComponent? _visualization;
-    protected virtual DebugComponent? CreateDebugVisualization() => null;
-
-    public void SetDebugVisualizationVisibility(bool visible)
+    private sealed class Visualization
     {
-        if (_visualization is null)
+        public SpatialComponent[] Components = [];
+        public bool Visible;
+    }
+    private Dictionary<Type, Visualization>? _visualizations;
+
+    public void SetVisualizationVisibility<T>(bool visible) where T : SpatialComponent, IVisualization<T>
+    {
+        if (_visualizations is not null && _visualizations.TryGetValue(typeof(T), out var visualization))
         {
-            if (!visible) return;
-            if (Actor is null)
-                throw new InvalidOperationException("Cannot create debug visualization for a component that is not attached to an actor.");
-
-            _visualization = CreateDebugVisualization();
-            if (_visualization is null)
-                return;
-
-            if (this is SpatialComponent relation)
-                _visualization.Relation = relation;
-
-            Actor.Components.Add(_visualization);
+            visualization.Visible = visible;
+            foreach (var component in visualization.Components)
+            {
+                component.SetVisibility(visible);
+            }
+            return;
         }
 
-        _visualization.SetVisibility(visible);
+        if (!visible || Scene is not SceneManager { Window: IGameWindow window }) return;
+
+        _visualizations ??= [];
+        visualization = _visualizations[typeof(T)] = new Visualization { Visible = true };
+        ThreadManager.Enqueue(() =>
+        {
+            T[]? components = null;
+            try
+            {
+                components = T.Create(this);
+            }
+            finally
+            {
+                window.Invoke(() =>
+                {
+                    if (components is null || Actor is not { } actor)
+                    {
+                        _visualizations?.Remove(typeof(T));
+                        return;
+                    }
+
+                    foreach (var component in components)
+                    {
+                        if (this is SpatialComponent relation) component.Relation = relation;
+                        component.SetVisibility(visualization.Visible);
+                        actor.Components.Add(component);
+                    }
+                    visualization.Components = components;
+                });
+            }
+        });
     }
 
     public event Action<ActorComponent>? OnRequestSystemUpdate;

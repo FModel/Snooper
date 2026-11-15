@@ -24,8 +24,6 @@ public class SpotLightComponent : PointLightComponent
         OuterConeAngle = outerConeAngle;
     }
 
-    protected override DebugComponent CreateDebugVisualization() => new SpotLightComponentVisualization(this);
-
     protected override bool DrawLightControls()
     {
         var edited = base.DrawLightControls();

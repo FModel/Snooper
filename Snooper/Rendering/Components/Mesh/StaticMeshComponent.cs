@@ -19,9 +19,12 @@ public class StaticMeshComponent : MeshComponent
 
     }
 
+    public readonly bool UseDefaultCollision;
+
     public StaticMeshComponent(UStaticMesh staticMesh, Transform? transform = null, FPackageIndex?[]? overrideMaterials = null) : base(staticMesh.Materials, overrideMaterials, transform, staticMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
+        UseDefaultCollision = true;
     }
 
     public StaticMeshComponent(UIRMesh staticMesh, uint meshIndex, FPackageIndex?[]? overrideMaterials = null, Transform? transform = null) : base(staticMesh.Materials, overrideMaterials, transform, meshIndex > 0 ? $"{staticMesh.Name}_{meshIndex}" : staticMesh.Name)
@@ -37,6 +40,7 @@ public class StaticMeshComponent : MeshComponent
     public StaticMeshComponent(UStaticMesh staticMesh, UStaticMeshComponent component) : base(staticMesh.Materials, component)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
+        UseDefaultCollision = component.bUseDefaultCollision;
 
         // TODO: use component.LODData to override some stuff (eg vertex colors)
     }

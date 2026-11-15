@@ -268,8 +268,6 @@ public class LandscapeMeshComponent : PrimitiveComponent<Vector2, PerMaterialLan
         }
     }
 
-    protected override DebugComponent CreateDebugVisualization() => new BoxComponent(Descriptor.Bounds, Settings.LandscapeBounds, name: $"{Name} (Bounds)");
-
     private class Geometry : PrimitiveData<Vector2>
     {
         public Geometry(uint sizeQuads)

@@ -4,12 +4,14 @@ using Snooper.Rendering.Components.Mesh;
 
 namespace Snooper.Rendering.Components.Visualization;
 
-public class MeshBoundsVisualization : DebugComponent
+public class MeshBoundsVisualization : DebugComponent, IVisualization<MeshBoundsVisualization>
 {
     private readonly MeshComponent _owner;
     private readonly bool _posed;
 
-    public MeshBoundsVisualization(MeshComponent owner) : base(owner.IsVisible ? Settings.VisibleMeshBounds : Settings.HiddenMeshBounds, name: $"{owner.Name} (Bounds)")
+    public static MeshBoundsVisualization[] Create(ActorComponent owner) => owner is MeshComponent mesh and not SplineMeshComponent ? [new MeshBoundsVisualization(mesh)] : [];
+
+    private MeshBoundsVisualization(MeshComponent owner) : base(owner.IsVisible ? Settings.VisibleMeshBounds : Settings.HiddenMeshBounds, name: $"{owner.Name} (Bounds)")
     {
         _owner = owner;
         _posed = owner is SkinnedMeshComponent;

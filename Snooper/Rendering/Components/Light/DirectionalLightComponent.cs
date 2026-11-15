@@ -44,8 +44,6 @@ public class DirectionalLightComponent : LightComponent
         return Vector3.Normalize(Vector3.Transform(-Vector3.UnitZ, rotation));
     }
 
-    protected override DebugComponent CreateDebugVisualization() => new ArrowComponent(Settings.DirectionalLight, null, $"{Name} (Direction)");
-
     public override string Icon => Settings.SunIcon;
 
     protected override bool DrawLightControls()

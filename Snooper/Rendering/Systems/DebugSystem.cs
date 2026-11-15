@@ -7,6 +7,7 @@ using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Light;
 using Snooper.Rendering.Components.Mesh;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.UI;
 using System.Numerics;
 using Snooper.Core.Systems;
@@ -37,6 +38,7 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
 
     private bool _showVisibleMeshBounds;
     private bool _showHiddenMeshBounds;
+    private bool _showMeshCollision;
     private bool _showLandscapeBounds;
     private bool _showPointLightBounds;
     private bool _showSpotLightBounds;
@@ -52,7 +54,7 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
             {
                 foreach (var system in systems)
                 {
-                    Toggle(system.GetMeshComponents().Where(x => x.IsVisible), _showVisibleMeshBounds);
+                    Toggle<MeshBoundsVisualization>(system.GetMeshComponents().Where(x => x.IsVisible), _showVisibleMeshBounds);
                 }
             }
 
@@ -60,7 +62,18 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
             {
                 foreach (var system in systems)
                 {
-                    Toggle(system.GetMeshComponents().Where(x => !x.IsVisible), _showHiddenMeshBounds);
+                    Toggle<MeshBoundsVisualization>(system.GetMeshComponents().Where(x => !x.IsVisible), _showHiddenMeshBounds);
+                }
+            }
+
+            if (ImGui.Checkbox("Show Mesh Collision", ref _showMeshCollision))
+            {
+                foreach (var system in systems)
+                {
+                    foreach (var component in system.GetMeshComponents())
+                    {
+                        component.SetVisualizationVisibility<CollisionComponentVisualization>(_showMeshCollision && component.IsVisible);
+                    }
                 }
             }
         }
@@ -69,7 +82,7 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
         {
             if (ImGui.Checkbox("Show Landscape Bounds", ref _showLandscapeBounds))
             {
-                Toggle(landscapeSystem.GetComponents<LandscapeMeshComponent>(), _showLandscapeBounds);
+                Toggle<LandscapeMeshComponentVisualization>(landscapeSystem.GetComponents<LandscapeMeshComponent>(), _showLandscapeBounds);
             }
         }
 
@@ -77,15 +90,15 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
         {
             if (ImGui.Checkbox("Show Point Light Bounds", ref _showPointLightBounds))
             {
-                Toggle(lightSystem.GetComponents<PointLightComponent>(), _showPointLightBounds);
+                Toggle<PointLightComponentVisualization>(lightSystem.GetComponents<PointLightComponent>(), _showPointLightBounds);
             }
             if (ImGui.Checkbox("Show Spot Light Bounds", ref _showSpotLightBounds))
             {
-                Toggle(lightSystem.GetComponents<SpotLightComponent>(), _showSpotLightBounds);
+                Toggle<SpotLightComponentVisualization>(lightSystem.GetComponents<SpotLightComponent>(), _showSpotLightBounds);
             }
             if (ImGui.Checkbox("Show Rect Light Bounds", ref _showRectLightBounds))
             {
-                Toggle(lightSystem.GetComponents<RectLightComponent>(), _showRectLightBounds);
+                Toggle<RectLightComponentVisualization>(lightSystem.GetComponents<RectLightComponent>(), _showRectLightBounds);
             }
         }
 
@@ -93,7 +106,7 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
         {
             if (ImGui.Checkbox("Show Directional Light Arrows", ref _showDirectionalLightArrows))
             {
-                Toggle(sunSystem.GetComponents<DirectionalLightComponent>(), _showDirectionalLightArrows);
+                Toggle<DirectionalLightComponentVisualization>(sunSystem.GetComponents<DirectionalLightComponent>(), _showDirectionalLightArrows);
             }
         }
 
@@ -101,16 +114,16 @@ public class DebugSystem() : PrimitiveSystem<DebugComponent, PerInstanceData, Pe
         {
             if (ImGui.Checkbox("Show Spline Mesh Paths", ref _showSplineViz))
             {
-                Toggle(splineSystem.GetComponents<SplineMeshComponent>(), _showSplineViz);
+                Toggle<SplineMeshComponentVisualization>(splineSystem.GetComponents<SplineMeshComponent>(), _showSplineViz);
             }
         }
     }
 
-    private void Toggle<TComponent>(IEnumerable<TComponent> components, bool enable) where TComponent : ActorComponent
+    private static void Toggle<T>(IEnumerable<ActorComponent> components, bool enable) where T : SpatialComponent, IVisualization<T>
     {
         foreach (var component in components)
         {
-            component.SetDebugVisualizationVisibility(enable);
+            component.SetVisualizationVisibility<T>(enable);
         }
     }
 }

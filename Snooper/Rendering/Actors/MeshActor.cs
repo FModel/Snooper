@@ -39,6 +39,11 @@ public class MeshActor : Actor
         AddMeshComponent(new SkeletalMeshComponent(skinnedAsset, transform));
     }
 
+    public MeshActor(USkeleton skeleton, Transform? transform = null) : base(skeleton)
+    {
+        AddMeshComponent(new SkeletalMeshComponent(skeleton, transform));
+    }
+
     public MeshActor(UAnimationAsset animation, float playPosition = 0f, float playRate = 1f) : base(animation)
     {
         AddMeshComponent(new SkeletalMeshComponent(animation, playPosition, playRate));

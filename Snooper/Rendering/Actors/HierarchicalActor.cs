@@ -2,7 +2,6 @@
 using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.UObject;
-using Snooper.Core.Managers;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
 using Snooper.UI;
@@ -21,10 +20,8 @@ public class HierarchicalActor : Actor
 
         Range = new Vector2(minRange, hlod.LoadingRange * Settings.GlobalScale);
 
-        var color = GetRangeColor(hlod.LoadingRange * Settings.GlobalScale);
-
-        ProcessStreamingCells(hlod.SpatiallyLoadedCells, color);
-        ProcessStreamingCells(hlod.NonSpatiallyLoadedCells, color, true);
+        ProcessStreamingCells(hlod.SpatiallyLoadedCells);
+        ProcessStreamingCells(hlod.NonSpatiallyLoadedCells, true);
     }
 
     public HierarchicalActor(FSpatialHashStreamingGrid grid, float minRange = 0f) : base(grid.GridName.ToString())
@@ -34,12 +31,11 @@ public class HierarchicalActor : Actor
 
         Range = new Vector2(minRange, grid.LoadingRange * Settings.GlobalScale);
 
-        var color = new Vector3(grid.DebugColor.R, grid.DebugColor.G, grid.DebugColor.B);
         foreach (var level in grid.GridLevels)
         {
             foreach (var cell in level.LayerCells)
             {
-                ProcessStreamingCells(cell.GridCells, color);
+                ProcessStreamingCells(cell.GridCells);
             }
         }
     }
@@ -53,30 +49,20 @@ public class HierarchicalActor : Actor
             Range = new Vector2(0f, layer.StreamingDistance * Settings.GlobalScale);
         }
 
-        var color = GetRangeColor(layer.StreamingDistance * Settings.GlobalScale);
         foreach (var (tile, position) in tiles)
         {
-            Children.Add(new CellActor(tile, position, color));
+            Children.Add(new CellActor(tile, position));
         }
     }
 
-    private static Vector3 GetRangeColor(float range)
-    {
-        return new Vector3(
-            (MathF.Sin(range * 0.1f + 0) + 1) * 0.5f,
-            (MathF.Sin(range * 0.1f + 2) + 1) * 0.5f,
-            (MathF.Sin(range * 0.1f + 4) + 1) * 0.5f
-        );
-    }
-
-    private void ProcessStreamingCells(FPackageIndex[] ptrs, Vector3? color = null, bool isPersistent = false)
+    private void ProcessStreamingCells(FPackageIndex[] ptrs, bool isPersistent = false)
     {
         foreach (var ptr in ptrs)
         {
             if (!ptr.TryLoad<UWorldPartitionRuntimeCell>(out var cell))
                 continue;
 
-            Children.Add(new CellActor(cell, color, isPersistent));
+            Children.Add(new CellActor(cell, isPersistent));
         }
     }
 

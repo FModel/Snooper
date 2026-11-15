@@ -3,8 +3,15 @@ using Snooper.Rendering.Components.Light;
 
 namespace Snooper.Rendering.Components.Visualization;
 
-public class RectLightComponentVisualization(RectLightComponent light) : LightComponentVisualization(light, Settings.RectLight, () => new Geometry(light))
+public class RectLightComponentVisualization : LightComponentVisualization, IVisualization<RectLightComponentVisualization>
 {
+    public static RectLightComponentVisualization[] Create(ActorComponent owner) => owner is RectLightComponent light ? [new RectLightComponentVisualization(light)] : [];
+
+    private RectLightComponentVisualization(RectLightComponent light) : base(light, Settings.RectLight, () => new Geometry(light))
+    {
+
+    }
+
     private class Geometry : DebugGeometry
     {
         public Geometry(RectLightComponent light)

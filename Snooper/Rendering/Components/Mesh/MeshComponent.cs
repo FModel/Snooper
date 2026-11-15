@@ -216,8 +216,6 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         }
     }
 
-    protected override DebugComponent CreateDebugVisualization() => new MeshBoundsVisualization(this);
-
     protected class Geometry : PrimitiveData<Vertex>
     {
         public Geometry(MeshVertex[] vertices, uint[] indices, FColor[]? colors, FMeshUVFloat[]? extraUvs)

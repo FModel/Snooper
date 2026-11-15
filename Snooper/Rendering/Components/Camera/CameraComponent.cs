@@ -193,10 +193,8 @@ public class CameraComponent : SpatialComponent, IViewProjectionProvider, IResiz
     {
         base.BeginPlay(scene);
 
-        SetDebugVisualizationVisibility(true);
+        SetVisualizationVisibility<CameraComponentVisualization>(true);
     }
-
-    protected override DebugComponent CreateDebugVisualization() => new CameraComponentVisualization(this);
 
     public override string Icon => "\uf030";
 

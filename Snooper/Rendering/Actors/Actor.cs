@@ -48,6 +48,8 @@ public class Actor : TreeNode
         {
             IsVisible = !hidden;
         }
+
+        EnableCollision = actor.GetOrDefault("bActorEnableCollision", EnableCollision);
     }
 
     public ActorComponentCollection Components { get; }
@@ -100,6 +102,8 @@ public class Actor : TreeNode
             SetIcon(field?.Icon ?? Icon);
         }
     }
+
+    public bool EnableCollision { get; } = true;
 
     public bool IsVisible
     {
