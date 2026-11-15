@@ -1,5 +1,6 @@
 using System.Numerics;
 using CUE4Parse.UE4.Objects.PhysicsEngine;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
@@ -30,15 +31,16 @@ public class CollisionSystem : PrimitiveSystem<CollisionComponentVisualization, 
         new(1.00f, 0.35f, 0.75f)  // QueryAndProbe
     ];
     private bool _throughMeshes;
-
-    private const float StripeSpeed = 0.5f;
+    private bool _scanPaused;
+    private float _scanSpeed = 3f;
 
     protected override void PreRender(CameraComponent camera, ShaderProgram shader)
     {
         base.PreRender(camera, shader);
 
         shader.SetUniform("uPalette", _palette);
-        shader.SetUniform("uStripePhase", (ActorManager?.Time ?? 0f) * StripeSpeed % 1f);
+        shader.SetUniform("uScanOffset", (ActorManager?.Time ?? 0f) * _scanSpeed);
+        shader.SetUniform("uScanPaused", _scanPaused);
 
         GL.DepthMask(false);
         GL.Enable(EnableCap.PolygonOffsetFill);
@@ -72,6 +74,10 @@ public class CollisionSystem : PrimitiveSystem<CollisionComponentVisualization, 
                 EditorUI.ColorEdit3(type.ToString(), ref _palette[(int) type]);
             }
             EditorUI.Checkbox("Through Meshes", ref _throughMeshes);
+            EditorUI.Checkbox("Pause Scan", ref _scanPaused);
+            ImGui.BeginDisabled(_scanPaused);
+            EditorUI.SliderFloat("Scan Speed", ref _scanSpeed, 0.5f, 20f, "%.1f m/s");
+            ImGui.EndDisabled();
         });
     }
 }
