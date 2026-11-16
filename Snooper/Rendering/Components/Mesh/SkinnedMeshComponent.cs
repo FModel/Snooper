@@ -100,7 +100,7 @@ public class SkinnedMeshComponent : MeshComponent
     public int SelectedBone { get; set { field = value; if (value >= 0) SelectedSocket = -1; } } = -1;
     public int SelectedSocket { get; set { field = value; if (value >= 0) SelectedBone = -1; } } = -1;
 
-    internal readonly FSoftObjectPath? _physicsAssetOverride;
+    internal readonly FSoftObjectPath? _physicsAsset;
 
     protected SkinnedMeshComponent(SkinnedMeshComponent other) : base(other)
     {
@@ -111,6 +111,11 @@ public class SkinnedMeshComponent : MeshComponent
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skinnedAsset, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
         if (Descriptor.Skeleton is { } skeleton) Pose = new SkeletonPose(skeleton);
+
+        if (skinnedAsset.PhysicsAsset is { IsNull: false } physicsAsset)
+        {
+            _physicsAsset = physicsAsset.ToSoftObjectPath();
+        }
     }
 
     protected SkinnedMeshComponent(USkeleton skeleton, Transform? transform = null) : base([], null, transform, skeleton.Name)
@@ -123,8 +128,9 @@ public class SkinnedMeshComponent : MeshComponent
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(skinnedAsset, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
         if (Descriptor.Skeleton is { } skeleton) Pose = new SkeletonPose(skeleton);
-        if (component.PhysicsAssetOverride is { IsNull: false } physicsAsset)
-            _physicsAssetOverride = physicsAsset.ToSoftObjectPath();
+
+        var ptr = component.PhysicsAssetOverride is { IsNull: false } physicsAssetOverride ? physicsAssetOverride : skinnedAsset.PhysicsAsset;
+        if (ptr is { IsNull: false }) _physicsAsset = ptr.ToSoftObjectPath();
     }
 
     public void MoveBone(int index, Matrix4x4 matrix)

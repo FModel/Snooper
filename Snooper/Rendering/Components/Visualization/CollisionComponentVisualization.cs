@@ -2,7 +2,6 @@
 using System.Runtime.InteropServices;
 using CUE4Parse_Conversion.Dto;
 using CUE4Parse.UE4.Assets.Exports;
-using CUE4Parse.UE4.Assets.Exports.Engine;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.PhysicsEngine;
@@ -59,22 +58,21 @@ public class CollisionComponentVisualization : PrimitiveComponent<PerMaterialCol
         CollisionComponentVisualization[] FromStaticMesh(StaticMeshComponent mesh)
         {
             if (mesh is { UseDefaultCollision: false, CollisionEnabled: ECollisionEnabled.NoCollision } ||
-                Load<UStaticMesh>(mesh) is not { } asset ||
-                !asset.BodySetup.TryLoad<UBodySetup>(out var bodySetup))
+                mesh._bodySetup is not { } path || !path.TryLoad<UBodySetup>(provider, out var bodySetup))
                 return [];
 
             var type = mesh.UseDefaultCollision ? bodySetup.DefaultInstance?.CollisionEnabled ?? ECollisionEnabled.QueryAndPhysics : mesh.CollisionEnabled;
             if (type == ECollisionEnabled.NoCollision)
                 return [];
 
-            return Shell(mesh, bodySetup, type, asset) is { } shell ? [shell] : [];
+            return Shell(mesh, bodySetup, type, () => Load<UStaticMesh>(mesh)) is { } shell ? [shell] : [];
         }
 
         CollisionComponentVisualization[] FromSkinnedMesh(SkinnedMeshComponent mesh)
         {
             if (mesh.Leader is not null || // a follower has no physics state of its own
                 mesh.CollisionEnabled == ECollisionEnabled.NoCollision ||
-                LoadPhysicsAsset(mesh) is not { } physicsAsset)
+                mesh._physicsAsset is not { } path || !path.TryLoad<UPhysicsAsset>(provider, out var physicsAsset))
                 return [];
 
             var shells = new List<CollisionComponentVisualization>(physicsAsset.SkeletalBodySetups.Length);
@@ -86,9 +84,9 @@ public class CollisionComponentVisualization : PrimitiveComponent<PerMaterialCol
             return [.. shells];
         }
 
-        CollisionComponentVisualization? Shell(MeshComponent mesh, UBodySetup body, ECollisionEnabled type, UStaticMesh? asset = null, string? bone = null)
+        CollisionComponentVisualization? Shell(MeshComponent mesh, UBodySetup body, ECollisionEnabled type, Func<UStaticMesh?>? loadMesh = null, string? bone = null)
         {
-            var descriptor = PrimitiveDescriptor<Vector3>.GetOrCreate(body, setup => new Geometry(setup, asset));
+            var descriptor = PrimitiveDescriptor<Vector3>.GetOrCreate(body, setup => new Geometry(setup, loadMesh));
             return descriptor.Lods[0].IndexCount > 0 ? new CollisionComponentVisualization(mesh, descriptor, type, bone) : null;
         }
 
@@ -99,14 +97,6 @@ public class CollisionComponentVisualization : PrimitiveComponent<PerMaterialCol
                 return null;
 
             return package.GetExportOrNull<T>(name);
-        }
-
-        UPhysicsAsset? LoadPhysicsAsset(SkinnedMeshComponent mesh)
-        {
-            if (mesh._physicsAssetOverride is { } path && path.TryLoad<UPhysicsAsset>(provider, out var physicsAsset))
-                return physicsAsset;
-
-            return Load<USkinnedAsset>(mesh) is { } asset && asset.PhysicsAsset.TryLoad<UPhysicsAsset>(out var meshPhysicsAsset) ? meshPhysicsAsset : null;
         }
     }
 
@@ -163,12 +153,12 @@ public class CollisionComponentVisualization : PrimitiveComponent<PerMaterialCol
         private const int Sides = 24;
         private const int CapRings = 6;
 
-        public Geometry(UBodySetup setup, UStaticMesh? mesh = null)
+        public Geometry(UBodySetup setup, Func<UStaticMesh?>? loadMesh = null)
         {
             var vertices = new List<Vector3>();
             var indices = new List<uint>();
 
-            if (setup.CollisionTraceFlag == ECollisionTraceFlag.CTF_UseComplexAsSimple && mesh is not null)
+            if (setup.CollisionTraceFlag == ECollisionTraceFlag.CTF_UseComplexAsSimple && loadMesh?.Invoke() is { } mesh)
             {
                 Triangles(mesh);
             }

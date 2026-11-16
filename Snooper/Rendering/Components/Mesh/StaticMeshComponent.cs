@@ -5,6 +5,7 @@ using CUE4Parse.UE4.Assets.Exports.Houdini;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Core;
+using Snooper.Extensions;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Systems;
@@ -21,10 +22,17 @@ public class StaticMeshComponent : MeshComponent
 
     public readonly bool UseDefaultCollision;
 
+    internal readonly FSoftObjectPath? _bodySetup;
+
     public StaticMeshComponent(UStaticMesh staticMesh, Transform? transform = null, FPackageIndex?[]? overrideMaterials = null) : base(staticMesh.Materials, overrideMaterials, transform, staticMesh.Name)
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
         UseDefaultCollision = true;
+
+        if (staticMesh.BodySetup is { IsNull: false } bodySetup)
+        {
+            _bodySetup = bodySetup.ToSoftObjectPath();
+        }
     }
 
     public StaticMeshComponent(UIRMesh staticMesh, uint meshIndex, FPackageIndex?[]? overrideMaterials = null, Transform? transform = null) : base(staticMesh.Materials, overrideMaterials, transform, meshIndex > 0 ? $"{staticMesh.Name}_{meshIndex}" : staticMesh.Name)
@@ -41,6 +49,11 @@ public class StaticMeshComponent : MeshComponent
     {
         Descriptor = PrimitiveDescriptor<Vertex>.GetOrCreate(staticMesh, (vertices, indices, colors, extraUvs) => new Geometry(vertices, indices, colors, extraUvs));
         UseDefaultCollision = component.bUseDefaultCollision;
+
+        if (staticMesh.BodySetup is { IsNull: false } bodySetup)
+        {
+            _bodySetup = bodySetup.ToSoftObjectPath();
+        }
 
         // TODO: use component.LODData to override some stuff (eg vertex colors)
     }
